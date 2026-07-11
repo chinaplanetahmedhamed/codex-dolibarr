@@ -144,7 +144,14 @@ $fetchSoc = $is_external ? $socid : 0;
 $r = $object->fetch($id, $fetchSoc);
 if ($r <= 0) { http_response_code(403); print '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'; if ($is_modal) print '</body></html>'; else llxFooter(); exit; }
 
-$colObj = isset($columns[$object->fk_column]) ? $columns[$object->fk_column] : null;
+$displayColumnId = (int) $object->fk_column;
+if ($is_external) {
+    $visibleColumns = CpKanbanColumn::getAll($db, true, true);
+    $displayColumnId = cpkanban_customer_visible_column_id($displayColumnId, $visibleColumns, $columns);
+    $colObj = $displayColumnId > 0 && isset($visibleColumns[$displayColumnId]) ? $visibleColumns[$displayColumnId] : null;
+} else {
+    $colObj = isset($columns[$displayColumnId]) ? $columns[$displayColumnId] : null;
+}
 $pri = cpkanban_priority($object->priority);
 $coverAssetId = 0;
 $coverSql = "SELECT rowid FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE entity=".(int)$conf->entity." AND fk_card=".(int)$object->id." AND fk_soc=".(int)$object->fk_soc." AND asset_type='image' AND is_cover=1 AND status=1";

@@ -35,6 +35,7 @@ Base production commit: `c1f8aa4`
 - Development router QUERY_STRING normalization: passed.
 - UX-022 public activity actor masking: passed.
 - UX-023 cover/database test: all eight checks passed against the approved local development database (`table`, MIME allowlist, size limit, external scope, realpath boundary, admin-only form, active cover file, and detail renderer).
+- UX-026 hidden-column privacy regression: folded customer cards remain under the public `prog` column, hidden source metadata is absent from the external view-model/renderers, and internal column-label rendering is preserved.
 - Forward migration disposable-schema test creates randomly prefixed production-shaped legacy tables in the DEVELOPMENT database, applies the migration twice, verifies required columns/index/table, requires the second run to perform zero actions, and drops the disposable tables in cleanup.
 
 ## Database/module state

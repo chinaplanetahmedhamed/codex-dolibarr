@@ -159,9 +159,6 @@ if ($is_external) {
                     <?php if (!empty($c->fk_shipment)): ?>
                         <span class="cpk-tag cpk-ship">🚢 شحنة مرتبطة</span>
                     <?php endif; ?>
-                    <?php if ($is_external && !empty($c->_cpk_folded_from_label)): ?>
-                        <span class="cpk-tag cpk-money">داخلياً: <?php echo dol_escape_htmltag($c->_cpk_folded_from_label); ?></span>
-                    <?php endif; ?>
                 </div>
                 <div class="cpk-progress"><span style="width:<?php echo (int) $c->progress; ?>%"></span></div>
                 <div class="cpk-foot">
