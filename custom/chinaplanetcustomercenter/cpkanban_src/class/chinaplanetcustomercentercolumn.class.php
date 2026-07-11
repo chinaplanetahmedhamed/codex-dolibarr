@@ -1,0 +1,1 @@
+cpkanbancolumn.class.php

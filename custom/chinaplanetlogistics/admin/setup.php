@@ -19,6 +19,7 @@ print '<p>The module is active. Use the top menu "China Planet Logistics" to man
 print '<ul>';
 print '<li><b>Dashboard:</b> <a href="'.dol_buildpath('/chinaplanetlogistics/index.php', 1).'">Operations Control Tower</a></li>';
 print '<li><b>Shipment List:</b> <a href="'.dol_buildpath('/chinaplanetlogistics/list.php', 1).'">View all shipments</a></li>';
+print '<li><b>Documents Management:</b> <a href="'.dol_buildpath('/chinaplanetcustomercenter/documents.php', 1).'">Shipment documents manager</a></li>';
 print '<li><b>Customer Portal (Public):</b> <a href="'.dol_buildpath('/chinaplanetlogistics/public/track.php', 1).'" target="_blank">Tracking Page</a></li>';
 print '</ul>';
 print '</div>';

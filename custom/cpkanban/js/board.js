@@ -7,7 +7,7 @@
         if (!wrap) return;
 
         var canWrite = wrap.getAttribute("data-canwrite") === "1";
-        if (!canWrite) return; // customers: view only, no DnD wiring
+        if (!canWrite) { setupCustomerCardDialog(wrap); return; }
 
         var ajaxUrl = wrap.getAttribute("data-ajax");
         var token = wrap.getAttribute("data-token");
@@ -112,4 +112,21 @@
             tt = setTimeout(function () { t.className = ""; }, 2600);
         }
     });
+
+    function setupCustomerCardDialog(wrap) {
+        var dialog=document.getElementById("cpk-card-dialog"), frame=dialog&&dialog.querySelector(".cpk-dialog-frame"), closeButton=dialog&&dialog.querySelector(".cpk-dialog-close"), lastTrigger=null, closing=false;
+        if (!dialog || typeof dialog.showModal!=="function") return;
+        function currentId(){return new URL(window.location.href).searchParams.get("card");}
+        function findLink(id){return Array.prototype.find.call(wrap.querySelectorAll("a.cpk-card-link"),function(a){return a.getAttribute("data-id")===String(id);});}
+        function openCard(link,push){if(!link)return;lastTrigger=link;var modalUrl=new URL(link.href);modalUrl.searchParams.set("modal","1");frame.src=modalUrl.toString();if(!dialog.open)dialog.showModal();closeButton.focus();if(push){var u=new URL(window.location.href),state=Object.assign({},history.state||{});u.searchParams.set("card",link.getAttribute("data-id"));state.cpkCard=link.getAttribute("data-id");state.cpkModalEntry=true;history.pushState(state,"",u);}}
+        function finishClose(){if(dialog.open)dialog.close();frame.removeAttribute("src");if(lastTrigger)lastTrigger.focus();}
+        function closeCard(fromHistory){if(closing)return;closing=true;finishClose();if(!fromHistory){var u=new URL(window.location.href),state=Object.assign({},history.state||{});u.searchParams.delete("card");delete state.cpkCard;delete state.cpkModalEntry;history.replaceState(state,"",u);}closing=false;}
+        wrap.querySelectorAll("a.cpk-card-link").forEach(function(link){link.addEventListener("click",function(e){if(e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();openCard(link,true);});});
+        closeButton.addEventListener("click",function(){closeCard(false);});
+        dialog.addEventListener("cancel",function(e){e.preventDefault();closeCard(false);});
+        document.addEventListener("keydown",function(e){if(e.key==="Escape"&&dialog.open){e.preventDefault();closeCard(false);}},true);
+        dialog.addEventListener("click",function(e){if(e.target===dialog)closeCard(false);});
+        window.addEventListener("popstate",function(){var id=currentId(),link=id&&findLink(id);if(!link){finishClose();closing=false;return;}if(!closing)openCard(link,false);});
+        var initial=currentId(),initialLink=initial&&findLink(initial);if(initialLink){var state=Object.assign({},history.state||{});state.cpkCard=initial;state.cpkModalEntry=false;history.replaceState(state,"",window.location.href);openCard(initialLink,false);}
+    }
 })();

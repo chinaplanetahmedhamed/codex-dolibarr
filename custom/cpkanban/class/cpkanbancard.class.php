@@ -138,7 +138,9 @@ class CpKanbanCard extends CommonObject
     public static function getBoard($db, $socid = 0, $filters = array())
     {
         $byCol = array();
-        $sql = "SELECT c.*, s.nom as customer_name";
+        $sql = "SELECT c.*, s.nom as customer_name, (SELECT a.rowid FROM ".MAIN_DB_PREFIX."cpkanban_asset a WHERE a.entity=c.entity AND a.fk_card=c.rowid AND a.is_cover=1 AND a.status=1";
+        if ($socid > 0) $sql.= " AND a.customer_visible=1 AND a.review_status='approved'";
+        $sql.= " ORDER BY a.rowid DESC LIMIT 1) as cover_asset_id";
         $sql.= " FROM ".MAIN_DB_PREFIX."cpkanban_card as c";
         $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."societe as s ON c.fk_soc = s.rowid";
         $sql.= " WHERE c.status <> 0";
@@ -266,13 +268,22 @@ class CpKanbanCard extends CommonObject
     public function getLogs($visibleCustOnly = 0)
     {
         $out = array();
-        $sql = "SELECT l.*, u.firstname, u.lastname FROM ".MAIN_DB_PREFIX."cpkanban_log as l";
-        $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."user as u ON l.fk_user = u.rowid";
+        $sql = $visibleCustOnly
+            ? "SELECT l.* FROM ".MAIN_DB_PREFIX."cpkanban_log as l"
+            : "SELECT l.*, u.firstname, u.lastname, u.login, u.email FROM ".MAIN_DB_PREFIX."cpkanban_log as l LEFT JOIN ".MAIN_DB_PREFIX."user as u ON l.fk_user = u.rowid";
         $sql.= " WHERE l.fk_card = ".(int) $this->id;
         if ($visibleCustOnly) $sql.= " AND l.visible_cust = 1";
         $sql.= " ORDER BY l.date_action DESC";
         $resql = $this->db->query($sql);
-        if ($resql) { while ($o = $this->db->fetch_object($resql)) { $out[] = $o; } }
+        if ($resql) {
+            while ($o = $this->db->fetch_object($resql)) {
+                if ($visibleCustOnly) {
+                    unset($o->fk_user);
+                    $o->public_actor = 'فريق كوكب الصين';
+                }
+                $out[] = $o;
+            }
+        }
         return $out;
     }
 

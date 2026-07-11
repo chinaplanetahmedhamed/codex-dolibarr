@@ -19,6 +19,7 @@ class modChinaPlanetLogistics extends DolibarrModules
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'ship';
+        $this->hidden = true; // Hide legacy descriptor once the unified module is active
 
         // ── Data directories ─────────────────────────────────────────────
         // This populates $conf->chinaplanetlogistics->dir_output
@@ -90,7 +91,9 @@ class modChinaPlanetLogistics extends DolibarrModules
             'url'      => '/chinaplanetlogistics/index.php',
             'langs'    => 'chinaplanetlogistics@chinaplanetlogistics',
             'position' => 1000,
-            'enabled'  => '$conf->chinaplanetlogistics->enabled',
+            'enabled'  => '0', // Legacy top menu hidden; functionality is exposed by Customer Center.
+            'perms'    => '$user->hasRight("chinaplanetlogistics","read")',
+            'user'     => 2,
             'picto'    => 'ship',
         );
         $this->menu[$r++] = array(
@@ -103,6 +106,8 @@ class modChinaPlanetLogistics extends DolibarrModules
             'langs'    => 'chinaplanetlogistics@chinaplanetlogistics',
             'position' => 100,
             'enabled'  => '$conf->chinaplanetlogistics->enabled',
+            'perms'    => '$user->hasRight("chinaplanetlogistics","read")',
+            'user'     => 2,
         );
         $this->menu[$r++] = array(
             'fk_menu'  => 'fk_mainmenu=chinaplanetlogistics',
@@ -114,6 +119,8 @@ class modChinaPlanetLogistics extends DolibarrModules
             'langs'    => 'chinaplanetlogistics@chinaplanetlogistics',
             'position' => 200,
             'enabled'  => '$conf->chinaplanetlogistics->enabled',
+            'perms'    => '$user->hasRight("chinaplanetlogistics","read")',
+            'user'     => 2,
         );
         $this->menu[$r++] = array(
             'fk_menu'  => 'fk_mainmenu=chinaplanetlogistics',
@@ -121,10 +128,25 @@ class modChinaPlanetLogistics extends DolibarrModules
             'titre'    => 'Financial Reports / التقارير المالية',
             'mainmenu' => 'chinaplanetlogistics',
             'leftmenu' => 'financial_reports',
-            'url'      => '/chinaplanetlogistics/reports.php',
+            'url'      => '/chinaplanetcustomercenter/reports.php',
             'langs'    => 'chinaplanetlogistics@chinaplanetlogistics',
             'position' => 250,
             'enabled'  => '$conf->chinaplanetlogistics->enabled',
+            'perms'    => '$user->hasRight("chinaplanetlogistics","read")',
+            'user'     => 2,
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'  => 'fk_mainmenu=chinaplanetlogistics',
+            'type'     => 'left',
+            'titre'    => 'Documents Management / إدارة المستندات',
+            'mainmenu' => 'chinaplanetlogistics',
+            'leftmenu' => 'documents_management',
+            'url'      => '/chinaplanetcustomercenter/documents.php',
+            'langs'    => 'chinaplanetlogistics@chinaplanetlogistics',
+            'position' => 275,
+            'enabled'  => '$conf->chinaplanetlogistics->enabled',
+            'perms'    => '$user->hasRight("chinaplanetlogistics","read")',
+            'user'     => 2,
         );
         $this->menu[$r++] = array(
             'fk_menu'  => 'fk_mainmenu=chinaplanetlogistics',
@@ -136,6 +158,8 @@ class modChinaPlanetLogistics extends DolibarrModules
             'langs'    => 'chinaplanetlogistics@chinaplanetlogistics',
             'position' => 300,
             'enabled'  => '$conf->chinaplanetlogistics->enabled && empty($user->socid)',
+            'perms'    => '$user->hasRight("chinaplanetlogistics","write")',
+            'user'     => 0,
         );
     }
 
@@ -145,8 +169,12 @@ class modChinaPlanetLogistics extends DolibarrModules
      */
     public function init($options = '')
     {
-        $result = $this->_init(array(), $options);
-        return $result;
+        $result = $this->_load_tables('/chinaplanetlogistics/sql/');
+        if ($result <= 0) {
+            return $result;
+        }
+
+        return $this->_init(array(), $options);
     }
 }
 ?>

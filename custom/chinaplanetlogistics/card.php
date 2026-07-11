@@ -9,10 +9,11 @@ $res = 0;
 if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
 if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
 if (!$res) die("Include of main fails");
-require_once DOL_DOCUMENT_ROOT."/projet/class/projet.class.php";
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.formprojet.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
+require_once __DIR__.'/../chinaplanetcustomercenter/lib/portal.lib.php';
 require_once __DIR__.'/class/chinaplanetlogistics.class.php';
 
 $langs->loadLangs(array("companies", "orders", "projects", "sendings", "other"));
@@ -27,18 +28,25 @@ if ($id > 0) {
 }
 
 // Security
-$canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || !empty($user->admin));
-$canread  = ($user->hasRight('chinaplanetlogistics', 'read')  || !empty($user->admin));
+$canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin));
+$canread  = ($user->hasRight('chinaplanetlogistics', 'read')  || $user->hasRight('chinaplanetcustomercenter', 'read') || !empty($user->admin));
 if (empty($user->id)) accessforbidden();
-if (!$canread && !$canwrite) accessforbidden();
 
 // Customer security boundary: external users can only view shipments linked to their own third party.
 $is_external_customer = (!empty($user->socid) && empty($user->admin));
+$is_modal = ($is_external_customer && GETPOSTINT('modal') === 1);
 if ($is_external_customer) {
     $canwrite = false;
     if ($id > 0) {
         if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
-            accessforbidden();
+            if ($is_modal) {
+                http_response_code(403);
+                header('Content-Type: text/html; charset=UTF-8');
+                print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:24px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif}.warning{padding:16px;border:1px solid #f1c40f;border-radius:10px;background:#fff8dc}</style></head><body><div class="warning">الشحنة غير موجودة أو لا تملك صلاحية عرضها.</div></body></html>';
+                $db->close();
+                exit;
+            }
+            cpcc_portal_access_denied($user, 'shipments');
         }
     }
 }
@@ -140,18 +148,30 @@ if ($action == 'confirm_delete' && $confirm == 'yes' && $canwrite) {
 // FILE UPLOAD
 if (GETPOST('sendit') && $id > 0 && $canwrite) {
     // DOL_DATA_ROOT = /var/www/documents — dir_output not defined in module descriptor
-    $upload_dir = DOL_DATA_ROOT . '/chinaplanetlogistics/' . dol_sanitizeFileName($object->ref);
-    if (!is_dir($upload_dir)) dol_mkdir($upload_dir);
-    // Correct signature for Dolibarr 19+: dol_add_file_process($upload_dir, $allowoverwrite, ...)
-    dol_add_file_process($upload_dir, 0, 0, 'userfile');
+    $upload_dir = cpcc_portal_shipment_doc_root($object->id);
+    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $_FILES['userfile']['name'], $_FILES['userfile']['tmp_name']);
+    if (!empty($uploadres['ok'])) {
+        setEventMessages('Document uploaded successfully.', null, 'mesgs');
+    } else {
+        setEventMessages(!empty($uploadres['error']) ? $uploadres['error'] : 'Upload failed.', null, 'errors');
+    }
 }
 
 /*
  * VIEW
  */
-llxHeader('', 'Shipment Card');
+if ($is_modal) {
+    header('Content-Type: text/html; charset=UTF-8');
+    print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+    print '<style>body{margin:0;padding:20px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif;line-height:1.45}h1,h2,h3{margin-top:0}.fichecenter,.fichehalfleft,.fichehalfright{width:100%}.fiche{margin:0}.fiche-title{margin-bottom:18px}.border{width:100%;border-collapse:collapse;background:#fff}.border td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:start}.border tr:nth-child(even){background:#f8fafc}.titlefield{width:220px}.tabsAction{display:none}.opacitymedium{color:#6b7280}@media(max-width:640px){body{padding:12px}.border td{padding:8px;display:block;width:auto!important}.border tr{display:block;padding:6px 0}}</style>';
+    print '</head><body class="cpl-modal-body">';
+} else {
+    llxHeader('', 'Shipment Card');
+    cpcc_portal_navigation($user, 'shipments');
+}
 
 $form = new Form($db);
+$formproject = new FormProjets($db);
 
 $statuses = array(
     0 => 'Inquiry',
@@ -220,7 +240,7 @@ if ($action == 'create' || $action == 'edit') {
 
     // Project
     print '<tr><td>Project / المشروع</td><td>';
-    if(!empty($conf->projet->enabled)) print $form->select_projects(-1, $object->fk_project, 'fk_project', 0, 0, 1, 0, 0, 0, 0, '', 1);
+    print $formproject->select_projects(-1, $object->fk_project, 'fk_project', 0, 0, 1, 0, 0, 0, 0, '', 1);
     print '</td></tr>';
 
     // Container
@@ -306,7 +326,7 @@ if ($action == 'create' || $action == 'edit') {
     // ─── VIEW MODE ────────────────────────────────────────────────────────
     if ($id <= 0 || empty($object->id)) {
         print '<div class="warning">Shipment not found. <a href="'.$listurl.'">Back to list</a></div>';
-        llxFooter();
+        if ($is_modal) print '</body></html>'; else llxFooter();
         $db->close();
         exit;
     }
@@ -365,6 +385,7 @@ if ($action == 'create' || $action == 'edit') {
 
     print '<table class="border centpercent">';
     print '<tr><td class="titlefield" style="width:220px;"><b>Ref / المرجع</b></td><td><b>'.dol_escape_htmltag($object->ref).'</b></td></tr>';
+    print '<tr><td>Shipment ID / معرّف الشحنة</td><td><b>'.(int) $object->id.'</b></td></tr>';
     print '<tr><td>Customer / العميل</td><td>'.dol_escape_htmltag($customer_name).'</td></tr>';
     print '<tr><td>Project / المشروع</td><td>'.dol_escape_htmltag($project_label).'</td></tr>';
     print '<tr><td>Container No / رقم الحاوية</td><td><b>'.dol_escape_htmltag($object->container_no).'</b> &nbsp;<span style="background:#3498db;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">'.dol_escape_htmltag($object->container_type).'</span></td></tr>';
@@ -396,6 +417,7 @@ if ($action == 'create' || $action == 'edit') {
         print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit">✏️ Edit / تعديل</a>';
         print '<a class="butActionDelete" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete&token='.newToken().'">🗑️ Delete / حذف</a>';
     }
+    print '<a class="butAction" href="'.dol_buildpath('/chinaplanetcustomercenter/documents.php', 1).'?shipid='.(int) $id.'">📄 Documents / المستندات</a>';
     print '<a class="butAction" href="'.$listurl.'">← Back to List / العودة للقائمة</a>';
     print '</div>';
 
@@ -410,8 +432,17 @@ if ($action == 'create' || $action == 'edit') {
         print '</form>';
     }
 
-    $upload_dir = DOL_DATA_ROOT . '/chinaplanetlogistics/' . dol_sanitizeFileName($object->ref);
-    $filearray = dol_dir_list($upload_dir, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+    $filearray = array();
+    foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
+        if (!is_dir($docroot)) continue;
+        $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+        if (!empty($docs)) {
+            foreach ($docs as $doc) {
+                $doc['docroot'] = $docroot;
+                $filearray[] = $doc;
+            }
+        }
+    }
 
     print '<table class="border centpercent">';
     print '<tr class="liste_titre"><td>File Name</td><td align="right">Size</td><td align="center">Date</td></tr>';
@@ -419,8 +450,8 @@ if ($action == 'create' || $action == 'edit') {
         print '<tr><td colspan="3" class="center opacitymedium">No documents uploaded yet.</td></tr>';
     } else {
         foreach ($filearray as $file) {
-            $relativepath = dol_sanitizeFileName($object->ref).'/'.$file['name'];
-            $dl_url = DOL_URL_ROOT.'/document.php?modulepart=chinaplanetlogistics&file='.urlencode($relativepath);
+            $relativepath = basename($file['docroot']).'/'.$file['name'];
+            $dl_url = dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?type=shipment&id='.(int) $object->id.'&file='.urlencode($relativepath);
             print '<tr><td><a href="'.$dl_url.'" target="_blank">'.dol_escape_htmltag($file['name']).'</a></td>';
             print '<td align="right">'.dol_print_size($file['size']).'</td>';
             print '<td align="center">'.dol_print_date($file['date'], 'dayhour').'</td></tr>';
@@ -430,6 +461,6 @@ if ($action == 'create' || $action == 'edit') {
     print '</div>';
 }
 
-llxFooter();
+if ($is_modal) print '</body></html>'; else llxFooter();
 $db->close();
 ?>

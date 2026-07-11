@@ -14,21 +14,24 @@ if (!$res) die("Include of main fails");
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
 require_once __DIR__.'/class/cpkanbancard.class.php';
+require_once __DIR__.'/class/cpkanbanasset.class.php';
 require_once __DIR__.'/class/cpkanbancolumn.class.php';
 require_once __DIR__.'/lib/cpkanban.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
 
 $langs->loadLangs(array("companies", "projects", "other"));
 
-if (empty($user->id) || (!$user->hasRight('cpkanban', 'read') && empty($user->admin))) {
+if (empty($user->id)) {
     accessforbidden();
 }
 
 $ctx = cpkanban_user_context($user);
 $is_external = $ctx['is_external'];
 $socid = $ctx['socid'];
+$is_modal = ($is_external && GETPOSTINT('modal') === 1);
 if ($is_external && $socid <= 0) accessforbidden("No company linked to this user.");
 
-$canwrite = (!$is_external && ($user->hasRight('cpkanban', 'write') || !empty($user->admin)));
+$canwrite = (!$is_external && ($user->hasRight('cpkanban', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin)));
 
 $id     = GETPOST('id', 'int');
 $action = GETPOST('action', 'alpha');
@@ -37,7 +40,7 @@ $object  = new CpKanbanCard($db);
 $columns = CpKanbanColumn::getAll($db, false, true);
 $form    = new Form($db);
 
-$boardurl = dol_buildpath('/cpkanban/board.php', 1);
+$boardurl = dol_buildpath('/chinaplanetcustomercenter/board.php', 1);
 
 /*
  * ACTIONS (internal staff only)
@@ -54,7 +57,13 @@ if ($action == 'add' && $canwrite) {
     $object->note_public    = GETPOST('note_public', 'restricthtml');
     $object->note_private   = GETPOST('note_private', 'restricthtml');
     $r = $object->create($user);
-    if ($r > 0) { header('Location: '.$_SERVER['PHP_SELF'].'?id='.$r); exit; }
+    if ($r > 0) {
+        if (!empty($_FILES['cover_image']['name'])) {
+            $upload = CpKanbanAsset::storeCover($db, $object, $user, $_FILES['cover_image']);
+            setEventMessages($upload['ok'] ? 'تم حفظ صورة الغلاف.' : $upload['error'], null, $upload['ok'] ? 'mesgs' : 'errors');
+        }
+        header('Location: '.$_SERVER['PHP_SELF'].'?id='.$r); exit;
+    }
     else setEventMessages($object->error, null, 'errors');
 }
 
@@ -71,25 +80,37 @@ if ($action == 'update' && $canwrite && $id > 0) {
     $object->note_public  = GETPOST('note_public', 'restricthtml');
     $object->note_private = GETPOST('note_private', 'restricthtml');
     $r = $object->update($user);
-    if ($r > 0) { header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id); exit; }
+    if ($r > 0) {
+        CpKanbanAsset::syncCard($db, $object, $user);
+        if (!empty($_FILES['cover_image']['name'])) {
+            $upload = CpKanbanAsset::storeCover($db, $object, $user, $_FILES['cover_image']);
+            setEventMessages($upload['ok'] ? 'تم تحديث صورة الغلاف.' : $upload['error'], null, $upload['ok'] ? 'mesgs' : 'errors');
+        }
+        header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id); exit;
+    }
     else setEventMessages($object->error, null, 'errors');
 }
 
-if ($action == 'confirm_delete' && $canwrite && $id > 0 && $user->hasRight('cpkanban','delete')) {
+if ($action == 'confirm_delete' && $canwrite && $id > 0 && ($user->hasRight('cpkanban','delete') || $user->hasRight('chinaplanetcustomercenter','delete') || !empty($user->admin))) {
     $object->fetch($id);
     $object->delete($user);
     header('Location: '.$boardurl); exit;
 }
 
-llxHeader('', 'Project Card / بطاقة المشروع', '', '', 0, 0,
-    array(), array('/custom/cpkanban/css/board.css?v=211'));
+if ($is_modal) {
+    header('Content-Type: text/html; charset=UTF-8');
+    print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="'.DOL_URL_ROOT.'/custom/cpkanban/css/board.css"><script defer src="'.DOL_URL_ROOT.'/custom/cpkanban/js/shipment-link.js"></script></head><body class="cpk-modal-body">';
+} else {
+    llxHeader('', 'Project Card / بطاقة المشروع', '', '', 0, 0, array('/custom/cpkanban/js/shipment-link.js'), array('/custom/cpkanban/css/board.css'));
+    if ($is_external) cpcc_portal_navigation($user, 'dashboard');
+}
 
 /*
  * CREATE FORM (internal)
  */
 if ($action == 'create' && $canwrite) {
     print load_fiche_titre('بطاقة جديدة', '', 'project');
-    print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
+    print '<form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
     print '<input type="hidden" name="token" value="'.newToken().'">';
     print '<input type="hidden" name="action" value="add">';
     print '<table class="border centpercent">';
@@ -107,6 +128,7 @@ if ($action == 'create' && $canwrite) {
     print '<tr><td>رقم الشحنة المرتبطة (rowid)</td><td><input type="number" name="fk_shipment" class="flat" placeholder="اختياري"></td></tr>';
     print '<tr><td>ملاحظة عامة (يراها العميل)</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>';
     print '<tr><td>ملاحظة داخلية (للفريق فقط)</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>';
+    print '<tr><td>صورة الغلاف</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — حتى 5MB</span></td></tr>';
     print '</table>';
     print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="حفظ"> ';
     print '<a class="button button-cancel" href="'.$boardurl.'">إلغاء</a></div>';
@@ -120,22 +142,34 @@ if ($action == 'create' && $canwrite) {
  */
 $fetchSoc = $is_external ? $socid : 0;
 $r = $object->fetch($id, $fetchSoc);
-if ($r <= 0) { print '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'; llxFooter(); exit; }
+if ($r <= 0) { http_response_code(403); print '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'; if ($is_modal) print '</body></html>'; else llxFooter(); exit; }
 
 $colObj = isset($columns[$object->fk_column]) ? $columns[$object->fk_column] : null;
 $pri = cpkanban_priority($object->priority);
+$coverAssetId = 0;
+$coverSql = "SELECT rowid FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE entity=".(int)$conf->entity." AND fk_card=".(int)$object->id." AND fk_soc=".(int)$object->fk_soc." AND asset_type='image' AND is_cover=1 AND status=1";
+if ($is_external) $coverSql .= " AND customer_visible=1 AND review_status='approved'";
+$coverSql .= " ORDER BY rowid DESC LIMIT 1";
+$coverRes = $db->query($coverSql);
+if ($coverRes && ($coverRow = $db->fetch_object($coverRes))) $coverAssetId = (int)$coverRow->rowid;
 
 print '<div class="cpk-detail-shell" dir="rtl">';
-print '<a class="cpk-action-link" href="'.$boardurl.'">← العودة إلى مركز العميل</a>';
+if (!$is_modal) print '<a class="cpk-action-link" href="'.$boardurl.'">← العودة إلى مركز العميل</a>';
+if ($coverAssetId > 0) {
+    $coverUrl = dol_buildpath('/cpkanban/cover.php', 1).'?id='.$coverAssetId;
+    print '<div class="cpk-detail-cover"><img src="'.dol_escape_htmltag($coverUrl).'" alt="صورة غلاف المشروع" loading="eager"></div>';
+}
 print load_fiche_titre(dol_escape_htmltag($object->title), '', 'project');
 
+if (!$is_modal) {
 print '<div class="cpk-action-row">';
 print '<a class="cpk-action-link" href="'.$boardurl.'">🗂️ لوحة المشاريع</a>';
 print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetlogistics/index.php', 1).'">🚢 الشحنات</a>';
-print '<a class="cpk-action-link" href="'.dol_buildpath('/compta/facture/list.php', 1).'">🧾 الفواتير والرصيد</a>';
-print '<a class="cpk-action-link" href="'.dol_buildpath('/commande/list.php', 1).'">📦 الطلبيات</a>';
-if (!empty($object->fk_project)) print '<a class="cpk-action-link" href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int)$object->fk_project.'">📋 تفاصيل المشروع</a>';
+print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/invoices.php', 1).'">🧾 الفواتير والرصيد</a>';
+print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/orders.php', 1).'">📦 الطلبيات</a>';
+if (!empty($object->fk_project)) print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/projects.php', 1).'">📋 تفاصيل المشروع</a>';
 print '</div>';
+}
 
 print '<div class="cpk-detail-card">';
 print '<table class="border centpercent">';
@@ -158,7 +192,9 @@ $ship = $object->getShipmentSummary($fetchSoc);
 if ($ship) {
     $eta_days = cpkanban_days_until($ship->date_eta);
     $ft_days  = cpkanban_days_until($ship->freetime_end);
+    $fulltrack = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int)$ship->rowid.($is_modal ? '&modal=1' : '');
     print '<tr><td>الشحنة المرتبطة</td><td>';
+    print '<a class="cpk-shipment-link" href="'.$fulltrack.'" aria-label="عرض تفاصيل الشحنة '.dol_escape_htmltag($ship->container_no ? $ship->container_no : $ship->ref).'">';
     print '<div class="cpk-shipment-box">';
     print '<div style="font-weight:800;font-family:Cairo,sans-serif;margin-bottom:8px">🚢 '.dol_escape_htmltag($ship->container_no ? $ship->container_no : $ship->ref).'</div>';
     print '<div class="cpk-count-grid">';
@@ -166,10 +202,8 @@ if ($ship) {
     print '<div class="cpk-count-box" style="background:'.cpkanban_countdown_color($ft_days).'"><b>'.($ft_days === null ? '-' : $ft_days).'</b><span>أيام الوقت الحر المتبقية</span></div>';
     print '</div>';
     print '<div style="margin-top:8px;font-size:13px">الحالة: '.cpkanban_shipment_status($ship->fk_statut).' • السفينة: '.dol_escape_htmltag($ship->vessel_name ? $ship->vessel_name : '-').'</div>';
-    // Full tracking link (public track page or internal logistics card)
-    $fulltrack = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int)$ship->rowid;
-    print '<div style="margin-top:12px"><a class="cpk-action-link" href="'.$fulltrack.'">عرض صفحة تتبع الحاوية الكاملة ←</a></div>';
-    print '</div></td></tr>';
+    print '<div class="cpk-shipment-cta">عرض صفحة تتبع الحاوية الكاملة ←</div>';
+    print '</div></a></td></tr>';
 }
 
 // ---------- Public note (always) ----------
@@ -183,16 +217,14 @@ if (!$is_external) {
         print '<tr><td>ملاحظة داخلية</td><td><div class="cpk-private">🔒 '.nl2br(dol_escape_htmltag($object->note_private)).'</div></td></tr>';
     }
     print '<tr><td>مرئي للعميل؟</td><td>'.($object->cust_visible ? 'نعم' : 'لا').'</td></tr>';
-} else {
-    print '<tr><td>الملفات والملاحظات الداخلية</td><td><div class="cpk-locked">🔒 توجد ملفات وملاحظات خاصة بالفريق غير متاحة للعرض.</div></td></tr>';
 }
 
 // ---------- Activity log ----------
-$logs = $object->getLogs($is_external ? 1 : 0);
+$logs = $is_external ? array() : $object->getLogs(0);
 if (!empty($logs)) {
     print '<tr><td>سجل الحركة</td><td>';
     foreach ($logs as $lg) {
-        $who = trim(($lg->firstname ?? '').' '.($lg->lastname ?? ''));
+        $who = $is_external ? ($lg->public_actor ?? 'فريق كوكب الصين') : trim(($lg->firstname ?? '').' '.($lg->lastname ?? ''));
         print '<div style="border-bottom:1px solid #f0f0f0;padding:5px 0;font-size:13px">'.dol_print_date($db->jdate($lg->date_action), 'dayhour').' — '.dol_escape_htmltag($lg->note ? $lg->note : $lg->action_type).($who ? ' ('.dol_escape_htmltag($who).')' : '').'</div>';
     }
     print '</td></tr>';
@@ -204,7 +236,7 @@ print '</div>';
 if ($canwrite) {
     print '<div class="tabsAction">';
     print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit">✏️ تحرير</a>';
-    if ($user->hasRight('cpkanban','delete')) {
+    if ($user->hasRight('cpkanban','delete') || $user->hasRight('chinaplanetcustomercenter','delete') || !empty($user->admin)) {
         print '<a class="butActionDelete" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete&token='.newToken().'">🗑️ حذف</a>';
     }
     print '</div>';
@@ -215,7 +247,7 @@ print '</div>';
  * EDIT FORM (internal) — shown when action=edit
  */
 if ($action == 'edit' && $canwrite) {
-    print '<hr><form method="POST" action="'.$_SERVER['PHP_SELF'].'?id='.$id.'">';
+    print '<hr><form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'?id='.$id.'">';
     print '<input type="hidden" name="token" value="'.newToken().'">';
     print '<input type="hidden" name="action" value="update">';
     print '<table class="border centpercent">';
@@ -233,9 +265,10 @@ if ($action == 'edit' && $canwrite) {
     print '<tr><td>رقم الشحنة المرتبطة</td><td><input type="number" name="fk_shipment" class="flat" value="'.($object->fk_shipment?(int)$object->fk_shipment:'').'"></td></tr>';
     print '<tr><td>ملاحظة عامة</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2">'.dol_escape_htmltag($object->note_public).'</textarea></td></tr>';
     print '<tr><td>ملاحظة داخلية</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2">'.dol_escape_htmltag($object->note_private).'</textarea></td></tr>';
+    print '<tr><td>استبدال صورة الغلاف</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — حتى 5MB</span></td></tr>';
     print '</table>';
     print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="حفظ التعديلات"> <a class="button button-cancel" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'">إلغاء</a></div>';
     print '</form>';
 }
 
-llxFooter();
+if ($is_modal) print '</body></html>'; else llxFooter();

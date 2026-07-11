@@ -11,8 +11,10 @@ if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../mai
 if (!$res) die("Include of main fails");
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.formprojet.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
-require_once __DIR__.'/class/chinaplanetlogistics.class.php';
+require_once __DIR__.'/../lib/portal.lib.php';
+require_once __DIR__.'/class/chinaplanetcustomercenter.class.php';
 
 $langs->loadLangs(array("companies", "orders", "projects", "sendings", "other"));
 
@@ -26,8 +28,8 @@ if ($id > 0) {
 }
 
 // Security
-$canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || !empty($user->admin));
-$canread  = ($user->hasRight('chinaplanetlogistics', 'read')  || !empty($user->admin));
+$canwrite = ($user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin));
+$canread  = ($user->hasRight('chinaplanetcustomercenter', 'read')  || !empty($user->admin));
 if (empty($user->id)) accessforbidden();
 if (!$canread && !$canwrite) accessforbidden();
 
@@ -37,12 +39,12 @@ if ($is_external_customer) {
     $canwrite = false;
     if ($id > 0) {
         if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
-            accessforbidden();
+            cpcc_portal_access_denied($user, 'shipments');
         }
     }
 }
 
-$listurl = DOL_URL_ROOT.'/custom/chinaplanetlogistics/list.php';
+$listurl = DOL_URL_ROOT.'/custom/chinaplanetcustomercenter/chinaplanetcustomercenter/list.php';
 
 /*
  * ACTIONS
@@ -139,18 +141,23 @@ if ($action == 'confirm_delete' && $confirm == 'yes' && $canwrite) {
 // FILE UPLOAD
 if (GETPOST('sendit') && $id > 0 && $canwrite) {
     // DOL_DATA_ROOT = /var/www/documents — dir_output not defined in module descriptor
-    $upload_dir = DOL_DATA_ROOT . '/chinaplanetlogistics/' . dol_sanitizeFileName($object->ref);
-    if (!is_dir($upload_dir)) dol_mkdir($upload_dir);
-    // Correct signature for Dolibarr 19+: dol_add_file_process($upload_dir, $allowoverwrite, ...)
-    dol_add_file_process($upload_dir, 0, 0, 'userfile');
+    $upload_dir = cpcc_portal_shipment_doc_root($object->id);
+    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $_FILES['userfile']['name'], $_FILES['userfile']['tmp_name']);
+    if (!empty($uploadres['ok'])) {
+        setEventMessages('Document uploaded successfully.', null, 'mesgs');
+    } else {
+        setEventMessages(!empty($uploadres['error']) ? $uploadres['error'] : 'Upload failed.', null, 'errors');
+    }
 }
 
 /*
  * VIEW
  */
 llxHeader('', 'Shipment Card');
+cpcc_portal_navigation($user, 'shipments');
 
 $form = new Form($db);
+$formproject = new FormProjets($db);
 
 $statuses = array(
     0 => 'Inquiry',
@@ -219,6 +226,9 @@ if ($action == 'create' || $action == 'edit') {
 
     // Project
     print '<tr><td>Project / المشروع</td><td>';
+    print $formproject->select_projects(-1, $object->fk_project, 'fk_project', 0, 0, 1, 0, 0, 0, 0, '', 1);
+    print '</td></tr>';
+
     // Container
     print '<tr><td class="fieldrequired">Container Number / رقم الحاوية</td><td>';
     print '<input type="text" name="container_no" value="'.dol_escape_htmltag($object->container_no).'" style="width:300px"></td></tr>';
@@ -406,8 +416,17 @@ if ($action == 'create' || $action == 'edit') {
         print '</form>';
     }
 
-    $upload_dir = DOL_DATA_ROOT . '/chinaplanetlogistics/' . dol_sanitizeFileName($object->ref);
-    $filearray = dol_dir_list($upload_dir, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+    $filearray = array();
+    foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
+        if (!is_dir($docroot)) continue;
+        $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+        if (!empty($docs)) {
+            foreach ($docs as $doc) {
+                $doc['docroot'] = $docroot;
+                $filearray[] = $doc;
+            }
+        }
+    }
 
     print '<table class="border centpercent">';
     print '<tr class="liste_titre"><td>File Name</td><td align="right">Size</td><td align="center">Date</td></tr>';
@@ -415,8 +434,8 @@ if ($action == 'create' || $action == 'edit') {
         print '<tr><td colspan="3" class="center opacitymedium">No documents uploaded yet.</td></tr>';
     } else {
         foreach ($filearray as $file) {
-            $relativepath = dol_sanitizeFileName($object->ref).'/'.$file['name'];
-            $dl_url = DOL_URL_ROOT.'/document.php?modulepart=chinaplanetlogistics&file='.urlencode($relativepath);
+            $relativepath = basename($file['docroot']).'/'.$file['name'];
+            $dl_url = dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?type=shipment&id='.(int) $object->id.'&file='.urlencode($relativepath);
             print '<tr><td><a href="'.$dl_url.'" target="_blank">'.dol_escape_htmltag($file['name']).'</a></td>';
             print '<td align="right">'.dol_print_size($file['size']).'</td>';
             print '<td align="center">'.dol_print_date($file['date'], 'dayhour').'</td></tr>';
