@@ -32,7 +32,7 @@ Base production commit: `c1f8aa4`
 - Customer logout-confirmation markup: passed.
 - Development router QUERY_STRING normalization: passed.
 - UX-022 public activity actor masking: passed.
-- UX-023 cover/database test: blocked because the configured local database endpoint `127.0.0.1:8889` was unavailable during this run.
+- UX-023 cover/database test: all eight checks passed against the approved local development database (`table`, MIME allowlist, size limit, external scope, realpath boundary, admin-only form, active cover file, and detail renderer).
 
 ## Database/module state
 
@@ -49,7 +49,7 @@ Base production commit: `c1f8aa4`
 
 ## Remaining gates
 
-- Restore/start the approved local development database and rerun UX-023 plus schema/activation tests.
+- Complete the remaining module schema/activation regression review on the approved development database.
 - Developer Agent final compatibility review against the production baseline diff.
 - Customer Agent acceptance for all `READY_FOR_TEST` UX items.
 - Production backup ID/checksum/restore-readability evidence.
