@@ -9,7 +9,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 $langs->loadLangs(array("companies", "orders", "sendings", "projects", "other"));
 
 // Security check
-if (empty($user->id) || (!$user->hasRight('chinaplanetlogistics', 'read') && empty($user->admin))) {
+if (empty($user->id)) {
     accessforbidden();
 }
 
@@ -56,7 +56,7 @@ print load_fiche_titre('Logistics Dashboard / لوحة تحكم الشحن', '',
 $today = date('Y-m-d');
 
 // --- STATISTICS ---
-$c_intransit = 0;
+    $c_intransit = 0;
 $res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE fk_statut IN (1,2)".$where_soc);
 if ($res) { $obj = $db->fetch_object($res); $c_intransit = (int)$obj->total; }
 
@@ -136,7 +136,7 @@ $res_prj = $db->query($sql_prj);
 if ($res_prj && $db->num_rows($res_prj) > 0) {
     while($prj = $db->fetch_object($res_prj)) {
         print '<tr class="oddeven">';
-        print '<td><a href="'.DOL_URL_ROOT.'/projet/card.php?id='.$prj->rowid.'">'.dol_escape_htmltag($prj->ref).'</a></td>';
+        print '<td><a href="'.dol_buildpath('/chinaplanetcustomercenter/projects.php', 1).'">'.dol_escape_htmltag($prj->ref).'</a></td>';
         print '<td>'.dol_escape_htmltag($prj->title).'</td>';
         print '<td><span style="color:#27ae60;font-weight:bold;">Active</span></td>';
         // dateo is a DATE string - display directly
@@ -178,7 +178,7 @@ if ($res_shp && $db->num_rows($res_shp) > 0) {
         $eta_days = (!empty($shp->date_eta) && $shp->date_eta != '0000-00-00') ? (int)ceil((strtotime($shp->date_eta) - time()) / 86400) : null;
         $ft_days = (!empty($shp->freetime_end) && $shp->freetime_end != '0000-00-00') ? (int)ceil((strtotime($shp->freetime_end) - time()) / 86400) : null;
         print '<tr class="oddeven">';
-        print '<td><a href="'.dol_buildpath('/chinaplanetlogistics/card.php?id='.$shp->rowid, 1).'"><b>'.dol_escape_htmltag($shp->container_no).'</b></a></td>';
+        print '<td><a href="'.dol_buildpath('/chinaplanetcustomercenter/chinaplanetlogistics/card.php?id='.$shp->rowid, 1).'"><b>'.dol_escape_htmltag($shp->container_no).'</b></a></td>';
         print '<td>'.($shp->date_eta && $shp->date_eta != '0000-00-00' ? $shp->date_eta : '-').'</td>';
         print '<td class="center"><span style="display:inline-block;min-width:45px;padding:2px 6px;border-radius:10px;color:#fff;font-size:11px;background:'.cpl_color($eta_days).';">'.($eta_days !== null ? ($eta_days < 0 ? 'Arrived' : $eta_days.'d') : '-').'</span></td>';
         print '<td class="center"><span style="display:inline-block;min-width:45px;padding:2px 6px;border-radius:10px;color:#fff;font-size:11px;background:'.cpl_color($ft_days).';">'.($ft_days !== null ? $ft_days.'d' : '-').'</span></td>';

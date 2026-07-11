@@ -36,51 +36,9 @@ class ActionsChinaplanetlogistics
      */
     public function main(&$parameters, &$object, &$action, $hookmanager)
     {
-        global $user, $conf, $langs;
-        dol_syslog("MANUS DEBUG: User ID " . $user->id . " SocID " . $user->socid . " Script " . $_SERVER["PHP_SELF"]);
-
-        // Only redirect external users (socid > 0) who are NOT already on our module pages
-        if (empty($user->id)) return 0;
-        if (empty($user->socid)) return 0; // Internal user, skip
-
-        // External user detected
-        $current_script = isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '';
-
-        // Pages allowed for external users
-        $allowed_paths = array(
-            '/custom/cpkanban/',
-            '/custom/chinaplanetlogistics/',
-            '/compta/facture/card.php',
-            '/compta/facture/list.php',
-            '/commande/card.php',
-            '/commande/list.php',
-            '/projet/card.php',
-            '/projet/list.php',
-            '/projet/tasks/',
-            '/user/card.php',
-            '/user/passwordforgotten.php',
-            '/index.php',
-            '/public/',
-            '/core/login/',
-        );
-
-        // Check if current page is allowed
-        $is_allowed = false;
-        foreach ($allowed_paths as $path) {
-            if (strpos($current_script, $path) !== false) {
-                $is_allowed = true;
-                break;
-            }
-        }
-
-        // If on the root index.php, redirect to the central Kanban board
-        if ($current_script === '/index.php' || preg_match('#^/index\.php$#', $current_script)) {
-            $portal_url = dol_buildpath('/custom/cpkanban/board.php', 1);
-            header('Location: ' . $portal_url);
-            exit;
-        }
-
-        return 0;
+        global $user;
+        require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/routeguard.lib.php';
+        return cpcc_apply_external_route_guard($user, isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '');
     }
 
     /**
@@ -90,13 +48,7 @@ class ActionsChinaplanetlogistics
     {
         global $user;
 
-        if (!empty($user->socid)) {
-            // External user on the default home page - redirect to central Kanban portal
-            $portal_url = dol_buildpath('/custom/cpkanban/board.php', 1);
-            header('Location: ' . $portal_url);
-            exit;
-        }
-
-        return 0;
+        require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/routeguard.lib.php';
+        return cpcc_apply_external_route_guard($user, '/index.php');
     }
 }
