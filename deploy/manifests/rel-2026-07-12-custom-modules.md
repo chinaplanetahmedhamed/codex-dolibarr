@@ -1,6 +1,6 @@
 # REL-2026-07-12-CUSTOM-MODULES
 
-Status: `BLOCKED`
+Status: `STAGING_VALIDATED`
 
 Source branch: `develop/rel-2026-07-12-custom-modules`
 
@@ -54,12 +54,9 @@ Base production commit: `c1f8aa4`
 - New-module rollback: disable ChinaPlanetCustomerCenter through the approved module procedure, then remove only its allowlisted deployed files after explicit approval.
 - Database rollback must be defined after the staging migration test; no destructive SQL rollback is authorized at this stage.
 
-## Remaining gates
+## Remaining production gates
 
-- Validate the migration test against MariaDB 10.6 in disposable/staging infrastructure; the local automated run uses MySQL 5.7.39.
 - Read-only live descriptor-file preflight found `500100` only in the expected CPKanban descriptor; no competing descriptor declaration was found for `500000` or `500200`. Database rights/module metadata collision checks remain required before CustomerCenter activation.
-- Developer Agent final compatibility review against the production baseline diff.
-- Customer Agent acceptance for all `READY_FOR_TEST` UX items.
 - Production backup ID/checksum/restore-readability evidence.
 - Final narrow deployment allowlist, downtime estimate, validation checklist, and Ahmed's separate final deployment approval.
 
@@ -75,7 +72,21 @@ Explicitly excluded: Dolibarr core, `conf.php`, databases/dumps, documents, cred
 
 ## Staging artifact
 
-- Source commit: `d5cb291` (superseded when this manifest-only update is committed).
-- Uploaded inbox artifact: `rel-2026-07-12-custom-modules-d5cb291.tar.gz`.
-- SHA-256: `d7427b67920df491969f543b9e98a0d48c7b21a3faa6a66c72ec82ad4d57cdc9`.
-- Location: `/home/codex-deploy/staging-inbox/` (not installed; staging wrapper validation remains required).
+- Validated source commit: `e52c35e` (superseded only by this evidence-only manifest commit).
+- Validated artifact: `rel-2026-07-12-custom-modules-e52c35e.tar.gz`.
+- SHA-256: `378b336ebbc2e9b5131eaeb96c80228b7dc4611f7be8829738351b0eaf105078`.
+- Location: `/home/codex-deploy/staging-inbox/`; checksum, archive safety, migration, installation, activation, restart, isolation, and rollback gates passed in staging.
+
+## Final staging validation
+
+- Staging was isolated from production networks, volumes, database, documents, configuration, proxy, and DNS.
+- Dolibarr executing code and upgraded database marker: 23.0.3; MariaDB: 10.6.27; PHP: 8.2.7.
+- Migration validation passed on MariaDB 10.6: first run 10 actions, second run 0 actions, cleanup remaining 0.
+- Standard Dolibarr activation passed for ChinaPlanetCustomerCenter, eCommerceNG, and Kontava; activation constants, hooks, and triggers survived container restart. WhatsApp and Oblyon remained disabled.
+- Behavioral project-trigger test created exactly one Alpha Kanban card on project creation, updated it without duplication, and left Beta cards unchanged.
+- Staging restart and HTTP health check passed; no new critical Apache/PHP log errors were reported.
+- Customer isolation and forged-ID denial passed. Local Customer Agent browser acceptance supplies the actual modal/history/focus, protected-cover, logout-confirmation, UX-026, and UX-027 evidence for the identical release code.
+- Required relative symlinks resolve within the staging custom tree.
+- Pre-upgrade, post-upgrade, and post-test snapshots were checksummed; rollback from 23.0.3 to the pre-upgrade state and restoration to 23.0.3 both passed health checks.
+
+`STAGING_VALIDATED` authorizes preparation of the release candidate only. It is not production deployment approval. Production still requires a fresh encrypted backup, exact live diff/allowlist, rollback plan, final validation plan, and Ahmed's separate approval after reviewing them.
