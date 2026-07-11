@@ -1,0 +1,61 @@
+# Secrets and configuration
+.env
+.env.*
+!.env.example
+**/conf.php
+**/conf/*.php
+credentials*
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.kdbx
+
+# Production and local data
+/documents/
+**/documents/
+/backups/
+**/backups/
+*.sql
+*.sql.gz
+*.dump
+*.bak
+*.tar
+*.tar.gz
+*.zip
+
+# Runtime artifacts
+/logs/
+**/logs/
+*.log
+/sessions/
+**/sessions/
+/cache/
+**/cache/
+/tmp/
+**/tmp/
+
+# Demo/test business fixtures
+demo-data/
+fixtures/demo/
+
+# Local tooling and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Dependency/build artifacts
+node_modules/
+vendor/
+coverage/
+dist/
+build/
+
+# Explicit sensitive handoff files
+Dolibarr VPS Production Deployment Handoff.md
+dolibarr_handoff_report.md
+credentials.local.md
+info.text
