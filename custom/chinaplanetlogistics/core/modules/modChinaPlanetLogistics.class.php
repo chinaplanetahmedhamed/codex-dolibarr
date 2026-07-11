@@ -11,6 +11,7 @@ class modChinaPlanetLogistics extends DolibarrModules
     public function __construct($db)
     {
         parent::__construct($db);
+        $this->numero = 500000;
         $this->name = "ChinaPlanetLogistics";
         $this->family = "projects";
         $this->module_position = 100;

@@ -12,6 +12,8 @@ Base production commit: `c1f8aa4`
 - Replace the production `cpkanban` source with the reviewed local version.
 - Add `chinaplanetcustomercenter` as a new first-party custom module.
 - Preserve production CPKanban font assets that remain referenced by CSS fallbacks.
+- Deploy only the canonical runtime modules. Exclude duplicated `chinaplanetcustomercenter/cpkanban_src`, `chinaplanetlogistics_src`, and module test trees.
+- Preserve the required runtime symlinks `chinaplanetcustomercenter/cpkanban -> ../cpkanban` and `chinaplanetcustomercenter/chinaplanetlogistics -> ../chinaplanetlogistics`.
 - Do not include database data, documents, configuration, credentials, logs, sessions, caches, backups, demo data, or the legacy diagnostic/reset scripts excluded from the production baseline.
 
 ## Compatibility
@@ -33,12 +35,14 @@ Base production commit: `c1f8aa4`
 - Development router QUERY_STRING normalization: passed.
 - UX-022 public activity actor masking: passed.
 - UX-023 cover/database test: all eight checks passed against the approved local development database (`table`, MIME allowlist, size limit, external scope, realpath boundary, admin-only form, active cover file, and detail renderer).
+- Forward migration disposable-schema test creates randomly prefixed production-shaped legacy tables in the DEVELOPMENT database, applies the migration twice, verifies required columns/index/table, requires the second run to perform zero actions, and drops the disposable tables in cleanup.
 
 ## Database/module state
 
-- No production or local database migration was run during this Git preparation.
+- No production database migration was run during this Git preparation. The migration test changes only randomly prefixed disposable local tables and drops them during cleanup.
 - No production module was enabled, disabled, or reinitialized.
-- CPKanban adds `custom/cpkanban/sql/llx_cpkanban_asset.sql`; migration/activation behavior must be validated against a disposable/staging database before approval.
+- Forward migration artifact: `deploy/migrations/rel_2026_07_12_custom_modules.php`; it requires CLI plus explicit `--apply`, reads credentials only from `DOLIBARR_CONF_FILE`, adds no business rows, performs no destructive rollback, and is idempotent.
+- Do not reinitialize CPKanban or ChinaPlanetLogistics to migrate existing tables. Apply the reviewed forward migration before deploying code that reads the new columns/table.
 - ChinaPlanetCustomerCenter is absent from the captured production custom tree and must be treated as a new module installation requiring a separately reviewed activation step.
 
 ## Rollback
@@ -49,8 +53,19 @@ Base production commit: `c1f8aa4`
 
 ## Remaining gates
 
-- Complete the remaining module schema/activation regression review on the approved development database.
+- Validate the migration test against MariaDB 10.6 in disposable/staging infrastructure; the local automated run uses MySQL 5.7.39.
+- Read-only live descriptor-file preflight found `500100` only in the expected CPKanban descriptor; no competing descriptor declaration was found for `500000` or `500200`. Database rights/module metadata collision checks remain required before CustomerCenter activation.
 - Developer Agent final compatibility review against the production baseline diff.
 - Customer Agent acceptance for all `READY_FOR_TEST` UX items.
 - Production backup ID/checksum/restore-readability evidence.
 - Final narrow deployment allowlist, downtime estimate, validation checklist, and Ahmed's separate final deployment approval.
+
+## Deployment allowlist
+
+- `custom/cpkanban/**` (canonical runtime; SQL files are reference/install inputs, not authorization to reinitialize live modules).
+- `custom/chinaplanetlogistics/**` (canonical runtime; do not restore the removed diagnostic `add_user_to_project.php`).
+- `custom/chinaplanetcustomercenter/**`, excluding `_src/**` and `tests/**`; preserve only the two required runtime symlinks listed above.
+- `deploy/migrations/rel_2026_07_12_custom_modules.php` and `.lib.php` for the separately approved forward migration.
+- This manifest.
+
+Explicitly excluded: Dolibarr core, `conf.php`, databases/dumps, documents, credentials, logs, sessions, caches, backups, demo/test data, duplicated source trees, test scripts, and unreferenced alias symlinks.
