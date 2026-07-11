@@ -57,6 +57,10 @@ Observed but not imported as first-party source during this pass:
 
 Production and local code differ in multiple runtime files in both first-party modules. Local CPKanban also contains new asset/cover functionality and schema files absent from production. Therefore local code must enter through a development branch and acceptance cycle; it must not replace production directly.
 
+### Critical live-source finding
+
+`custom/cpkanban/core/hooks/actions_cpkanban.class.php` in the captured production source contains escaped PHP variable markers such as `\$db` and fails PHP 8.4 lint with a parse error. The baseline preserves this observed live source for auditability; it must not be redeployed. The development branch must replace it with a syntax-valid reviewed version and pass the full lint/test gate.
+
 ## Remaining gates
 
 - Complete secret scan and source-level review of the staged live files.

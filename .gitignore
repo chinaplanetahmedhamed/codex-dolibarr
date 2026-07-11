@@ -59,3 +59,9 @@ Dolibarr VPS Production Deployment Handoff.md
 dolibarr_handoff_report.md
 credentials.local.md
 info.text
+
+# Module installation/migration SQL is source code, not a database dump.
+!custom/
+!custom/*/
+!custom/*/sql/
+!custom/*/sql/*.sql
