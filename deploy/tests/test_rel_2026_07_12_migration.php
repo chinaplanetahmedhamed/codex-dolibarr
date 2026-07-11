@@ -61,5 +61,15 @@ try {
     $db->query('DROP TABLE IF EXISTS '.rel20260712Identifier($asset));
     $db->query('DROP TABLE IF EXISTS '.rel20260712Identifier($card));
     $db->query('DROP TABLE IF EXISTS '.rel20260712Identifier($logistics));
+    $remaining = 0;
+    foreach (array($asset, $card, $logistics) as $table) {
+        if (rel20260712TableExists($db, $schema, $table)) $remaining++;
+    }
+    print 'CLEANUP remaining='.$remaining."\n";
+    if ($remaining !== 0) {
+        fwrite(STDERR, "FAIL disposable tables remain after cleanup\n");
+        $db->close();
+        exit(1);
+    }
     $db->close();
 }
