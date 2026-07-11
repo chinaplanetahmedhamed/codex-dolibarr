@@ -24,6 +24,7 @@ class modCpKanban extends DolibarrModules
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'project';
+        $this->hidden = true; // Hide legacy descriptor once the unified module is active
 
         // Config page
         $this->config_page_url = array("setup.php@cpkanban");
@@ -38,7 +39,7 @@ class modCpKanban extends DolibarrModules
 
         // Module parts: register the AJAX/redirect hook on main + the board pages
         $this->module_parts = array(
-            'hooks' => array('main', 'index'),
+            'hooks' => array('main'),
             'triggers' => 0,
         );
 
@@ -82,8 +83,9 @@ class modCpKanban extends DolibarrModules
             'url'      => '/custom/cpkanban/board.php',
             'langs'    => 'cpkanban@cpkanban',
             'position' => 1001,
-            'enabled'  => '$conf->cpkanban->enabled',
+            'enabled'  => '0', // Legacy top menu hidden; functionality is exposed by Customer Center.
             'perms'    => '$user->hasRight("cpkanban","read")',
+            'user'     => 2,
             'picto'    => 'project',
         );
 
@@ -99,6 +101,7 @@ class modCpKanban extends DolibarrModules
             'position' => 100,
             'enabled'  => '$conf->cpkanban->enabled',
             'perms'    => '$user->hasRight("cpkanban","read")',
+            'user'     => 2,
         );
 
         // Left: New card (internal staff only)
@@ -113,6 +116,7 @@ class modCpKanban extends DolibarrModules
             'position' => 200,
             'enabled'  => '$conf->cpkanban->enabled && empty($user->socid)',
             'perms'    => '$user->hasRight("cpkanban","write")',
+            'user'     => 0,
         );
 
         // Left: Manage columns (admin)
@@ -127,6 +131,7 @@ class modCpKanban extends DolibarrModules
             'position' => 300,
             'enabled'  => '$conf->cpkanban->enabled && empty($user->socid)',
             'perms'    => '$user->hasRight("cpkanban","admin")',
+            'user'     => 0,
         );
 
         // Left: Customer onboarding helper (admin)
@@ -141,6 +146,7 @@ class modCpKanban extends DolibarrModules
             'position' => 400,
             'enabled'  => '$conf->cpkanban->enabled && empty($user->socid)',
             'perms'    => '$user->hasRight("cpkanban","admin")',
+            'user'     => 0,
         );
     }
 

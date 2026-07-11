@@ -3,6 +3,7 @@ require '../../main.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
 require_once DOL_DOCUMENT_ROOT.'/compta/facture/class/facture.class.php';
 require_once DOL_DOCUMENT_ROOT.'/compta/paiement/class/paiement.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 
 llxHeader('', 'Financial Reports / التقارير المالية');
 
@@ -23,6 +24,7 @@ if ($socid > 0) {
 }
 
 print load_fiche_titre('Financial Status / الحالة المالية: ' . ($socid > 0 ? $soc->nom : 'All Customers'));
+print '<div class="info">This page is portal-safe and only shows customer-scoped summaries.</div>';
 
 // Calculate Totals
 $sql = "SELECT SUM(total_ttc) as total_invoiced FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut IN (1,2)";
@@ -62,7 +64,7 @@ $sql .= " ORDER BY datef DESC";
 
 $resql = $db->query($sql);
 print '<table class="tagtable liste">';
-print '<tr class="liste_titre"><td>Ref</td><td>Date</td><td align="right">Amount</td><td align="center">Status</td></tr>';
+print '<tr class="liste_titre"><td>Ref</td><td>Date</td><td align="right">Amount</td><td align="center">Status</td><td align="center">Open</td></tr>';
 if ($resql) {
     while ($obj = $db->fetch_object($resql)) {
         print '<tr class="oddeven">';
@@ -70,6 +72,7 @@ if ($resql) {
         print '<td>'.dol_print_date($db->jdate($obj->datef), 'day').'</td>';
         print '<td align="right">'.price($obj->total_ttc).'</td>';
         print '<td align="center">'.($obj->fk_statut == 2 ? 'Paid' : 'Unpaid').'</td>';
+        print '<td align="center"><a href="'.dol_buildpath('/chinaplanetcustomercenter/invoices.php', 1).'">View</a></td>';
         print '</tr>';
     }
 }

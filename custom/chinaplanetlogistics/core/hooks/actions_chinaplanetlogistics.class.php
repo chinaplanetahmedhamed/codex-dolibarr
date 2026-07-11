@@ -21,23 +21,8 @@ class ActionsChinaplanetlogistics
     {
         global $user;
 
-        if (empty($user->id)) {
-            return 0;
-        }
-        // Only external users (linked to a third party) are redirected.
-        if (empty($user->socid)) {
-            return 0;
-        }
-
-        $current_script = isset($_SERVER["PHP_SELF"]) ? $_SERVER["PHP_SELF"] : "";
-
-        // Redirect only when on the default home/index page.
-        if (preg_match('#/index\.php$#', $current_script)) {
-            header("Location: /custom/cpkanban/board.php");
-            exit;
-        }
-
-        return 0;
+        require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/routeguard.lib.php';
+        return cpcc_apply_external_route_guard($user, isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '');
     }
 
     /**
@@ -47,11 +32,7 @@ class ActionsChinaplanetlogistics
     {
         global $user;
 
-        if (!empty($user->socid)) {
-            header("Location: /custom/cpkanban/board.php");
-            exit;
-        }
-
-        return 0;
+        require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/routeguard.lib.php';
+        return cpcc_apply_external_route_guard($user, '/index.php');
     }
 }

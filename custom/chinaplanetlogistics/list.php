@@ -5,6 +5,7 @@
  */
 require "../../main.inc.php";
 require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
 
 $langs->loadLangs(array("companies", "orders", "sendings", "projects", "other"));
 
@@ -25,6 +26,7 @@ if ($user->admin) {
     $is_external = false;
     $socid = 0;
 }
+$canwrite = (!$is_external && ($user->admin || $user->hasRight('chinaplanetlogistics', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write')));
 
 $action = GETPOST('action', 'alpha');
 $search_container = GETPOST('search_container', 'alpha');
@@ -46,9 +48,10 @@ if (!function_exists('cpl_color_list')) {
 }
 
 llxHeader('', 'China Planet Logistics - Shipment List');
+cpcc_portal_navigation($user, 'shipments');
 
 $newbtn = '';
-if (!$is_external) {
+if ($canwrite) {
     $newbtn = '<a class="butActionNew" href="'.dol_buildpath('/chinaplanetlogistics/card.php?action=create', 1).'"><span class="fa fa-plus-circle valignmiddle btnTitle-icon"></span></a>';
 }
 
@@ -77,6 +80,7 @@ print '<th class="center">Arrival</th>';
 print '<th>Free Time End</th>';
 print '<th class="center">Free Time</th>';
 print '<th>Status</th>';
+if (!$is_external) print '<th class="center">Actions</th>';
 print '</tr>';
 
 $sql = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.date_eta, t.freetime_end, t.fk_statut, s.nom as customer_name, p.title as project_title, p.ref as project_ref";
@@ -97,7 +101,7 @@ if ($search_bl) $sql.= " AND t.bl_no LIKE '%".$db->escape($search_bl)."%'";
 
 $sql.= " ORDER BY t.date_eta ASC";
 
-$colspan_empty = $is_external ? '9' : '10';
+$colspan_empty = $is_external ? '9' : '11';
 
 $resql = $db->query($sql);
 if ($resql) {
@@ -128,6 +132,13 @@ if ($resql) {
         print '<td>'.($obj->freetime_end && $obj->freetime_end != '0000-00-00' ? $obj->freetime_end : '-').'</td>';
         print '<td class="center"><span style="display:inline-block;min-width:55px;padding:4px 8px;border-radius:12px;color:#fff;font-weight:bold;background:'.$free_color.';">'.($ft_days !== null ? $ft_days.'d' : '-').'</span></td>';
         print '<td>'.(isset($statuslabels[$obj->fk_statut]) ? $statuslabels[$obj->fk_statut] : '-').'</td>';
+        if (!$is_external) {
+            $cardurl = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid;
+            print '<td class="center nowrap">';
+            print '<a class="marginrightonly" href="'.$cardurl.'" title="Open shipment"><span class="fas fa-eye"></span></a>';
+            if ($canwrite) print '<a href="'.$cardurl.'&action=edit" title="Edit shipment"><span class="fas fa-pencil-alt"></span></a>';
+            print '</td>';
+        }
         print '</tr>';
     }
 } else {

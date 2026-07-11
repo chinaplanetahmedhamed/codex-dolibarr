@@ -121,29 +121,44 @@ function cpkanban_fold_customer_board($board, $visibleColumns, $allColumns)
     $visibleIds = array();
     foreach ($visibleColumns as $col) $visibleIds[(int) $col->rowid] = true;
 
-    $codeToId = array();
-    foreach ($allColumns as $col) $codeToId[$col->code] = (int) $col->rowid;
-    $firstVisible = 0; foreach ($visibleColumns as $vc) { $firstVisible = (int) $vc->rowid; break; }
-    $fallbackProg = !empty($codeToId['prog']) && !empty($visibleIds[$codeToId['prog']]) ? $codeToId['prog'] : $firstVisible;
-
     $folded = array();
     foreach ($visibleColumns as $col) $folded[(int) $col->rowid] = isset($board[(int)$col->rowid]) ? $board[(int)$col->rowid] : array();
 
     foreach ($board as $colId => $cards) {
         $colId = (int) $colId;
         if (isset($visibleIds[$colId])) continue;
-        $code = isset($allColumns[$colId]) ? $allColumns[$colId]->code : '';
-        if ($code === 'hold') {
+        $target = cpkanban_customer_visible_column_id($colId, $visibleColumns, $allColumns);
+        if ($target <= 0) {
             continue; // deliberately hidden from customers
         }
-        $target = ($code === 'supp') ? $fallbackProg : cpkanban_nearest_visible_column($colId, $visibleColumns, $allColumns, $fallbackProg);
         foreach ($cards as $card) {
-            $card->_cpk_folded_from = $colId;
-            $card->_cpk_folded_from_label = isset($allColumns[$colId]) ? $allColumns[$colId]->label : '';
             $folded[$target][] = $card;
         }
     }
     return $folded;
+}
+
+/**
+ * Resolve a stored column to a customer-visible presentation column.
+ * Returns 0 when the card must not appear on the customer board.
+ * No hidden source metadata is returned or attached to the card.
+ */
+function cpkanban_customer_visible_column_id($columnId, $visibleColumns, $allColumns)
+{
+    $columnId = (int) $columnId;
+    $visibleIds = array();
+    $codeToId = array();
+    foreach ($visibleColumns as $col) $visibleIds[(int) $col->rowid] = true;
+    foreach ($allColumns as $col) $codeToId[$col->code] = (int) $col->rowid;
+    if (isset($visibleIds[$columnId])) return $columnId;
+
+    $code = isset($allColumns[$columnId]) ? $allColumns[$columnId]->code : '';
+    if ($code === 'hold') return 0;
+
+    $firstVisible = 0;
+    foreach ($visibleColumns as $col) { $firstVisible = (int) $col->rowid; break; }
+    $fallbackProg = !empty($codeToId['prog']) && !empty($visibleIds[$codeToId['prog']]) ? $codeToId['prog'] : $firstVisible;
+    return ($code === 'supp') ? $fallbackProg : cpkanban_nearest_visible_column($columnId, $visibleColumns, $allColumns, $fallbackProg);
 }
 
 function cpkanban_nearest_visible_column($hiddenColId, $visibleColumns, $allColumns, $fallback)
