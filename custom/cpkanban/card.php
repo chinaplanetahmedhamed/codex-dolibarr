@@ -97,6 +97,20 @@ if ($action == 'confirm_delete' && $canwrite && $id > 0 && ($user->hasRight('cpk
     header('Location: '.$boardurl); exit;
 }
 
+// External ownership must be resolved before llxHeader() or any modal markup.
+// This keeps a forged/missing ID fail-closed without headers-sent warnings or path disclosure.
+$externalViewPrefetched = false;
+if ($is_external && !($action == 'create' && $canwrite)) {
+    $externalViewPrefetched = true;
+    if ($object->fetch($id, $socid) <= 0) {
+        http_response_code(403);
+        header('Content-Type: text/html; charset=UTF-8');
+        print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>غير مسموح</title></head><body><div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div></body></html>';
+        $db->close();
+        exit;
+    }
+}
+
 if ($is_modal) {
     header('Content-Type: text/html; charset=UTF-8');
     print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="'.DOL_URL_ROOT.'/custom/cpkanban/css/board.css"><script defer src="'.DOL_URL_ROOT.'/custom/cpkanban/js/shipment-link.js"></script></head><body class="cpk-modal-body">';
@@ -141,7 +155,7 @@ if ($action == 'create' && $canwrite) {
  * VIEW (internal sees everything; customer sees filtered+owned)
  */
 $fetchSoc = $is_external ? $socid : 0;
-$r = $object->fetch($id, $fetchSoc);
+$r = $externalViewPrefetched ? 1 : $object->fetch($id, $fetchSoc);
 if ($r <= 0) { http_response_code(403); print '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'; if ($is_modal) print '</body></html>'; else llxFooter(); exit; }
 
 $displayColumnId = (int) $object->fk_column;
