@@ -37,6 +37,7 @@ Base production commit: `c1f8aa4`
 - UX-023 cover/database test: all eight checks passed against the approved local development database (`table`, MIME allowlist, size limit, external scope, realpath boundary, admin-only form, active cover file, and detail renderer).
 - UX-026 hidden-column privacy regression: folded customer cards remain under the public `prog` column, hidden source metadata is absent from the external view-model/renderers, and internal column-label rendering is preserved.
 - Forged customer card denial regression: ownership lookup and HTTP 403/content-type headers complete before `llxHeader()` or modal output, preventing headers-sent warnings and local-path disclosure.
+- Customer acceptance: UX-026 and UX-027 are VERIFIED locally; owned Alpha board/modal/full-page show only the approved public status, while forged Beta IDs fail closed without warnings, paths, links, or record metadata.
 - Forward migration disposable-schema test creates randomly prefixed production-shaped legacy tables in the DEVELOPMENT database, applies the migration twice, verifies required columns/index/table, requires the second run to perform zero actions, and drops the disposable tables in cleanup.
 
 ## Database/module state
@@ -71,3 +72,10 @@ Base production commit: `c1f8aa4`
 - This manifest.
 
 Explicitly excluded: Dolibarr core, `conf.php`, databases/dumps, documents, credentials, logs, sessions, caches, backups, demo/test data, duplicated source trees, test scripts, and unreferenced alias symlinks.
+
+## Staging artifact
+
+- Source commit: `d5cb291` (superseded when this manifest-only update is committed).
+- Uploaded inbox artifact: `rel-2026-07-12-custom-modules-d5cb291.tar.gz`.
+- SHA-256: `d7427b67920df491969f543b9e98a0d48c7b21a3faa6a66c72ec82ad4d57cdc9`.
+- Location: `/home/codex-deploy/staging-inbox/` (not installed; staging wrapper validation remains required).
