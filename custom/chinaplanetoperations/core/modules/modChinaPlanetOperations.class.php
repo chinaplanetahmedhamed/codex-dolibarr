@@ -13,7 +13,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.0.0';
+        $this->version = '2.1.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
@@ -110,6 +110,13 @@ class modChinaPlanetOperations extends DolibarrModules
             if (!isset($GLOBALS['conf']->global->$key)) dolibarr_set_const($this->db, $key, $value, 'chaine', 0, '', $GLOBALS['conf']->entity);
         }
         $this->seedCategories();
+        try {
+            require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/lib/standard_sops.lib.php';
+            cpo_seed_standard_sops($this->db, (int)$GLOBALS['conf']->entity, !empty($GLOBALS['user']->id) ? (int)$GLOBALS['user']->id : 1);
+        } catch (Throwable $e) {
+            $this->error = 'Unable to install the standard SOP library: '.$e->getMessage();
+            return -1;
+        }
         return $this->_init(array(), $options);
     }
 
