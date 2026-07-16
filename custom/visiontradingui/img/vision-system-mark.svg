@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Vision System</title>
+  <desc id="desc">Vision System VS monogram</desc>
+  <defs>
+    <linearGradient id="bg" x1="40" y1="24" x2="472" y2="488" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C4770"/>
+      <stop offset="1" stop-color="#061D3A"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="105" y1="126" x2="360" y2="387" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#39E7F4"/>
+      <stop offset="1" stop-color="#1597E5"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+  <path d="M99 133h73l83 210 85-210h73L290 404h-70L99 133Z" fill="url(#cyan)"/>
+  <path d="M314 133h99l-25 55h-99l25-55Z" fill="#F5C348"/>
+  <path d="M333 238h77c31 0 55 24 55 54s-24 54-55 54h-82l25-55h54l-1-1h-98l25-52Z" fill="#FFFFFF" opacity=".96"/>
+</svg>

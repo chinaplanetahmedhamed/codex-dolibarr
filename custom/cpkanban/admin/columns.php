@@ -5,13 +5,11 @@
  */
 @error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
 
-$res = 0;
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res && file_exists("../../../../main.inc.php")) $res = @include "../../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/../lib/main.lib.php';
 
 require_once __DIR__.'/../class/cpkanbancolumn.class.php';
 require_once __DIR__.'/../lib/cpkanban.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 $langs->loadLangs(array("admin", "other"));
 
@@ -63,7 +61,8 @@ if ($action == 'confirm_delete' && $id > 0) {
     header('Location: '.$_SERVER['PHP_SELF']); exit;
 }
 
-llxHeader('', 'إدارة الأعمدة', '', '', 0, 0, array(), array('/custom/cpkanban/css/board.css'));
+llxHeader('', 'إدارة الأعمدة', '', '', 0, 0, array(), array('/custom/cpkanban/css/board.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
+cpcc_admin_shell_open('operations','Kanban Columns / أعمدة كانبان','ترتيب مراحل العمل والرؤية والصلاحيات','fa-columns');
 print load_fiche_titre('إدارة أعمدة لوحة المشاريع', '', 'project');
 
 $cols = CpKanbanColumn::getAll($db, false, false); // all, including inactive
@@ -110,4 +109,5 @@ print '<div class="center" style="margin-top:12px"><input type="submit" class="b
 print '</form>';
 print '</div>';
 
+cpcc_admin_shell_close();
 llxFooter();

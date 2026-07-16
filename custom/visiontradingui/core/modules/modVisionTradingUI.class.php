@@ -24,11 +24,13 @@ class modVisionTradingUI extends DolibarrModules
         $this->phpmin = array(7, 2);
         $this->need_dolibarr_version = array(23, 0);
         $this->module_parts = array(
-            'hooks' => array('main'),
+            'hooks' => array('main', 'mainloginpage'),
             'triggers' => 0,
         );
         $this->const = array(
             1 => array('VISIONTRADINGUI_ENABLE_DASHBOARD', 'chaine', '0', 'Feature flag for Vision Trading UI assets and components', 0, 'current', 0),
+			2 => array('VISIONTRADINGUI_ENABLE_WHITE_LABEL', 'chaine', '0', 'Replace visible engine branding with the configured Vision brand', 0, 'current', 0),
+			3 => array('VISIONTRADINGUI_BRAND_NAME', 'chaine', 'Vision System', 'Public application brand name', 0, 'current', 0),
         );
         $this->rights = array();
         $this->rights[1][0] = 500301;

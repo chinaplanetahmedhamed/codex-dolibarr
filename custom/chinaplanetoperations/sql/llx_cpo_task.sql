@@ -1,0 +1,23 @@
+CREATE TABLE llx_cpo_task (
+  rowid bigint AUTO_INCREMENT PRIMARY KEY,
+  entity integer NOT NULL DEFAULT 1,
+  ref varchar(64) NOT NULL,
+  fk_operation bigint NULL,
+  title varchar(255) NOT NULL,
+  description mediumtext NULL,
+  fk_user_assign integer NULL,
+  fk_user_creat integer NOT NULL,
+  priority varchar(12) NOT NULL DEFAULT 'normal',
+  status varchar(24) NOT NULL DEFAULT 'todo',
+  progress integer NOT NULL DEFAULT 0,
+  date_deadline datetime NULL,
+  date_completed datetime NULL,
+  private_note text NULL,
+  position integer NOT NULL DEFAULT 0,
+  date_creation datetime NOT NULL,
+  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_cpo_task_ref (entity, ref),
+  KEY idx_cpo_task_board (entity, status, position),
+  KEY idx_cpo_task_owner (entity, fk_user_assign, status),
+  KEY idx_cpo_task_operation (entity, fk_operation)
+) ENGINE=innodb;

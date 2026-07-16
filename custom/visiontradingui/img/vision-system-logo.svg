@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 190" role="img" aria-labelledby="title desc">
+  <title id="title">Vision System</title>
+  <desc id="desc">Vision System business operations platform</desc>
+  <defs>
+    <linearGradient id="bg" x1="12" y1="8" x2="178" y2="182" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C4770"/>
+      <stop offset="1" stop-color="#061D3A"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="42" y1="45" x2="137" y2="143" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#39E7F4"/>
+      <stop offset="1" stop-color="#1597E5"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="174" height="174" rx="42" fill="url(#bg)"/>
+  <path d="M39 50h28l29 75 30-75h28l-44 101H83L39 50Z" fill="url(#cyan)"/>
+  <path d="M119 50h36l-9 21h-36l9-21Z" fill="#F5C348"/>
+  <path d="M126 90h29c12 0 21 9 21 20s-9 20-21 20h-31l10-20h20l-1-1h-36l9-19Z" fill="#FFFFFF"/>
+  <text x="218" y="94" fill="#0A2E52" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="1">VISION</text>
+  <text x="485" y="94" fill="#1597E5" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="1">SYSTEM</text>
+  <text x="221" y="132" fill="#4A667F" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="600" letter-spacing="5">TRADE · OPERATIONS · ERP</text>
+  <rect x="220" y="150" width="430" height="5" rx="2.5" fill="#16B7D6"/>
+  <rect x="650" y="150" width="62" height="5" rx="2.5" fill="#F5C348"/>
+</svg>

@@ -6,10 +6,7 @@
  */
 @error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
 
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/lib/main.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
@@ -18,6 +15,7 @@ require_once __DIR__.'/class/cpkanbanasset.class.php';
 require_once __DIR__.'/class/cpkanbancolumn.class.php';
 require_once __DIR__.'/lib/cpkanban.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 $langs->loadLangs(array("companies", "projects", "other"));
 
@@ -115,8 +113,11 @@ if ($is_modal) {
     header('Content-Type: text/html; charset=UTF-8');
     print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="'.DOL_URL_ROOT.'/custom/cpkanban/css/board.css"><script defer src="'.DOL_URL_ROOT.'/custom/cpkanban/js/shipment-link.js"></script></head><body class="cpk-modal-body">';
 } else {
-    llxHeader('', 'Project Card / بطاقة المشروع', '', '', 0, 0, array('/custom/cpkanban/js/shipment-link.js'), array('/custom/cpkanban/css/board.css'));
+    $cardCss = array('/custom/cpkanban/css/board.css');
+    if (!$is_external) { $cardCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'); $cardCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'); }
+    llxHeader('', 'Project Card / بطاقة المشروع', '', '', 0, 0, array('/custom/cpkanban/js/shipment-link.js'), $cardCss);
     if ($is_external) cpcc_portal_navigation($user, 'dashboard');
+    else cpcc_admin_shell_open('operations','Kanban Card / بطاقة العمليات','تفاصيل بطاقة العمل الداخلية وحالتها','fa-columns',array('socid'=>(int)GETPOSTINT('socid')));
 }
 
 /*
@@ -147,6 +148,7 @@ if ($action == 'create' && $canwrite) {
     print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="حفظ"> ';
     print '<a class="button button-cancel" href="'.$boardurl.'">إلغاء</a></div>';
     print '</form>';
+    if (!$is_external) cpcc_admin_shell_close();
     llxFooter();
     exit;
 }
@@ -156,7 +158,7 @@ if ($action == 'create' && $canwrite) {
  */
 $fetchSoc = $is_external ? $socid : 0;
 $r = $externalViewPrefetched ? 1 : $object->fetch($id, $fetchSoc);
-if ($r <= 0) { http_response_code(403); print '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'; if ($is_modal) print '</body></html>'; else llxFooter(); exit; }
+if ($r <= 0) { http_response_code(403); print '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'; if ($is_modal) print '</body></html>'; else { if (!$is_external) cpcc_admin_shell_close(); llxFooter(); } exit; }
 
 $displayColumnId = (int) $object->fk_column;
 if ($is_external) {
@@ -292,4 +294,4 @@ if ($action == 'edit' && $canwrite) {
     print '</form>';
 }
 
-if ($is_modal) print '</body></html>'; else llxFooter();
+if ($is_modal) print '</body></html>'; else { if (!$is_external) cpcc_admin_shell_close(); llxFooter(); }

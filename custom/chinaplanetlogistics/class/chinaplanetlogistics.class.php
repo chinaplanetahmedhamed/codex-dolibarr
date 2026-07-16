@@ -73,6 +73,7 @@ class ChinaPlanetLogistics extends CommonObject
         if (empty($this->ref) || $this->ref == 'AUTO') {
             $this->ref = 'LOG-'.date('Ymd-His');
         }
+        $this->calculateFreeTimeDates();
         $entity = isset($conf->entity) ? (int)$conf->entity : 1;
 
         $sql  = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetlogistics (";
@@ -157,6 +158,8 @@ class ChinaPlanetLogistics extends CommonObject
     // ── UPDATE ────────────────────────────────────────────────────────────
     public function update($user, $notrigger = 0)
     {
+        $this->calculateFreeTimeDates();
+
         $sql  = "UPDATE ".MAIN_DB_PREFIX."chinaplanetlogistics SET ";
         $sql .= "fk_soc = ".$this->sqlInt($this->fk_soc).", ";
         $sql .= "fk_project = ".$this->sqlInt($this->fk_project).", ";
@@ -202,6 +205,37 @@ class ChinaPlanetLogistics extends CommonObject
     }
 
     // ── HELPERS ───────────────────────────────────────────────────────────
+    /**
+     * Calculate the free-time window from actual arrival.
+     *
+     * Business rule: start = ATA, end = ATA + configured calendar days.
+     * ETA is intentionally not used because free time must not begin before
+     * the shipment has actually arrived.
+     *
+     * @return bool True when both automatic dates were calculated
+     */
+    public function calculateFreeTimeDates()
+    {
+        $days = (int) $this->freetime_days;
+        if (empty($this->date_ata) || $days <= 0) {
+            return false;
+        }
+
+        $start = is_numeric($this->date_ata) ? (int) $this->date_ata : strtotime($this->date_ata);
+        if ($start <= 0) {
+            return false;
+        }
+
+        $end = strtotime('+'.$days.' days', $start);
+        if ($end === false) {
+            return false;
+        }
+
+        $this->freetime_start = $start;
+        $this->freetime_end = $end;
+        return true;
+    }
+
     public function getDaysUntilETA()
     {
         if (empty($this->date_eta)) return null;

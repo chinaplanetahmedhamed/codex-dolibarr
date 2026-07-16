@@ -1,34 +1,51 @@
 <?php
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/admin_shell.lib.php';
 
 require_once __DIR__.'/lib/portal.lib.php';
 require_once __DIR__.'/lib/projectsync.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/cpkanban/class/cpkanbancard.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 
 cpcc_portal_require_access($user);
 
 $scope = cpcc_portal_user_scope($user);
 $is_external = !empty($scope['is_external']);
-$socid = $is_external ? (int) $scope['socid'] : GETPOSTINT('socid');
+$socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
+$statusFilter = GETPOST('status', 'alpha') === 'active' ? 'active' : '';
 $action = GETPOST('action', 'aZ09');
 $canadmin = (!empty($user->admin) || $user->hasRight('chinaplanetcustomercenter', 'admin'));
+
+$projectCountWhere = " WHERE entity IN (".getEntity('project').")";
+if ($socid > 0) $projectCountWhere .= " AND fk_soc=".(int) $socid;
+elseif ($is_external) $projectCountWhere .= " AND 1=0";
+$projectsTotal = 0;
+$projectsActive = 0;
+$countRes = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."projet".$projectCountWhere);
+if ($countRes && ($countObj = $db->fetch_object($countRes))) $projectsTotal = (int) $countObj->nb;
+$countRes = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."projet".$projectCountWhere." AND fk_statut=1");
+if ($countRes && ($countObj = $db->fetch_object($countRes))) $projectsActive = (int) $countObj->nb;
+$activeProjectsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/projects.php', $is_external, $socid, array('status'=>'active'));
+$allProjectsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/projects.php', $is_external, $socid);
 
 $syncSummary = null;
 if (!$is_external && $canadmin && $action === 'syncprojectcards') {
     $syncSummary = cpcc_project_sync_existing_cards($db, $user, $socid);
 }
 
-llxHeader('', 'Projects / المشاريع');
-cpcc_portal_navigation($user, 'projects');
+llxHeader('', 'Projects / المشاريع', '', '', 0, 0, array(), $is_external ? array('/custom/chinaplanetcustomercenter/css/projects.css') : array('/custom/chinaplanetcustomercenter/css/projects.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+if($is_external) cpcc_portal_navigation($user, 'projects');
+else cpcc_admin_shell_open('portal','Projects / المشاريع','كل مشاريع العملاء والمشاريع النشطة في عرض واحد','fa-project-diagram',array('socid'=>$socid));
 
 print '<h2>Projects / المشاريع</h2>';
-print '<p>Real Dolibarr projects linked to your company, with Kanban sync status.</p>';
+print '<p>Real Vision System projects linked to your company, with Kanban sync status.</p>';
+print '<nav class="cpcc-project-view-cards" aria-label="Project views">';
+print '<a class="cpcc-project-view'.($statusFilter === 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($activeProjectsUrl).'"><span>المشاريع النشطة</span><strong>'.(int)$projectsActive.'</strong><small>Active projects</small></a>';
+print '<a class="cpcc-project-view'.($statusFilter !== 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($allProjectsUrl).'"><span>كل المشاريع</span><strong>'.(int)$projectsTotal.'</strong><small>All projects</small></a>';
+print '</nav>';
 
 if ($is_external && $socid <= 0) {
     print '<div class="warning">No linked customer account was found for this portal user.</div>';
@@ -40,6 +57,7 @@ if ($is_external && $socid <= 0) {
     } elseif ($is_external) {
         $syncScopeSql .= " AND fk_soc = ".(int) $socid;
     }
+    if ($statusFilter === 'active') $syncScopeSql .= " AND fk_statut=1";
     $syncScopeSql .= " ORDER BY rowid ASC";
     $syncRes = $db->query($syncScopeSql);
     if ($syncRes) {
@@ -80,6 +98,7 @@ if ($is_external && $socid <= 0) {
     if (!$is_external) {
         print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'" style="margin-bottom:12px;">';
         print '<input type="text" class="flat" name="socid" value="'.dol_escape_htmltag(GETPOSTINT('socid')).'" placeholder="Customer ID filter">';
+        if ($statusFilter === 'active') print '<input type="hidden" name="status" value="active">';
         print ' <input type="submit" class="button" value="Filter">';
         if ($canadmin) {
             print ' <button class="button button-save" type="submit" name="action" value="syncprojectcards">Sync project cards</button>';
@@ -87,7 +106,7 @@ if ($is_external && $socid <= 0) {
         print '</form>';
     }
 
-    $sql = "SELECT p.rowid, p.ref, p.title, p.description, p.datec, p.dateo, p.datee, p.fk_statut as status, p.fk_soc, s.nom as customer_name,";
+    $sql = "SELECT p.rowid, p.ref, p.title, p.description, p.datec, p.dateo, p.datee, p.fk_statut as status, p.fk_soc, s.nom as customer_name, COALESCE(t.nb_tasks,0) as nb_tasks,";
     $sql .= " c.rowid as card_id, c.title as card_title, c.status as card_status, c.progress as card_progress, c.fk_column,";
     $sql .= " col.label as column_label, col.code as column_code";
     $sql .= " FROM ".MAIN_DB_PREFIX."projet as p";
@@ -101,6 +120,7 @@ if ($is_external && $socid <= 0) {
     } elseif ($is_external) {
         $sql .= " AND p.fk_soc = ".(int) $socid;
     }
+    if ($statusFilter === 'active') $sql .= " AND p.fk_statut=1";
     $sql .= " ORDER BY p.datec DESC, p.rowid DESC";
 
     $resql = $db->query($sql);
@@ -146,10 +166,10 @@ if ($is_external && $socid <= 0) {
 
             print '<tr>';
             print '<td>';
-            print '<strong>'.dol_escape_htmltag($row->ref).'</strong><br>';
+            print '<strong><a href="'.dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int) $row->rowid.(!$is_external?'&socid='.(int)$socid:'').'">'.dol_escape_htmltag($row->ref).'</a></strong><br>';
             print dol_escape_htmltag($row->title ?: '');
             if (!$is_external && !empty($row->rowid) && $user->hasRight('projet', 'lire')) {
-                print '<br><a href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int) $row->rowid.'">Open in Dolibarr</a>';
+                print '<br><a target="_blank" rel="noopener" href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int) $row->rowid.'">Vision Advanced / السجل المتقدم ↗</a>';
             }
             print '</td>';
             print '<td>'.dol_escape_htmltag($row->customer_name ?: '-').'</td>';
@@ -165,4 +185,5 @@ if ($is_external && $socid <= 0) {
     print '</table>';
 }
 
+if(!$is_external) cpcc_admin_shell_close();
 llxFooter();

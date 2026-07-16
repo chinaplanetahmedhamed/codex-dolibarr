@@ -1,10 +1,8 @@
 <?php
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/admin_shell.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
@@ -23,6 +21,11 @@ $file = GETPOST('file', 'restricthtml');
 $newname = GETPOST('newname', 'alphanohtml');
 $canwrite = (!$is_external && ($user->admin || $user->hasRight('chinaplanetcustomercenter', 'write') || $user->hasRight('chinaplanetlogistics', 'write')));
 $form = new Form($db);
+$customer_options = array();
+if (!$is_external) {
+    $res_customers=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");
+    if($res_customers) while($customer=$db->fetch_object($res_customers)) $customer_options[(int)$customer->rowid]=$customer->nom;
+}
 
 $ship_options = array();
 $sql_ship_options = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.fk_soc, s.nom as customer_name"
@@ -112,12 +115,14 @@ if (($action === 'rename' || $action === 'deletefile') && $canwrite && $shipid_p
     }
 }
 
-llxHeader('', 'Documents / المستندات');
-cpcc_portal_navigation($user, 'documents');
+llxHeader('', 'Documents / المستندات', '', '', 0, 0, array(), $is_external ? array() : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+if ($is_external) cpcc_portal_navigation($user, 'documents');
+else cpcc_admin_shell_open('documents', 'Shipment Documents / مستندات الشحن', 'رفع وإدارة ملفات الشحنات ومستندات العملاء', 'fa-folder-open', array('socid'=>$socid));
 
 print '<div class="div-table-responsive-no-min">';
 print '<h2>Documents / المستندات</h2>';
 print '<p>هذه الصفحة تجمع المستندات المرفوعة لكل شحنة. الملفات تُفتح عبر رابط تنزيل آمن داخل البوابة.</p>';
+print '<div class="info"><strong>Commercial documents / مستندات التصدير:</strong> الفواتير التجارية وقوائم التعبئة موجودة في صفحة مستقلة. <a class="button button-small" href="'.dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php', 1).($socid > 0 && !$is_external ? '?socid='.(int) $socid : '').'">Open commercial documents</a></div>';
 
 if ($is_external && $socid <= 0) {
     print '<div class="warning">No linked customer account was found for this portal user.</div>';
@@ -131,9 +136,9 @@ if ($is_external && $socid <= 0) {
     $resql = $db->query($sql);
 
     print '<form method="GET" class="fright" style="margin-bottom:10px">';
-    if (!$is_external) print '<input type="number" name="socid" class="flat" placeholder="Customer ID" value="'.dol_escape_htmltag((string) $socid).'"> ';
-    print '<input type="text" name="search" class="flat" placeholder="Shipment / Container / BL" value="'.dol_escape_htmltag($search).'"> ';
-    print '<input type="submit" class="button" value="Search">';
+    if (!$is_external) print Form::selectarray('socid',$customer_options,$socid,'كل العملاء / All customers',0,0,'aria-label="Customer / العميل"',0,0,0,'','minwidth250',1).' ';
+    print '<input type="text" name="search" class="flat" placeholder="الشحنة / الحاوية / البوليصة" aria-label="Shipment, container or BL / الشحنة أو الحاوية أو البوليصة" value="'.dol_escape_htmltag($search).'"> ';
+    print '<input type="submit" class="button" value="بحث / Search">';
     print '</form>';
 
     if ($canwrite && !$is_external) {
@@ -141,18 +146,18 @@ if ($is_external && $socid <= 0) {
         print '<input type="hidden" name="token" value="'.newToken().'">';
         print '<input type="hidden" name="action" value="upload">';
         print '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
-        print '<label>Shipment <span class="opacitymedium">(search by ID / ref / BL)</span><br>';
+        print '<label>الشحنة / Shipment <span class="opacitymedium">(بحث بالمرجع أو الحاوية أو البوليصة)</span><br>';
         print Form::selectarray('shipid', $ship_options, $shipid, 1, 0, 0, 'id="shipid" style="min-width:360px;max-width:100%"', 0, 0, 0, '', 'minwidth300 widthcentpercentminusx', 1);
         print '</label>';
         print '<input type="file" name="userfile" class="minwidth200">';
-        print '<input type="submit" class="button" value="Upload to Shipment">';
+        print '<input type="submit" class="button" value="رفع إلى الشحنة / Upload to Shipment">';
         print '</div>';
         print '<div class="opacitymedium" style="margin-top:6px">Upload the file to the shipment folder used by the customer portal.</div>';
         print '</form>';
     }
 
     print '<table class="noborder centpercent">';
-    print '<tr class="liste_titre"><th>Shipment ID</th><th>Shipment</th><th>Container</th><th>BL</th><th>ETA</th><th>Status</th><th>Documents</th><th>Actions</th></tr>';
+    print '<tr class="liste_titre"><th>رقم / ID</th><th>الشحنة / Shipment</th><th>العميل / Customer</th><th>الحاوية / Container</th><th>البوليصة / BL</th><th>الوصول / ETA</th><th>الحالة / Status</th><th>المستندات / Documents</th><th>الإجراءات / Actions</th></tr>';
     if ($resql && $db->num_rows($resql) > 0) {
         while ($obj = $db->fetch_object($resql)) {
             $docs = array();
@@ -169,6 +174,7 @@ if ($is_external && $socid <= 0) {
             print '<tr>';
             print '<td><b>'.(int) $obj->rowid.'</b></td>';
             print '<td><a href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'">'.dol_escape_htmltag($obj->ref).'</a></td>';
+            print '<td>'.dol_escape_htmltag($obj->customer_name ?: '-').'</td>';
             print '<td>'.dol_escape_htmltag($obj->container_no).'</td>';
             print '<td>'.dol_escape_htmltag($obj->bl_no).'</td>';
             print '<td>'.(!empty($obj->date_eta) ? dol_print_date($obj->date_eta, 'day') : '-').'</td>';
@@ -211,10 +217,11 @@ if ($is_external && $socid <= 0) {
             print '</tr>';
         }
     } else {
-        print '<tr><td colspan="8" class="opacitymedium center">No shipments with documents found.</td></tr>';
+        print '<tr><td colspan="9" class="opacitymedium center">لا توجد شحنات أو مستندات / No shipments with documents found.</td></tr>';
     }
     print '</table>';
 }
 
 print '</div>';
+if (!$is_external) cpcc_admin_shell_close();
 llxFooter();

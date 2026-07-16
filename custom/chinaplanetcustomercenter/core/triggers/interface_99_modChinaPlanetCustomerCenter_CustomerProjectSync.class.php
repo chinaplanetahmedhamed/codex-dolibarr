@@ -11,7 +11,7 @@ class InterfaceChinaPlanetCustomerCenterCustomerProjectSync extends DolibarrTrig
         $this->db = $db;
         $this->name = preg_replace('/^Interface/i', '', get_class($this));
         $this->family = 'projects';
-        $this->description = 'Sync Dolibarr projects into the customer portal Kanban.';
+        $this->description = 'Sync Vision System projects into the customer portal Kanban.';
         $this->version = self::VERSIONS['experimental'];
         $this->picto = 'project';
     }

@@ -1,0 +1,20 @@
+CREATE TABLE llx_chinaplanetsp_block (
+  rowid bigint AUTO_INCREMENT PRIMARY KEY,
+  entity integer NOT NULL DEFAULT 1,
+  label varchar(160) NOT NULL,
+  country_code char(2) NULL,
+  pod varchar(160) NULL,
+  pol varchar(160) NULL,
+  shipping_line varchar(128) NULL,
+  container_type varchar(16) NULL,
+  service_type varchar(24) NULL,
+  reason text NULL,
+  date_end date NULL,
+  status smallint NOT NULL DEFAULT 1,
+  fk_user_creat integer NOT NULL,
+  fk_user_modif integer NULL,
+  date_creation datetime NOT NULL,
+  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_chinaplanetsp_block_scope (entity,status,country_code,pod,pol,shipping_line),
+  INDEX idx_chinaplanetsp_block_end (date_end)
+) ENGINE=innodb;

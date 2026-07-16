@@ -11,10 +11,7 @@ define("NOREQUIREMENU", 1);
 define("NOREQUIREHTML", 1);
 define("NOREQUIREAJAX", 1);
 
-$res = 0;
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res && file_exists("../../../../main.inc.php")) $res = @include "../../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/../lib/main.lib.php';
 
 $search        = trim(GETPOST('search', 'alpha'));
 $found         = array();

@@ -31,7 +31,7 @@ $checks = array(
     'permission_default_off' => strpos($descriptor, '$this->rights[1][3] = 0;') !== false,
     'official_header_hook' => strpos($hook, 'function addHtmlHeader') !== false,
     'official_main_hook' => strpos($hook, 'function printMainArea') !== false,
-    'dolibarr23_hook_contract' => strpos($descriptor, "'hooks' => array('main')") !== false
+    'dolibarr23_hook_contract' => strpos($descriptor, "'hooks' => array('main', 'mainloginpage')") !== false
         && strpos($hook, "function addHtmlHeader") !== false
         && strpos($hook, "function printMainArea") !== false,
     'staging_env_guard' => strpos($hook, "getenv('VISIONTRADING_ENVIRONMENT')") !== false && strpos($hook, "!== 'staging'") !== false,

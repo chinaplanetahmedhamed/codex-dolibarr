@@ -3,8 +3,10 @@
  * Customer Dashboard for China Planet Logistics
  * External user detection: $user->socid > 0 means external user (Dolibarr standard)
  */
-require "../../main.inc.php";
+require_once __DIR__.'/lib/main.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
 
 $langs->loadLangs(array("companies", "orders", "sendings", "projects", "other"));
 
@@ -49,9 +51,10 @@ if (!function_exists('cpl_color')) {
     }
 }
 
-llxHeader('', 'China Planet Logistics - Dashboard');
+llxHeader('', 'China Planet Logistics - Dashboard', '', '', 0, 0, array(), $is_external ? array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css') : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
 
-print load_fiche_titre('Logistics Dashboard / لوحة تحكم الشحن', '', 'ship');
+if ($is_external) { cpcc_portal_navigation($user,'shipments'); print load_fiche_titre('Logistics Dashboard / لوحة تحكم الشحن', '', 'ship'); }
+else cpcc_admin_shell_open('tracking', 'Shipment Tracking / متابعة الشحن', 'لوحة مواعيد الوصول والحاويات والتنبيهات التشغيلية', 'fa-ship', array('socid'=>$socid));
 
 $today = date('Y-m-d');
 
@@ -72,100 +75,35 @@ $ft_critical = 0;
 $res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE freetime_end BETWEEN '".$db->escape($today)."' AND '".date('Y-m-d', strtotime('+7 days'))."' AND fk_statut < 4".$where_soc);
 if ($res) { $obj = $db->fetch_object($res); $ft_critical = (int)$obj->total; }
 
-// --- FINANCIAL SUMMARY ---
-$balance = 0;
-$inv_count = 0;
-$inv_unpaid = 0;
-if ($socid > 0) {
-    $sql_bal = "SELECT SUM(total_ttc) as total, COUNT(*) as cnt FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut >= 1 AND fk_soc = " . $socid;
-    $res_bal = $db->query($sql_bal);
-    if ($res_bal) {
-        $obj_bal = $db->fetch_object($res_bal);
-        $balance = (float) $obj_bal->total;
-        $inv_count = (int) $obj_bal->cnt;
-    }
-    $sql_unpaid = "SELECT COUNT(*) as cnt FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut = 1 AND fk_soc = " . $socid;
-    $res_unpaid = $db->query($sql_unpaid);
-    if ($res_unpaid) {
-        $obj_unpaid = $db->fetch_object($res_unpaid);
-        $inv_unpaid = (int) $obj_unpaid->cnt;
-    }
-} elseif ($user->admin) {
-    $sql_bal = "SELECT SUM(total_ttc) as total, COUNT(*) as cnt FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut >= 1";
-    $res_bal = $db->query($sql_bal);
-    if ($res_bal) {
-        $obj_bal = $db->fetch_object($res_bal);
-        $balance = (float) $obj_bal->total;
-        $inv_count = (int) $obj_bal->cnt;
-    }
-}
-
 print '<style>
 .cpl-grid { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-.cpl-card { flex: 1; min-width: 180px; padding: 20px; border-radius: 10px; text-align: center; color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
+.cpl-card { flex: 1; min-width: 180px; padding: 20px; border-radius: 10px; text-align: center; color: #fff!important; box-shadow: 0 3px 10px rgba(0,0,0,0.12); text-decoration:none; transition:transform .18s,box-shadow .18s; }
+.cpl-card:hover,.cpl-card:focus{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.2);outline:3px solid #83e8ff;outline-offset:2px}
 .cpl-card .num { font-size: 32px; font-weight: 700; line-height: 1; }
 .cpl-card .lbl { font-size: 13px; margin-top: 8px; font-weight: 600; }
 .cpl-section-title { font-size: 16px; font-weight: 700; margin: 20px 0 10px 0; color: #2c3e50; border-left: 4px solid #c0392b; padding-left: 10px; }
+.cpl-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.cpl-show-all{padding:9px 14px;border-radius:8px;background:#0d5d7d;color:#fff!important;text-decoration:none;font-weight:700}.cpl-show-all:hover,.cpl-show-all:focus{background:#08749a;outline:3px solid #83e8ff}
 </style>';
 
-// --- FINANCIAL SUMMARY ---
-print '<div class="cpl-section-title">Financial Summary / الملخص المالي</div>';
-print '<div class="cpl-grid">';
-print '<div class="cpl-card" style="background:linear-gradient(135deg,#8e44ad,#9b59b6);"><div class="num">'.price($balance).'</div><div class="lbl">Total Invoiced / إجمالي الفواتير</div></div>';
-print '<div class="cpl-card" style="background:linear-gradient(135deg,#e67e22,#d35400);"><div class="num">'.$inv_unpaid.'</div><div class="lbl">Unpaid Invoices / فواتير غير مدفوعة</div></div>';
-print '<div class="cpl-card" style="background:linear-gradient(135deg,#27ae60,#2ecc71);"><div class="num">'.$inv_count.'</div><div class="lbl">Total Invoices / عدد الفواتير</div></div>';
-print '</div>';
-
-// --- PROJECTS SECTION ---
-print '<div class="cpl-section-title">Active Projects / المشاريع القائمة</div>';
-print '<div class="div-table-responsive">';
-print '<table class="liste centpercent">';
-print '<tr class="liste_titre"><th>Ref</th><th>Project Title</th><th>Status</th><th>Date Start</th></tr>';
-
-// dateo is stored as DATE type (string '2026-06-28'), not timestamp
-// Use it directly without jdate()
-$sql_prj = "SELECT rowid, ref, title, fk_statut, dateo FROM ".MAIN_DB_PREFIX."projet WHERE fk_statut = 1";
-if ($socid > 0) {
-    $sql_prj .= " AND fk_soc = " . $socid;
-} elseif ($is_external) {
-    $sql_prj .= " AND 1=0";
-}
-$sql_prj .= " ORDER BY dateo DESC LIMIT 10";
-
-$res_prj = $db->query($sql_prj);
-if ($res_prj && $db->num_rows($res_prj) > 0) {
-    while($prj = $db->fetch_object($res_prj)) {
-        print '<tr class="oddeven">';
-        print '<td><a href="'.dol_buildpath('/chinaplanetcustomercenter/projects.php', 1).'">'.dol_escape_htmltag($prj->ref).'</a></td>';
-        print '<td>'.dol_escape_htmltag($prj->title).'</td>';
-        print '<td><span style="color:#27ae60;font-weight:bold;">Active</span></td>';
-        // dateo is a DATE string - display directly
-        print '<td>'.dol_escape_htmltag($prj->dateo).'</td>';
-        print '</tr>';
-    }
-} else {
-    print '<tr class="oddeven"><td colspan="4" class="center opacitymedium">No active projects found.</td></tr>';
-}
-print '</table></div>';
-
 // --- CONTAINER STATUS ---
-print '<div class="cpl-section-title">Container Status / حالة الحاويات</div>';
+print '<div class="cpl-section-head"><div class="cpl-section-title">Container Status / حالة الحاويات</div><a class="cpl-show-all" href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).($socid>0?'?socid='.(int)$socid:'').'">عرض كل الشحنات / Show all shipments</a></div>';
 print '<div class="cpl-grid">';
-print '<div class="cpl-card" style="background:linear-gradient(135deg,#34495e,#2c3e50);"><div class="num">'.$c_intransit.'</div><div class="lbl">In Transit / في البحر</div></div>';
-print '<div class="cpl-card" style="background:linear-gradient(135deg,#27ae60,#2ecc71);"><div class="num">'.$c_arr14.'</div><div class="lbl">Arriving &lt; 14d</div></div>';
-print '<div class="cpl-card" style="background:linear-gradient(135deg,#2980b9,#3498db);"><div class="num">'.$c_arrived.'</div><div class="lbl">Arrived / وصلت</div></div>';
-print '<div class="cpl-card" style="background:linear-gradient(135deg,#c0392b,#e74c3c);"><div class="num">'.$ft_critical.'</div><div class="lbl">FT Critical (&lt;7d)</div></div>';
+$filterBase=dol_buildpath('/chinaplanetlogistics/list.php',1).'?'.($socid>0?'socid='.(int)$socid.'&':'');
+print '<a class="cpl-card" href="'.$filterBase.'status=intransit" style="background:linear-gradient(135deg,#34495e,#2c3e50);"><div class="num">'.$c_intransit.'</div><div class="lbl">In Transit / في البحر</div></a>';
+print '<a class="cpl-card" href="'.$filterBase.'status=arriving" style="background:linear-gradient(135deg,#177b42,#23a85b);"><div class="num">'.$c_arr14.'</div><div class="lbl">Arriving &lt; 14d / وصول خلال 14 يوم</div></a>';
+print '<a class="cpl-card" href="'.$filterBase.'status=arrived" style="background:linear-gradient(135deg,#176c9d,#258bc2);"><div class="num">'.$c_arrived.'</div><div class="lbl">Arrived / وصلت</div></a>';
+print '<a class="cpl-card" href="'.$filterBase.'status=critical" style="background:linear-gradient(135deg,#a92d22,#d53b2e);"><div class="num">'.$ft_critical.'</div><div class="lbl">FT Critical (&lt;7d) / وقت حر حرج</div></a>';
 print '</div>';
 
 // --- RECENT SHIPMENTS ---
 print '<div class="cpl-section-title">Recent Shipments / آخر الشحنات</div>';
 print '<div class="div-table-responsive">';
 print '<table class="liste centpercent">';
-print '<tr class="liste_titre"><th>Container No</th><th>ETA</th><th class="center">Arrival</th><th class="center">Free Time</th><th>Status</th></tr>';
+print '<tr class="liste_titre"><th>Container No / الحاوية</th><th>Customer / العميل</th><th>ETA / الوصول</th><th class="center">Arrival / الوصول</th><th class="center">Free Time / الوقت الحر</th><th>Status / الحالة</th></tr>';
 
-$sql_shp = "SELECT rowid, container_no, date_eta, freetime_end, fk_statut FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE fk_statut < 4";
+$sql_shp = "SELECT t.rowid,t.container_no,t.date_eta,t.freetime_end,t.fk_statut,s.nom customer_name FROM ".MAIN_DB_PREFIX."chinaplanetlogistics t LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=t.fk_soc WHERE t.fk_statut < 4";
 if ($socid > 0) {
-    $sql_shp .= " AND fk_soc = " . $socid;
+    $sql_shp .= " AND t.fk_soc = " . $socid;
 } elseif ($is_external) {
     $sql_shp .= " AND 1=0";
 }
@@ -178,7 +116,8 @@ if ($res_shp && $db->num_rows($res_shp) > 0) {
         $eta_days = (!empty($shp->date_eta) && $shp->date_eta != '0000-00-00') ? (int)ceil((strtotime($shp->date_eta) - time()) / 86400) : null;
         $ft_days = (!empty($shp->freetime_end) && $shp->freetime_end != '0000-00-00') ? (int)ceil((strtotime($shp->freetime_end) - time()) / 86400) : null;
         print '<tr class="oddeven">';
-        print '<td><a href="'.dol_buildpath('/chinaplanetcustomercenter/chinaplanetlogistics/card.php?id='.$shp->rowid, 1).'"><b>'.dol_escape_htmltag($shp->container_no).'</b></a></td>';
+        print '<td><a href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int)$shp->rowid.'"><b>'.dol_escape_htmltag($shp->container_no).'</b></a></td>';
+        print '<td>'.dol_escape_htmltag($shp->customer_name ?: '-').'</td>';
         print '<td>'.($shp->date_eta && $shp->date_eta != '0000-00-00' ? $shp->date_eta : '-').'</td>';
         print '<td class="center"><span style="display:inline-block;min-width:45px;padding:2px 6px;border-radius:10px;color:#fff;font-size:11px;background:'.cpl_color($eta_days).';">'.($eta_days !== null ? ($eta_days < 0 ? 'Arrived' : $eta_days.'d') : '-').'</span></td>';
         print '<td class="center"><span style="display:inline-block;min-width:45px;padding:2px 6px;border-radius:10px;color:#fff;font-size:11px;background:'.cpl_color($ft_days).';">'.($ft_days !== null ? $ft_days.'d' : '-').'</span></td>';
@@ -186,10 +125,11 @@ if ($res_shp && $db->num_rows($res_shp) > 0) {
         print '</tr>';
     }
 } else {
-    print '<tr class="oddeven"><td colspan="5" class="center opacitymedium">No shipments found.</td></tr>';
+    print '<tr class="oddeven"><td colspan="6" class="center opacitymedium">No shipments found / لا توجد شحنات.</td></tr>';
 }
 print '</table></div>';
 
+if (!$is_external) cpcc_admin_shell_close();
 llxFooter();
 $db->close();
 ?>

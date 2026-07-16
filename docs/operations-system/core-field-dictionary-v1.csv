@@ -1,0 +1,78 @@
+object,field_code,label_ar,type,required,source,customer_visible,notes
+operation,ref,مرجع العملية,varchar,auto,custom,no,"immutable;OP-YYYY-NNNN"
+operation,entity,الكيان,integer,yes,dolibarr,no,"scope every query"
+operation,fk_soc,العميل,foreign_key,yes,llx_societe,yes,"portal ownership"
+operation,fk_contact,جهة الاتصال الأساسية,foreign_key,yes,llx_socpeople,yes,"must belong to customer"
+operation,fk_project,المشروع,foreign_key,yes,llx_projet,yes,"commercial container"
+operation,title,عنوان العملية,varchar,yes,custom,yes,"plain customer-safe title"
+operation,summary_internal,الملخص الداخلي,text,yes,custom,no,"never serialized to portal"
+operation,summary_public,الملخص العام,text,no,custom,yes,"explicitly approved text"
+operation,status,الحالة,dictionary,yes,custom,yes,"mapped customer label may differ"
+operation,priority,الأولوية,dictionary,yes,custom,no,"normal/high/urgent/critical"
+operation,fk_account_owner,مسؤول الحساب,foreign_key,yes,llx_user,no,
+operation,fk_operations_owner,مسؤول العملية,foreign_key,yes,llx_user,no,
+operation,date_start,تاريخ البداية,date,yes,custom,yes,
+operation,date_target,الموعد المستهدف,datetime,no,custom,yes,"timezone-aware display"
+operation,next_action,الإجراء التالي,varchar,yes,custom,yes,"public wording separate when needed"
+operation,next_action_party,صاحب الإجراء,dictionary,yes,custom,yes,"customer/company/factory/authority"
+operation,next_action_due,موعد الإجراء,datetime,yes,custom,yes,
+service_job,ref,مرجع الخدمة,varchar,auto,custom,yes,"type-specific prefix optional"
+service_job,fk_operation,العملية,foreign_key,yes,custom,yes,
+service_job,service_code,نوع الخدمة,dictionary,yes,service_catalog,yes,
+service_job,status,مرحلة الخدمة,dictionary,yes,workflow_template,yes,"customer mapping separate"
+service_job,fk_owner,مسؤول التنفيذ,foreign_key,yes,llx_user,no,
+service_job,fk_reviewer,المراجع,foreign_key,no,llx_user,no,
+service_job,price,سعر الخدمة,decimal,no,authoritative_order,no,"do not duplicate after order validation"
+service_job,currency,عملة الخدمة,char3,no,authoritative_order,no,
+service_job,sla_due,موعد SLA,datetime,no,custom,no,
+service_job,customer_result,النتيجة العامة,varchar,no,custom,yes,"published only"
+interaction,ref,مرجع التواصل,varchar,auto,custom,no,
+interaction,fk_soc,العميل,foreign_key,yes,llx_societe,yes,
+interaction,fk_contact,جهة الاتصال,foreign_key,yes,llx_socpeople,yes,
+interaction,fk_operation,العملية,foreign_key,no,custom,yes,
+interaction,fk_service_job,الخدمة,foreign_key,no,custom,yes,
+interaction,channel,القناة,dictionary,yes,custom,yes,
+interaction,interaction_type,نوع التواصل,dictionary,yes,custom,yes,
+interaction,date_interaction,التاريخ والوقت,datetime,yes,custom,yes,
+interaction,summary_internal,الملخص الداخلي,text,yes,custom,no,
+interaction,summary_public,الملخص العام,text,no,custom,yes,
+interaction,decision_type,نوع القرار,dictionary,no,custom,yes,
+interaction,next_action,الإجراء التالي,varchar,no,custom,yes,
+interaction,next_action_party,صاحب الإجراء,dictionary,no,custom,yes,
+interaction,next_action_due,موعد الإجراء,datetime,no,custom,yes,
+task,fk_project_task,مهمة Dolibarr,foreign_key,yes,llx_projet_task,no,"authoritative task"
+task,fk_operation,العملية,foreign_key,no,custom,no,
+task,fk_service_job,الخدمة,foreign_key,no,custom,no,
+task,task_type,نوع المهمة,dictionary,yes,custom,no,
+task,kanban_status,حالة Kanban,dictionary,yes,custom,no,"mapping/view metadata"
+task,fk_assignee,المسؤول الرئيسي,foreign_key,yes,llx_user,no,
+task,fk_reviewer,المراجع,foreign_key,no,llx_user,no,
+task,date_due,الموعد,datetime,yes,custom,no,
+task,blocked_reason,سبب التعطيل,dictionary,no,custom,no,
+task,requires_review,تحتاج مراجعة,boolean,yes,custom,no,
+evidence,fk_soc,مالك الملف,foreign_key,yes,llx_societe,no,"security ownership scope"
+evidence,fk_operation,العملية,foreign_key,yes,custom,no,
+evidence,fk_service_job,الخدمة,foreign_key,no,custom,no,
+evidence,fk_task,المهمة,foreign_key,no,llx_projet_task,no,
+evidence,evidence_type,نوع الدليل,dictionary,yes,custom,yes_if_published,
+evidence,caption,الوصف,varchar,yes,custom,yes_if_published,
+evidence,review_status,حالة المراجعة,dictionary,yes,custom,yes_if_published,
+evidence,customer_visible,ظاهر للعميل,boolean,yes,custom,security,
+evidence,version_no,رقم النسخة,integer,yes,custom,yes_if_published,
+report,ref,مرجع التقرير,varchar,auto,custom,yes,
+report,fk_service_job,الخدمة,foreign_key,yes,custom,yes,
+report,status,حالة التقرير,dictionary,yes,custom,yes_if_published,
+report,version_no,النسخة,integer,yes,custom,yes,
+report,result_code,النتيجة,dictionary,no,custom,yes_if_published,
+report,risk_level,مستوى المخاطر,dictionary,no,custom,yes_if_published,
+report,fk_author,المعد,foreign_key,yes,llx_user,no,
+report,fk_reviewer,المراجع,foreign_key,no,llx_user,no,
+report,date_published,تاريخ النشر,datetime,no,custom,yes,
+decision,decision_type,نوع القرار,dictionary,yes,custom,yes,
+decision,fk_operation,العملية,foreign_key,yes,custom,yes,
+decision,fk_service_job,الخدمة,foreign_key,no,custom,yes,
+decision,fk_report,نسخة التقرير,foreign_key,no,custom,yes,
+decision,decision_value,القرار,varchar,yes,custom,yes,
+decision,decision_note,ملاحظة القرار,text,no,custom,yes,
+decision,fk_actor,صاحب القرار,foreign_key,yes,llx_user,public_label,
+decision,date_decision,تاريخ القرار,datetime,yes,custom,yes,

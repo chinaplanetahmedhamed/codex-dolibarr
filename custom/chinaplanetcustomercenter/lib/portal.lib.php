@@ -18,6 +18,32 @@ function cpcc_portal_require_access($user)
     }
 }
 
+/**
+ * Resolve a customer scope without trusting a socid supplied in the URL.
+ * External users are always locked to their linked third party.
+ */
+function cpcc_portal_customer_scope_id($db, $user, $requestedSocid = 0)
+{
+    $scope = cpcc_portal_user_scope($user);
+    if (!empty($scope['is_external'])) return (int) $scope['socid'];
+
+    $requestedSocid = (int) $requestedSocid;
+    if ($requestedSocid <= 0) return 0;
+
+    $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."societe";
+    $sql .= " WHERE rowid=".$requestedSocid." AND entity IN (".getEntity('societe').") AND status=1 AND client IN (1,3)";
+    $resql = $db->query($sql);
+    return ($resql && $db->num_rows($resql) > 0) ? $requestedSocid : 0;
+}
+
+/** Build a portal URL that retains the selected customer for internal users. */
+function cpcc_portal_scoped_url($path, $isExternal, $socid, $parameters = array())
+{
+    if (!$isExternal && (int) $socid > 0) $parameters['socid'] = (int) $socid;
+    $url = dol_buildpath($path, 1);
+    return !empty($parameters) ? $url.'?'.http_build_query($parameters) : $url;
+}
+
 function cpcc_portal_navigation($user, $active = '')
 {
     if (empty($user->id) || empty($user->socid) || !empty($user->admin)) return;
@@ -26,10 +52,13 @@ function cpcc_portal_navigation($user, $active = '')
         'dashboard' => array('لوحة التحكم', '/chinaplanetcustomercenter/board.php'),
         'projects' => array('المشاريع', '/chinaplanetcustomercenter/projects.php'),
         'shipments' => array('الشحنات', '/chinaplanetlogistics/list.php'),
+        'shippingprices' => array('أسعار الشحن', '/chinaplanetshippingprices/index.php'),
         'invoices' => array('الفواتير', '/chinaplanetcustomercenter/invoices.php'),
         'orders' => array('الطلبات', '/chinaplanetcustomercenter/orders.php'),
         'balance' => array('الرصيد', '/chinaplanetcustomercenter/balance.php'),
+        'funding' => array('التمويل المطلوب', '/chinaplanetcustomercenter/funding.php'),
         'documents' => array('المستندات', '/chinaplanetcustomercenter/documents.php'),
+        'commercial_documents' => array('مستندات التصدير', '/chinaplanetcustomercenter/commercial_documents.php'),
         'profile' => array('الملف الشخصي', '/chinaplanetcustomercenter/profile.php'),
     );
 

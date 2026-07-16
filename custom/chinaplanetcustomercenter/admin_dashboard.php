@@ -1,6 +1,8 @@
 <?php
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
-require '../../main.inc.php';
+require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/admin_shell.lib.php';
+require_once __DIR__.'/lib/financial.lib.php';
 
 if (empty($user->id) || empty($user->admin) || !empty($user->socid)) {
     accessforbidden('Administrator access required.');
@@ -29,17 +31,71 @@ function cpadPct($value, $max)
     return max(3, min(100, round(((float) $value / (float) $max) * 100)));
 }
 
+function cpadTableExists($db, $table)
+{
+    static $cache = array();
+    if (isset($cache[$table])) return $cache[$table];
+    $resql = $db->query("SHOW TABLES LIKE '".$db->escape($table)."'");
+    $cache[$table] = $resql && $db->num_rows($resql) > 0;
+    return $cache[$table];
+}
+
+function cpadAddCurrencySummary(&$target, $source)
+{
+    foreach ($source as $code=>$values) {
+        if (!isset($target[$code])) $target[$code] = cpcc_financial_empty_summary();
+        foreach (array_keys(cpcc_financial_empty_summary()) as $field) {
+            $target[$code][$field] += isset($values[$field]) ? (float) $values[$field] : 0.0;
+        }
+    }
+}
+
 $customers = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (0,".$entity.") AND client IN (1,2,3)");
 $activeProjects = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."projet WHERE entity = ".$entity." AND fk_statut = 1");
 $yearOrders = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."commande WHERE entity = ".$entity." AND YEAR(date_commande) = ".$year." AND fk_statut > 0");
+$activeOrders = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."commande WHERE entity = ".$entity." AND fk_statut IN (1,2)");
+$completedOrders = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."commande WHERE entity = ".$entity." AND fk_statut = 3");
+$allOrders = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."commande WHERE entity = ".$entity);
 $yearRevenue = (float) cpadScalar($db, "SELECT COALESCE(SUM(total_ttc),0) value FROM ".MAIN_DB_PREFIX."facture WHERE entity = ".$entity." AND YEAR(datef) = ".$year." AND fk_statut > 0");
 $unpaid = (float) cpadScalar($db, "SELECT COALESCE(SUM(GREATEST(f.total_ttc-COALESCE(p.paid,0),0)),0) value FROM ".MAIN_DB_PREFIX."facture f LEFT JOIN (SELECT fk_facture,SUM(amount) paid FROM ".MAIN_DB_PREFIX."paiement_facture GROUP BY fk_facture) p ON p.fk_facture=f.rowid WHERE f.entity = ".$entity." AND f.fk_statut = 1 AND f.paye = 0");
+$unpaidCount = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."facture WHERE entity = ".$entity." AND fk_statut=1 AND paye=0");
+$overdueCount = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."facture WHERE entity = ".$entity." AND fk_statut=1 AND paye=0 AND date_lim_reglement IS NOT NULL AND date_lim_reglement<CURDATE()");
 $shipTotal = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity);
 $inTransit = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (1,2)");
 $arriving = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut < 3 AND date_eta BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)");
 $arrived = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut = 3");
 $critical = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut < 4 AND ((date_eta < CURDATE()) OR freetime_end BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY))");
 $cardsActive = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE entity = ".$entity." AND status = 1");
+$exportDocuments = cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_export_document') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."cpcc_export_document WHERE entity=".$entity." AND status=1") : 0;
+$publishedRates = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_rate') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$entity." AND status=1 AND is_current=1") : 0;
+$shippingInquiries = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_inquiry') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_inquiry WHERE entity=".$entity." AND status=1") : 0;
+$shipmentsWithoutExportDocs = 0;
+if (cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_export_document')) {
+    $shipmentsWithoutExportDocs = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l WHERE l.entity=".$entity." AND l.fk_statut<4 AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_export_document d WHERE d.entity=l.entity AND d.fk_shipment=l.rowid AND d.status=1)");
+}
+
+$financialByCurrency = array();
+$customerResult = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (0,".$entity.") AND client IN (1,2,3) ORDER BY rowid");
+if ($customerResult) while ($customerRow = $db->fetch_object($customerResult)) {
+    cpadAddCurrencySummary($financialByCurrency, cpcc_financial_summary($db, (int) $customerRow->rowid, $currency));
+}
+ksort($financialByCurrency);
+
+$recentOrders = array();
+$orderSql = "SELECT c.rowid,c.ref,c.date_commande,c.total_ttc,c.multicurrency_code,c.multicurrency_total_ttc,c.fk_statut,s.rowid customer_id,s.nom customer";
+$orderSql .= " FROM ".MAIN_DB_PREFIX."commande c LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=c.fk_soc";
+$orderSql .= " WHERE c.entity=".$entity." ORDER BY c.date_commande DESC,c.rowid DESC LIMIT 6";
+$orderResult = $db->query($orderSql);
+if ($orderResult) while ($orderRow = $db->fetch_object($orderResult)) $recentOrders[] = $orderRow;
+
+$recentFinance = array();
+if (cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_financial_entry')) {
+    $financeSql = "SELECT e.rowid,e.entry_date,e.entry_type,e.direction,e.description,e.amount,e.currency_code,e.fk_soc,s.nom customer";
+    $financeSql .= " FROM ".MAIN_DB_PREFIX."cpcc_financial_entry e LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=e.fk_soc";
+    $financeSql .= " WHERE e.entity=".$entity." AND e.status=1 ORDER BY e.entry_date DESC,e.rowid DESC LIMIT 6";
+    $financeResult = $db->query($financeSql);
+    if ($financeResult) while ($financeRow = $db->fetch_object($financeResult)) $recentFinance[] = $financeRow;
+}
 
 $months = array();
 for ($i = 6; $i >= 0; $i--) {
@@ -70,131 +126,202 @@ $topMax = 0;
 if ($resql) while ($obj = $db->fetch_object($resql)) { $topCustomers[]=$obj; $topMax=max($topMax,(float)$obj->amount); }
 
 $statusLabels = array(0=>'Inquiry',1=>'Booking',2=>'On vessel',3=>'Arrived',4=>'Closed');
+$orderStatusLabels = array(-1=>'Canceled',0=>'Draft',1=>'Validated',2=>'In progress',3=>'Closed');
 
-llxHeader('', 'Admin Operations Dashboard', '', '', 0, 0, array(), array('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
+$widgetLabels = array(
+    'kpi_customers'=>'Customers / العملاء',
+    'kpi_orders'=>'Active Orders / الطلبات النشطة',
+    'kpi_projects'=>'Active Projects / المشاريع النشطة',
+    'kpi_shipments'=>'Active Shipments / الشحنات النشطة',
+    'kpi_alerts'=>'Critical Alerts / التنبيهات الحرجة',
+    'kpi_tasks'=>'Active Kanban / مهام كانبان',
+    'attention_center'=>'Action Required / مطلوب إجراء',
+    'shipment_control'=>'Shipment Control / حالة الشحن',
+    'customer_finance'=>'Customer Funds by Currency / أموال العملاء حسب العملة',
+    'workflow'=>'Workflow / المشاريع والمهام',
+    'monthly_revenue'=>'Monthly Invoiced Amount / فواتير الشهر',
+    'live_shipments'=>'Live Shipments / الشحنات الحالية',
+    'recent_orders'=>'Recent Orders / أحدث الطلبات',
+    'recent_finance'=>'Recent Financial Activity / أحدث الحركات المالية',
+    'top_customers'=>'Top Customers / أهم العملاء',
+    'documents_center'=>'Documents Center / مركز المستندات',
+    'shipping_prices'=>'Shipping Prices / أسعار الشحن',
+    'quick_access'=>'Quick Access / الوصول السريع',
+);
+$savedLayout = array();
+$layoutTable = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.'cpcc_dashboard_layout')."'");
+if ($layoutTable && $db->num_rows($layoutTable) > 0) {
+    $layoutSql = "SELECT widget_key,position,widget_size,visible FROM ".MAIN_DB_PREFIX."cpcc_dashboard_layout";
+    $layoutSql .= " WHERE entity=".$entity." AND fk_user=".(int)$user->id." AND dashboard_key='admin_operations' ORDER BY position,rowid";
+    $layoutRes = $db->query($layoutSql);
+    if ($layoutRes) while ($layoutRow = $db->fetch_object($layoutRes)) {
+        $savedLayout[] = array(
+            'key'=>(string)$layoutRow->widget_key,
+            'position'=>(int)$layoutRow->position,
+            'size'=>(string)$layoutRow->widget_size,
+            'visible'=>(int)$layoutRow->visible,
+        );
+    }
+}
+
+llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/js/admin_dashboard.js')), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
 ?>
 <div class="cpad-shell">
-  <nav class="cpad-nav" aria-label="Customer Center navigation">
-    <a class="active" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin_dashboard.php',1); ?>"><span class="fas fa-chart-line"></span> Admin Dashboard</a>
-    <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="fas fa-th-large"></span> Portal Home</a>
-    <a href="<?php echo dol_buildpath('/chinaplanetlogistics/index.php',1); ?>"><span class="fas fa-ship"></span> Shipment Tracking</a>
-    <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>"><span class="fas fa-list"></span> Shipment List</a>
-    <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/documents.php',1); ?>"><span class="fas fa-folder-open"></span> Shipment Documents</a>
-    <a class="new" href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?action=create',1); ?>"><span class="fas fa-plus-circle"></span> New Shipment</a>
-  </nav>
-  <header class="cpad-head">
-    <h1>VISION TRADE OPERATIONS</h1>
-    <p>China Planet · Dolibarr Admin Command Center</p>
-    <div class="cpad-live"><i></i><span>LIVE · <?php echo dol_escape_htmltag(date('Y-m-d H:i')); ?></span></div>
-  </header>
+  <?php cpcc_admin_shell_navigation('dashboard'); ?>
+  <?php cpcc_admin_shell_header(); ?>
+
+  <div class="cpad-customize-toolbar">
+    <button type="button" id="cpad-customize" class="cpad-tool primary"><span class="fas fa-sliders-h"></span> Customize Dashboard / تخصيص اللوحة</button>
+    <button type="button" id="cpad-save-layout" class="cpad-tool success" hidden><span class="fas fa-save"></span> Save Layout / حفظ</button>
+    <button type="button" id="cpad-widget-library-button" class="cpad-tool" hidden><span class="fas fa-th"></span> Widget Library / البطاقات</button>
+    <button type="button" id="cpad-reset-layout" class="cpad-tool warn" hidden><span class="fas fa-undo"></span> Reset Default</button>
+    <button type="button" id="cpad-cancel-layout" class="cpad-tool" hidden>Cancel</button>
+    <span id="cpad-layout-message" class="cpad-layout-message" hidden></span>
+  </div>
+  <div id="cpad-widget-grid" class="cpad-widget-grid" aria-live="polite"></div>
 
   <section class="cpad-kpis">
-    <div class="cpad-kpi"><b><?php echo $customers; ?></b><span>Customers / العملاء</span></div>
-    <div class="cpad-kpi"><b><?php echo $yearOrders; ?></b><span><?php echo $year; ?> Orders / الطلبات</span></div>
-    <div class="cpad-kpi gold"><b><?php echo dol_escape_htmltag(cpadMoney($yearRevenue, $currency)); ?></b><span>Invoiced this year / فواتير السنة</span></div>
-    <div class="cpad-kpi"><b><?php echo $shipTotal; ?></b><span>Total shipments / الشحنات</span></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_customers" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-users"></span><b><?php echo $customers; ?></b><span>Customers / العملاء</span><small>Open customer center / فتح مركز العملاء</small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_orders" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-shopping-cart"></span><b><?php echo $activeOrders; ?></b><span>Active Orders / الطلبات النشطة</span><small><?php echo $allOrders; ?> total · <?php echo $completedOrders; ?> completed</small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_projects" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><span>Active Projects / المشاريع النشطة</span><small>Open operational projects / فتح المشاريع</small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_shipments" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-ship"></span><b><?php echo $inTransit; ?></b><span>Active Shipments / الشحنات النشطة</span><small><?php echo $shipTotal; ?> total shipments</small></a></div>
+    <div class="cpad-kpi danger" data-cpad-widget="kpi_alerts" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="cpad-kpi-icon fas fa-exclamation-triangle"></span><b><?php echo $critical; ?></b><span>Critical Alerts / تنبيهات حرجة</span><small>ETA or free-time risk / خطر وصول أو وقت حر</small></a></div>
+    <div class="cpad-kpi gold" data-cpad-widget="kpi_tasks" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-columns"></span><b><?php echo $cardsActive; ?></b><span>Active Kanban / مهام كانبان</span><small>Open operations board / فتح لوحة العمليات</small></a></div>
   </section>
 
-  <div class="cpad-grid">
-    <div class="cpad-stack">
-      <section class="cpad-panel">
-        <div class="cpad-title">Shipment Control <small>حالة الشحن</small></div>
-        <div class="cpad-status">
-          <div><b><?php echo $inTransit; ?></b><span>In transit / في الطريق</span></div>
-          <div><b><?php echo $arriving; ?></b><span>ETA within 14 days</span></div>
-          <div class="gold"><b><?php echo $arrived; ?></b><span>Arrived / وصلت</span></div>
-          <div class="danger"><b><?php echo $critical; ?></b><span>Critical alerts / تنبيهات</span></div>
-        </div>
-      </section>
-
-      <section class="cpad-panel">
-        <div class="cpad-title">Currency Mix <small>توزيع العملات</small></div>
-        <div class="cpad-donut-row">
-          <div class="cpad-donut" style="--p1:<?php echo $p1; ?>%;--p2:<?php echo $p2; ?>%" data-total="<?php echo count($currencyRows); ?> FX"></div>
-          <div class="cpad-legend">
-            <?php if (empty($currencyRows)) { ?><div><span><i style="background:#14d9ff"></i>No invoices yet</span><b>—</b></div><?php } ?>
-            <?php $colors=array('#14d9ff','#ffd84a','#2165d7'); foreach ($currencyRows as $idx=>$row) { ?>
-              <div><span><i style="background:<?php echo $colors[$idx]; ?>"></i><?php echo dol_escape_htmltag($row['code']); ?></span><b><?php echo $row['count']; ?></b></div>
-            <?php } ?>
-          </div>
-        </div>
-      </section>
-
-      <section class="cpad-panel">
-        <div class="cpad-title">Workflow <small>المشاريع والمهام</small></div>
-        <div class="cpad-status">
-          <div><b><?php echo $activeProjects; ?></b><span>Active projects</span></div>
-          <div><b><?php echo $cardsActive; ?></b><span>Active Kanban cards</span></div>
-          <div class="gold"><b><?php echo $yearOrders; ?></b><span>Confirmed orders</span></div>
-          <div class="danger"><b><?php echo dol_escape_htmltag(cpadMoney($unpaid, $currency)); ?></b><span>Customer balance due</span></div>
-        </div>
-      </section>
+  <section class="cpad-panel cpad-attention" data-cpad-widget="attention_center" data-default-size="full">
+    <div class="cpad-title"><span>Action Required / مطلوب إجراء</span><small>ابدأ من هنا لمعالجة المخاطر الحالية</small></div>
+    <div class="cpad-attention-grid">
+      <a class="<?php echo $critical > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="fas fa-ship"></span><strong><?php echo $critical; ?></strong><b>Critical shipments / شحنات حرجة</b><small>Review ETA and free time</small></a>
+      <a class="<?php echo $overdueCount > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/invoices.php',1); ?>"><span class="fas fa-file-invoice-dollar"></span><strong><?php echo $overdueCount; ?></strong><b>Overdue invoices / فواتير متأخرة</b><small><?php echo $unpaidCount; ?> total unpaid</small></a>
+      <a class="<?php echo $shipmentsWithoutExportDocs > 0 ? 'is-warn' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/documents.php',1); ?>"><span class="fas fa-file-export"></span><strong><?php echo $shipmentsWithoutExportDocs; ?></strong><b>Missing export docs / بدون مستندات تصدير</b><small>Active shipments requiring files</small></a>
+      <a class="is-info" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-tasks"></span><strong><?php echo $cardsActive; ?></strong><b>Open tasks / مهام مفتوحة</b><small>Continue internal operations</small></a>
     </div>
+  </section>
 
-    <main class="cpad-stack cpad-center">
-      <section class="cpad-panel">
-        <div class="cpad-title">Monthly Invoiced Amount <small>آخر 7 أشهر · <?php echo dol_escape_htmltag($currency); ?></small></div>
-        <div class="cpad-bars">
-          <?php foreach ($months as $month) { $height = $monthMax > 0 ? max(3, round($month['value']/$monthMax*100)) : 3; ?>
-            <div class="cpad-bar" style="--h:<?php echo $height; ?>%"><em><?php echo number_format($month['value'],0); ?></em><span><?php echo dol_escape_htmltag($month['label']); ?></span></div>
-          <?php } ?>
-        </div>
-      </section>
+  <section class="cpad-panel" data-cpad-widget="customer_finance" data-default-size="full">
+    <div class="cpad-title"><span>Customer Funds by Currency / أموال العملاء حسب العملة</span><small>لا يتم جمع العملات المختلفة معاً</small></div>
+    <?php if (empty($financialByCurrency)) { ?><div class="cpad-empty">No customer financial movements yet / لا توجد حركات مالية للعملاء.</div><?php } else { ?>
+    <div class="cpad-finance-grid">
+      <?php foreach ($financialByCurrency as $code=>$totals) { ?>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>" class="cpad-finance-card">
+        <div><span><?php echo dol_escape_htmltag($code); ?></span><small>Customer wallet / محفظة العملاء</small></div>
+        <dl><div><dt>Received / مستلم</dt><dd><?php echo number_format($totals['received'],2); ?></dd></div><div><dt>Spent / مصروف</dt><dd><?php echo number_format($totals['spent'],2); ?></dd></div><div><dt>Available / متاح</dt><dd class="<?php echo $totals['available'] < 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['available'],2); ?></dd></div><div><dt>Required / مطلوب</dt><dd class="<?php echo $totals['required_funding'] > 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['required_funding'],2); ?></dd></div></dl>
+      </a>
+      <?php } ?>
+    </div><?php } ?>
+  </section>
 
-      <section class="cpad-panel">
-        <div class="cpad-title">Live Shipments <small>الحاويات والموعد المتوقع</small></div>
-        <?php if (empty($recentShipments)) { ?><div class="cpad-empty">No shipment records yet.</div><?php } else { ?>
-        <table class="cpad-table">
-          <thead><tr><th>REF / CONTAINER</th><th>CUSTOMER</th><th>DESTINATION</th><th>ETA</th><th>STATUS</th></tr></thead>
-          <tbody><?php foreach ($recentShipments as $shipment) { $late=!empty($shipment->date_eta)&&$shipment->date_eta<date('Y-m-d')&&(int)$shipment->fk_statut<3; ?>
-            <tr>
-              <td><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/chinaplanetlogistics/card.php?id='.(int)$shipment->rowid,1); ?>"><?php echo dol_escape_htmltag($shipment->container_no ?: $shipment->ref); ?></a></td>
-              <td><?php echo dol_escape_htmltag($shipment->customer ?: '—'); ?></td>
-              <td><?php echo dol_escape_htmltag($shipment->port_destination ?: '—'); ?></td>
-              <td><?php echo dol_escape_htmltag($shipment->date_eta ?: '—'); ?></td>
-              <td><span class="cpad-badge <?php echo $late?'danger':((int)$shipment->fk_statut===1?'warn':''); ?>"><?php echo dol_escape_htmltag($statusLabels[(int)$shipment->fk_statut] ?? 'Unknown'); ?></span></td>
-            </tr>
-          <?php } ?></tbody>
-        </table><?php } ?>
-      </section>
-    </main>
+  <section class="cpad-panel" data-cpad-widget="workflow" data-default-size="large">
+    <div class="cpad-title"><span>Operations Flow / تدفق العمليات</span><small>من الطلب حتى الإغلاق</small></div>
+    <div class="cpad-flow">
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="fas fa-shopping-basket"></span><b><?php echo $activeOrders; ?></b><small>Active orders / طلبات نشطة</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><small>Active projects / مشاريع نشطة</small></a>
+      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b><?php echo $cardsActive; ?></b><small>Kanban tasks / مهام التشغيل</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-ship"></span><b><?php echo $inTransit; ?></b><small>Live shipments / شحنات جارية</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><span class="fas fa-file-alt"></span><b><?php echo $exportDocuments; ?></b><small>Export documents / مستندات تصدير</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=completed',1); ?>"><span class="fas fa-check-circle"></span><b><?php echo $completedOrders; ?></b><small>Completed orders / طلبات مكتملة</small></a>
+    </div>
+  </section>
 
-    <aside class="cpad-stack">
-      <section class="cpad-panel">
-        <div class="cpad-title">Top Customers <small>حسب قيمة الفواتير</small></div>
-        <div class="cpad-ranking">
-          <?php if (empty($topCustomers)) { ?><div class="cpad-empty">No customer activity yet.</div><?php } ?>
-          <?php foreach ($topCustomers as $customer) { ?>
-            <div class="cpad-rank"><span title="<?php echo dol_escape_htmltag($customer->nom); ?>"><?php echo dol_escape_htmltag($customer->nom); ?></span><div class="cpad-track"><div class="cpad-fill" style="--w:<?php echo cpadPct($customer->amount,$topMax); ?>%"></div></div><b><?php echo (int)$customer->invoice_count; ?></b></div>
-          <?php } ?>
-        </div>
-      </section>
+  <section class="cpad-panel" data-cpad-widget="shipment_control" data-default-size="large">
+    <div class="cpad-title"><span>Shipment Control / حالة الشحن</span><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>">All shipments / كل الشحنات →</a></div>
+    <div class="cpad-status cpad-status-links">
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=intransit',1); ?>"><b><?php echo $inTransit; ?></b><span>In transit / في الطريق</span></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=arriving',1); ?>"><b><?php echo $arriving; ?></b><span>ETA within 14 days / وصول خلال 14 يوم</span></a>
+      <a class="gold" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=arrived',1); ?>"><b><?php echo $arrived; ?></b><span>Arrived / وصلت</span></a>
+      <a class="danger" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><b><?php echo $critical; ?></b><span>Critical alerts / تنبيهات</span></a>
+    </div>
+  </section>
 
-      <section class="cpad-panel">
-        <div class="cpad-title">Operations Snapshot <small><?php echo $year; ?></small></div>
-        <table class="cpad-table"><tbody>
-          <tr><td>Customers</td><td><?php echo $customers; ?></td></tr>
-          <tr><td>Active projects</td><td><?php echo $activeProjects; ?></td></tr>
-          <tr><td>Kanban cards</td><td><?php echo $cardsActive; ?></td></tr>
-          <tr><td>Shipments</td><td><?php echo $shipTotal; ?></td></tr>
-          <tr><td>Unpaid exposure</td><td><?php echo dol_escape_htmltag(cpadMoney($unpaid,$currency)); ?></td></tr>
-        </tbody></table>
-      </section>
+  <section class="cpad-panel" data-cpad-widget="monthly_revenue" data-default-size="large">
+    <div class="cpad-title"><span>Monthly Invoiced Amount / الفواتير الشهرية</span><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/invoices.php',1); ?>">All invoices / كل الفواتير →</a></div>
+    <div class="cpad-bars">
+      <?php foreach ($months as $month) { $height = $monthMax > 0 ? max(3, round($month['value']/$monthMax*100)) : 3; ?>
+        <a class="cpad-bar" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/invoices.php',1); ?>" style="--h:<?php echo $height; ?>%" title="<?php echo dol_escape_htmltag($month['label'].' '.number_format($month['value'],2).' '.$currency); ?>"><em><?php echo number_format($month['value'],0); ?></em><span><?php echo dol_escape_htmltag($month['label']); ?></span></a>
+      <?php } ?>
+    </div>
+  </section>
 
-      <section class="cpad-panel">
-        <div class="cpad-title">Quick Access <small>Dolibarr</small></div>
-        <table class="cpad-table"><tbody>
-          <tr><td><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>">Customer Projects</a></td><td>→</td></tr>
-          <tr><td><a href="<?php echo dol_buildpath('/chinaplanetlogistics/index.php',1); ?>">Logistics Dashboard</a></td><td>→</td></tr>
-          <tr><td><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>">Shipment List</a></td><td>→</td></tr>
-          <tr><td><a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?action=create',1); ?>">New Shipment</a></td><td>＋</td></tr>
-          <tr><td><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/documents.php',1); ?>">Shipment Documents</a></td><td>→</td></tr>
-          <tr><td><a href="<?php echo DOL_URL_ROOT; ?>/societe/list.php">Customers</a></td><td>→</td></tr>
-        </tbody></table>
-      </section>
-    </aside>
-  </div>
-  <div class="cpad-footnote">Read-only admin prototype · Data refreshed on page load · Dolibarr <?php echo DOL_VERSION; ?></div>
+  <section class="cpad-panel" data-cpad-widget="live_shipments" data-default-size="large">
+    <div class="cpad-title"><span>Live Shipments / الشحنات الحالية</span><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>">Open live list / فتح القائمة →</a></div>
+    <?php if (empty($recentShipments)) { ?><div class="cpad-empty">No shipment records yet.</div><?php } else { ?>
+    <div class="cpad-table-scroll"><table class="cpad-table">
+      <thead><tr><th>REF / CONTAINER</th><th>CUSTOMER</th><th>DESTINATION</th><th>ETA</th><th>STATUS</th></tr></thead>
+      <tbody><?php foreach ($recentShipments as $shipment) { $late=!empty($shipment->date_eta)&&$shipment->date_eta<date('Y-m-d')&&(int)$shipment->fk_statut<3; ?>
+        <tr>
+          <td><a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?id='.(int)$shipment->rowid,1); ?>"><?php echo dol_escape_htmltag($shipment->container_no ?: $shipment->ref); ?></a></td>
+          <td><?php echo dol_escape_htmltag($shipment->customer ?: '—'); ?></td><td><?php echo dol_escape_htmltag($shipment->port_destination ?: '—'); ?></td><td><?php echo dol_escape_htmltag($shipment->date_eta ?: '—'); ?></td>
+          <td><span class="cpad-badge <?php echo $late?'danger':((int)$shipment->fk_statut===1?'warn':''); ?>"><?php echo dol_escape_htmltag($statusLabels[(int)$shipment->fk_statut] ?? 'Unknown'); ?></span></td>
+        </tr>
+      <?php } ?></tbody>
+    </table></div><?php } ?>
+  </section>
+
+  <section class="cpad-panel" data-cpad-widget="recent_orders" data-default-size="large">
+    <div class="cpad-title"><span>Recent Orders / أحدث الطلبات</span><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=all',1); ?>">All orders / كل الطلبات →</a></div>
+    <?php if (empty($recentOrders)) { ?><div class="cpad-empty">No orders yet / لا توجد طلبات.</div><?php } else { ?>
+    <div class="cpad-table-scroll"><table class="cpad-table"><thead><tr><th>ORDER</th><th>CUSTOMER</th><th>DATE</th><th>TOTAL</th><th>STATUS</th></tr></thead><tbody>
+      <?php foreach ($recentOrders as $order) { $orderCurrency=trim((string)$order->multicurrency_code); $orderAmount=$orderCurrency!==''&&(float)$order->multicurrency_total_ttc>0?(float)$order->multicurrency_total_ttc:(float)$order->total_ttc; if ($orderCurrency==='') $orderCurrency=$currency; ?>
+      <tr><td><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/order.php?id='.(int)$order->rowid,1); ?>"><?php echo dol_escape_htmltag($order->ref); ?></a></td><td><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php?socid='.(int)$order->customer_id,1); ?>"><?php echo dol_escape_htmltag($order->customer ?: '—'); ?></a></td><td><?php echo dol_escape_htmltag(!empty($order->date_commande)?substr($order->date_commande,0,10):'—'); ?></td><td><?php echo dol_escape_htmltag(number_format($orderAmount,2).' '.$orderCurrency); ?></td><td><span class="cpad-badge"><?php echo dol_escape_htmltag($orderStatusLabels[(int)$order->fk_statut] ?? 'Unknown'); ?></span></td></tr>
+      <?php } ?>
+    </tbody></table></div><?php } ?>
+  </section>
+
+  <section class="cpad-panel" data-cpad-widget="recent_finance" data-default-size="large">
+    <div class="cpad-title"><span>Recent Financial Activity / أحدث الحركات المالية</span><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>">Record entry / تسجيل حركة →</a></div>
+    <?php if (empty($recentFinance)) { ?><div class="cpad-empty">No recent custom financial entries / لا توجد حركات مالية حديثة.</div><?php } else { ?>
+    <div class="cpad-activity-list"><?php foreach ($recentFinance as $entry) { ?>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php?socid='.(int)$entry->fk_soc,1); ?>"><span class="cpad-activity-icon <?php echo $entry->direction==='C'?'credit':'debit'; ?> fas <?php echo $entry->direction==='C'?'fa-arrow-down':'fa-arrow-up'; ?>"></span><span><b><?php echo dol_escape_htmltag($entry->customer ?: '—'); ?></b><small><?php echo dol_escape_htmltag($entry->description); ?></small></span><strong><?php echo $entry->direction==='C'?'+':'−'; ?> <?php echo dol_escape_htmltag(number_format($entry->amount,2).' '.$entry->currency_code); ?></strong><time><?php echo dol_escape_htmltag(substr($entry->entry_date,0,10)); ?></time></a>
+    <?php } ?></div><?php } ?>
+  </section>
+
+  <section class="cpad-panel" data-cpad-widget="top_customers" data-default-size="medium">
+    <div class="cpad-title"><span>Top Customers / أهم العملاء</span><small>حسب قيمة الفواتير</small></div>
+    <div class="cpad-ranking"><?php if (empty($topCustomers)) { ?><div class="cpad-empty">No customer activity yet.</div><?php } ?><?php foreach ($topCustomers as $customer) { ?>
+      <a class="cpad-rank" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php?socid='.(int)$customer->rowid,1); ?>"><span title="<?php echo dol_escape_htmltag($customer->nom); ?>"><?php echo dol_escape_htmltag($customer->nom); ?></span><div class="cpad-track"><div class="cpad-fill" style="--w:<?php echo cpadPct($customer->amount,$topMax); ?>%"></div></div><b><?php echo (int)$customer->invoice_count; ?></b></a>
+    <?php } ?></div>
+  </section>
+
+  <section class="cpad-panel" data-cpad-widget="documents_center" data-default-size="medium">
+    <div class="cpad-title"><span>Documents Center / مركز المستندات</span><small>Shipping & export files</small></div>
+    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><b><?php echo $exportDocuments; ?></b><span>Export documents / مستندات تصدير</span></a><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/documents.php',1); ?>"><b><?php echo $shipmentsWithoutExportDocs; ?></b><span>Active shipments missing docs / شحنات بدون مستندات</span></a></div>
+    <div class="cpad-panel-actions"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-plus"></span> Create export document / إنشاء مستند</a></div>
+  </section>
+
+  <section class="cpad-panel" data-cpad-widget="shipping_prices" data-default-size="medium">
+    <div class="cpad-title"><span>Shipping Prices / أسعار الشحن</span><small>Live pricing data</small></div>
+    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><b><?php echo $publishedRates; ?></b><span>Published current rates / أسعار منشورة</span></a><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/admin/dashboard.php',1); ?>"><b><?php echo $shippingInquiries; ?></b><span>Saved inquiries / استعلامات محفوظة</span></a></div>
+    <div class="cpad-panel-actions"><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span> Search price / بحث عن سعر</a><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/admin/import.php',1); ?>"><span class="fas fa-file-import"></span> Import rates / استيراد</a></div>
+  </section>
+
+  <section class="cpad-panel" data-cpad-widget="quick_access" data-default-size="full">
+    <div class="cpad-title"><span>Quick Actions / إجراءات سريعة</span><small>Vision System</small></div>
+    <div class="cpad-quick-grid">
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?action=create',1); ?>"><span class="fas fa-plus-circle"></span><b>New Shipment</b><small>شحنة جديدة</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/index.php',1); ?>"><span class="fas fa-route"></span><b>Internal Operations</b><small>مركز العمليات الداخلي</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b>New Shipping Booking</b><small>حجز شحن جديد</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/board.php',1); ?>"><span class="fas fa-tasks"></span><b>Internal Tasks</b><small>المهام الداخلية</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/operations.php',1); ?>"><span class="fas fa-project-diagram"></span><b>Customer Project Operations</b><small>عمليات مشاريع العملاء</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>"><span class="fas fa-wallet"></span><b>Financial Entry</b><small>حركة مالية</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-file-export"></span><b>Export Document</b><small>مستند تصدير</small></a>
+      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b>Operations Kanban</b><small>لوحة كانبان</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span><b>Shipping Price</b><small>سعر شحن</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="fas fa-user-tie"></span><b>Customer Center</b><small>مركز العملاء</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>"><span class="fas fa-list"></span><b>All Shipments</b><small>كل الشحنات</small></a>
+    </div>
+  </section>
+  <aside id="cpad-widget-library" class="cpad-widget-library" hidden>
+    <div class="cpad-library-head"><div><strong>Widget Library</strong><small>إظهار وإخفاء بطاقات اللوحة</small></div><button type="button" id="cpad-widget-library-close" aria-label="Close">×</button></div>
+    <div id="cpad-widget-library-list" class="cpad-library-list"></div>
+  </aside>
+  <script type="application/json" id="cpad-layout-data"><?php echo json_encode(array(
+      'layout'=>$savedLayout,
+      'labels'=>$widgetLabels,
+      'token'=>currentToken(),
+      'endpoint'=>dol_buildpath('/chinaplanetcustomercenter/ajax/dashboard_layout.php', 1),
+  ), JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT); ?></script>
+  <div class="cpad-footnote">Customizable personal dashboard · Data refreshed on page load · Vision System</div>
 </div>
 <?php
 llxFooter();

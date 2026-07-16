@@ -1,10 +1,7 @@
 <?php
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/lib/main.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once __DIR__.'/lib/portal.lib.php';

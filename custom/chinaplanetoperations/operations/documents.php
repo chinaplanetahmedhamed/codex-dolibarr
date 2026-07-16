@@ -1,0 +1,4 @@
+<?php
+require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';require_once __DIR__.'/../lib/main.lib.php';require_once __DIR__.'/../class/OperationsService.class.php';cpo_require($user,'read');$service=new OperationsService($db);$id=GETPOSTINT('id');$documentId=GETPOSTINT('document_id');$action=GETPOST('action','aZ09');
+if($action==='download'){$document=$service->getDocument($documentId);if(!$document)accessforbidden();global $conf;$path=$conf->chinaplanetoperations->dir_output.'/documents/'.(int)$conf->entity.'/'.$document['operation_ref'].'/'.$document['stored_name'];if(!is_file($path))accessforbidden();header('Content-Type: '.$document['mime_type']);header('Content-Length: '.filesize($path));header('Content-Disposition: attachment; filename="'.rawurlencode($document['original_name']).'"');header('X-Content-Type-Options: nosniff');readfile($path);exit;}
+accessforbidden();

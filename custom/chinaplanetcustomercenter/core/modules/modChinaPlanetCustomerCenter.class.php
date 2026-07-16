@@ -12,13 +12,13 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 98;
         $this->description = 'ChinaPlanet Customer Center';
-        $this->version = '1.0.0';
+        $this->version = '2.2.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'project';
         $this->dirs = array('/chinaplanetcustomercenter');
         $this->config_page_url = array('setup.php@chinaplanetcustomercenter');
-        $this->depends = array('modSociete', 'modCommande', 'modExpedition', 'modProjet');
+        $this->depends = array('modSociete', 'modCommande', 'modFacture', 'modFournisseur', 'modBanque', 'modExpedition', 'modProjet');
         $this->requiredby = array();
         $this->phpmin = array(7, 2);
         $this->need_dolibarr_version = array(23, 0);
@@ -70,6 +70,48 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->menu[$r++] = array(
             'fk_menu' => 'fk_mainmenu=chinaplanetcustomercenter',
             'type' => 'left',
+            'titre' => 'Operations Center',
+            'mainmenu' => 'chinaplanetcustomercenter',
+            'leftmenu' => 'operations_center',
+            'url' => '/custom/chinaplanetcustomercenter/admin/operations.php',
+            'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
+            'position' => 92,
+            'enabled' => '$conf->chinaplanetcustomercenter->enabled && empty($user->socid)',
+            'perms' => '$user->hasRight("chinaplanetcustomercenter","write") || !empty($user->admin)',
+            'user' => 0,
+        );
+
+        $this->menu[$r++] = array(
+            'fk_menu' => 'fk_mainmenu=chinaplanetcustomercenter',
+            'type' => 'left',
+            'titre' => 'Customer Finance',
+            'mainmenu' => 'chinaplanetcustomercenter',
+            'leftmenu' => 'customer_finance',
+            'url' => '/custom/chinaplanetcustomercenter/admin/financial.php',
+            'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
+            'position' => 95,
+            'enabled' => '$conf->chinaplanetcustomercenter->enabled && empty($user->socid)',
+            'perms' => '$user->hasRight("chinaplanetcustomercenter","write") || !empty($user->admin)',
+            'user' => 0,
+        );
+
+        $this->menu[$r++] = array(
+            'fk_menu' => 'fk_mainmenu=chinaplanetcustomercenter',
+            'type' => 'left',
+            'titre' => 'Export Documents',
+            'mainmenu' => 'chinaplanetcustomercenter',
+            'leftmenu' => 'export_documents',
+            'url' => '/custom/chinaplanetcustomercenter/admin/export_document.php',
+            'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
+            'position' => 97,
+            'enabled' => '$conf->chinaplanetcustomercenter->enabled && empty($user->socid)',
+            'perms' => '$user->hasRight("chinaplanetcustomercenter","write") || !empty($user->admin)',
+            'user' => 0,
+        );
+
+        $this->menu[$r++] = array(
+            'fk_menu' => 'fk_mainmenu=chinaplanetcustomercenter',
+            'type' => 'left',
             'titre' => 'Admin Dashboard',
             'mainmenu' => 'chinaplanetcustomercenter',
             'leftmenu' => 'admin_dashboard',
@@ -101,7 +143,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             'titre' => 'Shipment Tracking',
             'mainmenu' => 'chinaplanetcustomercenter',
             'leftmenu' => 'shipment_tracking',
-            'url' => '/custom/chinaplanetcustomercenter/chinaplanetlogistics/index.php',
+            'url' => '/custom/chinaplanetlogistics/index.php',
             'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
             'position' => 110,
             'enabled' => '$conf->chinaplanetcustomercenter->enabled',
@@ -143,7 +185,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             'titre' => 'New Shipment',
             'mainmenu' => 'chinaplanetcustomercenter',
             'leftmenu' => 'new_shipment',
-            'url' => '/custom/chinaplanetcustomercenter/chinaplanetlogistics/card.php?action=create',
+            'url' => '/custom/chinaplanetlogistics/card.php?action=create',
             'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
             'position' => 200,
             'enabled' => '$conf->chinaplanetcustomercenter->enabled',
@@ -196,6 +238,11 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
 
     public function init($options = '')
     {
+        $result = $this->_load_tables('/chinaplanetcustomercenter/sql/');
+        if ($result <= 0) {
+            return $result;
+        }
+
         $cpExists = $this->db->query("SHOW TABLES LIKE '".MAIN_DB_PREFIX."cpkanban_column'");
         if (!$cpExists || $this->db->num_rows($cpExists) === 0) {
             $result = $this->_load_tables('/chinaplanetcustomercenter/cpkanban/sql/');
