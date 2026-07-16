@@ -15,6 +15,10 @@ foreach (array('dashboard','portal','tracking','shipments','documents','export',
     shellAssert(strpos($helper, "'".$key."'=>array(") !== false, 'shared navigation contains '.$key);
 }
 shellAssert(strpos($helper, "'/chinaplanetlogistics/card.php'") !== false, 'shared navigation contains new shipment action');
+shellAssert(strpos($helper, 'class="cpad-nav-toggle"') !== false, 'shared navigation has an accessible mobile menu button');
+shellAssert(strpos($helper, 'aria-expanded="false"') !== false, 'mobile menu exposes its collapsed state');
+shellAssert(strpos($helper, 'class="cpad-nav-links"') !== false, 'shared navigation groups links for the responsive menu');
+shellAssert(strpos($helper, 'aria-current="page"') !== false, 'shared navigation identifies the current page');
 
 $pages = array(
     'chinaplanetcustomercenter/board.php'=>"cpcc_admin_shell_open('portal'",
@@ -56,6 +60,8 @@ shellAssert(strpos($shipmentList, 'if ($is_external) cpcc_portal_navigation') !=
 
 $adminCss = file_get_contents($root.'/chinaplanetcustomercenter/css/admin_dashboard.css');
 shellAssert(strpos($adminCss, '#id-left{display:none!important') !== false, 'shared shell hides the legacy Dolibarr left menu');
+shellAssert(strpos($adminCss, '.cpad-nav.is-open .cpad-nav-links{display:grid}') !== false, 'mobile navigation opens as a touch-friendly grid');
+shellAssert(strpos($adminCss, '@media(max-width:360px){.cpad-nav-links{grid-template-columns:1fr}') !== false, 'mobile navigation falls back to one column on narrow screens');
 $orders = file_get_contents($root.'/chinaplanetcustomercenter/orders.php');
 shellAssert(strpos($orders, "/chinaplanetcustomercenter/order.php") !== false, 'order rows stay inside the customer center');
 $operations = file_get_contents($root.'/chinaplanetcustomercenter/admin/operations.php');
