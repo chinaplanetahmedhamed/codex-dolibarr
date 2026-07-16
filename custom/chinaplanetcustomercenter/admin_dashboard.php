@@ -300,6 +300,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <div class="cpad-quick-grid">
       <a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?action=create',1); ?>"><span class="fas fa-plus-circle"></span><b>New Shipment</b><small>شحنة جديدة</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetoperations/index.php',1); ?>"><span class="fas fa-route"></span><b>Internal Operations</b><small>مركز العمليات الداخلي</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/sop/index.php',1); ?>"><span class="fas fa-book-open"></span><b>SOP Library</b><small>مكتبة إجراءات التشغيل</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b>New Shipping Booking</b><small>حجز شحن جديد</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/board.php',1); ?>"><span class="fas fa-tasks"></span><b>Internal Tasks</b><small>المهام الداخلية</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/operations.php',1); ?>"><span class="fas fa-project-diagram"></span><b>Customer Project Operations</b><small>عمليات مشاريع العملاء</small></a>

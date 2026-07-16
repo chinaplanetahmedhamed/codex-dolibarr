@@ -13,7 +13,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.1.0';
+        $this->version = '2.2.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
@@ -54,6 +54,15 @@ class modChinaPlanetOperations extends DolibarrModules
             'position'=>90, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
             'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")',
             'user'=>0, 'picto'=>'fa-route',
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'0', 'type'=>'top', 'titre'=>'SopLibrary',
+            'mainmenu'=>'chinaplanetsops', 'leftmenu'=>'0',
+            'url'=>'/custom/chinaplanetoperations/sop/index.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>91, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
+            'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")',
+            'user'=>0, 'picto'=>'fa-book-open',
         );
         $this->menu[$r++] = array(
             'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
