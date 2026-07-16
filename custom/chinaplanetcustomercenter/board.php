@@ -5,6 +5,7 @@ require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once __DIR__.'/lib/portal.lib.php';
 require_once __DIR__.'/lib/financial.lib.php';
 require_once __DIR__.'/lib/export.lib.php';
+require_once __DIR__.'/lib/operation_reports.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 
 cpcc_portal_require_access($user);
@@ -34,6 +35,7 @@ $projectsActive = 0;
 $projectsTotal = 0;
 $invoiceTotal = 0;
 $exportDocumentTotal = 0;
+$operationReportTotal = 0;
 if ($socid > 0) {
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut<4");
     if ($resql && ($obj=$db->fetch_object($resql))) $shipActive=(int)$obj->nb;
@@ -52,6 +54,10 @@ if ($socid > 0) {
     if (cpcc_export_schema_ready($db)) {
         $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."cpcc_export_document WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND status=1 AND customer_visible=1");
         if ($resql && ($obj=$db->fetch_object($resql))) $exportDocumentTotal=(int)$obj->nb;
+    }
+    if (cpcc_operation_reports_schema_ready($db)) {
+        $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND status=1 AND customer_visible=1");
+        if ($resql && ($obj=$db->fetch_object($resql))) $operationReportTotal=(int)$obj->nb;
     }
 }
 
@@ -85,6 +91,7 @@ else cpcc_admin_shell_open('portal', 'Portal Home / بوابة العميل', '�
       <a href="<?php echo dol_escape_htmltag($activeProjectsUrl); ?>" class="cpcc-card"><span>المشاريع / Projects</span><strong><?php echo $projectsActive; ?> <em>نشطة</em></strong><small><?php echo $projectsActive; ?> Active · <?php echo $projectsTotal; ?> Total</small></a>
       <a href="<?php echo dol_escape_htmltag($invoicesUrl); ?>" class="cpcc-card"><span>فواتير خدمات Vision</span><strong><?php echo $invoiceTotal; ?></strong><small>Service invoices</small></a>
       <a href="<?php echo dol_escape_htmltag($exportDocumentsUrl); ?>" class="cpcc-card"><span>مستندات التصدير</span><strong><?php echo $exportDocumentTotal; ?></strong><small>Commercial invoices &amp; packing lists</small></a>
+      <a href="<?php echo dol_escape_htmltag(cpcc_portal_scoped_url('/chinaplanetcustomercenter/operation_reports.php',$is_external,$socid)); ?>" class="cpcc-card"><span>تقارير الخدمات</span><strong><?php echo $operationReportTotal; ?></strong><small>QC &amp; factory audit reports</small></a>
     </section>
 
     <section class="cpcc-section-head"><div><h2>الحساب حسب العملة</h2><p>لا يتم جمع العملات المختلفة دون تحويل مسجل.</p></div><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/balance.php',1).($internalQuery!==''?'?socid='.$socid:''); ?>">فتح كشف الحساب ←</a></section>

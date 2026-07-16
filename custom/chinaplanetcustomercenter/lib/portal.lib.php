@@ -59,6 +59,7 @@ function cpcc_portal_navigation($user, $active = '')
         'funding' => array('التمويل المطلوب', '/chinaplanetcustomercenter/funding.php'),
         'documents' => array('المستندات', '/chinaplanetcustomercenter/documents.php'),
         'commercial_documents' => array('مستندات التصدير', '/chinaplanetcustomercenter/commercial_documents.php'),
+        'reports' => array('تقارير الخدمات', '/chinaplanetcustomercenter/operation_reports.php'),
         'profile' => array('الملف الشخصي', '/chinaplanetcustomercenter/profile.php'),
     );
 
