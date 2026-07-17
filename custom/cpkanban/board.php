@@ -6,10 +6,7 @@
  */
 @error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
 
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/lib/main.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
@@ -90,7 +87,7 @@ if ($is_external) {
         if ($rsoc && ($osoc = $db->fetch_object($rsoc))) $custName = $osoc->nom;
     }
     print '<div class="cpk-customer-hero">';
-    print '<div class="cpk-hero-brand"><span class="cpk-hero-dot">🌏</span><div><h2>مركز العميل — '.dol_escape_htmltag($custName).'</h2><p>من هنا تتابع مشاريعك، الشحنات، الفواتير، الطلبات، والرصيد. اضغط على أي بطاقة مشروع لفتح التفاصيل، ثم انتقل منها إلى التتبع الكامل أو الصفحات الأصلية داخل Dolibarr.</p></div></div>';
+    print '<div class="cpk-hero-brand"><span class="cpk-hero-dot">🌏</span><div><h2>مركز العميل — '.dol_escape_htmltag($custName).'</h2><p>من هنا تتابع مشاريعك، الشحنات، الفواتير، الطلبات، والرصيد. اضغط على أي بطاقة مشروع لفتح التفاصيل، ثم انتقل منها إلى التتبع الكامل أو السجلات المتقدمة داخل Vision System.</p></div></div>';
     print '<div class="cpk-hero-stats">';
     print '<div class="cpk-hero-stat"><b>'.(int)$customerStats['projects'].'</b><span>مشاريع ظاهرة</span></div>';
     print '<div class="cpk-hero-stat"><b>'.(int)$customerStats['shipments'].'</b><span>شحنات نشطة</span></div>';

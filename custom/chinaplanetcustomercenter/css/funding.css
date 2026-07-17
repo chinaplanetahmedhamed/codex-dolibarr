@@ -1,0 +1,43 @@
+.cpcc-card.services {
+  border-top: 4px solid #6d5cc3;
+}
+
+.cpcc-card.invoices {
+  border-top: 4px solid #2775a8;
+}
+
+.cpcc-card.required {
+  border-top: 4px solid #b5362f;
+  background: linear-gradient(145deg, #fff, #fff5f3);
+}
+
+.cpcc-card.required strong {
+  color: #9d2d27;
+}
+
+.cpcc-funding-cards {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.cpcc-formula {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #d9e5e9;
+  border-radius: 14px;
+  background: #f5f9fa;
+  color: #244454;
+}
+
+.cpcc-formula span {
+  color: #b17d23;
+  font-size: 1.2rem;
+}
+
+.cpcc-formula strong {
+  color: #9d2d27;
+}

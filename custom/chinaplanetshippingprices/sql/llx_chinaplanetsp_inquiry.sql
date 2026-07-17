@@ -1,0 +1,20 @@
+CREATE TABLE llx_chinaplanetsp_inquiry (
+  rowid bigint AUTO_INCREMENT PRIMARY KEY,
+  entity integer NOT NULL DEFAULT 1,
+  ref varchar(32) NOT NULL,
+  fk_soc integer NULL,
+  channel varchar(24) NOT NULL DEFAULT 'dolibarr',
+  request_json mediumtext NOT NULL,
+  result_json mediumtext NOT NULL,
+  currency_code char(3) NOT NULL,
+  subtotal decimal(24,8) NOT NULL DEFAULT 0,
+  additions decimal(24,8) NOT NULL DEFAULT 0,
+  total_amount decimal(24,8) NOT NULL DEFAULT 0,
+  status smallint NOT NULL DEFAULT 1,
+  fk_user_creat integer NOT NULL,
+  date_creation datetime NOT NULL,
+  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_chinaplanetsp_inquiry_ref (entity, ref),
+  KEY idx_chinaplanetsp_inquiry_soc (entity, fk_soc, date_creation),
+  KEY idx_chinaplanetsp_inquiry_user (entity, fk_user_creat, date_creation)
+) ENGINE=innodb;

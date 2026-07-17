@@ -1,0 +1,20 @@
+CREATE TABLE llx_cpo_message (
+  rowid bigint AUTO_INCREMENT PRIMARY KEY,
+  entity integer NOT NULL DEFAULT 1,
+  fk_operation bigint NOT NULL,
+  channel varchar(16) NOT NULL DEFAULT 'email',
+  direction varchar(12) NOT NULL DEFAULT 'outbound',
+  sender varchar(255) NULL,
+  recipients text NULL,
+  subject varchar(255) NULL,
+  body mediumtext NULL,
+  status varchar(16) NOT NULL DEFAULT 'draft',
+  external_message_id varchar(255) NULL,
+  error_message text NULL,
+  fk_user_creat integer NOT NULL,
+  date_sent datetime NULL,
+  date_creation datetime NOT NULL,
+  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_cpo_message_operation (entity, fk_operation, date_creation),
+  KEY idx_cpo_message_status (entity, status)
+) ENGINE=innodb;

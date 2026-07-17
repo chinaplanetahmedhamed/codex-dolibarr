@@ -1,81 +1,58 @@
 <?php
-require '../../main.inc.php';
+if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
+require_once __DIR__.'/lib/main.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
-require_once DOL_DOCUMENT_ROOT.'/compta/facture/class/facture.class.php';
-require_once DOL_DOCUMENT_ROOT.'/compta/paiement/class/paiement.class.php';
-require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
 
-llxHeader('', 'Financial Reports / التقارير المالية');
-
-$socid = $user->socid;
-$is_external = ($socid > 0);
-
-if (!$is_external && GETPOST('socid', 'int')) {
-    $socid = GETPOST('socid', 'int');
-}
-
-if ($socid <= 0 && $is_external) {
-    accessforbidden();
-}
+cpcc_portal_require_access($user);
+$scope = cpcc_portal_user_scope($user);
+$isExternal = !empty($scope['is_external']);
+$socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
+if ($isExternal && $socid <= 0) accessforbidden();
 
 $soc = new Societe($db);
-if ($socid > 0) {
-    $soc->fetch($socid);
-}
+if ($socid > 0) $soc->fetch($socid);
 
-print load_fiche_titre('Financial Status / الحالة المالية: ' . ($socid > 0 ? $soc->nom : 'All Customers'));
-print '<div class="info">This page is portal-safe and only shows customer-scoped summaries.</div>';
-
-// Calculate Totals
-$sql = "SELECT SUM(total_ttc) as total_invoiced FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut IN (1,2)";
-if ($socid > 0) $sql .= " AND fk_soc = " . $socid;
+$sql = "SELECT COALESCE(SUM(total_ttc),0) total_invoiced FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut IN (1,2)";
+if ($socid > 0) $sql .= " AND fk_soc=".(int)$socid;
 $resql = $db->query($sql);
-$obj = $db->fetch_object($resql);
-$total_invoiced = $obj->total_invoiced;
+$obj = $resql ? $db->fetch_object($resql) : null;
+$totalInvoiced = $obj ? (float)$obj->total_invoiced : 0;
 
-$sql = "SELECT SUM(p.amount) as total_paid FROM ".MAIN_DB_PREFIX."paiement as p";
-$sql .= " JOIN ".MAIN_DB_PREFIX."paiement_facture as pf ON p.rowid = pf.fk_paiement";
-$sql .= " JOIN ".MAIN_DB_PREFIX."facture as f ON pf.fk_facture = f.rowid";
-$sql .= " WHERE f.fk_statut IN (1,2)";
-if ($socid > 0) $sql .= " AND f.fk_soc = " . $socid;
+$sql = "SELECT COALESCE(SUM(pf.amount),0) total_paid FROM ".MAIN_DB_PREFIX."paiement_facture pf JOIN ".MAIN_DB_PREFIX."paiement p ON p.rowid=pf.fk_paiement JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture WHERE f.fk_statut IN (1,2)";
+if ($socid > 0) $sql .= " AND f.fk_soc=".(int)$socid;
 $resql = $db->query($sql);
-$obj = $db->fetch_object($resql);
-$total_paid = $obj->total_paid;
+$obj = $resql ? $db->fetch_object($resql) : null;
+$totalPaid = $obj ? (float)$obj->total_paid : 0;
+$balance = $totalInvoiced - $totalPaid;
 
-$balance = $total_invoiced - $total_paid;
+$css = $isExternal ? array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css') : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'));
+llxHeader('', 'Financial Reports / التقارير المالية', '', '', 0, 0, array(), $css);
+if ($isExternal) cpcc_portal_navigation($user, 'invoices');
+else cpcc_admin_shell_open('financial', 'Financial Reports / التقارير المالية', 'ملخص الفواتير والمدفوعات حسب العميل', 'fa-chart-pie', array('socid'=>$socid));
 
-print '<div class="div-table-responsive">';
-print '<table class="border" width="100%">';
-print '<tr style="font-size: 1.2em; font-weight: bold;">';
-print '<td width="33%" class="center">Total Invoiced / إجمالي الفواتير<br><span style="color: #2980b9;">'.price($total_invoiced).'</span></td>';
-print '<td width="33%" class="center">Total Paid / إجمالي المدفوعات<br><span style="color: #27ae60;">'.price($total_paid).'</span></td>';
-print '<td width="33%" class="center">Balance Due / الرصيد المتبقي<br><span style="color: '.($balance > 0 ? '#c0392b' : '#27ae60').';">'.price($balance).'</span></td>';
-print '</tr>';
-print '</table>';
-print '</div>';
+print '<main class="cpcc-dashboard" dir="rtl">';
+print '<header class="cpcc-page-head"><div><span class="cpcc-eyebrow">FINANCIAL REPORT</span><h1>الحالة المالية / Financial Status</h1><p>'.dol_escape_htmltag($socid > 0 ? $soc->name : 'All Customers / كل العملاء').'</p></div></header>';
+print '<section class="cpcc-financial-cards">';
+print '<div class="cpcc-card invoices"><span>إجمالي الفواتير / Total invoiced</span><strong>'.price($totalInvoiced).'</strong></div>';
+print '<div class="cpcc-card received"><span>إجمالي المدفوع / Total paid</span><strong>'.price($totalPaid).'</strong></div>';
+print '<div class="cpcc-card required"><span>الرصيد المستحق / Balance due</span><strong>'.price($balance).'</strong></div>';
+print '</section>';
 
-print '<br>';
-
-// List Invoices
-print '<h3>Invoices / الفواتير</h3>';
-$sql = "SELECT rowid, ref, total_ttc, datef, fk_statut FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut IN (1,2)";
-if ($socid > 0) $sql .= " AND fk_soc = " . $socid;
+print '<section class="cpcc-section-head"><div><h2>الفواتير / Invoices</h2></div></section>';
+$sql = "SELECT rowid,ref,total_ttc,datef,fk_statut FROM ".MAIN_DB_PREFIX."facture WHERE fk_statut IN (1,2)";
+if ($socid > 0) $sql .= " AND fk_soc=".(int)$socid;
 $sql .= " ORDER BY datef DESC";
-
 $resql = $db->query($sql);
-print '<table class="tagtable liste">';
-print '<tr class="liste_titre"><td>Ref</td><td>Date</td><td align="right">Amount</td><td align="center">Status</td><td align="center">Open</td></tr>';
-if ($resql) {
+print '<div class="cpcc-table-wrap"><table class="cpcc-table"><thead><tr><th>المرجع / Ref</th><th>التاريخ / Date</th><th>القيمة / Amount</th><th>الحالة / Status</th><th>التفاصيل / Details</th></tr></thead><tbody>';
+if ($resql && $db->num_rows($resql) > 0) {
     while ($obj = $db->fetch_object($resql)) {
-        print '<tr class="oddeven">';
-        print '<td>'.$obj->ref.'</td>';
-        print '<td>'.dol_print_date($db->jdate($obj->datef), 'day').'</td>';
-        print '<td align="right">'.price($obj->total_ttc).'</td>';
-        print '<td align="center">'.($obj->fk_statut == 2 ? 'Paid' : 'Unpaid').'</td>';
-        print '<td align="center"><a href="'.dol_buildpath('/chinaplanetcustomercenter/invoices.php', 1).'">View</a></td>';
-        print '</tr>';
+        $url = cpcc_portal_scoped_url('/chinaplanetcustomercenter/invoice.php',$isExternal,$socid,array('id'=>(int)$obj->rowid));
+        print '<tr><td>'.dol_escape_htmltag($obj->ref).'</td><td>'.dol_escape_htmltag(dol_print_date($db->jdate($obj->datef),'day')).'</td><td>'.price($obj->total_ttc).'</td><td>'.($obj->fk_statut==2?'مدفوعة / Paid':'مفتوحة / Unpaid').'</td><td><a href="'.dol_escape_htmltag($url).'">عرض / View</a></td></tr>';
     }
-}
-print '</table>';
+} else print '<tr><td colspan="5">لا توجد فواتير / No invoices.</td></tr>';
+print '</tbody></table></div></main>';
 
+if (!$isExternal) cpcc_admin_shell_close();
 llxFooter();

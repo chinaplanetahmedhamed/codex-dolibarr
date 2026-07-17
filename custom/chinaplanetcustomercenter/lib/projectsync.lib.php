@@ -139,7 +139,7 @@ if (!function_exists('cpcc_project_sync_kanban_card')) {
         $card->date_deadline = $dateEnd;
         $card->cust_visible = ($socid > 0 ? 1 : 0);
         $card->fk_user_assign = !empty($card->fk_user_assign) ? $card->fk_user_assign : null;
-        $card->note_public = 'Auto-synced from Dolibarr project '.$ref;
+        $card->note_public = 'Auto-synced from Vision System project '.$ref;
         $card->note_private = '';
 
         if ($mode === 'delete' || $socid <= 0) {

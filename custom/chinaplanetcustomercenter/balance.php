@@ -1,48 +1,51 @@
 <?php
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
-
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
-
+require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once __DIR__.'/lib/portal.lib.php';
-
+require_once __DIR__.'/lib/financial.lib.php';
 cpcc_portal_require_access($user);
-$scope = cpcc_portal_user_scope($user);
-$socid = $scope['is_external'] ? (int) $scope['socid'] : GETPOSTINT('socid');
-
-llxHeader('', 'Balance / الرصيد');
-cpcc_portal_navigation($user, 'balance');
-
-print '<h2>Balance / الرصيد</h2>';
-print '<p>Customer-scoped balance summary based on invoices.</p>';
-
-if ($scope['is_external'] && $socid <= 0) {
-    print '<div class="warning">No linked customer account was found for this portal user.</div>';
-} else {
-    $sql = "SELECT COUNT(*) as nb, COALESCE(SUM(total_ttc),0) as total, COALESCE(SUM(CASE WHEN paye = 1 THEN total_ttc ELSE 0 END),0) as paid"
-         . " FROM ".MAIN_DB_PREFIX."facture";
-    if ($socid > 0) {
-        $sql .= " WHERE fk_soc = ".(int) $socid." AND fk_statut > 0";
-    } else {
-        $sql .= " WHERE fk_statut > 0";
-    }
-    $resql = $db->query($sql);
-    $obj = $resql ? $db->fetch_object($resql) : null;
-    $nb = $obj ? (int) $obj->nb : 0;
-    $total = $obj ? (float) $obj->total : 0;
-    $paid = $obj ? (float) $obj->paid : 0;
-    $due = max(0, $total - $paid);
-
-    print '<div class="summary" style="margin-top:15px">';
-    print '<div class="sc"><div class="n">'.cpcc_portal_money($total).'</div><div class="l">Invoiced</div></div>';
-    print '<div class="sc"><div class="n">'.cpcc_portal_money($paid).'</div><div class="l">Paid</div></div>';
-    print '<div class="sc"><div class="n">'.cpcc_portal_money($due).'</div><div class="l">Due</div></div>';
-    print '<div class="sc"><div class="n">'.(int) $nb.'</div><div class="l">Invoices</div></div>';
-    print '</div>';
-
-    print '<p>Balance shown here is derived from invoice totals and payment status. For a full accounting ledger view, use the internal admin session.</p>';
-}
-
-llxFooter();
+$scope=cpcc_portal_user_scope($user);
+$isExternal=!empty($scope['is_external']);
+$socid=$scope['is_external']?(int)$scope['socid']:GETPOSTINT('socid');
+$currencyFallback=cpcc_financial_currency(!empty($conf->currency)?$conf->currency:'USD');
+$currency=cpcc_financial_currency(GETPOST('currency','alpha'), '');
+$view=GETPOST('view','alpha');
+$rows=$socid>0?cpcc_financial_statement($db,$socid,$currencyFallback):array();
+if ($currency!=='') $rows=array_values(array_filter($rows,function($row)use($currency){return $row['currency']===$currency;}));
+if ($view==='received') $rows=array_values(array_filter($rows,function($row){return $row['direction']==='C'&&$row['type']!=='fx_in';}));
+if ($view==='spent') $rows=array_values(array_filter($rows,function($row){return $row['direction']==='D'&&$row['type']!=='fx_out';}));
+$summary=$socid>0?cpcc_financial_summary($db,$socid,$currencyFallback):array();
+$usdTotal=cpcc_financial_total_usd($summary);
+$usdRateDate=function_exists('getDolGlobalString')?getDolGlobalString('CHINAPLANETCUSTOMERCENTER_USD_RATE_DATE'):'';
+llxHeader('', 'Customer Statement / كشف الحساب', '', '', 0, 0, array(), $isExternal?array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/funding.css'):array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/funding.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
+if($isExternal) cpcc_portal_navigation($user,'balance'); else cpcc_admin_shell_open('portal','Customer Statement / كشف حساب العميل','كل الإيداعات والمصروفات والأرصدة حسب العملة','fa-file-invoice-dollar',array('socid'=>$socid));
+?>
+<main class="cpcc-dashboard" dir="rtl"><header class="cpcc-page-head"><div><span class="cpcc-eyebrow">FINANCIAL STATEMENT</span><h1>كشف حساب العميل</h1><p>كل رصيد محسوب داخل عملته الأصلية.</p></div></header>
+<?php if ($socid<=0) { ?><div class="warning">لا يوجد عميل محدد.</div><?php } else { ?>
+<section class="cpcc-usd-total" aria-label="إجمالي الرصيد بالدولار">
+<div><span>Total Balance in USD</span><h2><?php echo cpcc_portal_money($usdTotal['total']); ?> <small>USD</small></h2><p>إجمالي الرصيد بالدولار الأمريكي</p></div>
+<div class="cpcc-usd-breakdown">
+<?php foreach($usdTotal['converted'] as $code=>$usdValue){ $available=$summary[$code]['available']; $rate=$usdTotal['rates'][$code]; ?>
+<span><b><?php echo dol_escape_htmltag($code); ?></b> <?php echo cpcc_portal_money($available); ?> <em>→</em> <?php echo cpcc_portal_money($usdValue); ?> USD<?php if($code!=='USD'){ ?><small>1 USD = <?php echo dol_escape_htmltag((string)$rate).' '.dol_escape_htmltag($code); ?></small><?php } ?></span>
+<?php } ?>
+<?php if(!empty($usdTotal['missing'])){ ?><span class="cpcc-rate-warning">غير مشمول لعدم وجود سعر تقييم: <?php echo dol_escape_htmltag(implode(', ',$usdTotal['missing'])); ?></span><?php } ?>
+<?php if($usdRateDate!==''){ ?><span class="cpcc-rate-date">تاريخ أسعار التقييم: <?php echo dol_escape_htmltag(dol_print_date($usdRateDate,'day')); ?></span><?php } ?>
+</div>
+</section>
+<div class="cpcc-balance-pills"><?php $scopeQuery=empty($scope['is_external'])?'socid='.(int)$socid.'&':''; foreach($summary as $code=>$totals){ ?><a class="<?php echo $currency===$code?'active':''; ?>" href="?<?php echo $scopeQuery; ?>currency=<?php echo urlencode($code); ?>"><b><?php echo dol_escape_htmltag($code); ?></b><span><?php echo cpcc_portal_money($totals['available']); ?></span></a><?php } ?><a href="?<?php echo rtrim($scopeQuery,'&'); ?>">كل العملات</a></div>
+<section class="cpcc-section-head"><div><h2>التمويل المطلوب حسب العملة</h2><p>المتبقي للموردين + الخدمات المعتمدة + الفواتير غير المدفوعة − الرصيد المتاح.</p></div><a href="<?php echo dol_escape_htmltag(cpcc_portal_scoped_url('/chinaplanetcustomercenter/funding.php',!empty($scope['is_external']),(int)$socid)); ?>">عرض التفاصيل ←</a></section>
+<?php foreach($summary as $code=>$totals){ if($currency!==''&&$currency!==$code)continue; ?>
+<section class="cpcc-currency-block"><h3><?php echo dol_escape_htmltag($code); ?></h3><div class="cpcc-financial-cards cpcc-funding-cards">
+<div class="cpcc-card obligations"><span>الموردون</span><strong><?php echo cpcc_portal_money($totals['supplier_remaining']); ?> <em><?php echo dol_escape_htmltag($code); ?></em></strong><small>Supplier balances</small></div>
+<div class="cpcc-card services"><span>الخدمات المتوقعة</span><strong><?php echo cpcc_portal_money($totals['future_services']); ?> <em><?php echo dol_escape_htmltag($code); ?></em></strong><small>Approved future services</small></div>
+<div class="cpcc-card invoices"><span>فواتير غير مدفوعة</span><strong><?php echo cpcc_portal_money($totals['unpaid_invoices']); ?> <em><?php echo dol_escape_htmltag($code); ?></em></strong><small>Unpaid Vision invoices</small></div>
+<div class="cpcc-card required"><span>المبلغ الإضافي المطلوب</span><strong><?php echo cpcc_portal_money($totals['required_funding']); ?> <em><?php echo dol_escape_htmltag($code); ?></em></strong><small>Additional funds required</small></div>
+</div></section>
+<?php } ?>
+<div class="cpcc-table-wrap"><table class="cpcc-table statement"><thead><tr><th>التاريخ</th><th>نوع الحركة</th><th>الوصف / المرجع</th><th>مدين</th><th>دائن</th><th>الرصيد</th><th>العملة/التحويل</th></tr></thead><tbody>
+<?php if(empty($rows)){ ?><tr><td colspan="7">لا توجد حركات مطابقة.</td></tr><?php } ?>
+<?php foreach($rows as $row){ ?><tr><td><?php echo dol_escape_htmltag(dol_print_date($row['date'],'day')); ?></td><td><?php echo dol_escape_htmltag(cpcc_financial_type_label($row['type'])); ?></td><td><?php echo dol_escape_htmltag($row['description']); ?><?php if($row['reference']!==''){ ?><small><?php echo dol_escape_htmltag($row['reference']); ?></small><?php } ?></td><td class="money debit"><?php echo $row['direction']==='D'?cpcc_portal_money($row['amount']):'—'; ?></td><td class="money credit"><?php echo $row['direction']==='C'?cpcc_portal_money($row['amount']):'—'; ?></td><td class="money"><b><?php echo cpcc_portal_money($row['balance']); ?></b></td><td><b><?php echo dol_escape_htmltag($row['currency']); ?></b><?php if(!empty($row['exchange_rate'])){ ?><small>Rate: <?php echo dol_escape_htmltag((string)$row['exchange_rate']); ?></small><?php } ?><?php if(!empty($row['allocated_currency'])){ ?><small>Allocated: <?php echo cpcc_portal_money($row['allocated_amount']).' '.dol_escape_htmltag($row['allocated_currency']); ?></small><?php } ?></td></tr><?php } ?>
+</tbody></table></div>
+<p class="cpcc-note">إجمالي USD هو قيمة عرض فقط حسب أسعار التقييم الموضحة أعلاه؛ ولا يغيّر أرصدة العملات الأصلية أو حركات التحويل المسجلة.</p>
+<?php } ?></main><?php if(!$isExternal)cpcc_admin_shell_close();llxFooter();

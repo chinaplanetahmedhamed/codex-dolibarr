@@ -2,7 +2,7 @@
 /**
  * China Planet Kanban - Setup page
  */
-require '../../../main.inc.php';
+require_once __DIR__.'/../lib/main.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 
 $langs->loadLangs(array("admin", "cpkanban@cpkanban"));

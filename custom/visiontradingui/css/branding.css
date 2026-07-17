@@ -1,0 +1,32 @@
+/* Vision System white-label assets. Selectors are deliberately scoped so that
+ * customer and supplier logos inside normal white content are never changed. */
+#img_logo {
+	content: url('../img/vision-system-logo.svg') !important;
+	width: min(360px, 78vw) !important;
+	height: auto !important;
+	max-height: 150px !important;
+	object-fit: contain;
+}
+
+.menulogocontainer img.mycompany {
+	content: url('../img/vision-system-mark.svg') !important;
+	width: 42px !important;
+	height: 42px !important;
+	max-width: 42px !important;
+	max-height: 42px !important;
+	object-fit: contain;
+}
+
+@media (max-width: 570px) {
+	#img_logo {
+		width: min(300px, 84vw) !important;
+		max-height: 120px !important;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	#img_logo,
+	.menulogocontainer img.mycompany {
+		transition: none !important;
+	}
+}
