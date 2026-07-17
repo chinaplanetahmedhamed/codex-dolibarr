@@ -95,7 +95,7 @@ print '</tr>';
 $sql = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.date_eta, t.freetime_end, t.fk_statut, s.nom as customer_name, p.title as project_title, p.ref as project_ref";
 $sql.= " FROM ".MAIN_DB_PREFIX."chinaplanetlogistics as t";
 $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."societe as s ON t.fk_soc = s.rowid";
-$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."projet as p ON t.fk_project = p.rowid";
+$sql.= " LEFT JOIN ".MAIN_DB_PREFIX."projet as p ON p.rowid=t.fk_project AND p.entity=t.entity AND p.fk_soc=t.fk_soc";
 $sql.= " WHERE t.entity = ".(int) $conf->entity;
 
 // STRICT FILTERING: external users only see their company's data

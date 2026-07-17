@@ -65,6 +65,17 @@ function m003RemoveTree($path)
     rmdir($path);
 }
 
+function m003SyntheticProjectJoin(array $shipment, array $project)
+{
+    if ((int) $project['rowid'] !== (int) $shipment['fk_project']
+        || (int) $project['entity'] !== (int) $shipment['entity']
+        || (int) $project['fk_soc'] !== (int) $shipment['fk_soc']) {
+        return array('project_ref' => null, 'project_title' => null);
+    }
+
+    return array('project_ref' => $project['ref'], 'project_title' => $project['title']);
+}
+
 $repo = dirname(__DIR__, 2);
 $tmpRoot = sys_get_temp_dir().'/m003-'.bin2hex(random_bytes(6));
 define('DOL_DATA_ROOT', $tmpRoot);
@@ -97,6 +108,17 @@ try {
     $other = cpcc_portal_authorized_shipment($db, $customerB, 101, 10);
     m003Assert($other === null && strpos($db->lastSql, 'fk_soc=20') !== false, 'Customer B cannot resolve Customer A synthetic shipment');
 
+    $shipmentA = array('fk_project' => 501, 'entity' => 1, 'fk_soc' => 10);
+    $ownedProject = array('rowid' => 501, 'entity' => 1, 'fk_soc' => 10, 'ref' => 'PROJECT-A', 'title' => 'Customer A Project');
+    $otherCustomerProject = array('rowid' => 501, 'entity' => 1, 'fk_soc' => 20, 'ref' => 'PROJECT-B', 'title' => 'Customer B Project');
+    $otherEntityProject = array('rowid' => 501, 'entity' => 2, 'fk_soc' => 10, 'ref' => 'PROJECT-E2', 'title' => 'Other Entity Project');
+    $ownedProjection = m003SyntheticProjectJoin($shipmentA, $ownedProject);
+    $otherCustomerProjection = m003SyntheticProjectJoin($shipmentA, $otherCustomerProject);
+    $otherEntityProjection = m003SyntheticProjectJoin($shipmentA, $otherEntityProject);
+    m003Assert($ownedProjection['project_ref'] === 'PROJECT-A' && $ownedProjection['project_title'] === 'Customer A Project', 'correctly owned project remains visible on the shipment');
+    m003Assert($otherCustomerProjection['project_ref'] === null && $otherCustomerProjection['project_title'] === null, 'mismatched-customer project contributes no project fields');
+    m003Assert($otherEntityProjection['project_ref'] === null && $otherEntityProjection['project_title'] === null, 'mismatched-entity project contributes no project fields');
+
     mkdir($tmpRoot.'/chinaplanetlogistics/ship-1', 0700, true);
     mkdir($tmpRoot.'/chinaplanetlogistics/ship-1-other', 0700, true);
     file_put_contents($tmpRoot.'/chinaplanetlogistics/ship-1/report.pdf', "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n");
@@ -125,6 +147,7 @@ try {
     $documents = file_get_contents($repo.'/custom/chinaplanetcustomercenter/documents.php');
     $download = file_get_contents($repo.'/custom/chinaplanetcustomercenter/download.php');
     $object = file_get_contents($repo.'/custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php');
+    $list = file_get_contents($repo.'/custom/chinaplanetlogistics/list.php');
 
     m003Assert(strpos($track, "define(\"NOLOGIN\"") === false && strpos($track, 'cpcc_portal_require_access') !== false, 'legacy tracking route requires Dolibarr authentication and rights');
     m003Assert(strpos($card, 'if (empty($user->id) || !$canread) accessforbidden();') !== false, 'direct shipment card denies internal users without read permission');
@@ -134,6 +157,7 @@ try {
     m003Assert(substr_count($documents, 't.entity=') >= 2 && strpos($download, 'cpcc_portal_authorized_shipment') !== false, 'document list and direct download enforce entity and shipment authorization');
     m003Assert(strpos($download, "if (!empty(\$scope['is_external'])) accessforbidden();") !== false, 'legacy files without customer-visibility evidence are denied externally');
     m003Assert(substr_count($object, 'AND entity = ".$this->activeEntity()') >= 2 && strpos($object, 'WHERE entity=".$this->activeEntity()') !== false, 'Logistics fetch/update/delete include active entity');
+    m003Assert(strpos($list, 'p.rowid=t.fk_project AND p.entity=t.entity AND p.fk_soc=t.fk_soc') !== false, 'Logistics list project join requires matching project id, entity and customer');
 
     print 'M003 synthetic portal hardening tests passed'.PHP_EOL;
 } finally {
