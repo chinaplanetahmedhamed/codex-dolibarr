@@ -8,6 +8,7 @@ require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once __DIR__.'/lib/portal.lib.php';
+require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
 cpcc_portal_require_access($user, array(
     array('chinaplanetcustomercenter', 'read'),
@@ -160,7 +161,7 @@ if ($is_external && $socid <= 0) {
             print '<td>'.dol_escape_htmltag($obj->container_no).'</td>';
             print '<td>'.dol_escape_htmltag($obj->bl_no).'</td>';
             print '<td>'.(!empty($obj->date_eta) ? dol_print_date($obj->date_eta, 'day') : '-').'</td>';
-            print '<td>'.dol_escape_htmltag((string) $obj->fk_statut).'</td>';
+            print '<td>'.dol_escape_htmltag(chinaplanetlogistics_status_label($obj->fk_statut)).'</td>';
             print '<td>';
             if (empty($docs)) {
                 $emptyMessage = $is_external ? 'No approved customer document is available.' : 'No files';

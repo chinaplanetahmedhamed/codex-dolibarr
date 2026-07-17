@@ -2,6 +2,7 @@
 
 require_once __DIR__.'/financial.lib.php';
 require_once __DIR__.'/export.lib.php';
+require_once __DIR__.'/../../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
 function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
 {
@@ -25,7 +26,7 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
 
     $shipmentCount = 0;
     $shipmentClosed = 0;
-    $res = $db->query("SELECT COUNT(*) total,SUM(CASE WHEN fk_statut>=4 THEN 1 ELSE 0 END) closed_count FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$GLOBALS['conf']->entity." AND fk_soc=".(int)$socid." AND fk_project=".(int)$projectid);
+    $res = $db->query("SELECT COUNT(*) total,SUM(CASE WHEN fk_statut IN (".chinaplanetlogistics_status_sql_list('terminal').") THEN 1 ELSE 0 END) closed_count FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$GLOBALS['conf']->entity." AND fk_soc=".(int)$socid." AND fk_project=".(int)$projectid);
     if ($res && ($obj=$db->fetch_object($res))) {$shipmentCount=(int)$obj->total;$shipmentClosed=(int)$obj->closed_count;}
 
     $documents = cpcc_export_documents($db,$socid,$projectid,0,true);

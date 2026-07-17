@@ -4,6 +4,7 @@
  * External user detection: $user->socid > 0 means external user (Dolibarr standard)
  */
 require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/chinaplanetlogistics.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
@@ -64,8 +65,6 @@ if ($canwrite) {
 if ($is_external) print load_fiche_titre('Shipment List / قائمة الشحنات', $newbtn, 'ship');
 else cpcc_admin_shell_open('shipments', 'Shipment List / قائمة الشحنات', 'البحث في الحاويات وبوالص الشحن ومواعيد الوصول', 'fa-list', array('socid'=>$socid));
 
-$statuslabels = array(0=>'Inquiry', 1=>'Booking', 2=>'On Vessel', 3=>'Arrived', 4=>'Closed');
-
 print '<form method="GET" action="'.$_SERVER["PHP_SELF"].'">';
 if ($statusFilter !== '') print '<input type="hidden" name="status" value="'.dol_escape_htmltag($statusFilter).'">';
 print '<div class="div-table-responsive">';
@@ -104,11 +103,11 @@ if ($socid > 0) {
 } elseif ($is_external) {
     $sql.= " AND 1=0";
 }
-if ($statusFilter === 'active') $sql.= " AND t.fk_statut < 4";
-elseif ($statusFilter === 'intransit') $sql.= " AND t.fk_statut IN (1,2)";
-elseif ($statusFilter === 'arriving') $sql.= " AND t.date_eta BETWEEN '".$db->escape(date('Y-m-d'))."' AND '".$db->escape(date('Y-m-d',strtotime('+14 days')))."' AND t.fk_statut<3";
-elseif ($statusFilter === 'arrived') $sql.= " AND t.fk_statut=3";
-elseif ($statusFilter === 'critical') $sql.= " AND t.freetime_end BETWEEN '".$db->escape(date('Y-m-d'))."' AND '".$db->escape(date('Y-m-d',strtotime('+7 days')))."' AND t.fk_statut<4";
+if ($statusFilter === 'active') $sql.= " AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
+elseif ($statusFilter === 'intransit') $sql.= " AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('in_transit').")";
+elseif ($statusFilter === 'arriving') $sql.= " AND t.date_eta BETWEEN '".$db->escape(date('Y-m-d'))."' AND '".$db->escape(date('Y-m-d',strtotime('+14 days')))."' AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
+elseif ($statusFilter === 'arrived') $sql.= " AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('arrived').")";
+elseif ($statusFilter === 'critical') $sql.= " AND t.freetime_end BETWEEN '".$db->escape(date('Y-m-d'))."' AND '".$db->escape(date('Y-m-d',strtotime('+7 days')))."' AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
 
 if ($search_container) $sql.= " AND t.container_no LIKE '%".$db->escape($search_container)."%'";
 if ($search_bl) $sql.= " AND t.bl_no LIKE '%".$db->escape($search_bl)."%'";
@@ -149,7 +148,7 @@ if ($resql) {
         print '<td class="center"><span style="display:inline-block;min-width:55px;padding:4px 8px;border-radius:12px;color:#fff;font-weight:bold;background:'.$eta_color.';">'.($eta_days !== null ? ($eta_days < 0 ? 'Arrived' : $eta_days.'d') : '-').'</span></td>';
         print '<td>'.($obj->freetime_end && $obj->freetime_end != '0000-00-00' ? $obj->freetime_end : '-').'</td>';
         print '<td class="center"><span style="display:inline-block;min-width:55px;padding:4px 8px;border-radius:12px;color:#fff;font-weight:bold;background:'.$free_color.';">'.($ft_days !== null ? $ft_days.'d' : '-').'</span></td>';
-        print '<td>'.(isset($statuslabels[$obj->fk_statut]) ? $statuslabels[$obj->fk_statut] : '-').'</td>';
+        print '<td>'.dol_escape_htmltag(chinaplanetlogistics_status_label($obj->fk_statut)).'</td>';
         if (!$is_external) {
             $cardurl = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid;
             print '<td class="center nowrap">';

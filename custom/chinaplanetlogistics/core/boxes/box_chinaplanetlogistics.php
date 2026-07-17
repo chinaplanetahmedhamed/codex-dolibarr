@@ -5,6 +5,7 @@
  * Fixed: Filters by fk_soc for external users (Dolibarr v23 compatible)
  */
 include_once DOL_DOCUMENT_ROOT.'/core/boxes/modules_boxes.php';
+require_once __DIR__.'/../../lib/chinaplanetlogistics.lib.php';
 
 class box_chinaplanetlogistics extends ModeleBoxes
 {
@@ -70,7 +71,7 @@ class box_chinaplanetlogistics extends ModeleBoxes
         // ── 1. Count by status ──────────────────────────────────────────────────
         $sql_counts = "SELECT fk_statut, COUNT(*) as cnt
                        FROM {$prefix}chinaplanetlogistics
-                       WHERE fk_statut NOT IN (5,6)".$where_soc."
+                       WHERE fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$where_soc."
                        GROUP BY fk_statut";
         $res = $this->db->query($sql_counts);
         $status_counts = array();
@@ -87,7 +88,7 @@ class box_chinaplanetlogistics extends ModeleBoxes
         // ── 2. ETA urgent: arriving within 7 days ──────────────────────────────
         $sql_urgent = "SELECT COUNT(*) as cnt
                        FROM {$prefix}chinaplanetlogistics
-                       WHERE fk_statut NOT IN (5,6)".$where_soc."
+                       WHERE fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$where_soc."
                          AND date_eta IS NOT NULL
                          AND date_eta >= CURDATE()
                          AND date_eta <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)";
@@ -100,7 +101,7 @@ class box_chinaplanetlogistics extends ModeleBoxes
         // ── 3. Free time critical: freetime_end within 5 days ──────────────────
         $sql_ft = "SELECT COUNT(*) as cnt
                    FROM {$prefix}chinaplanetlogistics
-                   WHERE fk_statut NOT IN (5,6)".$where_soc."
+                   WHERE fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$where_soc."
                      AND freetime_end IS NOT NULL
                      AND freetime_end >= CURDATE()
                      AND freetime_end <= DATE_ADD(CURDATE(), INTERVAL 5 DAY)";
@@ -113,7 +114,7 @@ class box_chinaplanetlogistics extends ModeleBoxes
         // ── 4. Free time overdue ────────────────────────────────────────────────
         $sql_overdue = "SELECT COUNT(*) as cnt
                         FROM {$prefix}chinaplanetlogistics
-                        WHERE fk_statut NOT IN (5,6)".$where_soc."
+                        WHERE fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$where_soc."
                           AND freetime_end IS NOT NULL
                           AND freetime_end < CURDATE()";
         $res4 = $this->db->query($sql_overdue);
@@ -128,7 +129,7 @@ class box_chinaplanetlogistics extends ModeleBoxes
                             DATEDIFF(date_eta, CURDATE())      AS eta_days_left,
                             DATEDIFF(freetime_end, CURDATE())  AS ft_days_left
                      FROM {$prefix}chinaplanetlogistics
-                     WHERE fk_statut NOT IN (5,6)".$where_soc."
+                     WHERE fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$where_soc."
                      ORDER BY date_eta ASC
                      LIMIT ".(int)$max;
         $res5 = $this->db->query($sql_list);

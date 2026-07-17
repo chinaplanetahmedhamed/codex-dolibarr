@@ -7,6 +7,7 @@ define('CSRFCHECK_WITH_TOKEN', 1);
 @error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
 
 require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/chinaplanetlogistics.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formprojet.class.php';
@@ -198,16 +199,7 @@ if ($is_modal) {
 $form = new Form($db);
 $formproject = new FormProjets($db);
 
-$statuses = array(
-    0 => 'Inquiry',
-    1 => 'Booking Confirmed',
-    2 => 'On Vessel',
-    3 => 'Arrived Port',
-    4 => 'Under Customs',
-    5 => 'Customs Cleared',
-    6 => 'Delivered',
-    7 => 'Closed'
-);
+$statuses = chinaplanetlogistics_status_map();
 $types = array('20GP'=>'20GP','40GP'=>'40GP','40HQ'=>'40HQ','45HQ'=>'45HQ','LCL'=>'LCL','Other'=>'Other');
 
 // ─── CONFIRM DELETE PAGE ──────────────────────────────────────────────────
@@ -399,7 +391,7 @@ if ($action == 'create' || $action == 'edit') {
     print '<div class="cpl-detail-grid"><div class="cpl-metric" style="background:'.cpl_color($eta_days).';"><strong>'.$eta_label.'</strong><span>أيام الوصول / Days to Arrival</span></div><div class="cpl-metric" style="background:'.cpl_color($ft_days).';"><strong>'.$ft_label.'</strong><span>الوقت الحر المتبقي / Free Time Left</span></div></div>';
 
     // Details table
-    $status_colors = array(0=>'#95a5a6',1=>'#3498db',2=>'#2980b9',3=>'#e67e22',4=>'#8e44ad',5=>'#16a085',6=>'#27ae60',7=>'#7f8c8d');
+    $status_colors = array(0=>'#95a5a6',1=>'#3498db',8=>'#d68910',9=>'#1f8a70',2=>'#2980b9',3=>'#e67e22',4=>'#8e44ad',5=>'#16a085',6=>'#27ae60',7=>'#7f8c8d');
     $sc = isset($status_colors[$object->fk_statut]) ? $status_colors[$object->fk_statut] : '#95a5a6';
     $sl = isset($statuses[$object->fk_statut]) ? $statuses[$object->fk_statut] : '-';
 
