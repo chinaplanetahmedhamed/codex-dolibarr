@@ -1,0 +1,25 @@
+from_status,action,to_status,required_role,required_conditions,required_reason,audit_event,customer_visibility
+draft,submit,new,account_manager,"customer;contact;service;owner;summary",no,operation_submitted,no
+new,start_triage,triage,account_manager,"at least one active service job",no,triage_started,public_status_optional
+triage,request_customer_info,waiting_customer,account_manager,"public request;customer action;due date",no,customer_info_requested,yes
+waiting_customer,resume_triage,triage,account_manager,"customer response or manager override",override_only,triage_resumed,yes
+triage,prepare_proposal,quotation,account_manager,"service scope;pricing basis;currency",no,proposal_started,no
+quotation,send_proposal,awaiting_acceptance,account_manager,"validated proposal linked",no,proposal_sent,yes
+awaiting_acceptance,accept,awaiting_funding,account_manager,"customer acceptance evidence;funding required",no,proposal_accepted,yes
+awaiting_acceptance,accept_no_funding,ready,operations_manager,"customer acceptance evidence;no funding gate",no,operation_ready,yes
+awaiting_funding,confirm_gate,ready,finance,"required receipt/allocation recorded in authoritative source",no,funding_gate_passed,yes
+ready,start_execution,in_progress,operations_manager,"service owners;generated task templates;next action",no,execution_started,yes
+in_progress,request_customer_action,customer_action,account_manager,"explicit decision type;due date;public context",no,customer_action_requested,yes
+customer_action,resume,in_progress,operations_manager,"decision recorded or manager override",override_only,customer_action_received,yes
+in_progress,send_to_review,internal_review,worker,"mandatory execution checklist complete;draft result/report",no,review_requested,no
+internal_review,return_for_correction,in_progress,reviewer,"review note;correction tasks",yes,review_returned,no
+internal_review,approve_result,in_progress,reviewer,"approved report/result;publication may still be pending",no,result_approved,no
+in_progress,put_on_hold,on_hold,operations_manager,"hold category;owner;review date",yes,operation_on_hold,public_reason_optional
+on_hold,resume,in_progress,operations_manager,"hold resolution or override",yes,operation_resumed,public_status_optional
+in_progress,complete,completed,operations_manager,"all service jobs final;no mandatory open task;report/document/finance/shipment closure gates",override_only,operation_completed,yes
+completed,reopen,in_progress,operations_manager,"reopen reason;new next action;owner",yes,operation_reopened,yes
+draft,cancel,cancelled,account_manager,"no validated financial effects or manager approval",yes,operation_cancelled,public_status_optional
+new,cancel,cancelled,operations_manager,"cancellation assessment",yes,operation_cancelled,public_status_optional
+in_progress,cancel,cancelled,operations_manager,"change/cancellation assessment;financial impact;file retention",yes,operation_cancelled,yes
+cancelled,archive,archived,system_admin,"retention policy;read-only",no,operation_archived,no
+completed,archive,archived,system_admin,"retention policy;read-only",no,operation_archived,no

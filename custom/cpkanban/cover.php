@@ -1,9 +1,6 @@
 <?php
 @error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
-$res = 0;
-if (!$res && file_exists('../../main.inc.php')) $res = @include '../../main.inc.php';
-if (!$res && file_exists('../../../main.inc.php')) $res = @include '../../../main.inc.php';
-if (!$res) die('Include of main fails');
+require_once __DIR__.'/lib/main.lib.php';
 
 require_once __DIR__.'/class/cpkanbancard.class.php';
 require_once __DIR__.'/class/cpkanbanasset.class.php';

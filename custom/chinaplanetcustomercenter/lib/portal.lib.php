@@ -11,11 +11,49 @@ function cpcc_portal_user_scope($user)
     return array('is_external' => $is_external, 'socid' => $socid);
 }
 
-function cpcc_portal_require_access($user)
+function cpcc_portal_has_any_right($user, array $rights)
 {
-    if (empty($user->id)) {
-        accessforbidden();
+    if (empty($user->id)) return false;
+    if (!empty($user->admin)) return true;
+
+    foreach ($rights as $right) {
+        if (count($right) === 2 && $user->hasRight($right[0], $right[1])) return true;
     }
+    return false;
+}
+
+function cpcc_portal_require_access($user, array $rights = array(array('chinaplanetcustomercenter', 'read')))
+{
+    if (!cpcc_portal_has_any_right($user, $rights)) accessforbidden();
+
+    $scope = cpcc_portal_user_scope($user);
+    if (!empty($scope['is_external']) && (int) $scope['socid'] <= 0) accessforbidden();
+}
+
+/**
+ * Resolve a customer scope without trusting a socid supplied in the URL.
+ * External users are always locked to their linked third party.
+ */
+function cpcc_portal_customer_scope_id($db, $user, $requestedSocid = 0)
+{
+    $scope = cpcc_portal_user_scope($user);
+    if (!empty($scope['is_external'])) return (int) $scope['socid'];
+
+    $requestedSocid = (int) $requestedSocid;
+    if ($requestedSocid <= 0) return 0;
+
+    $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."societe";
+    $sql .= " WHERE rowid=".$requestedSocid." AND entity IN (".getEntity('societe').") AND status=1 AND client IN (1,3)";
+    $resql = $db->query($sql);
+    return ($resql && $db->num_rows($resql) > 0) ? $requestedSocid : 0;
+}
+
+/** Build a portal URL that retains the selected customer for internal users. */
+function cpcc_portal_scoped_url($path, $isExternal, $socid, $parameters = array())
+{
+    if (!$isExternal && (int) $socid > 0) $parameters['socid'] = (int) $socid;
+    $url = dol_buildpath($path, 1);
+    return !empty($parameters) ? $url.'?'.http_build_query($parameters) : $url;
 }
 
 function cpcc_portal_navigation($user, $active = '')
@@ -26,10 +64,14 @@ function cpcc_portal_navigation($user, $active = '')
         'dashboard' => array('لوحة التحكم', '/chinaplanetcustomercenter/board.php'),
         'projects' => array('المشاريع', '/chinaplanetcustomercenter/projects.php'),
         'shipments' => array('الشحنات', '/chinaplanetlogistics/list.php'),
+        'shippingprices' => array('أسعار الشحن', '/chinaplanetshippingprices/index.php'),
         'invoices' => array('الفواتير', '/chinaplanetcustomercenter/invoices.php'),
         'orders' => array('الطلبات', '/chinaplanetcustomercenter/orders.php'),
         'balance' => array('الرصيد', '/chinaplanetcustomercenter/balance.php'),
+        'funding' => array('التمويل المطلوب', '/chinaplanetcustomercenter/funding.php'),
         'documents' => array('المستندات', '/chinaplanetcustomercenter/documents.php'),
+        'commercial_documents' => array('مستندات التصدير', '/chinaplanetcustomercenter/commercial_documents.php'),
+        'reports' => array('تقارير الخدمات', '/chinaplanetcustomercenter/operation_reports.php'),
         'profile' => array('الملف الشخصي', '/chinaplanetcustomercenter/profile.php'),
     );
 
@@ -73,11 +115,37 @@ function cpcc_portal_access_denied($user, $active = '')
 
 function cpcc_portal_customer_name($db, $socid)
 {
+    global $conf;
     $socid = (int) $socid;
     if ($socid <= 0) return '';
-    $resql = $db->query("SELECT nom FROM ".MAIN_DB_PREFIX."societe WHERE rowid = ".$socid);
+    $resql = $db->query("SELECT nom FROM ".MAIN_DB_PREFIX."societe WHERE rowid=".$socid." AND entity IN (0,".(int) $conf->entity.")");
     if ($resql && ($obj = $db->fetch_object($resql))) return (string) $obj->nom;
     return '';
+}
+
+/**
+ * Fetch a shipment only when it belongs to the active entity and actor scope.
+ * External ownership always comes from the authenticated user's third party.
+ */
+function cpcc_portal_authorized_shipment($db, $user, $shipid, $requestedSocid = 0)
+{
+    global $conf;
+
+    $shipid = (int) $shipid;
+    if ($shipid <= 0 || empty($user->id)) return null;
+
+    $scope = cpcc_portal_user_scope($user);
+    $sql = "SELECT rowid,ref,fk_soc,entity FROM ".MAIN_DB_PREFIX."chinaplanetlogistics";
+    $sql .= " WHERE rowid=".$shipid." AND entity=".(int) $conf->entity;
+    if (!empty($scope['is_external'])) {
+        if ((int) $scope['socid'] <= 0) return null;
+        $sql .= " AND fk_soc=".(int) $scope['socid'];
+    } elseif ((int) $requestedSocid > 0) {
+        $sql .= " AND fk_soc=".(int) $requestedSocid;
+    }
+
+    $resql = $db->query($sql);
+    return $resql ? $db->fetch_object($resql) : null;
 }
 
 function cpcc_portal_money($amount)
@@ -148,23 +216,88 @@ function cpcc_portal_resolve_shipment_doc_path($shipid, $shipref, $file)
     return '';
 }
 
-function cpcc_portal_store_uploaded_shipment_file($shipid, $upload_dir, $original_name, $tmp_name)
+function cpcc_portal_shipment_file_policy()
 {
-    $shipid = (int) $shipid;
-    if ($shipid <= 0 || empty($upload_dir) || empty($original_name) || empty($tmp_name)) {
-        return array('ok' => false, 'error' => 'Invalid upload parameters.');
+    return array(
+        'pdf' => array('application/pdf'),
+        'jpg' => array('image/jpeg'),
+        'jpeg' => array('image/jpeg'),
+        'png' => array('image/png'),
+        'webp' => array('image/webp'),
+        'txt' => array('text/plain'),
+        'csv' => array('text/plain', 'text/csv', 'application/csv', 'application/vnd.ms-excel'),
+        'doc' => array('application/msword', 'application/x-ole-storage', 'application/CDFV2'),
+        'docx' => array('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'),
+        'xls' => array('application/vnd.ms-excel', 'application/x-ole-storage', 'application/CDFV2'),
+        'xlsx' => array('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'),
+        'mp4' => array('video/mp4'),
+        'mov' => array('video/quicktime'),
+    );
+}
+
+function cpcc_portal_upload_max_bytes()
+{
+    $configuredKb = function_exists('getDolGlobalInt') ? getDolGlobalInt('MAIN_UPLOAD_DOC') : 0;
+    return $configuredKb > 0 ? $configuredKb * 1000 : 10 * 1024 * 1024;
+}
+
+function cpcc_portal_validate_shipment_filename($originalName)
+{
+    $basename = basename(str_replace('\\', '/', trim((string) $originalName)));
+    if ($basename === '' || $basename === '.' || $basename === '..' || strpos($basename, "\0") !== false) return '';
+
+    $segments = explode('.', strtolower($basename));
+    $extension = count($segments) > 1 ? array_pop($segments) : '';
+    $forbidden = array('php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'cgi', 'pl', 'py', 'sh', 'js', 'html', 'htm', 'svg', 'exe', 'com', 'bat', 'cmd');
+    foreach ($segments as $segment) {
+        if (in_array($segment, $forbidden, true)) return '';
     }
-    if (!is_dir($upload_dir) && !dol_mkdir($upload_dir)) {
-        return array('ok' => false, 'error' => 'Cannot create shipment folder.');
-    }
-    if (!is_uploaded_file($tmp_name)) {
-        return array('ok' => false, 'error' => 'Upload source is not valid.');
+    if (!array_key_exists($extension, cpcc_portal_shipment_file_policy())) return '';
+
+    $safeName = dol_sanitizeFileName($basename);
+    if ($safeName === '' || strtolower(pathinfo($safeName, PATHINFO_EXTENSION)) !== $extension) return '';
+    return $safeName;
+}
+
+/** Validate a synthetic or uploaded file without moving it. */
+function cpcc_portal_validate_shipment_upload($originalName, $tmpName, $size = 0, $maxBytes = 0)
+{
+    $safeName = cpcc_portal_validate_shipment_filename($originalName);
+    if ($safeName === '' || !is_file($tmpName) || !is_readable($tmpName)) return array('ok' => false, 'error' => 'File is not allowed.');
+
+    $actualSize = (int) filesize($tmpName);
+    $declaredSize = (int) $size;
+    $limit = (int) $maxBytes > 0 ? (int) $maxBytes : cpcc_portal_upload_max_bytes();
+    if ($actualSize <= 0 || $actualSize > $limit || ($declaredSize > 0 && $declaredSize !== $actualSize)) {
+        return array('ok' => false, 'error' => 'File size is not allowed.');
     }
 
-    $safe_name = dol_sanitizeFileName($original_name);
-    if (empty($safe_name)) {
-        return array('ok' => false, 'error' => 'Invalid file name.');
+    $extension = strtolower(pathinfo($safeName, PATHINFO_EXTENSION));
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = strtolower((string) $finfo->file($tmpName));
+    $allowedMimes = cpcc_portal_shipment_file_policy()[$extension];
+    if ($mime === '' || !in_array($mime, array_map('strtolower', $allowedMimes), true)) {
+        return array('ok' => false, 'error' => 'File content does not match its type.');
     }
+
+    return array('ok' => true, 'name' => $safeName, 'mime' => $mime, 'size' => $actualSize);
+}
+
+function cpcc_portal_store_uploaded_shipment_file($shipid, $upload_dir, $original_name, $tmp_name, $file_size = 0, $upload_error = UPLOAD_ERR_OK)
+{
+    $shipid = (int) $shipid;
+    $expectedDir = cpcc_portal_shipment_doc_root($shipid);
+    if ($shipid <= 0 || $upload_error !== UPLOAD_ERR_OK || $upload_dir !== $expectedDir || !is_uploaded_file($tmp_name)) return array('ok' => false, 'error' => 'Upload was rejected.');
+
+    $validation = cpcc_portal_validate_shipment_upload($original_name, $tmp_name, $file_size);
+    if (empty($validation['ok'])) return $validation;
+
+    $moduleRoot = DOL_DATA_ROOT.'/chinaplanetlogistics';
+    if (!is_dir($moduleRoot) && !dol_mkdir($moduleRoot)) return array('ok' => false, 'error' => 'Upload was rejected.');
+    if (!is_dir($upload_dir) && !dol_mkdir($upload_dir)) return array('ok' => false, 'error' => 'Upload was rejected.');
+    if (!cpcc_portal_path_is_within($upload_dir, $moduleRoot)) return array('ok' => false, 'error' => 'Upload was rejected.');
+
+    $safe_name = $validation['name'];
 
     $shipment_prefix = 'SHIP-'.$shipid;
     $stored_name = $shipment_prefix.'-'.$safe_name;
@@ -179,8 +312,9 @@ function cpcc_portal_store_uploaded_shipment_file($shipid, $upload_dir, $origina
 
     $target = $upload_dir.'/'.$stored_name;
     if (!move_uploaded_file($tmp_name, $target)) {
-        return array('ok' => false, 'error' => 'Failed to move uploaded file.');
+        return array('ok' => false, 'error' => 'Upload was rejected.');
     }
+    @chmod($target, 0640);
 
-    return array('ok' => true, 'file' => $stored_name, 'fullpath' => $target);
+    return array('ok' => true, 'file' => $stored_name);
 }

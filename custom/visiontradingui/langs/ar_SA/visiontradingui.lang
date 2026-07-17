@@ -1,0 +1,13 @@
+ModuleVisionTradingUIName=واجهة Vision Trading
+ModuleVisionTradingUIDesc=نظام تصميم ولوحات أدوار قابلة للترقية دون تعديل النواة
+VisionTradingUIStagingBanner=بيئة تجريبية — لا تستخدم للعمليات أو الرسائل الحقيقية
+VisionTradingUIEmpty=لا توجد بيانات متاحة
+VisionTradingUIPartial=البيانات غير مكتملة
+VisionTradingUIFreshness=آخر تحديث
+VisionTradingUISetupHelp=هذه الوحدة معطلة افتراضياً. فعّل الواجهة هنا فقط بعد ضبط بيئة تجريبية وصلاحيات مستخدمي الاختبار.
+VisionTradingUIEnableDashboard=تحميل نظام التصميم ولوحات Vision Trading
+VisionTradingUIEnableWhiteLabel=تفعيل العلامة البيضاء لنظام Vision
+VisionTradingUIBrandName=اسم التطبيق الظاهر للمستخدم
+VisionTradingUIEnvironment=حالة البيئة
+VisionTradingUIEnvironmentStaging=بيئة تجريبية مؤكدة
+VisionTradingUIEnvironmentNotStaging=ليست بيئة تجريبية — لن يظهر بانر STAGING

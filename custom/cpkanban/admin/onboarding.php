@@ -5,13 +5,11 @@
  */
 @error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
 
-$res = 0;
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res && file_exists("../../../../main.inc.php")) $res = @include "../../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/../lib/main.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once __DIR__.'/../lib/cpkanban.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 if (empty($user->id) || ((!$user->hasRight('cpkanban', 'admin') && !$user->hasRight('chinaplanetcustomercenter', 'admin')) && empty($user->admin))) {
     accessforbidden();
@@ -109,7 +107,8 @@ if ($action == 'onboard' && $tokenOk) {
     }
 }
 
-llxHeader('', 'ChinaPlanet Customer Center - Customer Onboarding', '', '', 0, 0, array(), array('/custom/cpkanban/css/board.css'));
+llxHeader('', 'ChinaPlanet Customer Center - Customer Onboarding', '', '', 0, 0, array(), array('/custom/cpkanban/css/board.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
+cpcc_admin_shell_open('portal','Customer Onboarding / تهيئة العملاء','إعداد مستخدمي بوابة العملاء وصلاحيات القراءة','fa-user-check');
 print '<div class="cpk-wrap" dir="rtl">';
 print load_fiche_titre('تهيئة العملاء تلقائياً', '', 'user');
 print '<div class="cpk-banner">هذه الصفحة تضيف العملاء الخارجيين إلى مجموعة Customers Portal وتضبط صفحة البداية لهم على مركز العميل الموحد. العملية آمنة ويمكن تشغيلها أكثر من مرة.</div>';
@@ -127,4 +126,5 @@ print '</table>';
 print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="تشغيل التهيئة"></div>';
 print '</form>';
 print '</div></div>';
+cpcc_admin_shell_close();
 llxFooter();

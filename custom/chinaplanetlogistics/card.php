@@ -1,19 +1,24 @@
 <?php
+$csrfRequestMethod = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+$csrfRequestedAction = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
+$csrfReadOnlyActions = array('create', 'edit', 'confirm_delete');
+if ($csrfRequestMethod !== 'GET' || !in_array($csrfRequestedAction, $csrfReadOnlyActions, true)) {
+    define('CSRFCHECK_WITH_TOKEN', 1);
+}
 /**
  * China Planet Logistics - Shipment Card (Create / Edit / View / Delete)
  * FIXED: Merged stable CRUD logic + new fields (fk_project, customer_note, booking_no, voyage_no, nb_containers, freetime_start)
  */
 @error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
 
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
+require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/chinaplanetlogistics.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formprojet.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once __DIR__.'/../chinaplanetcustomercenter/lib/portal.lib.php';
+require_once __DIR__.'/../chinaplanetcustomercenter/lib/admin_shell.lib.php';
 require_once __DIR__.'/class/chinaplanetlogistics.class.php';
 
 $langs->loadLangs(array("companies", "orders", "projects", "sendings", "other"));
@@ -22,21 +27,26 @@ $id      = GETPOST('id', 'int');
 $action  = GETPOST('action', 'alpha');
 $confirm = GETPOST('confirm', 'alpha');
 
-$object = new ChinaPlanetLogistics($db);
-if ($id > 0) {
-    $object->fetch($id);
-}
-
 // Security
 $canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin));
 $canread  = ($user->hasRight('chinaplanetlogistics', 'read')  || $user->hasRight('chinaplanetcustomercenter', 'read') || !empty($user->admin));
-if (empty($user->id)) accessforbidden();
+$candelete = ($user->hasRight('chinaplanetlogistics', 'delete') || $user->hasRight('chinaplanetcustomercenter', 'delete') || !empty($user->admin));
+if (empty($user->id) || !$canread) accessforbidden();
+
+$object = new ChinaPlanetLogistics($db);
+if ($id > 0) {
+    $object->fetch($id);
+} elseif ($action === 'create') {
+    $object->fk_soc = GETPOSTINT('socid');
+    $object->fk_project = GETPOSTINT('projectid');
+}
 
 // Customer security boundary: external users can only view shipments linked to their own third party.
 $is_external_customer = (!empty($user->socid) && empty($user->admin));
 $is_modal = ($is_external_customer && GETPOSTINT('modal') === 1);
 if ($is_external_customer) {
     $canwrite = false;
+    $candelete = false;
     if ($id > 0) {
         if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
             if ($is_modal) {
@@ -52,13 +62,25 @@ if ($is_external_customer) {
 }
 
 $listurl = DOL_URL_ROOT.'/custom/chinaplanetlogistics/list.php';
+$is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
+
+$linksAreValid = function ($socid, $projectid) use ($db, $conf) {
+    $socid = (int) $socid;
+    $projectid = (int) $projectid;
+    if ($socid <= 0) return false;
+    $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."societe WHERE rowid=".$socid." AND entity=".(int) $conf->entity." AND status=1");
+    if (!$res || $db->num_rows($res) !== 1) return false;
+    if ($projectid <= 0) return true;
+    $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."projet WHERE rowid=".$projectid." AND entity=".(int) $conf->entity." AND fk_soc=".$socid);
+    return $res && $db->num_rows($res) === 1;
+};
 
 /*
  * ACTIONS
  */
 
 // CREATE
-if ($action == 'add' && $canwrite) {
+if ($action == 'add' && $canwrite && $is_post) {
     $object->ref              = GETPOST('ref', 'alpha');
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
@@ -81,6 +103,8 @@ if ($action == 'add' && $canwrite) {
     $object->fk_statut        = (int) GETPOST('fk_statut', 'int');
     $object->notes            = GETPOST('notes', 'restricthtml');
     $object->customer_note    = GETPOST('customer_note', 'restricthtml');
+
+    if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
     // Auto-ref if empty
     if (empty($object->ref) || $object->ref == 'AUTO') {
@@ -98,7 +122,7 @@ if ($action == 'add' && $canwrite) {
 }
 
 // UPDATE
-if ($action == 'update' && $canwrite) {
+if ($action == 'update' && $canwrite && $is_post) {
     $object->ref              = GETPOST('ref', 'alpha');
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
@@ -122,6 +146,8 @@ if ($action == 'update' && $canwrite) {
     $object->notes            = GETPOST('notes', 'restricthtml');
     $object->customer_note    = GETPOST('customer_note', 'restricthtml');
 
+    if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
+
     $resu = $object->update($user);
     if ($resu >= 0) {
         setEventMessages('Shipment updated successfully.', null, 'mesgs');
@@ -134,7 +160,8 @@ if ($action == 'update' && $canwrite) {
 }
 
 // DELETE (confirmed)
-if ($action == 'confirm_delete' && $confirm == 'yes' && $canwrite) {
+if ($action === 'confirm_delete' && !$candelete) accessforbidden();
+if ($action == 'confirm_delete' && $confirm == 'yes' && $candelete && $is_post) {
     $result = $object->delete($user);
     if ($result > 0) {
         header("Location: ".$listurl);
@@ -146,10 +173,11 @@ if ($action == 'confirm_delete' && $confirm == 'yes' && $canwrite) {
 }
 
 // FILE UPLOAD
-if (GETPOST('sendit') && $id > 0 && $canwrite) {
+if (GETPOST('sendit') && $id > 0 && $canwrite && $is_post) {
     // DOL_DATA_ROOT = /var/www/documents — dir_output not defined in module descriptor
     $upload_dir = cpcc_portal_shipment_doc_root($object->id);
-    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $_FILES['userfile']['name'], $_FILES['userfile']['tmp_name']);
+    $upload = $_FILES['userfile'] ?? array();
+    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $upload['name'] ?? '', $upload['tmp_name'] ?? '', $upload['size'] ?? 0, $upload['error'] ?? UPLOAD_ERR_NO_FILE);
     if (!empty($uploadres['ok'])) {
         setEventMessages('Document uploaded successfully.', null, 'mesgs');
     } else {
@@ -166,23 +194,17 @@ if ($is_modal) {
     print '<style>body{margin:0;padding:20px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif;line-height:1.45}h1,h2,h3{margin-top:0}.fichecenter,.fichehalfleft,.fichehalfright{width:100%}.fiche{margin:0}.fiche-title{margin-bottom:18px}.border{width:100%;border-collapse:collapse;background:#fff}.border td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:start}.border tr:nth-child(even){background:#f8fafc}.titlefield{width:220px}.tabsAction{display:none}.opacitymedium{color:#6b7280}@media(max-width:640px){body{padding:12px}.border td{padding:8px;display:block;width:auto!important}.border tr{display:block;padding:6px 0}}</style>';
     print '</head><body class="cpl-modal-body">';
 } else {
-    llxHeader('', 'Shipment Card');
-    cpcc_portal_navigation($user, 'shipments');
+    $cardCss=array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'));
+    if(!$is_external_customer) $cardCss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
+    llxHeader('', 'Shipment Card / بطاقة الشحنة', '', '', 0, 0, array(), $cardCss);
+    if($is_external_customer) cpcc_portal_navigation($user, 'shipments');
+    else cpcc_admin_shell_open('shipments','Shipment Details / تفاصيل الشحنة','بيانات الحاوية والمواعيد والوقت الحر والمستندات','fa-ship',array('socid'=>(int)$object->fk_soc,'projectid'=>(int)$object->fk_project));
 }
 
 $form = new Form($db);
 $formproject = new FormProjets($db);
 
-$statuses = array(
-    0 => 'Inquiry',
-    1 => 'Booking Confirmed',
-    2 => 'On Vessel',
-    3 => 'Arrived Port',
-    4 => 'Under Customs',
-    5 => 'Customs Cleared',
-    6 => 'Delivered',
-    7 => 'Closed'
-);
+$statuses = chinaplanetlogistics_status_map();
 $types = array('20GP'=>'20GP','40GP'=>'40GP','40HQ'=>'40HQ','45HQ'=>'45HQ','LCL'=>'LCL','Other'=>'Other');
 
 // ─── CONFIRM DELETE PAGE ──────────────────────────────────────────────────
@@ -208,6 +230,7 @@ if ($action == 'confirm_delete' && $confirm != 'yes') {
     print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'">Cancel / إلغاء</a>';
     print '</div>';
     print '</form>';
+    if(!$is_external_customer) cpcc_admin_shell_close();
     llxFooter();
     $db->close();
     exit;
@@ -288,14 +311,17 @@ if ($action == 'create' || $action == 'edit') {
     print '</td></tr>';
 
     print '<tr><td>Free Time (Days) / أيام الوقت الحر</td><td>';
-    print '<input type="number" name="freetime_days" value="'.dol_escape_htmltag($object->freetime_days).'" style="width:100px"></td></tr>';
+    print '<input type="number" id="freetime_days" name="freetime_days" min="0" value="'.dol_escape_htmltag($object->freetime_days).'" style="width:100px">';
+    print ' <span class="opacitymedium">Calendar days / أيام تقويمية</span></td></tr>';
 
     print '<tr><td>Free Time Start / بداية الوقت الحر</td><td>';
-    print $form->selectDate($object->freetime_start ? $object->freetime_start : -1, 'fts_', 0, 0, 1, "card", 1, 0);
+    print $form->selectDate($object->freetime_start ? $object->freetime_start : -1, 'fts_', 0, 0, 1, "card", 1, 0, 1);
+    print ' <span class="opacitymedium">Automatic from ATA / تلقائي من الوصول الفعلي</span>';
     print '</td></tr>';
 
     print '<tr><td>Free Time End / نهاية الوقت الحر</td><td>';
-    print $form->selectDate($object->freetime_end ? $object->freetime_end : -1, 'fte_', 0, 0, 1, "card", 1, 0);
+    print $form->selectDate($object->freetime_end ? $object->freetime_end : -1, 'fte_', 0, 0, 1, "card", 1, 0, 1);
+    print ' <span class="opacitymedium">ATA + Free Time Days / الوصول الفعلي + الأيام</span>';
     print '</td></tr>';
 
     print '<tr><td>Status / الحالة</td><td>';
@@ -321,12 +347,13 @@ if ($action == 'create' || $action == 'edit') {
     print '<a class="button button-cancel" href="'.$cancel_url.'">Cancel / إلغاء</a>';
     print '</div>';
     print '</form>';
+    print '<script src="'.dol_buildpath('/chinaplanetlogistics/js/card-freetime.js', 1).'?v=20260714"></script>';
 
 } else {
     // ─── VIEW MODE ────────────────────────────────────────────────────────
     if ($id <= 0 || empty($object->id)) {
         print '<div class="warning">Shipment not found. <a href="'.$listurl.'">Back to list</a></div>';
-        if ($is_modal) print '</body></html>'; else llxFooter();
+        if ($is_modal) print '</body></html>'; else { if(!$is_external_customer) cpcc_admin_shell_close(); llxFooter(); }
         $db->close();
         exit;
     }
@@ -334,14 +361,14 @@ if ($action == 'create' || $action == 'edit') {
     // Customer name
     $customer_name = '';
     if ($object->fk_soc > 0) {
-        $r = $db->query("SELECT nom FROM ".MAIN_DB_PREFIX."societe WHERE rowid = ".(int)$object->fk_soc);
+        $r = $db->query("SELECT nom FROM ".MAIN_DB_PREFIX."societe WHERE rowid=".(int) $object->fk_soc." AND entity=".(int) $conf->entity);
         if ($r && ($o = $db->fetch_object($r))) $customer_name = $o->nom;
     }
 
     // Project name
     $project_label = '';
     if ($object->fk_project > 0) {
-        $r = $db->query("SELECT ref, title FROM ".MAIN_DB_PREFIX."projet WHERE rowid = ".(int)$object->fk_project);
+        $r = $db->query("SELECT ref,title FROM ".MAIN_DB_PREFIX."projet WHERE rowid=".(int) $object->fk_project." AND entity=".(int) $conf->entity." AND fk_soc=".(int) $object->fk_soc);
         if ($r && ($o = $db->fetch_object($r))) $project_label = $o->ref.' - '.$o->title;
     }
 
@@ -360,69 +387,36 @@ if ($action == 'create' || $action == 'edit') {
         return '#27ae60';
     }
 
-    print load_fiche_titre('Shipment: '.dol_escape_htmltag($object->ref), '', 'generic');
-    print dol_get_fiche_head(array(), 'card', 'Shipment', -1, 'generic');
-
     // Countdown badges
     $eta_label = ($eta_days !== null) ? ($eta_days < 0 ? 'Arrived' : $eta_days.'d') : '-';
     $ft_label  = ($ft_days  !== null) ? ($ft_days  < 0 ? 'Expired' : $ft_days.'d')  : '-';
 
-    print '<div style="display:flex;gap:14px;margin-bottom:20px;">';
-    print '<div style="flex:1;padding:20px;border-radius:12px;text-align:center;color:#fff;background:'.cpl_color($eta_days).';">';
-    print '<div style="font-size:36px;font-weight:bold;">'.$eta_label.'</div>';
-    print '<div style="font-size:13px;margin-top:6px;opacity:0.9;">Days to Arrival / أيام للوصول</div>';
-    print '</div>';
-    print '<div style="flex:1;padding:20px;border-radius:12px;text-align:center;color:#fff;background:'.cpl_color($ft_days).';">';
-    print '<div style="font-size:36px;font-weight:bold;">'.$ft_label.'</div>';
-    print '<div style="font-size:13px;margin-top:6px;opacity:0.9;">Free Time Left / الوقت الحر المتبقي</div>';
-    print '</div>';
-    print '</div>';
+    print '<main class="cpl-detail">';
+    print '<header class="cpl-detail-hero"><span class="fas fa-ship" aria-hidden="true"></span><h1>'.dol_escape_htmltag($object->ref).'</h1><p><strong>'.dol_escape_htmltag($customer_name).'</strong> · '.dol_escape_htmltag($object->container_no ?: 'No container').' · '.dol_escape_htmltag($project_label).'</p></header>';
+    print '<div class="cpl-detail-grid"><div class="cpl-metric" style="background:'.cpl_color($eta_days).';"><strong>'.$eta_label.'</strong><span>أيام الوصول / Days to Arrival</span></div><div class="cpl-metric" style="background:'.cpl_color($ft_days).';"><strong>'.$ft_label.'</strong><span>الوقت الحر المتبقي / Free Time Left</span></div></div>';
 
     // Details table
-    $status_colors = array(0=>'#95a5a6',1=>'#3498db',2=>'#2980b9',3=>'#e67e22',4=>'#8e44ad',5=>'#16a085',6=>'#27ae60',7=>'#7f8c8d');
+    $status_colors = array(0=>'#95a5a6',1=>'#3498db',8=>'#d68910',9=>'#1f8a70',2=>'#2980b9',3=>'#e67e22',4=>'#8e44ad',5=>'#16a085',6=>'#27ae60',7=>'#7f8c8d');
     $sc = isset($status_colors[$object->fk_statut]) ? $status_colors[$object->fk_statut] : '#95a5a6';
     $sl = isset($statuses[$object->fk_statut]) ? $statuses[$object->fk_statut] : '-';
 
-    print '<table class="border centpercent">';
-    print '<tr><td class="titlefield" style="width:220px;"><b>Ref / المرجع</b></td><td><b>'.dol_escape_htmltag($object->ref).'</b></td></tr>';
-    print '<tr><td>Shipment ID / معرّف الشحنة</td><td><b>'.(int) $object->id.'</b></td></tr>';
-    print '<tr><td>Customer / العميل</td><td>'.dol_escape_htmltag($customer_name).'</td></tr>';
-    print '<tr><td>Project / المشروع</td><td>'.dol_escape_htmltag($project_label).'</td></tr>';
-    print '<tr><td>Container No / رقم الحاوية</td><td><b>'.dol_escape_htmltag($object->container_no).'</b> &nbsp;<span style="background:#3498db;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">'.dol_escape_htmltag($object->container_type).'</span></td></tr>';
-    print '<tr><td>Nb Containers / عدد الحاويات</td><td>'.dol_escape_htmltag($object->nb_containers).'</td></tr>';
-    print '<tr><td>Booking No / رقم الحجز</td><td>'.dol_escape_htmltag($object->booking_no).'</td></tr>';
-    print '<tr><td>BL No / رقم البوليصة</td><td><b>'.dol_escape_htmltag($object->bl_no).'</b></td></tr>';
-    print '<tr><td>Shipping Line / خط الملاحة</td><td>'.dol_escape_htmltag($object->shipping_line).'</td></tr>';
-    print '<tr><td>Vessel / السفينة</td><td>'.dol_escape_htmltag($object->vessel_name).'</td></tr>';
-    print '<tr><td>Voyage No / رقم الرحلة</td><td>'.dol_escape_htmltag($object->voyage_no).'</td></tr>';
-    print '<tr><td>Port of Loading / ميناء الشحن</td><td>'.dol_escape_htmltag($object->port_loading).'</td></tr>';
-    print '<tr><td>Port of Destination / ميناء الوصول</td><td>'.dol_escape_htmltag($object->port_destination).'</td></tr>';
-    print '<tr><td>ETD / تاريخ الإبحار</td><td>'.($object->date_etd ? dol_print_date($object->date_etd,'day') : '-').'</td></tr>';
-    print '<tr><td>ETA / الوصول المتوقع</td><td>'.($object->date_eta ? '<b>'.dol_print_date($object->date_eta,'day').'</b>' : '-').'</td></tr>';
-    print '<tr><td>ATA / الوصول الفعلي</td><td>'.($object->date_ata ? dol_print_date($object->date_ata,'day') : '-').'</td></tr>';
-    print '<tr><td>Free Time Days / أيام الوقت الحر</td><td>'.($object->freetime_days ? (int)$object->freetime_days.' days' : '-').'</td></tr>';
-    print '<tr><td>Free Time Start / بداية الوقت الحر</td><td>'.($object->freetime_start ? dol_print_date($object->freetime_start,'day') : '-').'</td></tr>';
-    print '<tr><td>Free Time End / نهاية الوقت الحر</td><td>'.($object->freetime_end ? dol_print_date($object->freetime_end,'day') : '-').'</td></tr>';
-    print '<tr><td>Status / الحالة</td><td><span style="background:'.$sc.';color:#fff;padding:3px 12px;border-radius:12px;font-size:12px;">'.dol_escape_htmltag($sl).'</span></td></tr>';
-    if (!$is_external_customer) {
-        print '<tr><td>Internal Notes / ملاحظات داخلية</td><td>'.dol_nl2br(dol_escape_htmltag($object->notes)).'</td></tr>';
-    }
-    print '<tr><td>Customer Notes / ملاحظات العميل</td><td>'.dol_nl2br(dol_escape_htmltag($object->customer_note)).'</td></tr>';
-    print '</table>';
-    print dol_get_fiche_end();
+    $details=array('العميل / Customer'=>$customer_name,'المشروع / Project'=>$project_label,'الحاوية / Container'=>$object->container_no.' · '.$object->container_type,'عدد الحاويات / Quantity'=>$object->nb_containers,'رقم الحجز / Booking'=>$object->booking_no,'البوليصة / BL'=>$object->bl_no,'خط الملاحة / Shipping Line'=>$object->shipping_line,'السفينة / Vessel'=>$object->vessel_name,'الرحلة / Voyage'=>$object->voyage_no,'ميناء الشحن / Loading Port'=>$object->port_loading,'ميناء الوصول / Destination'=>$object->port_destination,'الإبحار / ETD'=>$object->date_etd?dol_print_date($object->date_etd,'day'):'-','الوصول المتوقع / ETA'=>$object->date_eta?dol_print_date($object->date_eta,'day'):'-','الوصول الفعلي / ATA'=>$object->date_ata?dol_print_date($object->date_ata,'day'):'-','أيام الوقت الحر / Free Time Days'=>$object->freetime_days?(int)$object->freetime_days:'-','بداية الوقت الحر / Start'=>$object->freetime_start?dol_print_date($object->freetime_start,'day'):'-','نهاية الوقت الحر / End'=>$object->freetime_end?dol_print_date($object->freetime_end,'day'):'-','الحالة / Status'=>$sl);
+    print '<section class="cpl-info-grid">';foreach($details as $label=>$value)print '<div class="cpl-info"><span>'.dol_escape_htmltag($label).'</span><strong>'.dol_escape_htmltag($value?:'-').'</strong></div>';print '</section>';
 
     // Action buttons
-    print '<div class="tabsAction">';
-    if ($canwrite) {
-        print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit">✏️ Edit / تعديل</a>';
-        print '<a class="butActionDelete" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete&token='.newToken().'">🗑️ Delete / حذف</a>';
+    print '<div class="cpl-detail-actions">';
+    if ($canwrite || $candelete) {
+        if ($canwrite) {
+        print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit"><span class="fas fa-edit"></span> تعديل / Edit</a>';
+        }
+        if ($candelete) print '<a class="danger" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete"><span class="fas fa-trash"></span> حذف / Delete</a>';
     }
-    print '<a class="butAction" href="'.dol_buildpath('/chinaplanetcustomercenter/documents.php', 1).'?shipid='.(int) $id.'">📄 Documents / المستندات</a>';
-    print '<a class="butAction" href="'.$listurl.'">← Back to List / العودة للقائمة</a>';
+    print '<a href="'.dol_buildpath('/chinaplanetcustomercenter/documents.php', 1).'?shipid='.(int) $id.'"><span class="fas fa-folder-open"></span> المستندات / Documents</a>';
+    print '<a href="'.$listurl.'"><span class="fas fa-arrow-left"></span> العودة للقائمة / Back</a>';
     print '</div>';
 
     // Documents Section
-    print '<div style="margin-top:20px">';
+    print '<section class="cpl-doc-panel">';
     print '<h3>Documents / المستندات</h3>';
     if ($canwrite) {
         print '<form action="'.$_SERVER['PHP_SELF'].'?id='.$id.'" method="POST" enctype="multipart/form-data" style="margin-bottom:15px">';
@@ -433,13 +427,15 @@ if ($action == 'create' || $action == 'edit') {
     }
 
     $filearray = array();
-    foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
-        if (!is_dir($docroot)) continue;
-        $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
-        if (!empty($docs)) {
-            foreach ($docs as $doc) {
-                $doc['docroot'] = $docroot;
-                $filearray[] = $doc;
+    if (!$is_external_customer) {
+        foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
+            if (!is_dir($docroot)) continue;
+            $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+            if (!empty($docs)) {
+                foreach ($docs as $doc) {
+                    $doc['docroot'] = $docroot;
+                    $filearray[] = $doc;
+                }
             }
         }
     }
@@ -447,7 +443,8 @@ if ($action == 'create' || $action == 'edit') {
     print '<table class="border centpercent">';
     print '<tr class="liste_titre"><td>File Name</td><td align="right">Size</td><td align="center">Date</td></tr>';
     if (empty($filearray)) {
-        print '<tr><td colspan="3" class="center opacitymedium">No documents uploaded yet.</td></tr>';
+        $emptyMessage = $is_external_customer ? 'No approved customer document is available.' : 'No documents uploaded yet.';
+        print '<tr><td colspan="3" class="center opacitymedium">'.dol_escape_htmltag($emptyMessage).'</td></tr>';
     } else {
         foreach ($filearray as $file) {
             $relativepath = basename($file['docroot']).'/'.$file['name'];
@@ -458,9 +455,9 @@ if ($action == 'create' || $action == 'edit') {
         }
     }
     print '</table>';
-    print '</div>';
+    print '</section></main>';
 }
 
-if ($is_modal) print '</body></html>'; else llxFooter();
+if ($is_modal) print '</body></html>'; else { if(!$is_external_customer) cpcc_admin_shell_close(); llxFooter(); }
 $db->close();
 ?>

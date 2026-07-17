@@ -1,0 +1,13 @@
+ModuleVisionTradingUIName=Vision Trading UI
+ModuleVisionTradingUIDesc=Upgrade-safe role dashboard design system without core changes
+VisionTradingUIStagingBanner=STAGING ENVIRONMENT — do not use for real operations or messaging
+VisionTradingUIEmpty=No data available
+VisionTradingUIPartial=Data is incomplete
+VisionTradingUIFreshness=Last updated
+VisionTradingUISetupHelp=This module is off by default. Enable the UI here only after staging environment and test-user permissions are configured.
+VisionTradingUIEnableDashboard=Load the Vision Trading design system and dashboards
+VisionTradingUIEnableWhiteLabel=Enable Vision System white-label branding
+VisionTradingUIBrandName=Public application name
+VisionTradingUIEnvironment=Environment status
+VisionTradingUIEnvironmentStaging=Confirmed staging environment
+VisionTradingUIEnvironmentNotStaging=Not a staging environment — the STAGING banner will not render

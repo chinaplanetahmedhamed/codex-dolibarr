@@ -1,49 +1,17 @@
 <?php
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
-
-$res = 0;
-if (!$res && file_exists("../../main.inc.php")) $res = @include "../../main.inc.php";
-if (!$res && file_exists("../../../main.inc.php")) $res = @include "../../../main.inc.php";
-if (!$res) die("Include of main fails");
-
+require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once __DIR__.'/lib/portal.lib.php';
-
+require_once __DIR__.'/lib/financial.lib.php';
 cpcc_portal_require_access($user);
-$scope = cpcc_portal_user_scope($user);
-$socid = $scope['is_external'] ? (int) $scope['socid'] : GETPOSTINT('socid');
-
-llxHeader('', 'Invoices / الفواتير');
-cpcc_portal_navigation($user, 'invoices');
-
-print '<h2>Invoices / الفواتير</h2>';
-print '<p>Customer-scoped invoices and payment status.</p>';
-
-if ($scope['is_external'] && $socid <= 0) {
-    print '<div class="warning">No linked customer account was found for this portal user.</div>';
-} else {
-    $sql = "SELECT rowid, ref, datef, total_ttc, paye, fk_statut, date_lim_reglement"
-         . " FROM ".MAIN_DB_PREFIX."facture"
-         . ($socid > 0 ? " WHERE fk_soc = ".(int) $socid : "")
-         . " ORDER BY datef DESC, rowid DESC";
-    $resql = $db->query($sql);
-
-    print '<table class="noborder centpercent">';
-    print '<tr class="liste_titre"><th>Invoice</th><th>Date</th><th>Due date</th><th>Total</th><th>Paid</th><th>Status</th></tr>';
-    if ($resql && $db->num_rows($resql) > 0) {
-        while ($obj = $db->fetch_object($resql)) {
-            print '<tr>';
-            print '<td>'.dol_escape_htmltag($obj->ref).'</td>';
-            print '<td>'.(!empty($obj->datef) ? dol_print_date($obj->datef, 'day') : '-').'</td>';
-            print '<td>'.(!empty($obj->date_lim_reglement) ? dol_print_date($obj->date_lim_reglement, 'day') : '-').'</td>';
-            print '<td>'.cpcc_portal_money($obj->total_ttc).'</td>';
-            print '<td>'.($obj->paye ? 'Yes' : 'No').'</td>';
-            print '<td>'.(int) $obj->fk_statut.'</td>';
-            print '</tr>';
-        }
-    } else {
-        print '<tr><td colspan="6" class="center opacitymedium">No invoices found.</td></tr>';
-    }
-    print '</table>';
-}
-
-llxFooter();
+$scope=cpcc_portal_user_scope($user);$isExternal=!empty($scope['is_external']);$socid=cpcc_portal_customer_scope_id($db,$user,GETPOSTINT('socid'));
+$currencyFallback=cpcc_financial_currency(!empty($conf->currency)?$conf->currency:'USD');$invoices=$socid>0?cpcc_financial_customer_invoices($db,$socid,$currencyFallback):array();
+$totals=array();foreach($invoices as $invoice){$c=$invoice['currency'];if(!isset($totals[$c]))$totals[$c]=array('total'=>0,'paid'=>0,'remaining'=>0);$totals[$c]['total']+=$invoice['total'];$totals[$c]['paid']+=$invoice['paid'];$totals[$c]['remaining']+=$invoice['remaining'];}
+llxHeader('', 'Vision Service Invoices / فواتير الخدمات', '', '', 0, 0, array(), $isExternal?array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/funding.css'):array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/funding.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));if($isExternal)cpcc_portal_navigation($user,'invoices');else cpcc_admin_shell_open('portal','Vision Service Invoices / فواتير الخدمات','الفواتير المعتمدة والمدفوع والمتبقي','fa-file-invoice',array('socid'=>$socid)); ?>
+<main class="cpcc-dashboard" dir="rtl"><header class="cpcc-page-head"><div><span class="cpcc-eyebrow">VISION SERVICE INVOICES</span><h1>فواتير خدمات Vision</h1><p>العمولة والشحن وCargoX والمستندات والخدمات المفوترة رسمياً.</p></div></header>
+<?php if($socid<=0){ ?><div class="warning">لا يوجد عميل محدد.</div><?php }else{ ?>
+<?php foreach($totals as $code=>$values){ ?><section class="cpcc-currency-block"><h3><?php echo dol_escape_htmltag($code); ?></h3><div class="cpcc-financial-cards"><div class="cpcc-card invoices"><span>إجمالي الفواتير</span><strong><?php echo cpcc_portal_money($values['total']); ?> <em><?php echo dol_escape_htmltag($code); ?></em></strong></div><div class="cpcc-card received"><span>المسدد</span><strong><?php echo cpcc_portal_money($values['paid']); ?> <em><?php echo dol_escape_htmltag($code); ?></em></strong></div><div class="cpcc-card required"><span>المتبقي</span><strong><?php echo cpcc_portal_money($values['remaining']); ?> <em><?php echo dol_escape_htmltag($code); ?></em></strong></div></div></section><?php } ?>
+<section class="cpcc-section-head"><div><h2>الفواتير المعتمدة</h2><p>لا تظهر المسودات للعميل.</p></div></section><div class="cpcc-table-wrap"><table class="cpcc-table"><thead><tr><th>الفاتورة</th><th>المشروع</th><th>التاريخ</th><th>الاستحقاق</th><th>الإجمالي</th><th>المسدد</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>
+<?php if(empty($invoices)){ ?><tr><td colspan="8">لا توجد فواتير خدمات معتمدة.</td></tr><?php }foreach($invoices as $invoice){$url=cpcc_portal_scoped_url('/chinaplanetcustomercenter/invoice.php',$isExternal,$socid,array('id'=>$invoice['id']));$statusLabels=array('paid'=>'مدفوعة','partial'=>'مدفوعة جزئياً','open'=>'غير مدفوعة'); ?><tr><td><a href="<?php echo dol_escape_htmltag($url); ?>"><b><?php echo dol_escape_htmltag($invoice['ref']); ?></b></a><?php if($invoice['ref_client']!==''){ ?><small><?php echo dol_escape_htmltag($invoice['ref_client']); ?></small><?php } ?></td><td><?php echo dol_escape_htmltag($invoice['project_ref']?:'—'); ?></td><td><?php echo dol_escape_htmltag(dol_print_date($invoice['date'],'day')); ?></td><td><?php echo $invoice['due_date']!==''?dol_escape_htmltag(dol_print_date($invoice['due_date'],'day')):'—'; ?></td><td><?php echo cpcc_portal_money($invoice['total']).' '.dol_escape_htmltag($invoice['currency']); ?></td><td><?php echo cpcc_portal_money($invoice['paid']); ?></td><td><b><?php echo cpcc_portal_money($invoice['remaining']); ?></b></td><td><?php echo $statusLabels[$invoice['status']]; ?></td></tr><?php } ?>
+</tbody></table></div><?php } ?></main><?php if(!$isExternal)cpcc_admin_shell_close();llxFooter();
