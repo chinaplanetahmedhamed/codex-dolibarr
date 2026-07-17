@@ -1,4 +1,5 @@
 <?php
+define('CSRFCHECK_WITH_TOKEN', 1);
 /**
  * China Planet Logistics - Shipment Card (Create / Edit / View / Delete)
  * FIXED: Merged stable CRUD logic + new fields (fk_project, customer_note, booking_no, voyage_no, nb_containers, freetime_start)
@@ -20,6 +21,12 @@ $id      = GETPOST('id', 'int');
 $action  = GETPOST('action', 'alpha');
 $confirm = GETPOST('confirm', 'alpha');
 
+// Security
+$canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin));
+$canread  = ($user->hasRight('chinaplanetlogistics', 'read')  || $user->hasRight('chinaplanetcustomercenter', 'read') || !empty($user->admin));
+$candelete = ($user->hasRight('chinaplanetlogistics', 'delete') || $user->hasRight('chinaplanetcustomercenter', 'delete') || !empty($user->admin));
+if (empty($user->id) || !$canread) accessforbidden();
+
 $object = new ChinaPlanetLogistics($db);
 if ($id > 0) {
     $object->fetch($id);
@@ -28,16 +35,12 @@ if ($id > 0) {
     $object->fk_project = GETPOSTINT('projectid');
 }
 
-// Security
-$canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin));
-$canread  = ($user->hasRight('chinaplanetlogistics', 'read')  || $user->hasRight('chinaplanetcustomercenter', 'read') || !empty($user->admin));
-if (empty($user->id)) accessforbidden();
-
 // Customer security boundary: external users can only view shipments linked to their own third party.
 $is_external_customer = (!empty($user->socid) && empty($user->admin));
 $is_modal = ($is_external_customer && GETPOSTINT('modal') === 1);
 if ($is_external_customer) {
     $canwrite = false;
+    $candelete = false;
     if ($id > 0) {
         if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
             if ($is_modal) {
@@ -53,13 +56,25 @@ if ($is_external_customer) {
 }
 
 $listurl = DOL_URL_ROOT.'/custom/chinaplanetlogistics/list.php';
+$is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
+
+$linksAreValid = function ($socid, $projectid) use ($db, $conf) {
+    $socid = (int) $socid;
+    $projectid = (int) $projectid;
+    if ($socid <= 0) return false;
+    $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."societe WHERE rowid=".$socid." AND entity=".(int) $conf->entity." AND status=1");
+    if (!$res || $db->num_rows($res) !== 1) return false;
+    if ($projectid <= 0) return true;
+    $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."projet WHERE rowid=".$projectid." AND entity=".(int) $conf->entity." AND fk_soc=".$socid);
+    return $res && $db->num_rows($res) === 1;
+};
 
 /*
  * ACTIONS
  */
 
 // CREATE
-if ($action == 'add' && $canwrite) {
+if ($action == 'add' && $canwrite && $is_post) {
     $object->ref              = GETPOST('ref', 'alpha');
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
@@ -82,6 +97,8 @@ if ($action == 'add' && $canwrite) {
     $object->fk_statut        = (int) GETPOST('fk_statut', 'int');
     $object->notes            = GETPOST('notes', 'restricthtml');
     $object->customer_note    = GETPOST('customer_note', 'restricthtml');
+
+    if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
     // Auto-ref if empty
     if (empty($object->ref) || $object->ref == 'AUTO') {
@@ -99,7 +116,7 @@ if ($action == 'add' && $canwrite) {
 }
 
 // UPDATE
-if ($action == 'update' && $canwrite) {
+if ($action == 'update' && $canwrite && $is_post) {
     $object->ref              = GETPOST('ref', 'alpha');
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
@@ -123,6 +140,8 @@ if ($action == 'update' && $canwrite) {
     $object->notes            = GETPOST('notes', 'restricthtml');
     $object->customer_note    = GETPOST('customer_note', 'restricthtml');
 
+    if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
+
     $resu = $object->update($user);
     if ($resu >= 0) {
         setEventMessages('Shipment updated successfully.', null, 'mesgs');
@@ -135,7 +154,8 @@ if ($action == 'update' && $canwrite) {
 }
 
 // DELETE (confirmed)
-if ($action == 'confirm_delete' && $confirm == 'yes' && $canwrite) {
+if ($action === 'confirm_delete' && !$candelete) accessforbidden();
+if ($action == 'confirm_delete' && $confirm == 'yes' && $candelete && $is_post) {
     $result = $object->delete($user);
     if ($result > 0) {
         header("Location: ".$listurl);
@@ -147,10 +167,11 @@ if ($action == 'confirm_delete' && $confirm == 'yes' && $canwrite) {
 }
 
 // FILE UPLOAD
-if (GETPOST('sendit') && $id > 0 && $canwrite) {
+if (GETPOST('sendit') && $id > 0 && $canwrite && $is_post) {
     // DOL_DATA_ROOT = /var/www/documents — dir_output not defined in module descriptor
     $upload_dir = cpcc_portal_shipment_doc_root($object->id);
-    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $_FILES['userfile']['name'], $_FILES['userfile']['tmp_name']);
+    $upload = $_FILES['userfile'] ?? array();
+    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $upload['name'] ?? '', $upload['tmp_name'] ?? '', $upload['size'] ?? 0, $upload['error'] ?? UPLOAD_ERR_NO_FILE);
     if (!empty($uploadres['ok'])) {
         setEventMessages('Document uploaded successfully.', null, 'mesgs');
     } else {
@@ -343,14 +364,14 @@ if ($action == 'create' || $action == 'edit') {
     // Customer name
     $customer_name = '';
     if ($object->fk_soc > 0) {
-        $r = $db->query("SELECT nom FROM ".MAIN_DB_PREFIX."societe WHERE rowid = ".(int)$object->fk_soc);
+        $r = $db->query("SELECT nom FROM ".MAIN_DB_PREFIX."societe WHERE rowid=".(int) $object->fk_soc." AND entity=".(int) $conf->entity);
         if ($r && ($o = $db->fetch_object($r))) $customer_name = $o->nom;
     }
 
     // Project name
     $project_label = '';
     if ($object->fk_project > 0) {
-        $r = $db->query("SELECT ref, title FROM ".MAIN_DB_PREFIX."projet WHERE rowid = ".(int)$object->fk_project);
+        $r = $db->query("SELECT ref,title FROM ".MAIN_DB_PREFIX."projet WHERE rowid=".(int) $object->fk_project." AND entity=".(int) $conf->entity." AND fk_soc=".(int) $object->fk_soc);
         if ($r && ($o = $db->fetch_object($r))) $project_label = $o->ref.' - '.$o->title;
     }
 
@@ -387,9 +408,11 @@ if ($action == 'create' || $action == 'edit') {
 
     // Action buttons
     print '<div class="cpl-detail-actions">';
-    if ($canwrite) {
+    if ($canwrite || $candelete) {
+        if ($canwrite) {
         print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit"><span class="fas fa-edit"></span> تعديل / Edit</a>';
-        print '<a class="danger" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete&token='.newToken().'"><span class="fas fa-trash"></span> حذف / Delete</a>';
+        }
+        if ($candelete) print '<a class="danger" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete"><span class="fas fa-trash"></span> حذف / Delete</a>';
     }
     print '<a href="'.dol_buildpath('/chinaplanetcustomercenter/documents.php', 1).'?shipid='.(int) $id.'"><span class="fas fa-folder-open"></span> المستندات / Documents</a>';
     print '<a href="'.$listurl.'"><span class="fas fa-arrow-left"></span> العودة للقائمة / Back</a>';
@@ -407,13 +430,15 @@ if ($action == 'create' || $action == 'edit') {
     }
 
     $filearray = array();
-    foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
-        if (!is_dir($docroot)) continue;
-        $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
-        if (!empty($docs)) {
-            foreach ($docs as $doc) {
-                $doc['docroot'] = $docroot;
-                $filearray[] = $doc;
+    if (!$is_external_customer) {
+        foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
+            if (!is_dir($docroot)) continue;
+            $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+            if (!empty($docs)) {
+                foreach ($docs as $doc) {
+                    $doc['docroot'] = $docroot;
+                    $filearray[] = $doc;
+                }
             }
         }
     }
@@ -421,7 +446,8 @@ if ($action == 'create' || $action == 'edit') {
     print '<table class="border centpercent">';
     print '<tr class="liste_titre"><td>File Name</td><td align="right">Size</td><td align="center">Date</td></tr>';
     if (empty($filearray)) {
-        print '<tr><td colspan="3" class="center opacitymedium">No documents uploaded yet.</td></tr>';
+        $emptyMessage = $is_external_customer ? 'No approved customer document is available.' : 'No documents uploaded yet.';
+        print '<tr><td colspan="3" class="center opacitymedium">'.dol_escape_htmltag($emptyMessage).'</td></tr>';
     } else {
         foreach ($filearray as $file) {
             $relativepath = basename($file['docroot']).'/'.$file['name'];

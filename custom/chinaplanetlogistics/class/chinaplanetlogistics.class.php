@@ -65,6 +65,12 @@ class ChinaPlanetLogistics extends CommonObject
         return (int) $val;
     }
 
+    private function activeEntity()
+    {
+        global $conf;
+        return !empty($conf->entity) ? (int) $conf->entity : 1;
+    }
+
     // ── CREATE ────────────────────────────────────────────────────────────
     public function create($user, $notrigger = 0)
     {
@@ -74,7 +80,7 @@ class ChinaPlanetLogistics extends CommonObject
             $this->ref = 'LOG-'.date('Ymd-His');
         }
         $this->calculateFreeTimeDates();
-        $entity = isset($conf->entity) ? (int)$conf->entity : 1;
+        $entity = $this->activeEntity();
 
         $sql  = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetlogistics (";
         $sql .= "ref, entity, fk_soc, fk_project, fk_user_creat,";
@@ -111,7 +117,7 @@ class ChinaPlanetLogistics extends CommonObject
     // ── FETCH ─────────────────────────────────────────────────────────────
     public function fetch($id, $ref = '')
     {
-        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE ";
+        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".$this->activeEntity()." AND ";
         if ($ref) $sql .= "ref = '".$this->db->escape($ref)."'";
         else      $sql .= "rowid = ".(int)$id;
 
@@ -182,7 +188,7 @@ class ChinaPlanetLogistics extends CommonObject
         $sql .= "fk_statut = ".$this->sqlInt($this->fk_statut).", ";
         $sql .= "notes = ".$this->sqlStr($this->notes).", ";
         $sql .= "customer_note = ".$this->sqlStr($this->customer_note)." ";
-        $sql .= "WHERE rowid = ".(int)$this->id;
+        $sql .= "WHERE rowid = ".(int)$this->id." AND entity = ".$this->activeEntity();
 
         $resql = $this->db->query($sql);
         if (!$resql) {
@@ -195,7 +201,7 @@ class ChinaPlanetLogistics extends CommonObject
     // ── DELETE ────────────────────────────────────────────────────────────
     public function delete($user, $notrigger = 0)
     {
-        $sql = "DELETE FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid = ".(int)$this->id;
+        $sql = "DELETE FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid = ".(int)$this->id." AND entity = ".$this->activeEntity();
         $resql = $this->db->query($sql);
         if (!$resql) {
             $this->error = $this->db->lasterror();

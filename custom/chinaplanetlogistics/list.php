@@ -28,6 +28,7 @@ $canwrite = (!$is_external && ($user->admin || $user->hasRight('chinaplanetlogis
 $action = GETPOST('action', 'alpha');
 $search_container = GETPOST('search_container', 'alpha');
 $search_bl = GETPOST('search_bl', 'alpha');
+$search_any = GETPOST('search_any', 'alphanohtml');
 $statusFilter = GETPOST('status', 'alpha');
 if (!in_array($statusFilter, array('active','intransit','arriving','arrived','critical'), true)) $statusFilter = '';
 $form = new Form($db);
@@ -111,6 +112,10 @@ elseif ($statusFilter === 'critical') $sql.= " AND t.freetime_end BETWEEN '".$db
 
 if ($search_container) $sql.= " AND t.container_no LIKE '%".$db->escape($search_container)."%'";
 if ($search_bl) $sql.= " AND t.bl_no LIKE '%".$db->escape($search_bl)."%'";
+if ($search_any) {
+    $escapedSearch = $db->escape($search_any);
+    $sql .= " AND (t.ref LIKE '%".$escapedSearch."%' OR t.container_no LIKE '%".$escapedSearch."%' OR t.bl_no LIKE '%".$escapedSearch."%')";
+}
 
 $sql.= " ORDER BY t.date_eta ASC";
 
