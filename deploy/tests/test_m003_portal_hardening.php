@@ -152,6 +152,7 @@ try {
     m003Assert(strpos($track, "define(\"NOLOGIN\"") === false && strpos($track, 'cpcc_portal_require_access') !== false, 'legacy tracking route requires Dolibarr authentication and rights');
     m003Assert(strpos($card, 'if (empty($user->id) || !$canread) accessforbidden();') !== false, 'direct shipment card denies internal users without read permission');
     m003Assert(strpos($card, "define('CSRFCHECK_WITH_TOKEN', 1)") !== false && strpos($card, '$is_post') !== false, 'shipment state changes require POST and framework CSRF');
+    m003Assert(strpos($card, "array('create', 'edit', 'confirm_delete')") !== false && strpos($card, 'csrfRequestMethod') !== false && strpos($card, "!== 'GET'") !== false, 'shipment read-only GET forms remain reachable while mutations require framework CSRF');
     m003Assert(strpos($card, "hasRight('chinaplanetlogistics', 'delete')") !== false, 'shipment deletion checks dedicated delete right');
     m003Assert(strpos($documents, "define('CSRFCHECK_WITH_TOKEN', 1)") !== false && strpos($documents, "array('upload', 'rename', 'deletefile')") !== false, 'document mutations require POST and framework CSRF');
     m003Assert(substr_count($documents, 't.entity=') >= 2 && strpos($download, 'cpcc_portal_authorized_shipment') !== false, 'document list and direct download enforce entity and shipment authorization');

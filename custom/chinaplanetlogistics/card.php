@@ -1,5 +1,10 @@
 <?php
-define('CSRFCHECK_WITH_TOKEN', 1);
+$csrfRequestMethod = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+$csrfRequestedAction = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
+$csrfReadOnlyActions = array('create', 'edit', 'confirm_delete');
+if ($csrfRequestMethod !== 'GET' || !in_array($csrfRequestedAction, $csrfReadOnlyActions, true)) {
+    define('CSRFCHECK_WITH_TOKEN', 1);
+}
 /**
  * China Planet Logistics - Shipment Card (Create / Edit / View / Delete)
  * FIXED: Merged stable CRUD logic + new fields (fk_project, customer_note, booking_no, voyage_no, nb_containers, freetime_start)
