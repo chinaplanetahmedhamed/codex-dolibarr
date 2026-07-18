@@ -1,0 +1,7 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-upload-limit-m008 inspect
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-upload-limit-m008 staging-apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-upload-limit-m008 staging-verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-upload-limit-m008 staging-rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-upload-limit-m008 production-apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-upload-limit-m008 production-verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-upload-limit-m008 production-rollback
