@@ -1,4 +1,5 @@
 <?php
+define('CSRFCHECK_WITH_TOKEN', 1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once __DIR__.'/../lib/main.lib.php';
@@ -8,8 +9,9 @@ chinaplanetsp_require_internal($user, 'import');
 $langs->loadLangs(array('chinaplanetshippingprices@chinaplanetshippingprices', 'admin'));
 $importer = new ShippingPriceImporter($db, $user);
 $action = GETPOST('action', 'aZ09');
+$isPost = !empty($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST';
 
-if ($action === 'upload') {
+if ($isPost && $action === 'upload') {
     try {
         if (empty($_FILES['ratefile']['tmp_name']) || !is_uploaded_file($_FILES['ratefile']['tmp_name'])) throw new RuntimeException('Choose a workbook first.');
         $original = basename($_FILES['ratefile']['name']);
@@ -42,7 +44,7 @@ print '<main class="chinaplanetsp-rates-manager chinaplanetsp-import-page">';
 print '<div class="chinaplanetsp-admin-toolbar"><a class="button" href="dashboard.php"><span class="fas fa-sliders-h"></span> Control Center / مركز الإدارة</a><a class="button" href="../index.php"><span class="fas fa-search-dollar"></span> Price Inquiry / استعلام الأسعار</a></div>';
 print '<div class="chinaplanetsp-mapping-help"><span class="fas fa-shield-alt"></span><div><strong>Safe draft workflow / مسودة آمنة</strong><p>Uploading does not change published prices. Review accepted, ignored and warning rows, then publish the batch when it is correct. / الرفع لا يغيّر الأسعار المنشورة حتى تراجع الدفعة وتنشرها.</p></div></div>';
 print '<section class="chinaplanetsp-rule-editor chinaplanetsp-import-card"><div class="chinaplanetsp-list-head"><h2><span class="fas fa-cloud-upload-alt"></span> Upload workbook / رفع ملف الأسعار</h2><span class="chinaplanetsp-format-badge">XLS · XLSX · CSV</span></div>';
-print '<form method="post" enctype="multipart/form-data"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="upload"><div class="chinaplanetsp-rule-grid chinaplanetsp-import-grid">';
+print '<form method="post" action="?uploadform=1" enctype="multipart/form-data"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="upload"><div class="chinaplanetsp-rule-grid chinaplanetsp-import-grid">';
 print '<label class="chinaplanetsp-file-field"><span>Workbook / ملف الأسعار *</span><input type="file" name="ratefile" accept=".xls,.xlsx,.csv" required><small>Choose the original agent workbook. / اختر ملف الأسعار الأصلي من الوكيل.</small></label>';
 $agents=array();$ares=$db->query("SELECT DISTINCT source_name FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch WHERE entity=".(int)$conf->entity." AND source_name<>'Manual entry' ORDER BY source_name");if($ares)while($a=$db->fetch_object($ares))$agents[]=$a->source_name;
 print '<label><span>Shipping agent / وكيل الشحن *</span><select name="source_name" id="sp-agent" required><option value="">Choose agent / اختر الوكيل</option>';foreach($agents as$a)print'<option value="'.dol_escape_htmltag($a).'">'.dol_escape_htmltag($a).'</option>';print'<option value="__new__">+ Add new agent / إضافة وكيل</option></select><input name="new_source_name" id="sp-new-agent" placeholder="New agent name / اسم الوكيل الجديد" hidden></label>';
