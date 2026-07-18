@@ -21,6 +21,7 @@ m011Assert($byCode['departed']['state'] === 'complete' && $byCode['arrived']['st
 m011Assert(count($byCode['transshipment']['events']) === 1, 'timeline supports repeatable transshipment events');
 m011Assert($byCode['departed']['actual'] === $shipment->date_atd && $byCode['arrived']['actual'] === $shipment->date_ata, 'timeline distinguishes actual departure and arrival');
 m011Assert($byCode['import_customs']['state'] === 'next' && $byCode['delivered']['state'] === 'planned', 'timeline distinguishes next and planned steps');
+m011Assert(cpl_milestone_icon('loaded') === 'fa-box' && cpl_milestone_icon('arrived') === 'fa-anchor', 'timeline assigns a visual icon to each milestone');
 $unconfirmed = cpl_timeline_rows((object) array('fk_statut'=>4,'date_etd'=>0,'date_atd'=>0,'date_eta'=>strtotime('2026-07-18'),'date_ata'=>0), array());
 $unconfirmedByCode = array(); foreach ($unconfirmed as $row) $unconfirmedByCode[$row['code']] = $row;
 m011Assert($unconfirmedByCode['arrived']['state'] === 'unconfirmed', 'status progression without ATA does not claim confirmed arrival');
@@ -36,6 +37,9 @@ if (!function_exists('dol_escape_htmltag')) { function dol_escape_htmltag($value
 require_once $repo.'/custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 class M011FakeDb { public function query($sql) { return false; } public function num_rows($result) { return 0; } public function escape($value) { return addslashes($value); } }
 class M011FakeLangs { public function trans($key) { $args = func_get_args(); array_shift($args); return empty($args) ? $key : $key.' '.implode(',', $args); } }
+class M011MapLangs { private $values; public function __construct($values) { $this->values = $values; } public function trans($key) { return isset($this->values[$key]) ? $this->values[$key] : $key; } }
+$bilingual = new CplBilingualTranslate(new M011MapLangs(array('CPLTimeline'=>'Timeline')), new M011MapLangs(array('CPLTimeline'=>'المسار الزمني')));
+m011Assert($bilingual->trans('CPLTimeline') === 'Timeline / المسار الزمني', 'customer command-center labels render in English and Arabic together');
 $langs = new M011FakeLangs();
 $legacy = (object) array(
     'id'=>91,'entity'=>1,'fk_soc'=>7,'fk_statut'=>4,'ref'=>'SAFE-SHIPMENT','date_etd'=>strtotime('2026-07-01'),'date_atd'=>0,'date_eta'=>strtotime('2026-07-18'),'date_ata'=>0,
@@ -93,6 +97,7 @@ foreach (array('cpl-command-hero','cpl-timeline','cpl-checklist','cpl-internal-g
 m011Assert(strpos($css, '@media(max-width:520px)') !== false && strpos($css, 'grid-template-columns:1fr') !== false, 'command center has a 390px-safe single-column layout');
 m011Assert(strpos($css, 'max-width:calc(100vw - 16px)') !== false, 'customer shipment page shell is bounded to the mobile viewport');
 m011Assert(strpos($css, 'overflow-x:hidden') !== false, 'customer shipment page prevents fractional page-level horizontal overflow');
+m011Assert(strpos($helper, "!empty(\$step['current']) ? 'fa-ship'") !== false && strpos($css, '@keyframes cpl-ship-bob') !== false && strpos($css, 'prefers-reduced-motion:reduce') !== false, 'current shipment stage carries the moving ship marker accessibly');
 m011Assert(strpos($projectCenter, 'customer_eta_change') !== false && strpos($projectCenter, 'customer_latest_update') !== false, 'M010 shipment summary receives ETA alert and latest update');
 
 foreach (array('CPLTimeline','CPLEtaPassedUnconfirmed','CPLDocumentChecklist','CPLBackToProject') as $key) {

@@ -6,3 +6,8 @@
 #id-right>.fiche{width:auto!important;max-width:calc(100vw - 90px)!important;margin-inline:auto!important;box-sizing:border-box}
 @media(max-width:600px){#id-right>.fiche{max-width:calc(100vw - 16px)!important}.cpl-command-center{width:100%;min-width:0}.cpl-panel,.cpl-overview article{min-width:0}}
 html,body{max-width:100%;overflow-x:hidden}
+.cpl-timeline li:not(:last-child):after{top:15px;inset-inline-start:28px;width:calc(100% - 20px)}
+.cpl-timeline-marker{display:grid;place-items:center;width:32px;height:32px;color:#fff;font-size:12px}
+.cpl-timeline .is-current .cpl-timeline-marker{animation:cpl-ship-bob 1.8s ease-in-out infinite}
+@keyframes cpl-ship-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media(prefers-reduced-motion:reduce){.cpl-timeline .is-current .cpl-timeline-marker{animation:none}}

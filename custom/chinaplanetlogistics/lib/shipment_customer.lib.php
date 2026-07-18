@@ -7,6 +7,46 @@
  * paths.
  */
 
+/**
+ * Small translation proxy used only by the customer shipment command center.
+ *
+ * China Planet customers commonly work in Arabic while staff and shipping
+ * documents use English.  The rest of Dolibarr keeps the user's selected
+ * language; this proxy renders the command-center labels in both languages.
+ */
+class CplBilingualTranslate
+{
+    private $primary;
+    private $secondary;
+
+    public function __construct($primary, $secondary)
+    {
+        $this->primary = $primary;
+        $this->secondary = $secondary;
+    }
+
+    public function trans($key)
+    {
+        $args = func_get_args();
+        $primary = (string) call_user_func_array(array($this->primary, 'trans'), $args);
+        $secondary = (string) call_user_func_array(array($this->secondary, 'trans'), $args);
+        if ($secondary === '' || $secondary === (string) $key || $secondary === $primary) return $primary;
+        return $primary.' / '.$secondary;
+    }
+}
+
+function cpl_bilingual_langs($primary)
+{
+    global $conf;
+    if (!class_exists('Translate')) return $primary;
+    $primaryCode = !empty($primary->defaultlang) ? (string) $primary->defaultlang : 'en_US';
+    $secondaryCode = preg_match('/^ar(?:_|$)/i', $primaryCode) ? 'en_US' : 'ar_SA';
+    $secondary = new Translate('', $conf);
+    $secondary->setDefaultLang($secondaryCode);
+    $secondary->loadLangs(array('main', 'chinaplanetlogistics@chinaplanetlogistics'));
+    return new CplBilingualTranslate($primary, $secondary);
+}
+
 function cpl_text_limit($value, $length)
 {
     $value = trim((string) $value);
@@ -67,6 +107,16 @@ function cpl_event_types()
 function cpl_milestones()
 {
     return array('inquiry', 'booking', 'loaded', 'export_customs', 'departed', 'transshipment', 'arrived', 'import_customs', 'delivered', 'closed');
+}
+
+function cpl_milestone_icon($code)
+{
+    $icons = array(
+        'inquiry'=>'fa-search', 'booking'=>'fa-calendar-check', 'loaded'=>'fa-box',
+        'export_customs'=>'fa-stamp', 'departed'=>'fa-ship', 'transshipment'=>'fa-exchange-alt',
+        'arrived'=>'fa-anchor', 'import_customs'=>'fa-university', 'delivered'=>'fa-truck', 'closed'=>'fa-check-circle',
+    );
+    return isset($icons[$code]) ? $icons[$code] : 'fa-circle';
 }
 
 function cpl_status_milestone($status)
@@ -347,10 +397,13 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     $etaChange = cpl_latest_eta_change($events);
     $nextOperation = cpl_customer_next_operation($db, $shipment);
     $timeline = cpl_timeline_rows($shipment, $events);
-    $statusLabel = cpl_customer_status_label($langs, $shipment->fk_statut);
     $now = dol_now();
 
-    $direction = $langs->trans('DIRECTION') === 'rtl' ? 'rtl' : 'ltr';
+    $baseLangs = $langs;
+    $direction = $baseLangs->trans('DIRECTION') === 'rtl' ? 'rtl' : 'ltr';
+    $langs = cpl_bilingual_langs($baseLangs);
+    try {
+        $statusLabel = cpl_customer_status_label($langs, $shipment->fk_statut);
     print '<main class="cpl-command-center" dir="'.$direction.'" data-cpl-shipment-title="'.dol_escape_htmltag($langs->trans('CPLShipmentDetails')).'">';
     print '<header class="cpl-command-hero"><div><span class="cpl-eyebrow">'.$langs->trans('CPLShipmentCommandCenter').'</span><h1>'.dol_escape_htmltag($shipment->ref).'</h1><p>'.dol_escape_htmltag(isset($context['customer_name']) ? $context['customer_name'] : '').' · '.dol_escape_htmltag(isset($context['project_label']) ? $context['project_label'] : '').'</p></div><div class="cpl-status-pill">'.dol_escape_htmltag($statusLabel).'</div></header>';
 
@@ -402,7 +455,8 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     foreach ($timeline as $step) {
         $stateKeys = array('complete'=>'CPLStateComplete','current'=>'CPLStateCurrent','next'=>'CPLStateNext','planned'=>'CPLStatePlanned','unconfirmed'=>'CPLStateUnconfirmed');
         $stateText = $langs->trans(isset($stateKeys[$step['state']]) ? $stateKeys[$step['state']] : 'CPLStatePlanned');
-        print '<li class="is-'.dol_escape_htmltag($step['state']).'"'.(!empty($step['current']) ? ' aria-current="step"' : '').'><span class="cpl-timeline-marker" aria-hidden="true"></span><div><strong>'.dol_escape_htmltag(cpl_milestone_label($langs, $step['code'])).'</strong><span class="cpl-state-text">'.dol_escape_htmltag($stateText).'</span>';
+        $markerIcon = !empty($step['current']) ? 'fa-ship' : cpl_milestone_icon($step['code']);
+        print '<li class="is-'.dol_escape_htmltag($step['state']).'"'.(!empty($step['current']) ? ' aria-current="step"' : '').'><span class="cpl-timeline-marker" aria-hidden="true"><i class="fas '.dol_escape_htmltag($markerIcon).'"></i></span><div><strong>'.dol_escape_htmltag(cpl_milestone_label($langs, $step['code'])).'</strong><span class="cpl-state-text">'.dol_escape_htmltag($stateText).'</span>';
         if (!empty($step['actual'])) print '<time>'.dol_escape_htmltag(cpl_public_datetime($step['actual'])).'</time>';
         elseif (!empty($step['planned'])) print '<time>'.$langs->trans('CPLPlanned').' · '.dol_escape_htmltag(cpl_public_datetime($step['planned'], 'day')).'</time>';
         foreach ($step['events'] as $event) print '<p class="cpl-transshipment-entry">'.dol_escape_htmltag(cpl_public_datetime($event->actual_at)).' · '.dol_escape_htmltag($event->note_public).'</p>';
@@ -469,5 +523,8 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     else print '<a href="'.dol_escape_htmltag(isset($context['listurl']) ? $context['listurl'] : '#').'">'.$langs->trans('BackToList').'</a>';
     print '</nav>';
     print '</main>';
+    } finally {
+        $langs = $baseLangs;
+    }
 }
 ?>
