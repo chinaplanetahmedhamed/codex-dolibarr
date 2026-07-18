@@ -48,7 +48,11 @@ validate_artifact() {
   tmp=$(mktemp -d); tar -xzf "$ARTIFACT" --no-same-owner --no-same-permissions -C "$tmp"
   [[ -f "$tmp/$CONFIG_FILE" && ! -L "$tmp/$CONFIG_FILE" && $(sha256 "$tmp/$CONFIG_FILE") == "$CONFIG_SHA" ]] || die 'CONFIG_HASH_MISMATCH'
   [[ -f "$tmp/$TEST_FILE" && ! -L "$tmp/$TEST_FILE" && $(sha256 "$tmp/$TEST_FILE") == "$TEST_SHA" ]] || die 'TEST_HASH_MISMATCH'
-  php "$tmp/$TEST_FILE" >/dev/null || die 'STATIC_TEST_FAILED'
+  grep -Fqx 'php_value upload_max_filesize 200M' "$tmp/$CONFIG_FILE" || die 'STATIC_UPLOAD_LIMIT_FAILED'
+  grep -Fqx 'php_value post_max_size 210M' "$tmp/$CONFIG_FILE" || die 'STATIC_POST_LIMIT_FAILED'
+  grep -Fqx 'php_value memory_limit 1024M' "$tmp/$CONFIG_FILE" || die 'STATIC_MEMORY_LIMIT_FAILED'
+  grep -Fqx 'php_value max_execution_time 900' "$tmp/$CONFIG_FILE" || die 'STATIC_EXECUTION_LIMIT_FAILED'
+  grep -Fqx 'php_value max_input_time 900' "$tmp/$CONFIG_FILE" || die 'STATIC_INPUT_LIMIT_FAILED'
   CANDIDATE_ROOT="$tmp"; ARTIFACT_SHA=$(sha256 "$ARTIFACT")
   rm -f "$listing" "$expected"
 }
@@ -124,7 +128,8 @@ apply_environment() {
 }
 
 verify_environment() {
-  local env=$1 container=$2 volume=$3 root=$4 url=$5 target="$root/chinaplanetshippingprices/admin/.htaccess"
+  local env=$1 container=$2 volume=$3 root=$4 url=$5 target
+  target="$root/chinaplanetshippingprices/admin/.htaccess"
   check_target "$container" "$volume" "$root" "$url"; validate_artifact
   [[ -f "$target" && ! -L "$target" && $(sha256 "$target") == "$CONFIG_SHA" ]] || die 'LIVE_CONFIG_HASH_MISMATCH'
   probe_limits "$root" "$url" || die 'EFFECTIVE_LIMITS_MISMATCH'

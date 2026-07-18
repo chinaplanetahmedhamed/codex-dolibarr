@@ -12,6 +12,8 @@ grep -Fq "readonly PROXY_CONTAINER='management-nginx-proxy-manager-1'" "$HELPER"
 grep -Fq 'M008_AUTO_ROLLBACK=PASS' "$HELPER"
 grep -Fq 'ARTIFACT_ALLOWLIST_MISMATCH' "$HELPER"
 grep -Fq 'EFFECTIVE_LIMITS_MISMATCH' "$HELPER"
+grep -Fq "grep -Fqx 'php_value upload_max_filesize 200M'" "$HELPER"
+! grep -Fq 'php "$tmp/$TEST_FILE"' "$HELPER"
 [[ $(wc -l <"$SUDOERS") -eq 7 ]]
 ! grep -Eq '[*?]|/bin/(ba)?sh|ALL$' "$SUDOERS"
 ! grep -Eq 'vision_db|conf\.php|docker (system )?prune|volume rm|compose|proxy_host|rm -rf' "$HELPER"
