@@ -16,6 +16,7 @@ required=(
 	"create_database_backup"
 	"create_code_backup"
 	"require_staging_release"
+	"STATE=ABSENT"
 	"apply_schema"
 	"restore_code_backup"
 	"SCHEMA_RETAINED=1"
@@ -32,4 +33,3 @@ for forbidden in 'docker compose down' 'docker volume rm' 'rm -rf "$TARGET_ROOT"
 done
 
 echo 'M014 release helper static checks passed'
-

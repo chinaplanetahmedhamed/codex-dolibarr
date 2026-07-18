@@ -328,6 +328,10 @@ compare_target_files() {
 	local root=$1 label=$2 file rel target_hash release_hash state
 	for file in "${RUNTIME_FILES[@]}"; do
 		rel=${file#custom/}
+		if [[ ! -e "$root/$rel" && ! -L "$root/$rel" ]]; then
+			echo "M014_COMPARE ENV=$label FILE=$file STATE=ABSENT"
+			continue
+		fi
 		[[ -f "$root/$rel" && ! -L "$root/$rel" ]] || die "${label}_FILE_INVALID_${file//\//_}"
 		target_hash=$(sha256 "$root/$rel"); release_hash=$(sha256 "$CANDIDATE_ROOT/$file")
 		if [[ "$target_hash" == "$release_hash" ]]; then state='CURRENT'; else state='UPDATE_REQUIRED'; fi
