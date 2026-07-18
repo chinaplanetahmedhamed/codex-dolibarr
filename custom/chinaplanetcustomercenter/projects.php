@@ -36,7 +36,9 @@ if (!$is_external && $canadmin && $action === 'syncprojectcards') {
     $syncSummary = cpcc_project_sync_existing_cards($db, $user, $socid);
 }
 
-llxHeader('', 'Projects / المشاريع', '', '', 0, 0, array(), $is_external ? array('/custom/chinaplanetcustomercenter/css/projects.css') : array('/custom/chinaplanetcustomercenter/css/projects.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+llxHeader('', 'Projects / المشاريع', '', '', 0, 0,
+    $is_external ? array('/custom/cpkanban/js/board.js?v=20260718-m010') : array(),
+    $is_external ? array('/custom/chinaplanetcustomercenter/css/projects.css','/custom/cpkanban/css/board.css?v=20260718-m010') : array('/custom/chinaplanetcustomercenter/css/projects.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
 if($is_external) cpcc_portal_navigation($user, 'projects');
 else cpcc_admin_shell_open('portal','Projects / المشاريع','كل مشاريع العملاء والمشاريع النشطة في عرض واحد','fa-project-diagram',array('socid'=>$socid));
 
@@ -70,16 +72,18 @@ if ($is_external && $socid <= 0) {
     $autoSyncUpdated = 0;
     $autoSyncSkipped = 0;
     $autoSyncErrors = 0;
-    foreach ($projectIds as $projectId) {
-        $project = new Project($db);
-        if ($project->fetch($projectId) <= 0) {
-            $autoSyncErrors++;
-            continue;
+    if (!$is_external) {
+        foreach ($projectIds as $projectId) {
+            $project = new Project($db);
+            if ($project->fetch($projectId) <= 0) {
+                $autoSyncErrors++;
+                continue;
+            }
+            $sync = cpcc_project_sync_kanban_card($db, $project, $user, 'modify');
+            if (!empty($sync['action']) && $sync['action'] === 'created') $autoSyncCreated++;
+            elseif (!empty($sync['action']) && $sync['action'] === 'updated') $autoSyncUpdated++;
+            else $autoSyncSkipped++;
         }
-        $sync = cpcc_project_sync_kanban_card($db, $project, $user, 'modify');
-        if (!empty($sync['action']) && $sync['action'] === 'created') $autoSyncCreated++;
-        elseif (!empty($sync['action']) && $sync['action'] === 'updated') $autoSyncUpdated++;
-        else $autoSyncSkipped++;
     }
 
     if (!empty($syncSummary) && !$is_external) {
@@ -111,9 +115,9 @@ if ($is_external && $socid <= 0) {
     $sql .= " col.label as column_label, col.code as column_code";
     $sql .= " FROM ".MAIN_DB_PREFIX."projet as p";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe as s ON s.rowid = p.fk_soc";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpkanban_card as c ON c.rowid = (SELECT MIN(cc.rowid) FROM ".MAIN_DB_PREFIX."cpkanban_card as cc WHERE cc.fk_project = p.rowid)";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpkanban_column as col ON col.rowid = c.fk_column";
-    $sql .= " LEFT JOIN (SELECT fk_projet, COUNT(*) as nb_tasks FROM ".MAIN_DB_PREFIX."projet_task GROUP BY fk_projet) as t ON t.fk_projet = p.rowid";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpkanban_card as c ON c.rowid = (SELECT MIN(cc.rowid) FROM ".MAIN_DB_PREFIX."cpkanban_card as cc WHERE cc.fk_project=p.rowid AND cc.entity=p.entity AND cc.fk_soc=p.fk_soc) AND c.entity=p.entity AND c.fk_soc=p.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpkanban_column as col ON col.rowid=c.fk_column AND col.entity=c.entity";
+    $sql .= " LEFT JOIN (SELECT entity,fk_projet,COUNT(*) as nb_tasks FROM ".MAIN_DB_PREFIX."projet_task GROUP BY entity,fk_projet) as t ON t.fk_projet=p.rowid AND t.entity=p.entity";
     $sql .= " WHERE p.entity IN (".getEntity('project').")";
     if ($socid > 0) {
         $sql .= " AND p.fk_soc = ".(int) $socid;
@@ -131,13 +135,18 @@ if ($is_external && $socid <= 0) {
         }
     }
 
+    if ($is_external) print '<div class="cpk-project-modal-host" data-canwrite="0">';
     print '<table class="noborder centpercent">';
     print '<tr class="liste_titre">';
-    print '<th>Project</th><th>Customer</th><th>Status</th><th>Dates</th><th>Tasks</th><th>Details</th><th>Kanban sync</th><th>Progress</th>';
+    if ($is_external) {
+        print '<th>المشروع / Project</th><th>الحالة / Status</th><th>التواريخ / Dates</th><th>التفاصيل / Details</th><th>التقدم / Progress</th>';
+    } else {
+        print '<th>Project</th><th>Customer</th><th>Status</th><th>Dates</th><th>Tasks</th><th>Details</th><th>Kanban sync</th><th>Progress</th>';
+    }
     print '</tr>';
 
     if (empty($rows)) {
-        print '<tr><td colspan="8" class="center opacitymedium">No projects found.</td></tr>';
+        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="center opacitymedium">لا توجد مشاريع / No projects found.</td></tr>';
     } else {
         foreach ($rows as $row) {
             $statusLabel = cpcc_project_status_label($row->status);
@@ -148,7 +157,7 @@ if ($is_external && $socid <= 0) {
             $taskCount = !empty($row->nb_tasks) ? (int) $row->nb_tasks : 0;
             $details = array();
             if (!empty($row->description)) $details[] = dol_trunc($row->description, 120);
-            if (!empty($row->card_id)) {
+            if (!$is_external && !empty($row->card_id)) {
                 $details[] = 'Kanban: '.dol_escape_htmltag($row->card_title ?: 'card');
             }
 
@@ -166,23 +175,36 @@ if ($is_external && $socid <= 0) {
 
             print '<tr>';
             print '<td>';
-            print '<strong><a href="'.dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int) $row->rowid.(!$is_external?'&socid='.(int)$socid:'').'">'.dol_escape_htmltag($row->ref).'</a></strong><br>';
+            $projectUrl = dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int) $row->rowid.(!$is_external?'&socid='.(int)$socid:'');
+            $projectLinkClass = '';
+            $projectLinkData = '';
+            if ($is_external && !empty($row->card_id)) {
+                $projectUrl = dol_buildpath('/cpkanban/card.php', 1).'?id='.(int) $row->card_id;
+                $projectLinkClass = ' class="cpk-card-link"';
+                $projectLinkData = ' data-id="'.(int) $row->card_id.'"';
+            }
+            print '<strong><a'.$projectLinkClass.$projectLinkData.' href="'.dol_escape_htmltag($projectUrl).'">'.dol_escape_htmltag($row->ref).'</a></strong><br>';
             print dol_escape_htmltag($row->title ?: '');
             if (!$is_external && !empty($row->rowid) && $user->hasRight('projet', 'lire')) {
                 print '<br><a target="_blank" rel="noopener" href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int) $row->rowid.'">Vision Advanced / السجل المتقدم ↗</a>';
             }
             print '</td>';
-            print '<td>'.dol_escape_htmltag($row->customer_name ?: '-').'</td>';
+            if (!$is_external) print '<td>'.dol_escape_htmltag($row->customer_name ?: '-').'</td>';
             print '<td>'.$statusLabel.'</td>';
             print '<td>'.(!empty($dateRange) ? implode('<br>', $dateRange) : '-').'</td>';
-            print '<td>'.(int) $taskCount.'</td>';
+            if (!$is_external) print '<td>'.(int) $taskCount.'</td>';
             print '<td>'.(!empty($details) ? implode('<br>', array_map('dol_escape_htmltag', $details)) : '-').'</td>';
-            print '<td>'.$cardLabel.'</td>';
+            if (!$is_external) print '<td>'.$cardLabel.'</td>';
             print '<td>'.(int) $progress.'%</td>';
             print '</tr>';
         }
     }
     print '</table>';
+    if ($is_external) {
+        print '<dialog id="cpk-card-dialog" class="cpk-card-dialog" aria-labelledby="cpk-card-dialog-title">';
+        print '<div class="cpk-dialog-head"><strong id="cpk-card-dialog-title">مركز متابعة المشروع / Project Command Center</strong><button type="button" class="cpk-dialog-close" aria-label="إغلاق تفاصيل المشروع">×</button></div>';
+        print '<iframe class="cpk-dialog-frame" title="تفاصيل بطاقة المشروع"></iframe></dialog></div>';
+    }
 }
 
 if(!$is_external) cpcc_admin_shell_close();

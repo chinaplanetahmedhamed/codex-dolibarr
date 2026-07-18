@@ -14,8 +14,13 @@ require_once __DIR__.'/class/cpkanbancard.class.php';
 require_once __DIR__.'/class/cpkanbanasset.class.php';
 require_once __DIR__.'/class/cpkanbancolumn.class.php';
 require_once __DIR__.'/lib/cpkanban.lib.php';
+require_once __DIR__.'/lib/customer_project_center.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/financial.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/export.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/operation_reports.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
 $langs->loadLangs(array("companies", "projects", "other"));
 
@@ -111,9 +116,9 @@ if ($is_external && !($action == 'create' && $canwrite)) {
 
 if ($is_modal) {
     header('Content-Type: text/html; charset=UTF-8');
-    print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="'.DOL_URL_ROOT.'/custom/cpkanban/css/board.css"><script defer src="'.DOL_URL_ROOT.'/custom/cpkanban/js/shipment-link.js"></script></head><body class="cpk-modal-body">';
+    print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="'.DOL_URL_ROOT.'/custom/cpkanban/css/board.css?v=20260718-m010"><script defer src="'.DOL_URL_ROOT.'/custom/cpkanban/js/shipment-link.js"></script></head><body class="cpk-modal-body">';
 } else {
-    $cardCss = array('/custom/cpkanban/css/board.css');
+    $cardCss = array('/custom/cpkanban/css/board.css?v=20260718-m010');
     if (!$is_external) { $cardCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'); $cardCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'); }
     llxHeader('', 'Project Card / بطاقة المشروع', '', '', 0, 0, array('/custom/cpkanban/js/shipment-link.js'), $cardCss);
     if ($is_external) cpcc_portal_navigation($user, 'dashboard');
@@ -164,6 +169,13 @@ $displayColumnId = (int) $object->fk_column;
 if ($is_external) {
     $visibleColumns = CpKanbanColumn::getAll($db, true, true);
     $displayColumnId = cpkanban_customer_visible_column_id($displayColumnId, $visibleColumns, $columns);
+    if ($displayColumnId <= 0) {
+        http_response_code(403);
+        print '<div class="warning">هذه البطاقة غير منشورة في مركز العميل.</div>';
+        if ($is_modal) print '</body></html>'; else llxFooter();
+        $db->close();
+        exit;
+    }
     $colObj = $displayColumnId > 0 && isset($visibleColumns[$displayColumnId]) ? $visibleColumns[$displayColumnId] : null;
 } else {
     $colObj = isset($columns[$displayColumnId]) ? $columns[$displayColumnId] : null;
@@ -190,10 +202,14 @@ print '<a class="cpk-action-link" href="'.$boardurl.'">🗂️ لوحة المش
 print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetlogistics/index.php', 1).'">🚢 الشحنات</a>';
 print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/invoices.php', 1).'">🧾 الفواتير والرصيد</a>';
 print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/orders.php', 1).'">📦 الطلبيات</a>';
-if (!empty($object->fk_project)) print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/projects.php', 1).'">📋 تفاصيل المشروع</a>';
+if (!empty($object->fk_project)) print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int)$object->fk_project.'">📋 تفاصيل المشروع</a>';
 print '</div>';
 }
 
+if ($is_external) {
+    $commandCenter = cpkanban_customer_project_center_data($db, $object, $visibleColumns, $displayColumnId);
+    cpkanban_render_customer_project_center($object, $colObj, $commandCenter, $is_modal);
+} else {
 print '<div class="cpk-detail-card">';
 print '<table class="border centpercent">';
 print '<tr><td class="titlefield">المرجع</td><td>'.dol_escape_htmltag($object->ref).'</td></tr>';
@@ -263,6 +279,7 @@ if ($canwrite) {
         print '<a class="butActionDelete" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete&token='.newToken().'">🗑️ حذف</a>';
     }
     print '</div>';
+}
 }
 print '</div>';
 

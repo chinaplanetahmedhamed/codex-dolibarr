@@ -131,7 +131,7 @@ function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $project
     $sql .= " fi.rowid billed_invoice_id,fi.ref billed_invoice_ref,fi.fk_statut billed_invoice_status,fi.type billed_invoice_type";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_project_charge c";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpcc_financial_entry e ON e.fk_charge=c.rowid";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.fk_soc=c.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facture fi ON c.source_type IN ('customer_invoice','invoice') AND fi.rowid=c.source_id AND fi.fk_soc=c.fk_soc";
     $sql .= " WHERE c.entity=".(int) $GLOBALS['conf']->entity." AND c.fk_soc=".(int) $socid." AND c.status=1 AND c.customer_visible=1";
     if ((int) $projectid > 0) $sql .= " AND c.fk_project=".(int) $projectid;
@@ -184,7 +184,7 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
     $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
     $sql .= " LEFT JOIN (SELECT r.fk_facture,SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM ".MAIN_DB_PREFIX."societe_remise_except r WHERE r.fk_facture IS NOT NULL GROUP BY r.fk_facture) discount ON discount.fk_facture=f.rowid";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.fk_soc=f.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
     $sql .= " WHERE f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5)";
     if ((int) $projectid > 0) $sql .= " AND f.fk_projet=".(int) $projectid;
     $sql .= " ORDER BY f.datef,f.rowid";
@@ -227,7 +227,7 @@ function cpcc_financial_customer_invoices($db, $socid, $currencyFallback, $proje
     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
     $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
     $sql .= " LEFT JOIN (SELECT r.fk_facture,SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM ".MAIN_DB_PREFIX."societe_remise_except r WHERE r.fk_facture IS NOT NULL GROUP BY r.fk_facture) discount ON discount.fk_facture=f.rowid";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.fk_soc=f.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
     $sql .= " WHERE f.entity=".(int)$GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND f.type IN (0,1,5)";
     if ((int)$projectid>0) $sql .= " AND f.fk_projet=".(int)$projectid;
     $sql .= " ORDER BY f.datef DESC,f.rowid DESC";

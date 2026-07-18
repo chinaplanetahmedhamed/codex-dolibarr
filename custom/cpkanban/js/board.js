@@ -3,7 +3,7 @@
     "use strict";
 
     document.addEventListener("DOMContentLoaded", function () {
-        var wrap = document.querySelector(".cpk-wrap");
+        var wrap = document.querySelector(".cpk-wrap, .cpk-project-modal-host");
         if (!wrap) return;
 
         var canWrite = wrap.getAttribute("data-canwrite") === "1";

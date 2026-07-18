@@ -27,8 +27,8 @@ function cpcc_export_documents($db, $socid, $projectid = 0, $shipmentid = 0, $cu
     if (!cpcc_export_schema_ready($db) || (int) $socid <= 0) return $rows;
     $sql = "SELECT d.*,p.ref project_ref,p.title project_title,l.ref shipment_ref";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_export_document d";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.fk_soc=d.fk_soc";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=d.fk_shipment AND l.fk_soc=d.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.entity=d.entity AND p.fk_soc=d.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=d.fk_shipment AND l.entity=d.entity AND l.fk_soc=d.fk_soc";
     $sql .= " WHERE d.entity=".(int) $GLOBALS['conf']->entity." AND d.fk_soc=".(int) $socid." AND d.status=1";
     if ((int) $projectid > 0) $sql .= " AND d.fk_project=".(int) $projectid;
     if ((int) $shipmentid > 0) $sql .= " AND d.fk_shipment=".(int) $shipmentid;
@@ -44,8 +44,8 @@ function cpcc_export_fetch($db, $id, $socid, $customerVisibleOnly = true)
     if (!cpcc_export_schema_ready($db)) return null;
     $sql = "SELECT d.*,p.ref project_ref,p.title project_title,l.ref shipment_ref,l.container_no,l.bl_no";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_export_document d";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.fk_soc=d.fk_soc";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=d.fk_shipment AND l.fk_soc=d.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.entity=d.entity AND p.fk_soc=d.fk_soc";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=d.fk_shipment AND l.entity=d.entity AND l.fk_soc=d.fk_soc";
     $sql .= " WHERE d.rowid=".(int) $id." AND d.entity=".(int) $GLOBALS['conf']->entity." AND d.fk_soc=".(int) $socid." AND d.status=1";
     if ($customerVisibleOnly) $sql .= " AND d.customer_visible=1";
     $resql = $db->query($sql);

@@ -95,7 +95,9 @@ class CpKanbanCard extends CommonObject
      */
     public function fetch($id, $socid = 0)
     {
-        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE rowid = ".(int) $id;
+        global $conf;
+        $entity = isset($conf->entity) ? (int) $conf->entity : 1;
+        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE rowid = ".(int) $id." AND entity = ".$entity;
         if ($socid > 0) {
             // SECURITY: customer can only fetch their own card, and only if visible
             $sql.= " AND fk_soc = ".(int) $socid." AND cust_visible = 1 AND status <> 0";
@@ -137,13 +139,15 @@ class CpKanbanCard extends CommonObject
      */
     public static function getBoard($db, $socid = 0, $filters = array())
     {
+        global $conf;
+        $entity = isset($conf->entity) ? (int) $conf->entity : 1;
         $byCol = array();
         $sql = "SELECT c.*, s.nom as customer_name, (SELECT a.rowid FROM ".MAIN_DB_PREFIX."cpkanban_asset a WHERE a.entity=c.entity AND a.fk_card=c.rowid AND a.is_cover=1 AND a.status=1";
         if ($socid > 0) $sql.= " AND a.customer_visible=1 AND a.review_status='approved'";
         $sql.= " ORDER BY a.rowid DESC LIMIT 1) as cover_asset_id";
         $sql.= " FROM ".MAIN_DB_PREFIX."cpkanban_card as c";
         $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."societe as s ON c.fk_soc = s.rowid";
-        $sql.= " WHERE c.status <> 0";
+        $sql.= " WHERE c.entity = ".$entity." AND c.status <> 0";
 
         if ($socid > 0) {
             // SECURITY: strict isolation for customer portal
@@ -267,11 +271,13 @@ class CpKanbanCard extends CommonObject
      */
     public function getLogs($visibleCustOnly = 0)
     {
+        global $conf;
+        $entity = isset($conf->entity) ? (int) $conf->entity : 1;
         $out = array();
         $sql = $visibleCustOnly
             ? "SELECT l.* FROM ".MAIN_DB_PREFIX."cpkanban_log as l"
             : "SELECT l.*, u.firstname, u.lastname, u.login, u.email FROM ".MAIN_DB_PREFIX."cpkanban_log as l LEFT JOIN ".MAIN_DB_PREFIX."user as u ON l.fk_user = u.rowid";
-        $sql.= " WHERE l.fk_card = ".(int) $this->id;
+        $sql.= " WHERE l.entity = ".$entity." AND l.fk_card = ".(int) $this->id;
         if ($visibleCustOnly) $sql.= " AND l.visible_cust = 1";
         $sql.= " ORDER BY l.date_action DESC";
         $resql = $this->db->query($sql);
@@ -294,10 +300,11 @@ class CpKanbanCard extends CommonObject
      */
     public function getShipmentSummary($socid = 0)
     {
+        global $conf;
         if (empty($this->fk_shipment)) return null;
         $sql = "SELECT rowid, ref, container_no, bl_no, shipping_line, vessel_name, port_loading, port_destination,";
         $sql.= " date_eta, freetime_end, fk_statut FROM ".MAIN_DB_PREFIX."chinaplanetlogistics";
-        $sql.= " WHERE rowid = ".(int) $this->fk_shipment;
+        $sql.= " WHERE rowid = ".(int) $this->fk_shipment." AND entity = ".(int) $conf->entity;
         if ($socid > 0) $sql.= " AND fk_soc = ".(int) $socid; // double isolation
         $resql = $this->db->query($sql);
         if (!$resql) return null;

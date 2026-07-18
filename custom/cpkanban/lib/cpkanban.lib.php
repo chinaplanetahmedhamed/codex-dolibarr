@@ -39,7 +39,8 @@ function cpkanban_priority($p)
 function cpkanban_shipment_status($s)
 {
     $labels = array(
-        0 => 'استعلام', 1 => 'تأكيد الحجز', 2 => 'على متن السفينة', 3 => 'وصلت',
+        0 => 'استعلام', 1 => 'تأكيد الحجز', 8 => 'تم التحميل ومتجهة لجمارك التصدير',
+        9 => 'اكتمل تخليص التصدير', 2 => 'على متن السفينة', 3 => 'وصلت الميناء',
         4 => 'تخليص جمركي', 5 => 'تم التخليص', 6 => 'تم التسليم', 7 => 'مغلقة',
     );
     return isset($labels[$s]) ? $labels[$s] : '-';
@@ -75,7 +76,9 @@ function cpkanban_countdown_color($days)
  */
 function cpkanban_customer_center_stats($db, $socid)
 {
+    global $conf;
     $socid = (int) $socid;
+    $entity = isset($conf->entity) ? (int) $conf->entity : 1;
     $stats = array(
         'projects' => 0,
         'shipments' => 0,
@@ -87,11 +90,11 @@ function cpkanban_customer_center_stats($db, $socid)
     if ($socid <= 0) return $stats;
 
     $queries = array(
-        'projects' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE fk_soc = ".$socid." AND cust_visible = 1 AND status <> 0",
-        'shipments' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE fk_soc = ".$socid." AND fk_statut NOT IN (6,7)",
-        'invoices_open' => "SELECT COUNT(*) as nb, SUM(total_ttc) as total FROM ".MAIN_DB_PREFIX."facture WHERE fk_soc = ".$socid." AND fk_statut > 0 AND paye = 0",
-        'orders' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."commande WHERE fk_soc = ".$socid." AND fk_statut > 0",
-        'dol_projects' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."projet WHERE fk_soc = ".$socid." AND fk_statut = 1",
+        'projects' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE entity = ".$entity." AND fk_soc = ".$socid." AND cust_visible = 1 AND status <> 0",
+        'shipments' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_soc = ".$socid." AND fk_statut NOT IN (6,7)",
+        'invoices_open' => "SELECT COUNT(*) as nb, SUM(total_ttc) as total FROM ".MAIN_DB_PREFIX."facture WHERE entity = ".$entity." AND fk_soc = ".$socid." AND fk_statut > 0 AND paye = 0",
+        'orders' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."commande WHERE entity = ".$entity." AND fk_soc = ".$socid." AND fk_statut > 0",
+        'dol_projects' => "SELECT COUNT(*) as nb FROM ".MAIN_DB_PREFIX."projet WHERE entity = ".$entity." AND fk_soc = ".$socid." AND fk_statut = 1",
     );
 
     foreach ($queries as $key => $sql) {
