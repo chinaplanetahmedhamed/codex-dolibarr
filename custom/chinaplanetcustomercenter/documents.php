@@ -95,13 +95,19 @@ if ($action === 'rename' || $action === 'deletefile') {
     }
 }
 
-llxHeader('', 'Documents / المستندات', '', '', 0, 0, array(), $is_external ? array() : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+$pageCss = array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'));
+if (!$is_external) $pageCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
+llxHeader('', 'Documents / المستندات', '', '', 0, 0, array(), $pageCss);
 if ($is_external) cpcc_portal_navigation($user, 'documents');
 else cpcc_admin_shell_open('documents', 'Shipment Documents / مستندات الشحن', 'رفع وإدارة ملفات الشحنات ومستندات العملاء', 'fa-folder-open', array('socid'=>$socid));
 
+print '<main class="cpcc-dashboard cpcc-documents-page" dir="rtl">';
+print '<header class="cpcc-page-head"><div>';
+print '<span class="cpcc-eyebrow">SHIPMENT DOCUMENTS</span>';
+print '<h1>المستندات / Documents</h1>';
+print '<p>اعرض مستندات الشحن المسموح بها ونزّلها بأمان من مكان واحد. / View and securely download approved shipment documents in one place.</p>';
+print '</div></header>';
 print '<div class="div-table-responsive-no-min">';
-print '<h2>Documents / المستندات</h2>';
-print '<p>هذه الصفحة تجمع المستندات المرفوعة لكل شحنة. الملفات تُفتح عبر رابط تنزيل آمن داخل البوابة.</p>';
 print '<div class="info"><strong>Commercial documents / مستندات التصدير:</strong> الفواتير التجارية وقوائم التعبئة موجودة في صفحة مستقلة. <a class="button button-small" href="'.dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php', 1).($socid > 0 && !$is_external ? '?socid='.(int) $socid : '').'">Open commercial documents</a></div>';
 
 if ($is_external && $socid <= 0) {
@@ -211,5 +217,6 @@ if ($is_external && $socid <= 0) {
 }
 
 print '</div>';
+print '</main>';
 if (!$is_external) cpcc_admin_shell_close();
 llxFooter();

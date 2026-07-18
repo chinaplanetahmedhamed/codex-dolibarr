@@ -36,14 +36,24 @@ if (!$is_external && $canadmin && $action === 'syncprojectcards') {
     $syncSummary = cpcc_project_sync_existing_cards($db, $user, $socid);
 }
 
+$projectCss = array(
+    cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'),
+    cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/projects.css'),
+);
+if ($is_external) $projectCss[] = '/custom/cpkanban/css/board.css?v=20260718-m010';
+else $projectCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
 llxHeader('', 'Projects / المشاريع', '', '', 0, 0,
     $is_external ? array('/custom/cpkanban/js/board.js?v=20260718-m010') : array(),
-    $is_external ? array('/custom/chinaplanetcustomercenter/css/projects.css','/custom/cpkanban/css/board.css?v=20260718-m010') : array('/custom/chinaplanetcustomercenter/css/projects.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+    $projectCss);
 if($is_external) cpcc_portal_navigation($user, 'projects');
 else cpcc_admin_shell_open('portal','Projects / المشاريع','كل مشاريع العملاء والمشاريع النشطة في عرض واحد','fa-project-diagram',array('socid'=>$socid));
 
-print '<h2>Projects / المشاريع</h2>';
-print '<p>Real Vision System projects linked to your company, with Kanban sync status.</p>';
+print '<main class="cpcc-dashboard cpcc-projects-page" dir="rtl">';
+print '<header class="cpcc-page-head"><div>';
+print '<span class="cpcc-eyebrow">CUSTOMER PROJECTS</span>';
+print '<h1>المشاريع / Projects</h1>';
+print '<p>تابع حالة مشاريعك وتواريخها وتفاصيلها ونسبة التقدم في مكان واحد. / Follow project status, dates, details, and progress in one place.</p>';
+print '</div></header>';
 print '<nav class="cpcc-project-view-cards" aria-label="Project views">';
 print '<a class="cpcc-project-view'.($statusFilter === 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($activeProjectsUrl).'"><span>المشاريع النشطة</span><strong>'.(int)$projectsActive.'</strong><small>Active projects</small></a>';
 print '<a class="cpcc-project-view'.($statusFilter !== 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($allProjectsUrl).'"><span>كل المشاريع</span><strong>'.(int)$projectsTotal.'</strong><small>All projects</small></a>';
@@ -207,5 +217,6 @@ if ($is_external && $socid <= 0) {
     }
 }
 
+print '</main>';
 if(!$is_external) cpcc_admin_shell_close();
 llxFooter();

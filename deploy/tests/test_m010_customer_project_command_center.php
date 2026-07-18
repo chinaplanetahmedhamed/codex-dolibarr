@@ -41,6 +41,8 @@ $asset = file_get_contents($repo.'/custom/cpkanban/asset.php');
 $card = file_get_contents($repo.'/custom/cpkanban/card.php');
 $cardClass = file_get_contents($repo.'/custom/cpkanban/class/cpkanbancard.class.php');
 $projects = file_get_contents($repo.'/custom/chinaplanetcustomercenter/projects.php');
+$documents = file_get_contents($repo.'/custom/chinaplanetcustomercenter/documents.php');
+$orders = file_get_contents($repo.'/custom/chinaplanetcustomercenter/orders.php');
 $boardJs = file_get_contents($repo.'/custom/cpkanban/js/board.js');
 $financial = file_get_contents($repo.'/custom/chinaplanetcustomercenter/lib/financial.lib.php');
 $export = file_get_contents($repo.'/custom/chinaplanetcustomercenter/lib/export.lib.php');
@@ -73,6 +75,8 @@ m010Assert(strpos($card, "if (\$action == 'update' && \$canwrite") !== false, 'i
 m010Assert(strpos($projects, 'if (!$is_external) {'.PHP_EOL.'        foreach ($projectIds as $projectId)') !== false, 'external project listing performs no automatic write-side synchronization');
 m010Assert(strpos($projects, 'cc.entity=p.entity AND cc.fk_soc=p.fk_soc') !== false && strpos($projects, 'c.entity=p.entity AND c.fk_soc=p.fk_soc') !== false, 'project-to-card joins require matching entity and customer');
 m010Assert(strpos($projects, 'class="cpk-project-modal-host"') !== false && strpos($projects, 'class="cpk-card-link"') !== false && strpos($boardJs, '.cpk-project-modal-host') !== false, 'customer project list opens the command center in the accessible modal');
+m010Assert(strpos($projects, 'class="cpcc-page-head"') !== false && strpos($documents, 'class="cpcc-page-head"') !== false && strpos($orders, 'class="cpcc-page-head"') !== false, 'projects documents and orders share the customer portal hero component');
+m010Assert(strpos($projects, 'customer_dashboard.css') !== false && strpos($documents, 'customer_dashboard.css') !== false, 'projects and documents load the shared customer hero stylesheet');
 
 foreach (array('cpk-project-timeline', 'cpk-project-gallery', 'cpk-shipment-grid', 'cpk-file-grid', 'cpk-finance-summary') as $section) {
     m010Assert(strpos($helper, $section) !== false && strpos($css, '.'.$section) !== false, 'responsive section is rendered and styled: '.$section);
