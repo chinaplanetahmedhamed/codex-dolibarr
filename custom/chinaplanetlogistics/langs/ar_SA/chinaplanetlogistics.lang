@@ -119,6 +119,7 @@ CPLDocumentSourceId=رقم المصدر المعتمد
 CPLActionRequired=إجراء مطلوب
 CPLShipmentActions=إجراءات الشحنة
 CPLBackToProject=العودة إلى المشروع
+CPLTrackShipment=تتبع الشحنة / Track shipment
 CPLInternalFiles=ملفات الشحنة الداخلية
 CPLPublicUpdateSource=مصدر التحديث الظاهر للعميل
 CPLOptionalPublicSourceLabel=اسم عام آمن اختياري

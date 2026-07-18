@@ -56,12 +56,14 @@ m011Assert(strpos($legacyHtml, 'PRIVATE-NOTE-MUST-NOT-RENDER') === false && strp
 m011Assert(strpos($legacyHtml, 'aria-current="step"') !== false, 'timeline exposes the current milestone semantically');
 
 $card = file_get_contents($repo.'/custom/chinaplanetlogistics/card.php');
+$list = file_get_contents($repo.'/custom/chinaplanetlogistics/list.php');
 $class = file_get_contents($repo.'/custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php');
 $helper = file_get_contents($repo.'/custom/chinaplanetlogistics/lib/shipment_customer.lib.php');
 $operations = file_get_contents($repo.'/custom/chinaplanetoperations/class/OperationsService.class.php');
 $operationEdit = file_get_contents($repo.'/custom/chinaplanetoperations/operations/edit.php');
 $projectCenter = file_get_contents($repo.'/custom/cpkanban/lib/customer_project_center.lib.php');
 $css = file_get_contents($repo.'/custom/chinaplanetlogistics/css/shipment-command-center.css');
+$listCss = file_get_contents($repo.'/custom/chinaplanetlogistics/css/shipment-list.css');
 $eventSql = file_get_contents($repo.'/custom/chinaplanetlogistics/sql/llx_cpl_shipment_event.sql');
 $requirementSql = file_get_contents($repo.'/custom/chinaplanetlogistics/sql/llx_cpl_document_requirement.sql');
 $shipmentSql = file_get_contents($repo.'/custom/chinaplanetlogistics/sql/llx_chinaplanetlogistics.sql');
@@ -69,6 +71,8 @@ $shipmentSql = file_get_contents($repo.'/custom/chinaplanetlogistics/sql/llx_chi
 m011Assert(strpos($card, "define('CSRFCHECK_WITH_TOKEN', 1)") !== false && strpos($card, "\$is_post") !== false, 'shipment mutations retain CSRF and POST checks');
 m011Assert(strpos($card, "hasRight('chinaplanetlogistics', 'write')") !== false && strpos($card, "hasRight('chinaplanetcustomercenter', 'write')") === false, 'customer-center write permission cannot mutate shipments');
 m011Assert(strpos($card, "(int) \$object->fk_soc !== (int) \$user->socid") !== false, 'direct customer shipment access verifies ownership');
+m011Assert(strpos($list, 'cpl-track-action') !== false && strpos($list, "\$is_external") !== false && strpos($list, "'?id='.(int) \$obj->rowid") !== false, 'external shipment list has a clear tracking action using the existing scoped card route');
+m011Assert(strpos($listCss, 'min-height: 44px') !== false && strpos($listCss, '@media (max-width: 700px)') !== false && strpos($listCss, 'width: 100%') !== false, 'tracking action is keyboard-visible and mobile touch friendly');
 m011Assert(strpos($card, 'cpl_render_shipment_command_center') !== false && strpos($card, 'if (!$is_external_customer)') !== false, 'customer card uses command center and keeps legacy files internal');
 m011Assert(strpos($card, "\$eta_days < 0 ? 'Arrived'") === false, 'elapsed ETA is never rendered as confirmed arrival');
 m011Assert(strpos($helper, 'CPLEtaDelayed') !== false && strpos($helper, 'cpl_public_datetime($event->event_at)') !== false && strpos($helper, 'cpl_public_source_label') !== false, 'ETA alert includes direction, change time and safe source');
@@ -106,7 +110,7 @@ m011Assert(strpos($css, '.cpl-timeline li{display:grid;grid-template-columns:42p
 m011Assert(strpos($helper, "!empty(\$step['current']) ? 'fa-ship'") !== false && strpos($css, '@keyframes cpl-ship-bob') !== false && strpos($css, 'prefers-reduced-motion:reduce') !== false, 'current shipment stage carries the moving ship marker accessibly');
 m011Assert(strpos($projectCenter, 'customer_eta_change') !== false && strpos($projectCenter, 'customer_latest_update') !== false, 'M010 shipment summary receives ETA alert and latest update');
 
-foreach (array('CPLTimeline','CPLEtaPassedUnconfirmed','CPLDocumentChecklist','CPLBackToProject') as $key) {
+foreach (array('CPLTimeline','CPLEtaPassedUnconfirmed','CPLDocumentChecklist','CPLBackToProject','CPLTrackShipment') as $key) {
     m011Assert(strpos(file_get_contents($repo.'/custom/chinaplanetlogistics/langs/en_US/chinaplanetlogistics.lang'), $key.'=') !== false, 'English language includes '.$key);
     m011Assert(strpos(file_get_contents($repo.'/custom/chinaplanetlogistics/langs/ar_SA/chinaplanetlogistics.lang'), $key.'=') !== false, 'Arabic language includes '.$key);
 }

@@ -119,6 +119,7 @@ CPLDocumentSourceId=Approved source ID
 CPLActionRequired=Action required
 CPLShipmentActions=Shipment actions
 CPLBackToProject=Back to project
+CPLTrackShipment=Track shipment / تتبع الشحنة
 CPLInternalFiles=Internal shipment files
 CPLPublicUpdateSource=Public update source
 CPLOptionalPublicSourceLabel=Optional safe public label

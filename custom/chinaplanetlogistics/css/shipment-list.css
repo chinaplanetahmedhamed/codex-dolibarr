@@ -1,0 +1,51 @@
+.cpl-shipment-reference {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.cpl-shipment-ref {
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.cpl-track-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 9px 13px;
+    border-radius: 10px;
+    background: #17324d;
+    color: #fff !important;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none !important;
+    box-shadow: 0 4px 10px rgba(23, 50, 77, .18);
+    transition: background-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+
+.cpl-track-action:hover {
+    background: #d9a52e;
+    color: #152535 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(23, 50, 77, .24);
+}
+
+.cpl-track-action:focus-visible {
+    outline: 3px solid #ffbf47;
+    outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+    .cpl-shipment-reference {
+        align-items: stretch;
+    }
+
+    .cpl-track-action {
+        width: 100%;
+    }
+}

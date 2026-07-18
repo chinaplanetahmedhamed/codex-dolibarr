@@ -10,7 +10,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
-$langs->loadLangs(array("companies", "orders", "sendings", "projects", "other"));
+$langs->loadLangs(array("companies", "orders", "sendings", "projects", "other", "chinaplanetlogistics@chinaplanetlogistics"));
 
 // Security check
 if (empty($user->id) || (!$user->hasRight('chinaplanetlogistics', 'read') && !$user->hasRight('chinaplanetcustomercenter', 'read') && empty($user->admin))) {
@@ -54,7 +54,10 @@ if (!function_exists('cpl_color_list')) {
     }
 }
 
-llxHeader('', 'China Planet Logistics - Shipment List', '', '', 0, 0, array(), $is_external ? array() : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+$pageCss = $is_external
+    ? array(cpcc_admin_shell_asset('/custom/chinaplanetlogistics/css/shipment-list.css'))
+    : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
+llxHeader('', 'China Planet Logistics - Shipment List', '', '', 0, 0, array(), $pageCss);
 if ($is_external) cpcc_portal_navigation($user, 'shipments');
 
 $newbtn = '';
@@ -138,10 +141,22 @@ if ($resql) {
         $eta_color = cpl_color_list($eta_days);
         $free_color = cpl_color_list($ft_days);
 
+        $cardurl = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid;
         print '<tr class="oddeven">';
         print '<td><b>'.dol_escape_htmltag($obj->container_no).'</b></td>';
         print '<td>'.dol_escape_htmltag($obj->bl_no).'</td>';
-        print '<td><a href="'.dol_buildpath('/chinaplanetlogistics/card.php?id='.$obj->rowid, 1).'">'.dol_escape_htmltag($obj->ref).'</a></td>';
+        print '<td>';
+        if ($is_external) {
+            $trackLabel = $langs->trans('CPLTrackShipment');
+            print '<div class="cpl-shipment-reference">';
+            print '<a class="cpl-shipment-ref" href="'.$cardurl.'">'.dol_escape_htmltag($obj->ref).'</a>';
+            print '<a class="cpl-track-action" href="'.$cardurl.'" aria-label="'.dol_escape_htmltag($trackLabel.' '.$obj->ref).'">';
+            print '<span class="fas fa-route" aria-hidden="true"></span><span>'.dol_escape_htmltag($trackLabel).'</span>';
+            print '</a></div>';
+        } else {
+            print '<a href="'.$cardurl.'">'.dol_escape_htmltag($obj->ref).'</a>';
+        }
+        print '</td>';
         if (!$is_external) print '<td>'.dol_escape_htmltag($obj->customer_name).'</td>';
         print '<td>'.($obj->project_ref ? dol_escape_htmltag($obj->project_ref).' - '.dol_escape_htmltag($obj->project_title) : '-').'</td>';
         print '<td>'.($obj->date_eta && $obj->date_eta != '0000-00-00' ? $obj->date_eta : '-').'</td>';
@@ -150,7 +165,6 @@ if ($resql) {
         print '<td class="center"><span style="display:inline-block;min-width:55px;padding:4px 8px;border-radius:12px;color:#fff;font-weight:bold;background:'.$free_color.';">'.($ft_days !== null ? $ft_days.'d' : '-').'</span></td>';
         print '<td>'.dol_escape_htmltag(chinaplanetlogistics_status_label($obj->fk_statut)).'</td>';
         if (!$is_external) {
-            $cardurl = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid;
             print '<td class="center nowrap">';
             print '<a class="marginrightonly" href="'.$cardurl.'" title="Open shipment"><span class="fas fa-eye"></span></a>';
             if ($canwrite) print '<a href="'.$cardurl.'&action=edit" title="Edit shipment"><span class="fas fa-pencil-alt"></span></a>';
