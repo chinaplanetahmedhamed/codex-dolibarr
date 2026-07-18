@@ -1,0 +1,6 @@
+# M008: resource limits scoped to Shipping Prices administration only.
+php_value upload_max_filesize 200M
+php_value post_max_size 210M
+php_value memory_limit 1024M
+php_value max_execution_time 900
+php_value max_input_time 900
