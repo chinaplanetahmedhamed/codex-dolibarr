@@ -1,5 +1,4 @@
 <?php
-define('CSRFCHECK_WITH_TOKEN', 1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once __DIR__.'/../lib/main.lib.php';
