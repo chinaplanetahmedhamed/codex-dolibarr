@@ -20,13 +20,17 @@ readonly -a RUNTIME_FILES=(
   'custom/chinaplanetcustomercenter/admin_dashboard.php'
   'custom/chinaplanetcustomercenter/board.php'
   'custom/chinaplanetcustomercenter/documents.php'
+  'custom/chinaplanetcustomercenter/download.php'
   'custom/chinaplanetcustomercenter/lib/operations.lib.php'
+  'custom/chinaplanetcustomercenter/lib/portal.lib.php'
   'custom/chinaplanetcustomercenter/project.php'
   'custom/chinaplanetlogistics/card.php'
+  'custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php'
   'custom/chinaplanetlogistics/core/boxes/box_chinaplanetlogistics.php'
   'custom/chinaplanetlogistics/index.php'
   'custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php'
   'custom/chinaplanetlogistics/list.php'
+  'custom/chinaplanetlogistics/public/track.php'
 )
 readonly -a TEST_FILES=(
   'deploy/tests/test_m003_portal_hardening.php'
@@ -39,13 +43,17 @@ declare -Ar EXPECTED_SHA=(
   ['custom/chinaplanetcustomercenter/admin_dashboard.php']='8985c05c024cf95d043c8e80b2445968f699b126710feaea7a3f176bf820dcc6'
   ['custom/chinaplanetcustomercenter/board.php']='b8bb8eda5a0aaaf82119a8c2b5575bcf06f5bdde880b06c786b47952c576fcc7'
   ['custom/chinaplanetcustomercenter/documents.php']='055a7a308cf187db6c178bf19c084b7506165a00137081699ffce6be89ea719a'
+  ['custom/chinaplanetcustomercenter/download.php']='97e71d640217cc84cb25376febebf91d9a5aa14b2db60294cc274d9363222fb1'
   ['custom/chinaplanetcustomercenter/lib/operations.lib.php']='74b84b63fef29e54c3b0eee97ebd1b6a3fd4a748a940931ee331755994a19034'
+  ['custom/chinaplanetcustomercenter/lib/portal.lib.php']='e8b0a31fd4626595e765e31b7eb6d70f5b903dca13b2da46cf42142090858b7f'
   ['custom/chinaplanetcustomercenter/project.php']='eaf2b044eee82c4a724330fca80998d15b9e45b82253409fd628f3128c97b0ad'
   ['custom/chinaplanetlogistics/card.php']='ef52a9554a50497b25bf496f202dcd8210e74ea377ef6e866e412a3759fc9280'
+  ['custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php']='a29a7833bd514742fbe2840732f18d2779f0ee0a3c16d8f610f39ed4e9fd947b'
   ['custom/chinaplanetlogistics/core/boxes/box_chinaplanetlogistics.php']='1543ff76b4af328f2469a61698d8aa027c077a81a4fbcf376fde9d39995198bb'
   ['custom/chinaplanetlogistics/index.php']='aec3689e9b050afbd58d724d4d580929c59b1f1895e8ce09bf305e49e2e9fc58'
   ['custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php']='e7e8019b30d756a901b0e54c82d238942ea177a46db2a7e2a47bfb755ab376ac'
   ['custom/chinaplanetlogistics/list.php']='e1a2f07bd104183bef5991f3b2310501b0d4de3457dfa9ce5e5435f512b0a3ba'
+  ['custom/chinaplanetlogistics/public/track.php']='c64e737498bd988b01fa5d3ab3b3cc0e577d518fe9e15133a6d79b8dd335b90b'
   ['deploy/tests/test_m003_portal_hardening.php']='a4936fc4340a9d02fcb86155c9ef0f63185b9a15bf611fc8069245f05f400077'
   ['deploy/tests/test_m004_shipping_status_sequence.php']='ae4b8dae785d892d3cc39defbcea8a3f7f473766bd61a0dca6dc7b9e0c208a09'
 )
@@ -100,6 +108,7 @@ candidate_checks() {
   for file in "${RUNTIME_FILES[@]}" "${TEST_FILES[@]}"; do
     docker exec "$CONTAINER" php -l "$remote/$file" >/dev/null || die 'CANDIDATE_LINT_FAILED'
   done
+  docker exec "$CONTAINER" php "$remote/deploy/tests/test_m003_portal_hardening.php" >/dev/null || die 'CANDIDATE_M003_TEST_FAILED'
   docker exec "$CONTAINER" php "$remote/deploy/tests/test_m004_shipping_status_sequence.php" >/dev/null || die 'CANDIDATE_M004_TEST_FAILED'
   docker exec "$CONTAINER" rm -rf "$remote"
 }
