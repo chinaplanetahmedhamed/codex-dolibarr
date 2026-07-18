@@ -4,7 +4,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M007'
-readonly COMMIT='9a1aa5d'
+readonly COMMIT='d903a14'
 readonly PROD_CONTAINER='vision_erp'
 readonly PROD_VOLUME='vision-os_dolibarr_custom'
 readonly PROD_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'
@@ -59,10 +59,10 @@ declare -Ar EXPECTED_SHA=(
   ['custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php']='e7e8019b30d756a901b0e54c82d238942ea177a46db2a7e2a47bfb755ab376ac'
   ['custom/chinaplanetlogistics/list.php']='e1a2f07bd104183bef5991f3b2310501b0d4de3457dfa9ce5e5435f512b0a3ba'
   ['custom/chinaplanetlogistics/public/track.php']='c64e737498bd988b01fa5d3ab3b3cc0e577d518fe9e15133a6d79b8dd335b90b'
-  ['custom/chinaplanetshippingprices/admin/import.php']='442f80fef69938ca744db87b7b74d26d3846db08eeb7637d283c16adf5524656'
+  ['custom/chinaplanetshippingprices/admin/import.php']='47bd4b26a818110052262edef364597cf72191e1cc399f79fd99324ebbded745'
   ['deploy/tests/test_m003_portal_hardening.php']='a4936fc4340a9d02fcb86155c9ef0f63185b9a15bf611fc8069245f05f400077'
   ['deploy/tests/test_m004_shipping_status_sequence.php']='ae4b8dae785d892d3cc39defbcea8a3f7f473766bd61a0dca6dc7b9e0c208a09'
-  ['deploy/tests/test_shipping_prices_upload_csrf.php']='cc4193a398d8e1db6e2c88f286c34bf199c4f44f0c628ba51dceded5aa3ab540'
+  ['deploy/tests/test_shipping_prices_upload_csrf.php']='2ee7d9c4e8f6a30d1385d5299684d5560651ebbe3b710895087ed3903291a900'
 )
 
 die() { echo "M007_FAIL=$1" >&2; exit 1; }

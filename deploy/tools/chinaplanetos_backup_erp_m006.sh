@@ -3,7 +3,7 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly COMMIT='9a1aa5d'
+readonly COMMIT='d903a14'
 readonly CONTAINER='erp-staging-dolibarr-1'
 readonly VOLUME='erp-staging_erp-staging_custom'
 readonly CUSTOM_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
@@ -15,8 +15,8 @@ readonly STATE_FILE="${STATE_ROOT}/m006.state"
 readonly LOCK_FILE="${STATE_ROOT}/m006.lock"
 readonly RUNTIME_FILE='custom/chinaplanetshippingprices/admin/import.php'
 readonly TEST_FILE='deploy/tests/test_shipping_prices_upload_csrf.php'
-readonly RUNTIME_SHA='442f80fef69938ca744db87b7b74d26d3846db08eeb7637d283c16adf5524656'
-readonly TEST_SHA='cc4193a398d8e1db6e2c88f286c34bf199c4f44f0c628ba51dceded5aa3ab540'
+readonly RUNTIME_SHA='47bd4b26a818110052262edef364597cf72191e1cc399f79fd99324ebbded745'
+readonly TEST_SHA='2ee7d9c4e8f6a30d1385d5299684d5560651ebbe3b710895087ed3903291a900'
 
 die() { echo "M006_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
