@@ -4,6 +4,7 @@
  * External user detection: $user->socid > 0 means external user (Dolibarr standard)
  */
 require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/chinaplanetlogistics.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
@@ -60,19 +61,19 @@ $today = date('Y-m-d');
 
 // --- STATISTICS ---
     $c_intransit = 0;
-$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE fk_statut IN (1,2)".$where_soc);
+$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE fk_statut IN (".chinaplanetlogistics_status_sql_list('in_transit').")".$where_soc);
 if ($res) { $obj = $db->fetch_object($res); $c_intransit = (int)$obj->total; }
 
 $c_arr14 = 0;
-$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE date_eta BETWEEN '".$db->escape($today)."' AND '".date('Y-m-d', strtotime('+14 days'))."' AND fk_statut < 3".$where_soc);
+$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE date_eta BETWEEN '".$db->escape($today)."' AND '".date('Y-m-d', strtotime('+14 days'))."' AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$where_soc);
 if ($res) { $obj = $db->fetch_object($res); $c_arr14 = (int)$obj->total; }
 
 $c_arrived = 0;
-$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE fk_statut = 3".$where_soc);
+$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE fk_statut IN (".chinaplanetlogistics_status_sql_list('arrived').")".$where_soc);
 if ($res) { $obj = $db->fetch_object($res); $c_arrived = (int)$obj->total; }
 
 $ft_critical = 0;
-$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE freetime_end BETWEEN '".$db->escape($today)."' AND '".date('Y-m-d', strtotime('+7 days'))."' AND fk_statut < 4".$where_soc);
+$res = $db->query("SELECT count(*) as total FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE freetime_end BETWEEN '".$db->escape($today)."' AND '".date('Y-m-d', strtotime('+7 days'))."' AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$where_soc);
 if ($res) { $obj = $db->fetch_object($res); $ft_critical = (int)$obj->total; }
 
 print '<style>
@@ -101,7 +102,7 @@ print '<div class="div-table-responsive">';
 print '<table class="liste centpercent">';
 print '<tr class="liste_titre"><th>Container No / الحاوية</th><th>Customer / العميل</th><th>ETA / الوصول</th><th class="center">Arrival / الوصول</th><th class="center">Free Time / الوقت الحر</th><th>Status / الحالة</th></tr>';
 
-$sql_shp = "SELECT t.rowid,t.container_no,t.date_eta,t.freetime_end,t.fk_statut,s.nom customer_name FROM ".MAIN_DB_PREFIX."chinaplanetlogistics t LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=t.fk_soc WHERE t.fk_statut < 4";
+$sql_shp = "SELECT t.rowid,t.container_no,t.date_eta,t.freetime_end,t.fk_statut,s.nom customer_name FROM ".MAIN_DB_PREFIX."chinaplanetlogistics t LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=t.fk_soc WHERE t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
 if ($socid > 0) {
     $sql_shp .= " AND t.fk_soc = " . $socid;
 } elseif ($is_external) {
@@ -109,7 +110,6 @@ if ($socid > 0) {
 }
 $sql_shp .= " ORDER BY date_eta ASC LIMIT 10";
 
-$statuslabels = array(0=>'Inquiry', 1=>'Booking', 2=>'On Vessel', 3=>'Arrived', 4=>'Closed');
 $res_shp = $db->query($sql_shp);
 if ($res_shp && $db->num_rows($res_shp) > 0) {
     while($shp = $db->fetch_object($res_shp)) {
@@ -121,7 +121,7 @@ if ($res_shp && $db->num_rows($res_shp) > 0) {
         print '<td>'.($shp->date_eta && $shp->date_eta != '0000-00-00' ? $shp->date_eta : '-').'</td>';
         print '<td class="center"><span style="display:inline-block;min-width:45px;padding:2px 6px;border-radius:10px;color:#fff;font-size:11px;background:'.cpl_color($eta_days).';">'.($eta_days !== null ? ($eta_days < 0 ? 'Arrived' : $eta_days.'d') : '-').'</span></td>';
         print '<td class="center"><span style="display:inline-block;min-width:45px;padding:2px 6px;border-radius:10px;color:#fff;font-size:11px;background:'.cpl_color($ft_days).';">'.($ft_days !== null ? $ft_days.'d' : '-').'</span></td>';
-        print '<td>'.(isset($statuslabels[$shp->fk_statut]) ? $statuslabels[$shp->fk_statut] : '-').'</td>';
+        print '<td>'.dol_escape_htmltag(chinaplanetlogistics_status_label($shp->fk_statut)).'</td>';
         print '</tr>';
     }
 } else {

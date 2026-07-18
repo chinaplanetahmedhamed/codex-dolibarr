@@ -6,6 +6,7 @@ require_once __DIR__.'/lib/portal.lib.php';
 require_once __DIR__.'/lib/financial.lib.php';
 require_once __DIR__.'/lib/export.lib.php';
 require_once __DIR__.'/lib/operation_reports.lib.php';
+require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 
 cpcc_portal_require_access($user);
@@ -37,7 +38,7 @@ $invoiceTotal = 0;
 $exportDocumentTotal = 0;
 $operationReportTotal = 0;
 if ($socid > 0) {
-    $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut<4");
+    $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")");
     if ($resql && ($obj=$db->fetch_object($resql))) $shipActive=(int)$obj->nb;
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."commande WHERE entity IN (".getEntity('commande').") AND fk_soc=".$socid." AND fk_statut>=3");
     if ($resql && ($obj=$db->fetch_object($resql))) $ordersCompleted=(int)$obj->nb;

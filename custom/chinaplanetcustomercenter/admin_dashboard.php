@@ -3,6 +3,7 @@ if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once __DIR__.'/lib/financial.lib.php';
+require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
 if (empty($user->id) || empty($user->admin) || !empty($user->socid)) {
     accessforbidden('Administrator access required.');
@@ -61,17 +62,18 @@ $unpaid = (float) cpadScalar($db, "SELECT COALESCE(SUM(GREATEST(f.total_ttc-COAL
 $unpaidCount = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."facture WHERE entity = ".$entity." AND fk_statut=1 AND paye=0");
 $overdueCount = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."facture WHERE entity = ".$entity." AND fk_statut=1 AND paye=0 AND date_lim_reglement IS NOT NULL AND date_lim_reglement<CURDATE()");
 $shipTotal = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity);
-$inTransit = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (1,2)");
-$arriving = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut < 3 AND date_eta BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)");
-$arrived = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut = 3");
-$critical = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut < 4 AND ((date_eta < CURDATE()) OR freetime_end BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY))");
+$activeShipments = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")");
+$inTransit = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('in_transit').")");
+$arriving = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND date_eta BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)");
+$arrived = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('arrived').")");
+$critical = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND ((date_eta < CURDATE()) OR freetime_end BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY))");
 $cardsActive = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE entity = ".$entity." AND status = 1");
 $exportDocuments = cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_export_document') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."cpcc_export_document WHERE entity=".$entity." AND status=1") : 0;
 $publishedRates = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_rate') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$entity." AND status=1 AND is_current=1") : 0;
 $shippingInquiries = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_inquiry') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_inquiry WHERE entity=".$entity." AND status=1") : 0;
 $shipmentsWithoutExportDocs = 0;
 if (cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_export_document')) {
-    $shipmentsWithoutExportDocs = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l WHERE l.entity=".$entity." AND l.fk_statut<4 AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_export_document d WHERE d.entity=l.entity AND d.fk_shipment=l.rowid AND d.status=1)");
+    $shipmentsWithoutExportDocs = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l WHERE l.entity=".$entity." AND l.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_export_document d WHERE d.entity=l.entity AND d.fk_shipment=l.rowid AND d.status=1)");
 }
 
 $financialByCurrency = array();
@@ -125,7 +127,7 @@ $resql = $db->query($sql);
 $topMax = 0;
 if ($resql) while ($obj = $db->fetch_object($resql)) { $topCustomers[]=$obj; $topMax=max($topMax,(float)$obj->amount); }
 
-$statusLabels = array(0=>'Inquiry',1=>'Booking',2=>'On vessel',3=>'Arrived',4=>'Closed');
+$statusLabels = chinaplanetlogistics_status_map();
 $orderStatusLabels = array(-1=>'Canceled',0=>'Draft',1=>'Validated',2=>'In progress',3=>'Closed');
 
 $widgetLabels = array(
@@ -184,7 +186,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <div class="cpad-kpi" data-cpad-widget="kpi_customers" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-users"></span><b><?php echo $customers; ?></b><span>Customers / العملاء</span><small>Open customer center / فتح مركز العملاء</small></a></div>
     <div class="cpad-kpi" data-cpad-widget="kpi_orders" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-shopping-cart"></span><b><?php echo $activeOrders; ?></b><span>Active Orders / الطلبات النشطة</span><small><?php echo $allOrders; ?> total · <?php echo $completedOrders; ?> completed</small></a></div>
     <div class="cpad-kpi" data-cpad-widget="kpi_projects" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><span>Active Projects / المشاريع النشطة</span><small>Open operational projects / فتح المشاريع</small></a></div>
-    <div class="cpad-kpi" data-cpad-widget="kpi_shipments" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-ship"></span><b><?php echo $inTransit; ?></b><span>Active Shipments / الشحنات النشطة</span><small><?php echo $shipTotal; ?> total shipments</small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_shipments" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-ship"></span><b><?php echo $activeShipments; ?></b><span>Active Shipments / الشحنات النشطة</span><small><?php echo $shipTotal; ?> total shipments</small></a></div>
     <div class="cpad-kpi danger" data-cpad-widget="kpi_alerts" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="cpad-kpi-icon fas fa-exclamation-triangle"></span><b><?php echo $critical; ?></b><span>Critical Alerts / تنبيهات حرجة</span><small>ETA or free-time risk / خطر وصول أو وقت حر</small></a></div>
     <div class="cpad-kpi gold" data-cpad-widget="kpi_tasks" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-columns"></span><b><?php echo $cardsActive; ?></b><span>Active Kanban / مهام كانبان</span><small>Open operations board / فتح لوحة العمليات</small></a></div>
   </section>
@@ -248,7 +250,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <?php if (empty($recentShipments)) { ?><div class="cpad-empty">No shipment records yet.</div><?php } else { ?>
     <div class="cpad-table-scroll"><table class="cpad-table">
       <thead><tr><th>REF / CONTAINER</th><th>CUSTOMER</th><th>DESTINATION</th><th>ETA</th><th>STATUS</th></tr></thead>
-      <tbody><?php foreach ($recentShipments as $shipment) { $late=!empty($shipment->date_eta)&&$shipment->date_eta<date('Y-m-d')&&(int)$shipment->fk_statut<3; ?>
+      <tbody><?php foreach ($recentShipments as $shipment) { $late=!empty($shipment->date_eta)&&$shipment->date_eta<date('Y-m-d')&&(chinaplanetlogistics_status_in($shipment->fk_statut,'pre_sailing')||chinaplanetlogistics_status_in($shipment->fk_statut,'in_transit')); ?>
         <tr>
           <td><a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?id='.(int)$shipment->rowid,1); ?>"><?php echo dol_escape_htmltag($shipment->container_no ?: $shipment->ref); ?></a></td>
           <td><?php echo dol_escape_htmltag($shipment->customer ?: '—'); ?></td><td><?php echo dol_escape_htmltag($shipment->port_destination ?: '—'); ?></td><td><?php echo dol_escape_htmltag($shipment->date_eta ?: '—'); ?></td>

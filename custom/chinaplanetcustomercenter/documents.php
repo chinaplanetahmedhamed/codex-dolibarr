@@ -1,4 +1,5 @@
 <?php
+define('CSRFCHECK_WITH_TOKEN', 1);
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 
 require_once __DIR__.'/lib/main.lib.php';
@@ -7,12 +8,16 @@ require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once __DIR__.'/lib/portal.lib.php';
+require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
-cpcc_portal_require_access($user);
+cpcc_portal_require_access($user, array(
+    array('chinaplanetcustomercenter', 'read'),
+    array('chinaplanetlogistics', 'read'),
+));
 
 $scope = cpcc_portal_user_scope($user);
 $is_external = !empty($scope['is_external']);
-$socid = $is_external ? (int) $scope['socid'] : GETPOSTINT('socid');
+$socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
 $search = GETPOST('search', 'alpha');
 $action = GETPOST('action', 'alpha');
 $shipid = GETPOSTINT('shipid');
@@ -20,6 +25,8 @@ $shipid_post = GETPOSTINT('shipid', 2);
 $file = GETPOST('file', 'restricthtml');
 $newname = GETPOST('newname', 'alphanohtml');
 $canwrite = (!$is_external && ($user->admin || $user->hasRight('chinaplanetcustomercenter', 'write') || $user->hasRight('chinaplanetlogistics', 'write')));
+$candelete = (!$is_external && ($user->admin || $user->hasRight('chinaplanetcustomercenter', 'delete') || $user->hasRight('chinaplanetlogistics', 'delete')));
+$is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
 $form = new Form($db);
 $customer_options = array();
 if (!$is_external) {
@@ -31,7 +38,8 @@ $ship_options = array();
 $sql_ship_options = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.fk_soc, s.nom as customer_name"
     . " FROM ".MAIN_DB_PREFIX."chinaplanetlogistics t"
     . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
-    . ($socid > 0 ? " WHERE t.fk_soc = ".((int) $socid) : "")
+    . " WHERE t.entity=".(int) $conf->entity
+    . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
     . " ORDER BY t.rowid DESC";
 $res_ship_options = $db->query($sql_ship_options);
 if ($res_ship_options) {
@@ -45,73 +53,45 @@ if ($res_ship_options) {
     }
 }
 
-if ($action === 'upload' && $canwrite && $shipid_post > 0 && !empty($_FILES['userfile']['name'])) {
-    $rs = $db->query("SELECT rowid, ref, fk_soc FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid = ".((int) $shipid_post));
-    if ($rs && ($obj = $db->fetch_object($rs))) {
-        if (empty($socid) || (int) $obj->fk_soc === (int) $socid || !empty($user->admin)) {
-            $upload_dir = cpcc_portal_shipment_doc_root($shipid_post);
-            $uploadres = cpcc_portal_store_uploaded_shipment_file($shipid_post, $upload_dir, $_FILES['userfile']['name'], $_FILES['userfile']['tmp_name']);
-            if (!empty($uploadres['ok'])) {
-                setEventMessages('Document uploaded successfully.', null, 'mesgs');
-            } else {
-                setEventMessages(!empty($uploadres['error']) ? $uploadres['error'] : 'Upload failed.', null, 'errors');
-            }
-        } else {
-            accessforbidden();
-        }
+if (in_array($action, array('upload', 'rename', 'deletefile'), true) && !$is_post) accessforbidden();
+
+if ($action === 'upload') {
+    if (!$canwrite || $shipid_post <= 0) accessforbidden();
+    $shipment = cpcc_portal_authorized_shipment($db, $user, $shipid_post, $socid);
+    if (!$shipment) accessforbidden();
+
+    $upload = $_FILES['userfile'] ?? array();
+    $upload_dir = cpcc_portal_shipment_doc_root($shipid_post);
+    $uploadres = cpcc_portal_store_uploaded_shipment_file($shipid_post, $upload_dir, $upload['name'] ?? '', $upload['tmp_name'] ?? '', $upload['size'] ?? 0, $upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    if (!empty($uploadres['ok'])) {
+        setEventMessages('Document uploaded successfully.', null, 'mesgs');
     } else {
-        setEventMessages('Shipment not found for upload.', null, 'errors');
+        setEventMessages(!empty($uploadres['error']) ? $uploadres['error'] : 'Upload was rejected.', null, 'errors');
     }
 }
 
-if (($action === 'rename' || $action === 'deletefile') && $canwrite && $shipid_post > 0 && !empty($file)) {
-    $rs = $db->query("SELECT rowid, ref, fk_soc FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid = ".((int) $shipid_post));
-    if ($rs && ($obj = $db->fetch_object($rs))) {
-        if (empty($socid) || (int) $obj->fk_soc === (int) $socid || !empty($user->admin)) {
-            $base_dir = '';
-            $old_rel = ltrim($file, '/\\');
-            foreach (cpcc_portal_shipment_doc_roots($shipid_post, $obj->ref) as $candidate_dir) {
-                $candidate_real = realpath($candidate_dir);
-                if (!empty($candidate_real)) {
-                    $candidate_file = realpath(DOL_DATA_ROOT.'/'.$old_rel);
-                    if (!empty($candidate_file) && strpos($candidate_file, $candidate_real) === 0) {
-                        $base_dir = $candidate_real;
-                        break;
-                    }
-                }
-            }
-            $old_rel = ltrim($file, '/\\');
-            $old_full = realpath(DOL_DATA_ROOT.'/'.$old_rel);
-            if (empty($base_dir) || empty($old_full) || strpos($old_full, $base_dir) !== 0) {
-                setEventMessages('Invalid file path.', null, 'errors');
-            } elseif (!is_file($old_full) || !is_readable($old_full)) {
-                setEventMessages('File not found.', null, 'errors');
-            } elseif ($action === 'deletefile') {
-                if (@unlink($old_full)) {
-                    setEventMessages('Document deleted.', null, 'mesgs');
-                } else {
-                    setEventMessages('Delete failed.', null, 'errors');
-                }
-            } elseif ($action === 'rename') {
-                $safe_new = trim(dol_sanitizeFileName($newname));
-                if (empty($safe_new)) {
-                    setEventMessages('New file name is required.', null, 'errors');
-                } else {
-                    $target = $base_dir.'/'.$safe_new;
-                    if (strpos(realpath(dirname($target)), $base_dir) !== 0 && realpath(dirname($target)) !== $base_dir) {
-                        setEventMessages('Invalid target path.', null, 'errors');
-                    } elseif (@rename($old_full, $target)) {
-                        setEventMessages('Document renamed.', null, 'mesgs');
-                    } else {
-                        setEventMessages('Rename failed.', null, 'errors');
-                    }
-                }
-            }
-        } else {
-            accessforbidden();
-        }
+if ($action === 'rename' || $action === 'deletefile') {
+    if (($action === 'rename' && !$canwrite) || ($action === 'deletefile' && !$candelete) || $shipid_post <= 0 || $file === '') accessforbidden();
+    $shipment = cpcc_portal_authorized_shipment($db, $user, $shipid_post, $socid);
+    if (!$shipment) accessforbidden();
+
+    $old_full = cpcc_portal_resolve_shipment_doc_path($shipid_post, $shipment->ref, $file);
+    if ($old_full === '') accessforbidden();
+
+    if ($action === 'deletefile') {
+        if (!@unlink($old_full)) setEventMessages('Document operation failed.', null, 'errors');
+        else setEventMessages('Document deleted.', null, 'mesgs');
     } else {
-        setEventMessages('Shipment not found.', null, 'errors');
+        $safe_new = cpcc_portal_validate_shipment_filename($newname);
+        $base_dir = realpath(dirname($old_full));
+        $target = $base_dir !== false && $safe_new !== '' ? $base_dir.DIRECTORY_SEPARATOR.$safe_new : '';
+        if ($target === '' || file_exists($target) || !cpcc_portal_path_is_within($old_full, $base_dir)) {
+            setEventMessages('Document operation failed.', null, 'errors');
+        } elseif (!@rename($old_full, $target)) {
+            setEventMessages('Document operation failed.', null, 'errors');
+        } else {
+            setEventMessages('Document renamed.', null, 'mesgs');
+        }
     }
 }
 
@@ -130,8 +110,9 @@ if ($is_external && $socid <= 0) {
     $sql = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.date_eta, t.fk_statut, s.nom as customer_name"
          . " FROM ".MAIN_DB_PREFIX."chinaplanetlogistics t"
          . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
-         . ($socid > 0 ? " WHERE t.fk_soc = ".((int) $socid) : "")
-         . (!empty($search) ? ($socid > 0 ? " AND" : " WHERE")." (t.ref LIKE '%".$db->escape($search)."%' OR t.container_no LIKE '%".$db->escape($search)."%' OR t.bl_no LIKE '%".$db->escape($search)."%')" : "")
+         . " WHERE t.entity=".(int) $conf->entity
+         . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
+         . (!empty($search) ? " AND (t.ref LIKE '%".$db->escape($search)."%' OR t.container_no LIKE '%".$db->escape($search)."%' OR t.bl_no LIKE '%".$db->escape($search)."%')" : "")
          . " ORDER BY t.date_eta DESC, t.rowid DESC";
     $resql = $db->query($sql);
 
@@ -161,13 +142,15 @@ if ($is_external && $socid <= 0) {
     if ($resql && $db->num_rows($resql) > 0) {
         while ($obj = $db->fetch_object($resql)) {
             $docs = array();
-            foreach (cpcc_portal_shipment_doc_roots($obj->rowid, $obj->ref) as $dir) {
-                if (!is_dir($dir)) continue;
-                $dir_docs = dol_dir_list($dir, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
-                if (!empty($dir_docs)) {
-                    foreach ($dir_docs as $doc) {
-                        $doc['docroot'] = $dir;
-                        $docs[] = $doc;
+            if (!$is_external) {
+                foreach (cpcc_portal_shipment_doc_roots($obj->rowid, $obj->ref) as $dir) {
+                    if (!is_dir($dir)) continue;
+                    $dir_docs = dol_dir_list($dir, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+                    if (!empty($dir_docs)) {
+                        foreach ($dir_docs as $doc) {
+                            $doc['docroot'] = $dir;
+                            $docs[] = $doc;
+                        }
                     }
                 }
             }
@@ -178,10 +161,11 @@ if ($is_external && $socid <= 0) {
             print '<td>'.dol_escape_htmltag($obj->container_no).'</td>';
             print '<td>'.dol_escape_htmltag($obj->bl_no).'</td>';
             print '<td>'.(!empty($obj->date_eta) ? dol_print_date($obj->date_eta, 'day') : '-').'</td>';
-            print '<td>'.dol_escape_htmltag((string) $obj->fk_statut).'</td>';
+            print '<td>'.dol_escape_htmltag(chinaplanetlogistics_status_label($obj->fk_statut)).'</td>';
             print '<td>';
             if (empty($docs)) {
-                print '<span class="opacitymedium">No files</span>';
+                $emptyMessage = $is_external ? 'No approved customer document is available.' : 'No files';
+                print '<span class="opacitymedium">'.dol_escape_htmltag($emptyMessage).'</span>';
             } else {
                 print '<ul class="nobullet margin0 padding0">';
                 foreach ($docs as $doc) {
@@ -194,9 +178,11 @@ if ($is_external && $socid <= 0) {
             print '</td>';
             print '<td>';
             print '<a class="button button-small" href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'">Open</a>';
-            if ($canwrite && !$is_external) {
+            if (($canwrite || $candelete) && !$is_external) {
+                if ($canwrite) {
                 print ' <a class="button button-small" href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'&action=edit">Edit</a>';
-                print ' <a class="button button-small" href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'&action=confirm_delete">Delete</a>';
+                }
+                if ($candelete) print ' <a class="button button-small" href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'&action=confirm_delete">Delete</a>';
                 if (!empty($docs)) {
                     print '<div style="margin-top:8px">';
                     foreach ($docs as $doc) {
@@ -205,9 +191,11 @@ if ($is_external && $socid <= 0) {
                         print '<input type="hidden" name="token" value="'.newToken().'">';
                         print '<input type="hidden" name="shipid" value="'.(int) $obj->rowid.'">';
                         print '<input type="hidden" name="file" value="'.dol_escape_htmltag($relative).'">';
-                        print '<input type="text" class="flat minwidth150" name="newname" value="'.dol_escape_htmltag($doc['name']).'">';
-                        print '<button class="button button-small" type="submit" name="action" value="rename">Rename</button>';
-                        print '<button class="button button-small" type="submit" name="action" value="deletefile" onclick="return confirm(\'Delete this document?\')">Delete file</button>';
+                        if ($canwrite) {
+                            print '<input type="text" class="flat minwidth150" name="newname" value="'.dol_escape_htmltag($doc['name']).'">';
+                            print '<button class="button button-small" type="submit" name="action" value="rename">Rename</button>';
+                        }
+                        if ($candelete) print '<button class="button button-small" type="submit" name="action" value="deletefile" onclick="return confirm(\'Delete this document?\')">Delete file</button>';
                         print '</form>';
                     }
                     print '</div>';
