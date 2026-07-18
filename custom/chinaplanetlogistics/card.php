@@ -13,6 +13,7 @@ if ($csrfRequestMethod !== 'GET' || !in_array($csrfRequestedAction, $csrfReadOnl
 
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/chinaplanetlogistics.lib.php';
+require_once __DIR__.'/lib/shipment_customer.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formprojet.class.php';
@@ -21,16 +22,16 @@ require_once __DIR__.'/../chinaplanetcustomercenter/lib/portal.lib.php';
 require_once __DIR__.'/../chinaplanetcustomercenter/lib/admin_shell.lib.php';
 require_once __DIR__.'/class/chinaplanetlogistics.class.php';
 
-$langs->loadLangs(array("companies", "orders", "projects", "sendings", "other"));
+$langs->loadLangs(array("companies", "orders", "projects", "sendings", "other", "chinaplanetlogistics@chinaplanetlogistics"));
 
 $id      = GETPOST('id', 'int');
 $action  = GETPOST('action', 'alpha');
 $confirm = GETPOST('confirm', 'alpha');
 
 // Security
-$canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin));
+$canwrite = ($user->hasRight('chinaplanetlogistics', 'write') || !empty($user->admin));
 $canread  = ($user->hasRight('chinaplanetlogistics', 'read')  || $user->hasRight('chinaplanetcustomercenter', 'read') || !empty($user->admin));
-$candelete = ($user->hasRight('chinaplanetlogistics', 'delete') || $user->hasRight('chinaplanetcustomercenter', 'delete') || !empty($user->admin));
+$candelete = ($user->hasRight('chinaplanetlogistics', 'delete') || !empty($user->admin));
 if (empty($user->id) || !$canread) accessforbidden();
 
 $object = new ChinaPlanetLogistics($db);
@@ -52,7 +53,8 @@ if ($is_external_customer) {
             if ($is_modal) {
                 http_response_code(403);
                 header('Content-Type: text/html; charset=UTF-8');
-                print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:24px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif}.warning{padding:16px;border:1px solid #f1c40f;border-radius:10px;background:#fff8dc}</style></head><body><div class="warning">الشحنة غير موجودة أو لا تملك صلاحية عرضها.</div></body></html>';
+                $deniedRtl = ($langs->trans('DIRECTION') === 'rtl');
+                print '<!doctype html><html lang="'.dol_escape_htmltag($langs->defaultlang).'" dir="'.($deniedRtl ? 'rtl' : 'ltr').'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:24px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif}.warning{padding:16px;border:1px solid #f1c40f;border-radius:10px;background:#fff8dc}</style></head><body><div class="warning">'.dol_escape_htmltag($langs->trans('CPLShipmentAccessDenied')).'</div></body></html>';
                 $db->close();
                 exit;
             }
@@ -63,6 +65,13 @@ if ($is_external_customer) {
 
 $listurl = DOL_URL_ROOT.'/custom/chinaplanetlogistics/list.php';
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
+
+$parseDateTime = function ($value) {
+    $value = trim((string) $value);
+    if ($value === '') return null;
+    $timestamp = strtotime($value);
+    return $timestamp > 0 ? $timestamp : null;
+};
 
 $linksAreValid = function ($socid, $projectid) use ($db, $conf) {
     $socid = (int) $socid;
@@ -95,6 +104,7 @@ if ($action == 'add' && $canwrite && $is_post) {
     $object->port_loading     = GETPOST('port_loading', 'alpha');
     $object->port_destination = GETPOST('port_destination', 'alpha');
     $object->date_etd         = dol_mktime(0,0,0, GETPOST('etd_month','int'), GETPOST('etd_day','int'), GETPOST('etd_year','int'));
+    $object->date_atd         = dol_mktime(0,0,0, GETPOST('atd_month','int'), GETPOST('atd_day','int'), GETPOST('atd_year','int'));
     $object->date_eta         = dol_mktime(0,0,0, GETPOST('eta_month','int'), GETPOST('eta_day','int'), GETPOST('eta_year','int'));
     $object->date_ata         = dol_mktime(0,0,0, GETPOST('ata_month','int'), GETPOST('ata_day','int'), GETPOST('ata_year','int'));
     $object->freetime_days    = (int) GETPOST('freetime_days', 'int');
@@ -103,6 +113,10 @@ if ($action == 'add' && $canwrite && $is_post) {
     $object->fk_statut        = (int) GETPOST('fk_statut', 'int');
     $object->notes            = GETPOST('notes', 'restricthtml');
     $object->customer_note    = GETPOST('customer_note', 'restricthtml');
+    $object->audit_source_type = GETPOST('audit_source_type', 'alpha');
+    $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
+    $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
+    $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
@@ -137,6 +151,7 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->port_loading     = GETPOST('port_loading', 'alpha');
     $object->port_destination = GETPOST('port_destination', 'alpha');
     $object->date_etd         = dol_mktime(0,0,0, GETPOST('etd_month','int'), GETPOST('etd_day','int'), GETPOST('etd_year','int'));
+    $object->date_atd         = dol_mktime(0,0,0, GETPOST('atd_month','int'), GETPOST('atd_day','int'), GETPOST('atd_year','int'));
     $object->date_eta         = dol_mktime(0,0,0, GETPOST('eta_month','int'), GETPOST('eta_day','int'), GETPOST('eta_year','int'));
     $object->date_ata         = dol_mktime(0,0,0, GETPOST('ata_month','int'), GETPOST('ata_day','int'), GETPOST('ata_year','int'));
     $object->freetime_days    = (int) GETPOST('freetime_days', 'int');
@@ -145,6 +160,10 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->fk_statut        = (int) GETPOST('fk_statut', 'int');
     $object->notes            = GETPOST('notes', 'restricthtml');
     $object->customer_note    = GETPOST('customer_note', 'restricthtml');
+    $object->audit_source_type = GETPOST('audit_source_type', 'alpha');
+    $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
+    $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
+    $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
@@ -157,6 +176,41 @@ if ($action == 'update' && $canwrite && $is_post) {
         setEventMessages($object->error, $object->errors, 'errors');
         $action = 'edit';
     }
+}
+
+// ADD REPEATABLE TRANSSHIPMENT EVENT (internal logistics writers only)
+if ($action === 'add_transshipment' && $id > 0 && $canwrite && $is_post) {
+    if (empty($object->id)) accessforbidden();
+    $result = cpl_add_transshipment_event($db, $object, $user, array(
+        'actual_at' => $parseDateTime(GETPOST('transshipment_at', 'alphanohtml')),
+        'location' => GETPOST('transshipment_location', 'alphanohtml'),
+        'source_type' => GETPOST('transshipment_source_type', 'alpha'),
+        'source_label_public' => GETPOST('transshipment_source_label', 'alphanohtml'),
+        'note_public' => GETPOST('transshipment_note', 'alphanohtml'),
+        'customer_visible' => GETPOSTINT('transshipment_customer_visible') ? 1 : 0,
+    ));
+    setEventMessages(!empty($result['ok']) ? $langs->trans('CPLTransshipmentSaved') : $result['error'], null, !empty($result['ok']) ? 'mesgs' : 'errors');
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id); exit;
+}
+
+// CREATE/UPDATE SHIPMENT DOCUMENT REQUIREMENT (internal logistics writers only)
+if ($action === 'save_requirement' && $id > 0 && $canwrite && $is_post) {
+    if (empty($object->id)) accessforbidden();
+    $result = cpl_save_document_requirement($db, $object, $user, array(
+        'id' => GETPOSTINT('requirement_id'),
+        'document_code' => GETPOST('document_code', 'alphanohtml'),
+        'label_public' => GETPOST('label_public', 'alphanohtml'),
+        'requirement_status' => GETPOST('requirement_status', 'alpha'),
+        'requested_from' => GETPOST('requested_from', 'alpha'),
+        'due_at' => $parseDateTime(GETPOST('requirement_due_at', 'alphanohtml')),
+        'action_required' => GETPOSTINT('requirement_action_required') ? 1 : 0,
+        'source_type' => GETPOST('requirement_source_type', 'alpha'),
+        'source_id' => GETPOSTINT('requirement_source_id'),
+        'note_public' => GETPOST('requirement_note_public', 'alphanohtml'),
+        'customer_visible' => GETPOSTINT('requirement_customer_visible') ? 1 : 0,
+    ));
+    setEventMessages(!empty($result['ok']) ? $langs->trans('CPLRequirementSaved') : $result['error'], null, !empty($result['ok']) ? 'mesgs' : 'errors');
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id); exit;
 }
 
 // DELETE (confirmed)
@@ -189,14 +243,16 @@ if (GETPOST('sendit') && $id > 0 && $canwrite && $is_post) {
  * VIEW
  */
 if ($is_modal) {
+    $isRtl = ($langs->trans('DIRECTION') === 'rtl');
     header('Content-Type: text/html; charset=UTF-8');
-    print '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+    print '<!doctype html><html lang="'.dol_escape_htmltag($langs->defaultlang).'" dir="'.($isRtl?'rtl':'ltr').'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+    print '<link rel="stylesheet" href="'.dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260719-m011">';
     print '<style>body{margin:0;padding:20px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif;line-height:1.45}h1,h2,h3{margin-top:0}.fichecenter,.fichehalfleft,.fichehalfright{width:100%}.fiche{margin:0}.fiche-title{margin-bottom:18px}.border{width:100%;border-collapse:collapse;background:#fff}.border td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:start}.border tr:nth-child(even){background:#f8fafc}.titlefield{width:220px}.tabsAction{display:none}.opacitymedium{color:#6b7280}@media(max-width:640px){body{padding:12px}.border td{padding:8px;display:block;width:auto!important}.border tr{display:block;padding:6px 0}}</style>';
     print '</head><body class="cpl-modal-body">';
 } else {
-    $cardCss=array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'));
+    $cardCss=array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'), dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260719-m011');
     if(!$is_external_customer) $cardCss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
-    llxHeader('', 'Shipment Card / بطاقة الشحنة', '', '', 0, 0, array(), $cardCss);
+    llxHeader('', $langs->trans('CPLShipmentCardTitle'), '', '', 0, 0, array(), $cardCss);
     if($is_external_customer) cpcc_portal_navigation($user, 'shipments');
     else cpcc_admin_shell_open('shipments','Shipment Details / تفاصيل الشحنة','بيانات الحاوية والمواعيد والوقت الحر والمستندات','fa-ship',array('socid'=>(int)$object->fk_soc,'projectid'=>(int)$object->fk_project));
 }
@@ -302,6 +358,10 @@ if ($action == 'create' || $action == 'edit') {
     print $form->selectDate($object->date_etd ? $object->date_etd : -1, 'etd_', 0, 0, 1, "card", 1, 0);
     print '</td></tr>';
 
+    print '<tr><td>ATD (Actual Departure) / المغادرة الفعلية</td><td>';
+    print $form->selectDate($object->date_atd ? $object->date_atd : -1, 'atd_', 0, 0, 1, "card", 1, 0);
+    print '</td></tr>';
+
     print '<tr><td class="fieldrequired">ETA (Arrival) / الوصول المتوقع</td><td>';
     print $form->selectDate($object->date_eta ? $object->date_eta : -1, 'eta_', 0, 0, 1, "card", 1, 0);
     print '</td></tr>';
@@ -327,6 +387,13 @@ if ($action == 'create' || $action == 'edit') {
     print '<tr><td>Status / الحالة</td><td>';
     print $form->selectarray('fk_statut', $statuses, $object->fk_statut);
     print '</td></tr>';
+
+    print '<tr><td>'.$langs->trans('CPLPublicUpdateSource').'</td><td>';
+    $publicSourceOptions = array(); foreach (cpl_public_source_types() as $sourceCode=>$unusedLabel) $publicSourceOptions[$sourceCode] = cpl_public_source_label($langs, $sourceCode);
+    print $form->selectarray('audit_source_type', $publicSourceOptions, 'manual_team', 0);
+    print '</td></tr>';
+    print '<tr><td>'.$langs->trans('CPLPublicUpdateReason').'</td><td><input type="text" name="audit_reason_public" maxlength="1000" style="width:95%"></td></tr>';
+    print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1" checked></td></tr>';
 
     print '<tr><td>Internal Notes / ملاحظات داخلية</td><td>';
     print '<textarea name="notes" rows="3" style="width:95%;">'.dol_escape_htmltag($object->notes).'</textarea>';
@@ -372,62 +439,26 @@ if ($action == 'create' || $action == 'edit') {
         if ($r && ($o = $db->fetch_object($r))) $project_label = $o->ref.' - '.$o->title;
     }
 
-    // Countdown
-    $now      = time();
-    $eta_days = ($object->date_eta)     ? ceil(($object->date_eta - $now) / 86400)     : null;
-    $ft_days  = ($object->freetime_end) ? ceil(($object->freetime_end - $now) / 86400) : null;
+    cpl_render_shipment_command_center($db, $object, array(
+        'external'=>$is_external_customer, 'modal'=>$is_modal, 'canwrite'=>$canwrite, 'candelete'=>$candelete,
+        'customer_name'=>$customer_name, 'project_label'=>$project_label, 'listurl'=>$listurl,
+        'projecturl'=>$object->fk_project > 0 ? dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int)$object->fk_project : dol_buildpath('/chinaplanetcustomercenter/projects.php', 1),
+    ));
 
-    function cpl_color($days) {
-        if ($days === null) return '#95a5a6';
-        if ($days < 0)   return '#2c3e50';
-        if ($days <= 3)  return '#c0392b';
-        if ($days <= 7)  return '#e74c3c';
-        if ($days <= 10) return '#e67e22';
-        if ($days <= 14) return '#f39c12';
-        return '#27ae60';
-    }
-
-    // Countdown badges
-    $eta_label = ($eta_days !== null) ? ($eta_days < 0 ? 'Arrived' : $eta_days.'d') : '-';
-    $ft_label  = ($ft_days  !== null) ? ($ft_days  < 0 ? 'Expired' : $ft_days.'d')  : '-';
-
-    print '<main class="cpl-detail">';
-    print '<header class="cpl-detail-hero"><span class="fas fa-ship" aria-hidden="true"></span><h1>'.dol_escape_htmltag($object->ref).'</h1><p><strong>'.dol_escape_htmltag($customer_name).'</strong> · '.dol_escape_htmltag($object->container_no ?: 'No container').' · '.dol_escape_htmltag($project_label).'</p></header>';
-    print '<div class="cpl-detail-grid"><div class="cpl-metric" style="background:'.cpl_color($eta_days).';"><strong>'.$eta_label.'</strong><span>أيام الوصول / Days to Arrival</span></div><div class="cpl-metric" style="background:'.cpl_color($ft_days).';"><strong>'.$ft_label.'</strong><span>الوقت الحر المتبقي / Free Time Left</span></div></div>';
-
-    // Details table
-    $status_colors = array(0=>'#95a5a6',1=>'#3498db',8=>'#d68910',9=>'#1f8a70',2=>'#2980b9',3=>'#e67e22',4=>'#8e44ad',5=>'#16a085',6=>'#27ae60',7=>'#7f8c8d');
-    $sc = isset($status_colors[$object->fk_statut]) ? $status_colors[$object->fk_statut] : '#95a5a6';
-    $sl = isset($statuses[$object->fk_statut]) ? $statuses[$object->fk_statut] : '-';
-
-    $details=array('العميل / Customer'=>$customer_name,'المشروع / Project'=>$project_label,'الحاوية / Container'=>$object->container_no.' · '.$object->container_type,'عدد الحاويات / Quantity'=>$object->nb_containers,'رقم الحجز / Booking'=>$object->booking_no,'البوليصة / BL'=>$object->bl_no,'خط الملاحة / Shipping Line'=>$object->shipping_line,'السفينة / Vessel'=>$object->vessel_name,'الرحلة / Voyage'=>$object->voyage_no,'ميناء الشحن / Loading Port'=>$object->port_loading,'ميناء الوصول / Destination'=>$object->port_destination,'الإبحار / ETD'=>$object->date_etd?dol_print_date($object->date_etd,'day'):'-','الوصول المتوقع / ETA'=>$object->date_eta?dol_print_date($object->date_eta,'day'):'-','الوصول الفعلي / ATA'=>$object->date_ata?dol_print_date($object->date_ata,'day'):'-','أيام الوقت الحر / Free Time Days'=>$object->freetime_days?(int)$object->freetime_days:'-','بداية الوقت الحر / Start'=>$object->freetime_start?dol_print_date($object->freetime_start,'day'):'-','نهاية الوقت الحر / End'=>$object->freetime_end?dol_print_date($object->freetime_end,'day'):'-','الحالة / Status'=>$sl);
-    print '<section class="cpl-info-grid">';foreach($details as $label=>$value)print '<div class="cpl-info"><span>'.dol_escape_htmltag($label).'</span><strong>'.dol_escape_htmltag($value?:'-').'</strong></div>';print '</section>';
-
-    // Action buttons
-    print '<div class="cpl-detail-actions">';
-    if ($canwrite || $candelete) {
+    // Legacy shipment file store remains internal-only. Customer documents are
+    // exposed solely through the validated checklist projection above.
+    if (!$is_external_customer) {
+        print '<section class="cpl-doc-panel">';
+        print '<h3>'.$langs->trans('CPLInternalFiles').'</h3>';
         if ($canwrite) {
-        print '<a href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit"><span class="fas fa-edit"></span> تعديل / Edit</a>';
-        }
-        if ($candelete) print '<a class="danger" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete"><span class="fas fa-trash"></span> حذف / Delete</a>';
-    }
-    print '<a href="'.dol_buildpath('/chinaplanetcustomercenter/documents.php', 1).'?shipid='.(int) $id.'"><span class="fas fa-folder-open"></span> المستندات / Documents</a>';
-    print '<a href="'.$listurl.'"><span class="fas fa-arrow-left"></span> العودة للقائمة / Back</a>';
-    print '</div>';
-
-    // Documents Section
-    print '<section class="cpl-doc-panel">';
-    print '<h3>Documents / المستندات</h3>';
-    if ($canwrite) {
         print '<form action="'.$_SERVER['PHP_SELF'].'?id='.$id.'" method="POST" enctype="multipart/form-data" style="margin-bottom:15px">';
         print '<input type="hidden" name="token" value="'.newToken().'">';
         print '<input type="hidden" name="sendit" value="1">';
         print '<input type="file" name="userfile"> <input type="submit" class="button" value="Upload / رفع">';
         print '</form>';
-    }
+        }
 
-    $filearray = array();
-    if (!$is_external_customer) {
+        $filearray = array();
         foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
             if (!is_dir($docroot)) continue;
             $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
@@ -438,24 +469,22 @@ if ($action == 'create' || $action == 'edit') {
                 }
             }
         }
+        print '<table class="border centpercent">';
+        print '<tr class="liste_titre"><td>File Name</td><td align="right">Size</td><td align="center">Date</td></tr>';
+        if (empty($filearray)) print '<tr><td colspan="3" class="center opacitymedium">No documents uploaded yet.</td></tr>';
+        else {
+            foreach ($filearray as $file) {
+                $relativepath = basename($file['docroot']).'/'.$file['name'];
+                $dl_url = dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?type=shipment&id='.(int) $object->id.'&file='.urlencode($relativepath);
+                print '<tr><td><a href="'.$dl_url.'" target="_blank">'.dol_escape_htmltag($file['name']).'</a></td>';
+                print '<td align="right">'.dol_print_size($file['size']).'</td>';
+                print '<td align="center">'.dol_print_date($file['date'], 'dayhour').'</td></tr>';
+            }
+        }
+        print '</table></section>';
     }
 
-    print '<table class="border centpercent">';
-    print '<tr class="liste_titre"><td>File Name</td><td align="right">Size</td><td align="center">Date</td></tr>';
-    if (empty($filearray)) {
-        $emptyMessage = $is_external_customer ? 'No approved customer document is available.' : 'No documents uploaded yet.';
-        print '<tr><td colspan="3" class="center opacitymedium">'.dol_escape_htmltag($emptyMessage).'</td></tr>';
-    } else {
-        foreach ($filearray as $file) {
-            $relativepath = basename($file['docroot']).'/'.$file['name'];
-            $dl_url = dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?type=shipment&id='.(int) $object->id.'&file='.urlencode($relativepath);
-            print '<tr><td><a href="'.$dl_url.'" target="_blank">'.dol_escape_htmltag($file['name']).'</a></td>';
-            print '<td align="right">'.dol_print_size($file['size']).'</td>';
-            print '<td align="center">'.dol_print_date($file['date'], 'dayhour').'</td></tr>';
-        }
-    }
-    print '</table>';
-    print '</section></main>';
+    print '<script>(function(){var root=document.querySelector(".cpl-command-center");if(!root)return;var title=root.getAttribute("data-cpl-shipment-title")||document.title;document.title=title;try{if(window.parent!==window){var d=window.parent.document,t=d.querySelector("#cpk-card-dialog .cpk-dialog-title, #cpk-card-dialog h2");if(t)t.textContent=title;}}catch(e){}var b=document.querySelector("[data-cpl-back-project]");if(b)b.addEventListener("click",function(){var fallback=b.getAttribute("data-cpl-back-url");if(window.history.length>1)window.history.back();else if(fallback)window.location.href=fallback;});})();</script>';
 }
 
 if ($is_modal) print '</body></html>'; else { if(!$is_external_customer) cpcc_admin_shell_close(); llxFooter(); }

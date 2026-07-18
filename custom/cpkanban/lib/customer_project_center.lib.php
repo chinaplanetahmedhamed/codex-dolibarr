@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../../chinaplanetlogistics/lib/shipment_customer.lib.php';
 /**
  * Read-only customer project command-center aggregation and rendering.
  *
@@ -48,13 +49,19 @@ function cpkanban_customer_project_shipments($db, $entity, $socid, $projectId, $
     if ((int) $directShipmentId > 0) $links[] = 'l.rowid='.(int) $directShipmentId;
     if (empty($links)) return array();
 
-    $sql = "SELECT l.rowid,l.ref,l.container_no,l.container_type,l.nb_containers,l.bl_no,l.vessel_name,l.port_loading,l.port_destination,l.date_etd,l.date_eta,l.date_ata,l.freetime_end,l.fk_statut";
+    $atdSelect = cpl_schema_has_column($db, 'chinaplanetlogistics', 'date_atd') ? 'l.date_atd' : 'NULL AS date_atd';
+    $sql = "SELECT l.rowid,l.ref,l.entity,l.fk_soc,l.container_no,l.container_type,l.nb_containers,l.bl_no,l.vessel_name,l.port_loading,l.port_destination,l.date_etd,".$atdSelect.",l.date_eta,l.date_ata,l.freetime_end,l.fk_statut,l.tms";
     $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l";
     $sql .= " WHERE l.entity=".(int) $entity." AND l.fk_soc=".(int) $socid." AND (".implode(' OR ', $links).")";
     $sql .= " ORDER BY l.date_eta ASC,l.rowid DESC";
     $rows = array();
     $resql = $db->query($sql);
-    while ($resql && ($row = $db->fetch_object($resql))) $rows[] = $row;
+    while ($resql && ($row = $db->fetch_object($resql))) {
+        $events = cpl_shipment_events($db, $row, true);
+        $row->customer_latest_update = cpl_latest_customer_update($events);
+        $row->customer_eta_change = cpl_latest_eta_change($events);
+        $rows[] = $row;
+    }
     return $rows;
 }
 
@@ -189,6 +196,8 @@ function cpkanban_customer_order_status_label($status)
 
 function cpkanban_render_customer_project_center($card, $column, $data, $isModal)
 {
+    global $langs;
+    $langs->load('chinaplanetlogistics@chinaplanetlogistics');
     $latest = $data['latest_update'];
     print '<section class="cpk-command-overview" aria-label="ملخص متابعة المشروع">';
     print '<div class="cpk-command-primary">';
@@ -238,7 +247,9 @@ function cpkanban_render_customer_project_center($card, $column, $data, $isModal
             $url = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $shipment->rowid.($isModal ? '&modal=1' : '');
             print '<a class="cpk-shipment-card" href="'.dol_escape_htmltag($url).'">';
             print '<div><span>'.dol_escape_htmltag($shipment->ref).'</span><strong>🚢 '.dol_escape_htmltag($shipment->container_no ?: 'لم يحدد رقم الحاوية').'</strong></div>';
+            if (!empty($shipment->customer_eta_change)) print '<div class="cpk-shipment-alert" role="status">'.dol_escape_htmltag($langs->trans('CPLEtaChangedAlert')).'</div>';
             print '<dl><div><dt>الحالة</dt><dd>'.dol_escape_htmltag(cpkanban_shipment_status($shipment->fk_statut)).'</dd></div><div><dt>ETA</dt><dd>'.(!empty($shipment->date_eta) ? dol_print_date($shipment->date_eta, 'day') : '—').'</dd></div><div><dt>BL</dt><dd>'.dol_escape_htmltag($shipment->bl_no ?: '—').'</dd></div></dl>';
+            if (!empty($shipment->customer_latest_update)) print '<small>'.dol_escape_htmltag($langs->trans('CPLLatestUpdate')).': '.dol_print_date($shipment->customer_latest_update['timestamp'], 'dayhour').' · '.dol_escape_htmltag(cpl_public_source_label($langs, $shipment->customer_latest_update['event']->source_type)).'</small>';
             print '<small>'.dol_escape_htmltag($shipment->port_loading ?: '—').' ← '.dol_escape_htmltag($shipment->port_destination ?: '—').'</small></a>';
         }
         print '</div>';

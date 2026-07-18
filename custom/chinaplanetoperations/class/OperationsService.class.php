@@ -72,9 +72,10 @@ class OperationsService
     {
         $type = in_array($data['service_type'], self::serviceTypes(), true) ? $data['service_type'] : 'general';
         $this->db->begin();
+        $this->validateShipmentLink($data);
         $ref = $this->nextRef($type);
-        $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpo_operation(entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_user_assign,priority,stage,progress,waiting_on,next_action,date_deadline,note_private,note_public,customer_visible,status,fk_user_creat,date_creation) VALUES(".
-            $this->entity.",".$this->q($ref).",".$this->q($type).",".$this->q($data['title']).",".$this->n($data,'fk_soc').",".$this->n($data,'fk_project').",".$this->n($data,'fk_commande').",".$this->n($data,'fk_user_assign').",".$this->q($data['priority'] ?: 'normal').",'new',0,".$this->q($data['waiting_on'] ?: 'internal').",".$this->q($data['next_action']).",".$this->dateOrNull($data['date_deadline']).",".$this->q($data['note_private']).",".$this->q($data['note_public']).",".(!empty($data['customer_visible'])?1:0).",1,".(int)$userId.",".$this->q($this->now()).")";
+        $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpo_operation(entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_shipment,fk_user_assign,priority,stage,progress,waiting_on,next_action,date_deadline,note_private,note_public,customer_visible,status,fk_user_creat,date_creation) VALUES(".
+            $this->entity.",".$this->q($ref).",".$this->q($type).",".$this->q($data['title']).",".$this->n($data,'fk_soc').",".$this->n($data,'fk_project').",".$this->n($data,'fk_commande').",".$this->n($data,'fk_shipment').",".$this->n($data,'fk_user_assign').",".$this->q($data['priority'] ?: 'normal').",'new',0,".$this->q($data['waiting_on'] ?: 'internal').",".$this->q($data['next_action']).",".$this->dateOrNull($data['date_deadline']).",".$this->q($data['note_private']).",".$this->q($data['note_public']).",".(!empty($data['customer_visible'])?1:0).",1,".(int)$userId.",".$this->q($this->now()).")";
         if (!$this->db->query($sql)) $this->fail();
         $id = (int) $this->db->last_insert_id(MAIN_DB_PREFIX.'cpo_operation');
         $this->saveSection($id, 'service', isset($data['service_data']) ? $data['service_data'] : array(), $userId, false);
@@ -86,14 +87,19 @@ class OperationsService
 
     public function update($id, array $data, $userId)
     {
+        $this->db->begin();
         $operation = $this->get($id);
-        if (!$operation) throw new RuntimeException('Operation not found');
+        if (!$operation) { $this->db->rollback(); throw new RuntimeException('Operation not found'); }
+        $lock = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_operation WHERE rowid=".(int)$id." AND entity=".$this->entity." FOR UPDATE");
+        if (!$lock || $this->db->num_rows($lock) !== 1) $this->fail();
+        $this->validateShipmentLink($data);
         $stage = isset(self::stages()[$data['stage']]) ? $data['stage'] : $operation['stage'];
         $progress = self::stages()[$stage];
-        $sql = "UPDATE ".MAIN_DB_PREFIX."cpo_operation SET title=".$this->q($data['title']).",fk_soc=".$this->n($data,'fk_soc').",fk_project=".$this->n($data,'fk_project').",fk_commande=".$this->n($data,'fk_commande').",fk_user_assign=".$this->n($data,'fk_user_assign').",priority=".$this->q($data['priority']).",stage=".$this->q($stage).",progress=".(int)$progress.",waiting_on=".$this->q($data['waiting_on']).",next_action=".$this->q($data['next_action']).",date_deadline=".$this->dateOrNull($data['date_deadline']).",note_private=".$this->q($data['note_private']).",note_public=".$this->q($data['note_public']).",customer_visible=".(!empty($data['customer_visible'])?1:0).",fk_user_modif=".(int)$userId." WHERE rowid=".(int)$id." AND entity=".$this->entity;
+        $sql = "UPDATE ".MAIN_DB_PREFIX."cpo_operation SET title=".$this->q($data['title']).",fk_soc=".$this->n($data,'fk_soc').",fk_project=".$this->n($data,'fk_project').",fk_commande=".$this->n($data,'fk_commande').",fk_shipment=".$this->n($data,'fk_shipment').",fk_user_assign=".$this->n($data,'fk_user_assign').",priority=".$this->q($data['priority']).",stage=".$this->q($stage).",progress=".(int)$progress.",waiting_on=".$this->q($data['waiting_on']).",next_action=".$this->q($data['next_action']).",date_deadline=".$this->dateOrNull($data['date_deadline']).",note_private=".$this->q($data['note_private']).",note_public=".$this->q($data['note_public']).",customer_visible=".(!empty($data['customer_visible'])?1:0).",fk_user_modif=".(int)$userId." WHERE rowid=".(int)$id." AND entity=".$this->entity;
         if (!$this->db->query($sql)) $this->fail();
         $this->saveSection($id, 'service', isset($data['service_data']) ? $data['service_data'] : array(), $userId);
         $this->log($id, 0, 'updated', 'Stage: '.$stage, 'internal', $userId);
+        $this->db->commit();
         return true;
     }
 
@@ -191,6 +197,19 @@ class OperationsService
     private function getSection($id,$code){$res=$this->db->query("SELECT data_json FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".$this->entity." AND fk_operation=".(int)$id." AND section_code=".$this->q($code));$o=$res?$this->db->fetch_object($res):null;$data=$o?json_decode($o->data_json,true):array();return is_array($data)?$data:array();}
     private function log($operationId,$taskId,$action,$message,$visibility,$userId,$transaction=true){$sql="INSERT INTO ".MAIN_DB_PREFIX."cpo_activity(entity,fk_operation,fk_task,action_code,message,visibility,fk_user,date_action) VALUES(".$this->entity.",".($operationId?(int)$operationId:'NULL').",".($taskId?(int)$taskId:'NULL').",".$this->q($action).",".$this->q($message).",".$this->q($visibility).",".(int)$userId.",".$this->q($this->now()).")";if(!$this->db->query($sql))$this->fail();}
     private function nextRef($type){$prefix=array('shipping_booking'=>'SB','factory_audit'=>'FA','quality_control'=>'QC','order'=>'OR','shipping_inquiry'=>'SI')[$type]??'OP';$year=date('Y');$like='CP-'.$prefix.'-'.$year.'-%';$res=$this->db->query("SELECT ref FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".$this->entity." AND ref LIKE ".$this->q($like)." ORDER BY ref DESC LIMIT 1 FOR UPDATE");$o=$res?$this->db->fetch_object($res):null;$number=$o?(int)substr($o->ref,-6)+1:1;return 'CP-'.$prefix.'-'.$year.'-'.str_pad((string)$number,6,'0',STR_PAD_LEFT);}
+    private function validateShipmentLink(array $data)
+    {
+        $shipmentId = !empty($data['fk_shipment']) ? (int)$data['fk_shipment'] : 0;
+        if ($shipmentId <= 0) return;
+        $socid = !empty($data['fk_soc']) ? (int)$data['fk_soc'] : 0;
+        $projectId = !empty($data['fk_project']) ? (int)$data['fk_project'] : 0;
+        if ($socid <= 0) { $this->db->rollback(); throw new RuntimeException('A linked shipment requires a matching customer.'); }
+        $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid=".$shipmentId." AND entity=".$this->entity." AND fk_soc=".$socid;
+        $sql .= " AND COALESCE(fk_project,0)=".$projectId;
+        $sql .= " FOR UPDATE";
+        $resql = $this->db->query($sql);
+        if (!$resql || $this->db->num_rows($resql) !== 1) { $this->db->rollback(); throw new RuntimeException('Shipment, customer, and project must match.'); }
+    }
     private function nextTaskRef(){$year=date('Y');$like='CP-TK-'.$year.'-%';$res=$this->db->query("SELECT ref FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".$this->entity." AND ref LIKE ".$this->q($like)." ORDER BY ref DESC LIMIT 1");$o=$res?$this->db->fetch_object($res):null;$number=$o?(int)substr($o->ref,-6)+1:1;return 'CP-TK-'.$year.'-'.str_pad((string)$number,6,'0',STR_PAD_LEFT);}
     private function rows($sql){$out=array();$res=$this->db->query($sql);if(!$res)return $out;while($o=$this->db->fetch_object($res))$out[]=get_object_vars($o);return $out;}
     private function q($value){return "'".$this->db->escape((string)$value)."'";}

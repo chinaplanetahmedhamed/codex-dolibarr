@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../lib/shipment_customer.lib.php';
 /**
  * Class for China Planet Logistics shipment records.
  * FIXED: Stable CRUD helpers (sqlDate/sqlStr/sqlInt) + new fields (fk_project, customer_note, booking_no, voyage_no, nb_containers, freetime_start)
@@ -30,6 +31,7 @@ class ChinaPlanetLogistics extends CommonObject
     public $port_loading;
     public $port_destination;
     public $date_etd;
+    public $date_atd;
     public $date_eta;
     public $date_ata;
     public $freetime_days;
@@ -39,6 +41,11 @@ class ChinaPlanetLogistics extends CommonObject
     public $notes;
     public $customer_note;
     public $date_creation;
+    public $tms;
+    public $audit_source_type = 'manual_team';
+    public $audit_source_label = '';
+    public $audit_reason_public = '';
+    public $audit_customer_visible = 1;
 
     public function __construct($db)
     {
@@ -76,6 +83,11 @@ class ChinaPlanetLogistics extends CommonObject
     {
         global $conf;
 
+        if (!cpl_shipment_schema_ready($this->db)) {
+            $this->error = 'Shipment command-center schema is not installed.';
+            return -1;
+        }
+
         if (empty($this->ref) || $this->ref == 'AUTO') {
             $this->ref = 'LOG-'.date('Ymd-His');
         }
@@ -86,7 +98,7 @@ class ChinaPlanetLogistics extends CommonObject
         $sql .= "ref, entity, fk_soc, fk_project, fk_user_creat,";
         $sql .= "container_no, container_type, nb_containers, booking_no, bl_no,";
         $sql .= "shipping_line, vessel_name, voyage_no, port_loading, port_destination,";
-        $sql .= "date_etd, date_eta, date_ata,";
+        $sql .= "date_etd, date_atd, date_eta, date_ata,";
         $sql .= "freetime_days, freetime_start, freetime_end,";
         $sql .= "fk_statut, notes, customer_note, date_creation";
         $sql .= ") VALUES (";
@@ -95,7 +107,7 @@ class ChinaPlanetLogistics extends CommonObject
         $sql .= $this->sqlStr($this->booking_no).", ".$this->sqlStr($this->bl_no).", ";
         $sql .= $this->sqlStr($this->shipping_line).", ".$this->sqlStr($this->vessel_name).", ".$this->sqlStr($this->voyage_no).", ";
         $sql .= $this->sqlStr($this->port_loading).", ".$this->sqlStr($this->port_destination).", ";
-        $sql .= $this->sqlDate($this->date_etd).", ".$this->sqlDate($this->date_eta).", ".$this->sqlDate($this->date_ata).", ";
+        $sql .= $this->sqlDate($this->date_etd).", ".$this->sqlDate($this->date_atd).", ".$this->sqlDate($this->date_eta).", ".$this->sqlDate($this->date_ata).", ";
         $sql .= $this->sqlInt($this->freetime_days).", ".$this->sqlDate($this->freetime_start).", ".$this->sqlDate($this->freetime_end).", ";
         $sql .= $this->sqlInt($this->fk_statut).", ".$this->sqlStr($this->notes).", ".$this->sqlStr($this->customer_note).", ";
         $sql .= "'".$this->db->idate(dol_now())."'";
@@ -110,6 +122,22 @@ class ChinaPlanetLogistics extends CommonObject
         }
         $this->id    = $this->db->last_insert_id(MAIN_DB_PREFIX."chinaplanetlogistics");
         $this->rowid = $this->id;
+        $this->entity = $entity;
+        $initialEvents = array(array('event_type'=>'baseline','milestone_code'=>cpl_status_milestone($this->fk_statut),'status_to'=>$this->fk_statut));
+        if (!empty($this->date_eta)) $initialEvents[] = array('event_type'=>'eta_set','milestone_code'=>'arrived','planned_at'=>$this->date_eta,'date_value_new'=>$this->date_eta);
+        if (!empty($this->date_atd)) $initialEvents[] = array('event_type'=>'atd_set','milestone_code'=>'departed','actual_at'=>$this->date_atd,'date_value_new'=>$this->date_atd);
+        if (!empty($this->date_ata)) $initialEvents[] = array('event_type'=>'ata_set','milestone_code'=>'arrived','actual_at'=>$this->date_ata,'date_value_new'=>$this->date_ata);
+        foreach ($initialEvents as $event) {
+            $event['source_type'] = $this->audit_source_type;
+            $event['source_label_public'] = $this->audit_source_label;
+            $event['reason_public'] = $this->audit_reason_public;
+            $event['customer_visible'] = $this->audit_customer_visible;
+            if (!cpl_shipment_event_insert($this->db, $this, $user, $event)) {
+                $this->error = $this->db->lasterror();
+                $this->db->rollback();
+                return -1;
+            }
+        }
         $this->db->commit();
         return $this->id;
     }
@@ -149,6 +177,7 @@ class ChinaPlanetLogistics extends CommonObject
         $this->port_loading   = $obj->port_loading;
         $this->port_destination = $obj->port_destination;
         $this->date_etd       = $this->db->jdate($obj->date_etd);
+        $this->date_atd       = isset($obj->date_atd) ? $this->db->jdate($obj->date_atd) : null;
         $this->date_eta       = $this->db->jdate($obj->date_eta);
         $this->date_ata       = $this->db->jdate($obj->date_ata);
         $this->freetime_days  = $obj->freetime_days;
@@ -158,13 +187,33 @@ class ChinaPlanetLogistics extends CommonObject
         $this->notes          = $obj->notes;
         $this->customer_note  = $obj->customer_note;
         $this->date_creation  = $this->db->jdate($obj->date_creation);
+        $this->tms            = isset($obj->tms) ? $this->db->jdate($obj->tms) : null;
         return 1;
     }
 
     // ── UPDATE ────────────────────────────────────────────────────────────
     public function update($user, $notrigger = 0)
     {
+        if (!cpl_shipment_schema_ready($this->db)) {
+            $this->error = 'Shipment command-center schema is not installed; audited shipment changes are blocked.';
+            return -1;
+        }
         $this->calculateFreeTimeDates();
+
+        $this->db->begin();
+        $lockSql = "SELECT fk_soc,fk_statut,date_eta,date_atd,date_ata FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid=".(int) $this->id." AND entity = ".$this->activeEntity()." FOR UPDATE";
+        $lockRes = $this->db->query($lockSql);
+        $old = $lockRes ? $this->db->fetch_object($lockRes) : null;
+        if (!$old) {
+            $this->error = 'Shipment was not found.';
+            $this->db->rollback();
+            return -1;
+        }
+        if ((int) $old->fk_soc !== (int) $this->fk_soc && cpl_shipment_has_audit_rows($this->db, $this->id, $this->activeEntity(), (int) $old->fk_soc)) {
+            $this->error = 'Shipment customer cannot be changed after audit history or document requirements exist.';
+            $this->db->rollback();
+            return -1;
+        }
 
         $sql  = "UPDATE ".MAIN_DB_PREFIX."chinaplanetlogistics SET ";
         $sql .= "fk_soc = ".$this->sqlInt($this->fk_soc).", ";
@@ -180,6 +229,7 @@ class ChinaPlanetLogistics extends CommonObject
         $sql .= "port_loading = ".$this->sqlStr($this->port_loading).", ";
         $sql .= "port_destination = ".$this->sqlStr($this->port_destination).", ";
         $sql .= "date_etd = ".$this->sqlDate($this->date_etd).", ";
+        $sql .= "date_atd = ".$this->sqlDate($this->date_atd).", ";
         $sql .= "date_eta = ".$this->sqlDate($this->date_eta).", ";
         $sql .= "date_ata = ".$this->sqlDate($this->date_ata).", ";
         $sql .= "freetime_days = ".$this->sqlInt($this->freetime_days).", ";
@@ -193,20 +243,68 @@ class ChinaPlanetLogistics extends CommonObject
         $resql = $this->db->query($sql);
         if (!$resql) {
             $this->error = $this->db->lasterror();
+            $this->db->rollback();
             return -1;
         }
+
+        $this->entity = $this->activeEntity();
+        $events = array();
+        if ((int) $old->fk_statut !== (int) $this->fk_statut) {
+            $events[] = array('event_type'=>'status_changed','milestone_code'=>cpl_status_milestone($this->fk_statut),'status_from'=>(int)$old->fk_statut,'status_to'=>(int)$this->fk_statut);
+        }
+        $oldEta = $this->db->jdate($old->date_eta); $newEta = $this->date_eta;
+        if ((int) $oldEta !== (int) $newEta) {
+            $events[] = array('event_type'=>empty($oldEta)?'eta_set':'eta_changed','milestone_code'=>'arrived','planned_at'=>$newEta,'date_value_old'=>$oldEta,'date_value_new'=>$newEta);
+        }
+        foreach (array('atd'=>array('old'=>$this->db->jdate($old->date_atd),'new'=>$this->date_atd,'milestone'=>'departed'), 'ata'=>array('old'=>$this->db->jdate($old->date_ata),'new'=>$this->date_ata,'milestone'=>'arrived')) as $code=>$dates) {
+            if ((int)$dates['old'] === (int)$dates['new']) continue;
+            $type = empty($dates['new']) ? $code.'_cleared' : (empty($dates['old']) ? $code.'_set' : $code.'_changed');
+            $events[] = array('event_type'=>$type,'milestone_code'=>$dates['milestone'],'actual_at'=>$dates['new'],'date_value_old'=>$dates['old'],'date_value_new'=>$dates['new']);
+        }
+        foreach ($events as $event) {
+            $event['source_type'] = $this->audit_source_type;
+            $event['source_label_public'] = $this->audit_source_label;
+            $event['reason_public'] = $this->audit_reason_public;
+            $event['customer_visible'] = $this->audit_customer_visible;
+            if (!cpl_shipment_event_insert($this->db, $this, $user, $event)) {
+                $this->error = $this->db->lasterror();
+                $this->db->rollback();
+                return -1;
+            }
+        }
+        $this->db->commit();
         return 1;
     }
 
     // ── DELETE ────────────────────────────────────────────────────────────
     public function delete($user, $notrigger = 0)
     {
-        $sql = "DELETE FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid = ".(int)$this->id." AND entity = ".$this->activeEntity();
+        if (!cpl_shipment_schema_ready($this->db)) {
+            $this->error = 'Shipment command-center schema is not installed; safe deletion is blocked.';
+            return -1;
+        }
+        $entity = $this->activeEntity();
+        $this->db->begin();
+        $lock = $this->db->query("SELECT rowid,fk_soc FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid=".(int)$this->id." AND entity=".$entity." FOR UPDATE");
+        $lockedShipment = $lock ? $this->db->fetch_object($lock) : null;
+        if (!$lockedShipment) {
+            $this->error = 'Shipment was not found.';
+            $this->db->rollback();
+            return -1;
+        }
+        if (cpl_shipment_has_audit_rows($this->db, $this->id, $entity, (int)$lockedShipment->fk_soc)) {
+            $this->error = 'Shipment with audit history or document requirements cannot be deleted.';
+            $this->db->rollback();
+            return -1;
+        }
+        $sql = "DELETE FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid = ".(int)$this->id." AND entity = ".$entity;
         $resql = $this->db->query($sql);
         if (!$resql) {
             $this->error = $this->db->lasterror();
+            $this->db->rollback();
             return -1;
         }
+        $this->db->commit();
         return 1;
     }
 
@@ -224,6 +322,8 @@ class ChinaPlanetLogistics extends CommonObject
     {
         $days = (int) $this->freetime_days;
         if (empty($this->date_ata) || $days <= 0) {
+            $this->freetime_start = null;
+            $this->freetime_end = null;
             return false;
         }
 

@@ -15,8 +15,8 @@ class modChinaPlanetLogistics extends DolibarrModules
         $this->name = "ChinaPlanetLogistics";
         $this->family = "projects";
         $this->module_position = 100;
-        $this->description = "China Planet Logistics Control Tower - Phase 2 (Customer Portal)";
-        $this->version = '1.2.3';
+        $this->description = "China Planet Logistics Customer Shipment Command Center";
+        $this->version = '1.3.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'ship';

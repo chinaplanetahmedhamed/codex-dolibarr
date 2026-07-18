@@ -34,3 +34,7 @@ ALTER TABLE llx_chinaplanetlogistics ADD INDEX idx_chinaplanetlogistics_fk_soc (
 ALTER TABLE llx_chinaplanetlogistics ADD INDEX idx_chinaplanetlogistics_fk_project (fk_project);
 ALTER TABLE llx_chinaplanetlogistics ADD INDEX idx_chinaplanetlogistics_fk_commande (fk_commande);
 ALTER TABLE llx_chinaplanetlogistics ADD UNIQUE INDEX uk_chinaplanetlogistics_ref (ref, entity);
+
+-- M011 additive upgrade for existing installations. Dolibarr's module SQL
+-- runner treats an existing column as an accepted idempotent result.
+ALTER TABLE llx_chinaplanetlogistics ADD COLUMN date_atd date AFTER date_etd;
