@@ -73,6 +73,7 @@ m011Assert(strpos($card, "hasRight('chinaplanetlogistics', 'write')") !== false 
 m011Assert(strpos($card, "(int) \$object->fk_soc !== (int) \$user->socid") !== false, 'direct customer shipment access verifies ownership');
 m011Assert(strpos($list, 'cpl-track-action') !== false && strpos($list, "\$is_external") !== false && strpos($list, "'?id='.(int) \$obj->rowid") !== false, 'external shipment list has a clear tracking action using the existing scoped card route');
 m011Assert(strpos($listCss, 'min-height: 44px') !== false && strpos($listCss, '@media (max-width: 700px)') !== false && strpos($listCss, 'width: 100%') !== false, 'tracking action is keyboard-visible and mobile touch friendly');
+m011Assert(strpos($list, 'class="cpcc-page-head"') !== false && strpos($list, 'customer_dashboard.css') !== false && strpos($list, 'SHIPMENT TRACKING') !== false, 'shipment list shares the customer portal hero component');
 m011Assert(strpos($card, 'cpl_render_shipment_command_center') !== false && strpos($card, 'if (!$is_external_customer)') !== false, 'customer card uses command center and keeps legacy files internal');
 m011Assert(strpos($card, "\$eta_days < 0 ? 'Arrived'") === false, 'elapsed ETA is never rendered as confirmed arrival');
 m011Assert(strpos($helper, 'CPLEtaDelayed') !== false && strpos($helper, 'cpl_public_datetime($event->event_at)') !== false && strpos($helper, 'cpl_public_source_label') !== false, 'ETA alert includes direction, change time and safe source');

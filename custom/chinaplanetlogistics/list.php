@@ -54,9 +54,11 @@ if (!function_exists('cpl_color_list')) {
     }
 }
 
-$pageCss = $is_external
-    ? array(cpcc_admin_shell_asset('/custom/chinaplanetlogistics/css/shipment-list.css'))
-    : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
+$pageCss = array(
+    cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'),
+    cpcc_admin_shell_asset('/custom/chinaplanetlogistics/css/shipment-list.css'),
+);
+if (!$is_external) $pageCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
 llxHeader('', 'China Planet Logistics - Shipment List', '', '', 0, 0, array(), $pageCss);
 if ($is_external) cpcc_portal_navigation($user, 'shipments');
 
@@ -65,9 +67,14 @@ if ($canwrite) {
     $newbtn = '<a class="butActionNew" href="'.dol_buildpath('/chinaplanetlogistics/card.php?action=create', 1).'"><span class="fa fa-plus-circle valignmiddle btnTitle-icon"></span></a>';
 }
 
-if ($is_external) print load_fiche_titre('Shipment List / قائمة الشحنات', $newbtn, 'ship');
-else cpcc_admin_shell_open('shipments', 'Shipment List / قائمة الشحنات', 'البحث في الحاويات وبوالص الشحن ومواعيد الوصول', 'fa-list', array('socid'=>$socid));
+if (!$is_external) cpcc_admin_shell_open('shipments', 'Shipment List / قائمة الشحنات', 'البحث في الحاويات وبوالص الشحن ومواعيد الوصول', 'fa-list', array('socid'=>$socid));
 
+print '<main class="cpcc-dashboard cpcc-shipments-page" dir="rtl">';
+print '<header class="cpcc-page-head"><div>';
+print '<span class="cpcc-eyebrow">SHIPMENT TRACKING</span>';
+print '<h1>الشحنات / Shipments</h1>';
+print '<p>تابع حالة الشحنة ومواعيد الوصول والوقت الحر من مكان واحد. / Track shipment status, arrival dates, and free time in one place.</p>';
+print '</div></header>';
 print '<form method="GET" action="'.$_SERVER["PHP_SELF"].'">';
 if ($statusFilter !== '') print '<input type="hidden" name="status" value="'.dol_escape_htmltag($statusFilter).'">';
 print '<div class="div-table-responsive">';
@@ -178,6 +185,7 @@ if ($resql) {
 print '</table>';
 print '</div>';
 print '</form>';
+print '</main>';
 
 if (!$is_external) cpcc_admin_shell_close();
 llxFooter();
