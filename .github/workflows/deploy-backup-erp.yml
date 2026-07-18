@@ -1,0 +1,155 @@
+name: Deploy approved release to backup-erp
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type DEPLOY_M004_C03_TO_BACKUP_ERP
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-erp-deployment
+  cancel-in-progress: false
+
+env:
+  RELEASE_COMMIT: 2c032eb59a4547b72429e07cf730f6e9963cc98e
+  RELEASE_MISSION: M004-C03
+  DEPLOY_HOST: 31.97.158.178
+  DEPLOY_USER: codex-deploy
+  DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-deploy
+  REMOTE_ARTIFACT: /home/codex-deploy/staging-inbox/m004-c02-2c032eb59a4547b72429e07cf730f6e9963cc98e.tar.gz
+
+jobs:
+  deploy:
+    name: Validate and deploy pinned M004-C03 release
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 20
+
+    steps:
+      - name: Require exact manual confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = 'DEPLOY_M004_C03_TO_BACKUP_ERP'
+
+      - name: Check out the approved application commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+          persist-credentials: false
+
+      - name: Verify commit and release files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          git diff --check
+          for file in \
+            custom/chinaplanetcustomercenter/admin/operations.php \
+            custom/chinaplanetcustomercenter/admin_dashboard.php \
+            custom/chinaplanetcustomercenter/board.php \
+            custom/chinaplanetcustomercenter/documents.php \
+            custom/chinaplanetcustomercenter/download.php \
+            custom/chinaplanetcustomercenter/lib/operations.lib.php \
+            custom/chinaplanetcustomercenter/lib/portal.lib.php \
+            custom/chinaplanetcustomercenter/project.php \
+            custom/chinaplanetlogistics/card.php \
+            custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php \
+            custom/chinaplanetlogistics/core/boxes/box_chinaplanetlogistics.php \
+            custom/chinaplanetlogistics/index.php \
+            custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php \
+            custom/chinaplanetlogistics/list.php \
+            custom/chinaplanetlogistics/public/track.php \
+            deploy/tests/test_m003_portal_hardening.php \
+            deploy/tests/test_m004_shipping_status_sequence.php
+          do
+            test -f "$file" && test ! -L "$file"
+            php -l "$file" >/dev/null
+          done
+          php deploy/tests/test_m003_portal_hardening.php
+          php deploy/tests/test_m004_shipping_status_sequence.php
+
+      - name: Build exact staging artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          artifact="$RUNNER_TEMP/m004-c03-${RELEASE_COMMIT}.tar.gz"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -czf "$artifact" \
+            custom/chinaplanetcustomercenter/admin/operations.php \
+            custom/chinaplanetcustomercenter/admin_dashboard.php \
+            custom/chinaplanetcustomercenter/board.php \
+            custom/chinaplanetcustomercenter/documents.php \
+            custom/chinaplanetcustomercenter/download.php \
+            custom/chinaplanetcustomercenter/lib/operations.lib.php \
+            custom/chinaplanetcustomercenter/lib/portal.lib.php \
+            custom/chinaplanetcustomercenter/project.php \
+            custom/chinaplanetlogistics/card.php \
+            custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php \
+            custom/chinaplanetlogistics/core/boxes/box_chinaplanetlogistics.php \
+            custom/chinaplanetlogistics/index.php \
+            custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php \
+            custom/chinaplanetlogistics/list.php \
+            custom/chinaplanetlogistics/public/track.php \
+            deploy/tests/test_m003_portal_hardening.php \
+            deploy/tests/test_m004_shipping_status_sequence.php
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '17'
+          sha256sum "$artifact"
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted staging SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.BACKUP_ERP_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.BACKUP_ERP_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY"
+          test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload pinned artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          scp -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_ARTIFACT"
+
+      - name: Restricted staging preflight
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
+
+      - name: Apply with server-side backup and automatic rollback
+        id: apply
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply"
+
+      - name: Verify deployed staging state
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify"
+
+      - name: Roll back if post-apply verification fails
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        shell: bash
+        run: |
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER rollback"
