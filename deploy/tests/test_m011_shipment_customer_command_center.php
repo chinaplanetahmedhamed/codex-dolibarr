@@ -101,6 +101,8 @@ foreach (array('cpl-command-hero','cpl-timeline','cpl-checklist','cpl-internal-g
 m011Assert(strpos($css, '@media(max-width:520px)') !== false && strpos($css, 'grid-template-columns:1fr') !== false, 'command center has a 390px-safe single-column layout');
 m011Assert(strpos($css, 'max-width:calc(100vw - 16px)') !== false, 'customer shipment page shell is bounded to the mobile viewport');
 m011Assert(strpos($css, 'overflow-x:hidden') !== false, 'customer shipment page prevents fractional page-level horizontal overflow');
+m011Assert(strpos($css, '#id-container{display:block!important;width:100%!important') !== false && strpos($css, '#id-right>.fiche{width:calc(100% - 12px)!important') !== false, 'mobile shipment page replaces the desktop table shell with a full-width layout');
+m011Assert(strpos($css, '.cpl-timeline li{display:grid;grid-template-columns:42px minmax(0,1fr)') !== false && strpos($css, 'height:calc(100% - 2px)') !== false, 'mobile shipment timeline becomes a readable vertical journey');
 m011Assert(strpos($helper, "!empty(\$step['current']) ? 'fa-ship'") !== false && strpos($css, '@keyframes cpl-ship-bob') !== false && strpos($css, 'prefers-reduced-motion:reduce') !== false, 'current shipment stage carries the moving ship marker accessibly');
 m011Assert(strpos($projectCenter, 'customer_eta_change') !== false && strpos($projectCenter, 'customer_latest_update') !== false, 'M010 shipment summary receives ETA alert and latest update');
 
