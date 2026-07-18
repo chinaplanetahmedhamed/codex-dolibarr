@@ -45,6 +45,9 @@ $boardJs = file_get_contents($repo.'/custom/cpkanban/js/board.js');
 $financial = file_get_contents($repo.'/custom/chinaplanetcustomercenter/lib/financial.lib.php');
 $export = file_get_contents($repo.'/custom/chinaplanetcustomercenter/lib/export.lib.php');
 $css = file_get_contents($repo.'/custom/cpkanban/css/board.css');
+$portal = file_get_contents($repo.'/custom/chinaplanetcustomercenter/lib/portal.lib.php');
+$portalCss = file_get_contents($repo.'/custom/chinaplanetcustomercenter/css/portal.css');
+$portalJs = file_get_contents($repo.'/custom/chinaplanetcustomercenter/js/portal.js');
 
 foreach (array(
     'a.entity=', 'a.fk_soc=', 'a.fk_card=', 'a.customer_visible=1', "a.review_status IN ('approved','final_received')",
@@ -75,5 +78,8 @@ foreach (array('cpk-project-timeline', 'cpk-project-gallery', 'cpk-shipment-grid
     m010Assert(strpos($helper, $section) !== false && strpos($css, '.'.$section) !== false, 'responsive section is rendered and styled: '.$section);
 }
 m010Assert(strpos($css, '@media(max-width:760px)') !== false && strpos($css, 'grid-template-columns:1fr') !== false, 'command center has a single-column mobile layout');
+m010Assert(strpos($portal, 'cpcc-portal-menu-toggle') !== false && strpos($portal, 'aria-controls="cpcc-portal-menu"') !== false, 'customer portal renders an accessible mobile menu toggle');
+m010Assert(strpos($portalCss, '@media(max-width:900px)') !== false && strpos($portalCss, '.cpcc-portal-nav.is-open{display:grid}') !== false, 'customer portal menu collapses into a mobile grid');
+m010Assert(strpos($portalJs, "toggle.setAttribute('aria-expanded', open ? 'true' : 'false')") !== false && strpos($portalJs, "event.key === 'Escape'") !== false, 'customer portal menu supports state announcement and keyboard close');
 
 print 'M010 customer project command-center tests passed'.PHP_EOL;

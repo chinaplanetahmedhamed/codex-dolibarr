@@ -60,28 +60,45 @@ function cpcc_portal_navigation($user, $active = '')
 {
     if (empty($user->id) || empty($user->socid) || !empty($user->admin)) return;
 
+    $activeGroups = array(
+        'dashboard' => 'home',
+        'projects' => 'projects',
+        'shipments' => 'shipments',
+        'shippingprices' => 'shipments',
+        'invoices' => 'account',
+        'balance' => 'account',
+        'funding' => 'account',
+        'documents' => 'documents',
+        'commercial_documents' => 'documents',
+        'reports' => 'documents',
+        'orders' => 'requests',
+        'profile' => 'account',
+    );
+    $activeGroup = isset($activeGroups[$active]) ? $activeGroups[$active] : 'home';
+
     $items = array(
-        'dashboard' => array('لوحة التحكم', '/chinaplanetcustomercenter/board.php'),
-        'projects' => array('المشاريع', '/chinaplanetcustomercenter/projects.php'),
-        'shipments' => array('الشحنات', '/chinaplanetlogistics/list.php'),
-        'shippingprices' => array('أسعار الشحن', '/chinaplanetshippingprices/index.php'),
-        'invoices' => array('الفواتير', '/chinaplanetcustomercenter/invoices.php'),
-        'orders' => array('الطلبات', '/chinaplanetcustomercenter/orders.php'),
-        'balance' => array('الرصيد', '/chinaplanetcustomercenter/balance.php'),
-        'funding' => array('التمويل المطلوب', '/chinaplanetcustomercenter/funding.php'),
-        'documents' => array('المستندات', '/chinaplanetcustomercenter/documents.php'),
-        'commercial_documents' => array('مستندات التصدير', '/chinaplanetcustomercenter/commercial_documents.php'),
-        'reports' => array('تقارير الخدمات', '/chinaplanetcustomercenter/operation_reports.php'),
-        'profile' => array('الملف الشخصي', '/chinaplanetcustomercenter/profile.php'),
+        'home' => array('الرئيسية', 'Home', 'fa-home', '/chinaplanetcustomercenter/board.php'),
+        'projects' => array('مشاريعي', 'My Projects', 'fa-folder-open', '/chinaplanetcustomercenter/projects.php'),
+        'shipments' => array('الشحنات', 'Shipments', 'fa-ship', '/chinaplanetlogistics/list.php'),
+        'account' => array('الحساب', 'Account', 'fa-wallet', '/chinaplanetcustomercenter/balance.php'),
+        'documents' => array('المستندات', 'Documents', 'fa-file-alt', '/chinaplanetcustomercenter/documents.php'),
+        'requests' => array('الطلبات والدعم', 'Orders & Support', 'fa-headset', '/chinaplanetcustomercenter/orders.php'),
     );
 
-    print '<nav class="cpcc-portal-nav" dir="rtl" aria-label="تنقل بوابة العميل">';
+    $homeUrl = dol_buildpath('/chinaplanetcustomercenter/board.php', 1);
+    print '<link rel="stylesheet" href="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/css/portal.css', 1).'?v=20260719m009c02').'">';
+    print '<header class="cpcc-portal-shell" dir="rtl">';
+    print '<a class="cpcc-portal-brand" href="'.dol_escape_htmltag($homeUrl).'" aria-label="الرئيسية / Customer Home"><span class="cpcc-portal-brand-mark" aria-hidden="true">V</span><span><strong>Vision Customer Center</strong><small>مركز العميل</small></span></a>';
+    print '<button type="button" class="cpcc-portal-menu-toggle" aria-expanded="false" aria-controls="cpcc-portal-menu"><span class="fas fa-bars" aria-hidden="true"></span><span>القائمة / Menu</span></button>';
+    print '<nav id="cpcc-portal-menu" class="cpcc-portal-nav" aria-label="تنقل بوابة العميل">';
     foreach ($items as $key => $item) {
-        $class = $key === $active ? ' class="active" aria-current="page"' : '';
-        print '<a'.$class.' href="'.dol_escape_htmltag(dol_buildpath($item[1], 1)).'">'.dol_escape_htmltag($item[0]).'</a>';
+        $class = $key === $activeGroup ? ' class="active" aria-current="page"' : '';
+        print '<a'.$class.' href="'.dol_escape_htmltag(dol_buildpath($item[3], 1)).'">';
+        print '<span class="fas '.dol_escape_htmltag($item[2]).'" aria-hidden="true"></span>';
+        print '<span><b>'.dol_escape_htmltag($item[0]).'</b><small lang="en" dir="ltr">'.dol_escape_htmltag($item[1]).'</small></span></a>';
     }
-    print '<a class="cpcc-logout-link" data-cpcc-logout href="'.dol_escape_htmltag(DOL_URL_ROOT.'/user/logout.php').'">تسجيل الخروج</a>';
-    print '</nav>';
+    print '<a class="cpcc-logout-link" data-cpcc-logout href="'.dol_escape_htmltag(DOL_URL_ROOT.'/user/logout.php').'"><span class="fas fa-sign-out-alt" aria-hidden="true"></span><span><b>تسجيل الخروج</b><small lang="en" dir="ltr">Logout</small></span></a>';
+    print '</nav></header>';
     print '<dialog class="cpcc-logout-dialog" data-cpcc-logout-dialog aria-labelledby="cpcc-logout-title" aria-describedby="cpcc-logout-message">';
     print '<form method="dialog" dir="rtl">';
     print '<h2 id="cpcc-logout-title">تأكيد تسجيل الخروج</h2>';
@@ -90,8 +107,8 @@ function cpcc_portal_navigation($user, $active = '')
     print '<button type="submit" value="cancel" data-cpcc-logout-cancel>إلغاء / Cancel</button>';
     print '<button type="button" class="cpcc-logout-confirm" data-cpcc-logout-confirm>تسجيل الخروج / Logout</button>';
     print '</div></form></dialog>';
+    print '<script src="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/js/portal.js', 1).'?v=20260719m009c02').'" defer></script>';
     print '<script src="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/js/logout-confirm.js', 1)).'" defer></script>';
-    print '<style>#id-top,#id-left{display:none!important}#id-container{display:block!important}#id-right{margin:0!important;width:100%!important}.cpcc-portal-nav{display:flex;gap:.4rem;align-items:center;overflow-x:auto;padding:.65rem;margin:0 0 1rem;background:#17324d;border-radius:8px}.cpcc-portal-nav a{color:#fff;text-decoration:none;white-space:nowrap;padding:.55rem .7rem;border-radius:6px}.cpcc-portal-nav a:hover,.cpcc-portal-nav a.active{background:#c68b2c;color:#111}.cpcc-logout-dialog{max-width:min(92vw,28rem);border:0;border-radius:10px;padding:1.25rem;box-shadow:0 12px 40px #0005}.cpcc-logout-dialog::backdrop{background:#0008}.cpcc-logout-dialog h2{margin-top:0}.cpcc-logout-actions{display:flex;gap:.65rem;justify-content:flex-start;margin-top:1rem}.cpcc-logout-actions button{min-height:2.5rem;padding:.5rem .9rem;cursor:pointer}.cpcc-logout-confirm{background:#17324d;color:#fff;border:1px solid #17324d;border-radius:5px}@media(max-width:600px){.cpcc-portal-nav{margin-inline:-.5rem;border-radius:0}}</style>';
 }
 
 /**
