@@ -356,10 +356,6 @@ function cpl_public_datetime($value, $format = 'dayhour')
 
 function cpl_timeline_rows($shipment, $events)
 {
-    $order = array('inquiry','booking','loaded','export_customs','departed','transshipment','arrived','import_customs','delivered','closed');
-    $current = cpl_status_milestone($shipment->fk_statut);
-    $currentIndex = array_search($current, $order, true);
-    if ($currentIndex === false) $currentIndex = 0;
     $actualByMilestone = array();
     $transshipments = array();
     foreach ($events as $event) {
@@ -369,6 +365,15 @@ function cpl_timeline_rows($shipment, $events)
             $actualByMilestone[$event->milestone_code] = $event->actual_at;
         }
     }
+
+    // Transit is optional. Direct sailings go straight from Departed to
+    // Arrived; the extra milestone appears only after a transit event exists.
+    $order = array('inquiry','booking','loaded','export_customs','departed');
+    if (!empty($transshipments)) $order[] = 'transshipment';
+    $order = array_merge($order, array('arrived','import_customs','delivered','closed'));
+    $current = cpl_status_milestone($shipment->fk_statut);
+    $currentIndex = array_search($current, $order, true);
+    if ($currentIndex === false) $currentIndex = 0;
     if ($current === 'departed' && !empty($transshipments)) $currentIndex = array_search('transshipment', $order, true);
     if (!empty($shipment->date_atd)) $actualByMilestone['departed'] = $shipment->date_atd;
     if (!empty($shipment->date_ata)) $actualByMilestone['arrived'] = $shipment->date_ata;
@@ -398,6 +403,7 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     $nextOperation = cpl_customer_next_operation($db, $shipment);
     $timeline = cpl_timeline_rows($shipment, $events);
     $now = dol_now();
+    $customerNote = trim((string) $shipment->customer_note);
 
     $baseLangs = $langs;
     $direction = $baseLangs->trans('DIRECTION') === 'rtl' ? 'rtl' : 'ltr';
@@ -423,8 +429,11 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     print '<article class="cpl-latest"><span>'.$langs->trans('CPLLatestUpdate').'</span>';
     if ($latest) {
         $event = $latest['event'];
-        print '<strong>'.dol_escape_htmltag(cpl_event_label($langs, $event)).'</strong><p>'.(!empty($event->note_public) ? nl2br(dol_escape_htmltag($event->note_public)) : $langs->trans('CPLNoPublicNote')).'</p><small>'.dol_escape_htmltag(cpl_public_datetime($event->event_at)).' · '.dol_escape_htmltag(cpl_public_source_label($langs, $event->source_type)).'</small>';
-    } else print '<strong>'.$langs->trans('CPLNoPublishedUpdate').'</strong><p>'.$langs->trans('CPLSnapshotOnly').'</p>';
+        $latestNote = !empty($event->note_public) ? $event->note_public : $customerNote;
+        print '<strong>'.dol_escape_htmltag(cpl_event_label($langs, $event)).'</strong><p>'.($latestNote !== '' ? nl2br(dol_escape_htmltag($latestNote)) : $langs->trans('CPLNoPublicNote')).'</p><small>'.dol_escape_htmltag(cpl_public_datetime($event->event_at)).' · '.dol_escape_htmltag(cpl_public_source_label($langs, $event->source_type)).'</small>';
+    } else {
+        print '<strong>'.$langs->trans('CPLNoPublishedUpdate').'</strong><p>'.($customerNote !== '' ? nl2br(dol_escape_htmltag($customerNote)) : $langs->trans('CPLSnapshotOnly')).'</p>';
+    }
     print '</article>';
 
     $arrivalClass = 'pending';

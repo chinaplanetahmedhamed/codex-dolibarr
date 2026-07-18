@@ -19,6 +19,9 @@ $timeline = cpl_timeline_rows($shipment, $events);
 $byCode = array(); foreach ($timeline as $row) $byCode[$row['code']] = $row;
 m011Assert($byCode['departed']['state'] === 'complete' && $byCode['arrived']['state'] === 'current', 'timeline uses explicit lifecycle order');
 m011Assert(count($byCode['transshipment']['events']) === 1, 'timeline supports repeatable transshipment events');
+$directTimeline = cpl_timeline_rows($shipment, array());
+$directCodes = array(); foreach ($directTimeline as $row) $directCodes[] = $row['code'];
+m011Assert(!in_array('transshipment', $directCodes, true) && array_search('arrived', $directCodes, true) === array_search('departed', $directCodes, true) + 1, 'direct sailing omits the optional transit milestone');
 m011Assert($byCode['departed']['actual'] === $shipment->date_atd && $byCode['arrived']['actual'] === $shipment->date_ata, 'timeline distinguishes actual departure and arrival');
 m011Assert($byCode['import_customs']['state'] === 'next' && $byCode['delivered']['state'] === 'planned', 'timeline distinguishes next and planned steps');
 m011Assert(cpl_milestone_icon('loaded') === 'fa-box' && cpl_milestone_icon('arrived') === 'fa-anchor', 'timeline assigns a visual icon to each milestone');
@@ -48,6 +51,7 @@ $legacy = (object) array(
 );
 ob_start(); cpl_render_shipment_command_center(new M011FakeDb(), $legacy, array('external'=>true,'modal'=>true,'canwrite'=>false,'candelete'=>false,'customer_name'=>'CUSTOMER-A','project_label'=>'PROJECT-A','listurl'=>'#')); $legacyHtml = ob_get_clean();
 m011Assert(strpos($legacyHtml, 'CPLLegacySnapshotNotice') !== false && strpos($legacyHtml, 'CPLStateUnconfirmed') !== false, 'legacy customer HTML labels snapshot and unconfirmed arrival truthfully');
+m011Assert(strpos($legacyHtml, 'PUBLIC-BUT-OUTSIDE-M011') !== false && strpos($legacyHtml, 'CPLSnapshotOnly') === false, 'customer note is used when no event note is published');
 m011Assert(strpos($legacyHtml, 'PRIVATE-NOTE-MUST-NOT-RENDER') === false && strpos($legacyHtml, '<form') === false, 'external shipment HTML excludes private notes and mutation forms');
 m011Assert(strpos($legacyHtml, 'aria-current="step"') !== false, 'timeline exposes the current milestone semantically');
 
@@ -107,5 +111,6 @@ foreach (array('CPLTimeline','CPLEtaPassedUnconfirmed','CPLDocumentChecklist','C
 $langEn = file_get_contents($repo.'/custom/chinaplanetlogistics/langs/en_US/chinaplanetlogistics.lang');
 $langAr = file_get_contents($repo.'/custom/chinaplanetlogistics/langs/ar_SA/chinaplanetlogistics.lang');
 m011Assert(strpos($langEn, 'CPLStatusArrivedPort=Arrived port') !== false && strpos($langAr, 'CPLStatusArrivedPort=وصلت إلى الميناء') !== false, 'customer status labels are translated in English and Arabic');
+m011Assert(strpos($langEn, 'CPLMilestoneTransshipment=Transit') !== false && strpos($langAr, 'CPLMilestoneTransshipment=ترانزيت') !== false && strpos($langAr, 'إعادة الشحن') === false, 'optional transit milestone uses the approved customer wording');
 
 print 'M011 shipment customer command-center tests passed'.PHP_EOL;
