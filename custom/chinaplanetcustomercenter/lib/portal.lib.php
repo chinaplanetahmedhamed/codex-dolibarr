@@ -335,3 +335,140 @@ function cpcc_portal_store_uploaded_shipment_file($shipid, $upload_dir, $origina
 
     return array('ok' => true, 'file' => $stored_name);
 }
+
+/** Return whether the explicit customer shipment-gallery allowlist is installed. */
+function cpcc_portal_gallery_schema_ready($db)
+{
+    $pattern = str_replace(array('\\', '_', '%'), array('\\\\', '\\_', '\\%'), MAIN_DB_PREFIX.'cpl_shipment_public_document');
+    $result = $db->query("SHOW TABLES LIKE '".$db->escape($pattern)."'");
+    return $result && $db->num_rows($result) === 1;
+}
+
+/** Classify a validated shipment file without trusting its filename alone. */
+function cpcc_portal_gallery_item_kind($mime)
+{
+    $mime = strtolower(trim((string) $mime));
+    if (strpos($mime, 'image/') === 0) return 'image';
+    if (strpos($mime, 'video/') === 0) return 'video';
+    return 'document';
+}
+
+/**
+ * Convert an already-confined shipment file to a private module-relative key.
+ * The key is stored server-side only and is never returned to a customer.
+ */
+function cpcc_portal_gallery_storage_key($resolvedPath)
+{
+    $moduleRoot = realpath(DOL_DATA_ROOT.'/chinaplanetlogistics');
+    $resolvedPath = realpath((string) $resolvedPath);
+    if ($moduleRoot === false || $resolvedPath === false || !is_file($resolvedPath)) return '';
+    $prefix = rtrim($moduleRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+    if (strpos($resolvedPath, $prefix) !== 0) return '';
+    $key = str_replace(DIRECTORY_SEPARATOR, '/', substr($resolvedPath, strlen($prefix)));
+    if ($key === '' || strlen($key) > 512 || strpos($key, "\0") !== false) return '';
+    return $key;
+}
+
+/** Resolve and fingerprint one internal shipment file before publication. */
+function cpcc_portal_gallery_file_metadata($shipment, $file)
+{
+    $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
+    $resolved = cpcc_portal_resolve_shipment_doc_path($shipmentId, (string) $shipment->ref, $file);
+    if ($resolved === '') return array('ok' => false, 'error' => 'Shipment file was not found.');
+
+    $size = filesize($resolved);
+    if ($size === false) return array('ok' => false, 'error' => 'Shipment file was not found.');
+    $validation = cpcc_portal_validate_shipment_upload(basename($resolved), $resolved, (int) $size);
+    if (empty($validation['ok'])) return $validation;
+
+    $storageKey = cpcc_portal_gallery_storage_key($resolved);
+    $sha256 = hash_file('sha256', $resolved);
+    if ($storageKey === '' || !is_string($sha256) || !preg_match('/^[a-f0-9]{64}$/', $sha256)) {
+        return array('ok' => false, 'error' => 'Shipment file could not be fingerprinted.');
+    }
+
+    return array(
+        'ok' => true,
+        'storage_key' => $storageKey,
+        'original_name' => basename((string) $validation['name']),
+        'mime_type' => strtolower((string) $validation['mime']),
+        'file_size' => (int) $validation['size'],
+        'file_sha256' => $sha256,
+        'item_kind' => cpcc_portal_gallery_item_kind($validation['mime']),
+    );
+}
+
+/** Publish exactly one validated shipment file to its owning customer. */
+function cpcc_portal_gallery_publish($db, $shipment, $user, $file)
+{
+    if (!cpcc_portal_gallery_schema_ready($db)) return array('ok' => false, 'error' => 'Shipment Gallery schema is not installed.');
+    $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
+    if ($shipmentId <= 0 || (int) $shipment->entity <= 0 || (int) $shipment->fk_soc <= 0 || empty($user->id)) {
+        return array('ok' => false, 'error' => 'Shipment Gallery publication was rejected.');
+    }
+    $metadata = cpcc_portal_gallery_file_metadata($shipment, $file);
+    if (empty($metadata['ok'])) return $metadata;
+
+    $db->begin();
+    $lock = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid=".$shipmentId." AND entity=".(int) $shipment->entity." AND fk_soc=".(int) $shipment->fk_soc." FOR UPDATE");
+    if (!$lock || $db->num_rows($lock) !== 1) {
+        $db->rollback();
+        return array('ok' => false, 'error' => 'Shipment Gallery publication was rejected.');
+    }
+
+    $existing = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document WHERE entity=".(int) $shipment->entity." AND fk_shipment=".$shipmentId." AND storage_key='".$db->escape($metadata['storage_key'])."' FOR UPDATE");
+    $row = $existing ? $db->fetch_object($existing) : null;
+    $now = $db->idate(dol_now());
+    if ($row) {
+        $sql = "UPDATE ".MAIN_DB_PREFIX."cpl_shipment_public_document SET fk_soc=".(int) $shipment->fk_soc.",original_name='".$db->escape($metadata['original_name'])."',mime_type='".$db->escape($metadata['mime_type'])."',file_size=".(int) $metadata['file_size'].",file_sha256='".$db->escape($metadata['file_sha256'])."',item_kind='".$db->escape($metadata['item_kind'])."',customer_visible=1,status=1,fk_user_modif=".(int) $user->id.",date_publication='".$now."' WHERE rowid=".(int) $row->rowid;
+        $publicationId = (int) $row->rowid;
+    } else {
+        $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpl_shipment_public_document(entity,fk_shipment,fk_soc,storage_key,original_name,mime_type,file_size,file_sha256,item_kind,customer_visible,status,fk_user_publish,date_publication,date_creation) VALUES(".(int) $shipment->entity.",".$shipmentId.",".(int) $shipment->fk_soc.",'".$db->escape($metadata['storage_key'])."','".$db->escape($metadata['original_name'])."','".$db->escape($metadata['mime_type'])."',".(int) $metadata['file_size'].",'".$db->escape($metadata['file_sha256'])."','".$db->escape($metadata['item_kind'])."',1,1,".(int) $user->id.",'".$now."','".$now."')";
+        $publicationId = 0;
+    }
+    if (!$db->query($sql)) {
+        $error = $db->lasterror();
+        $db->rollback();
+        return array('ok' => false, 'error' => $error);
+    }
+    if ($publicationId <= 0) $publicationId = (int) $db->last_insert_id(MAIN_DB_PREFIX.'cpl_shipment_public_document');
+    $db->commit();
+    return array('ok' => true, 'id' => $publicationId, 'error' => '');
+}
+
+/** Unpublish one owned gallery row without deleting or moving the source file. */
+function cpcc_portal_gallery_unpublish($db, $shipment, $user, $publicationId)
+{
+    if (!cpcc_portal_gallery_schema_ready($db)) return array('ok' => false, 'error' => 'Shipment Gallery schema is not installed.');
+    $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
+    $publicationId = (int) $publicationId;
+    if ($shipmentId <= 0 || $publicationId <= 0 || empty($user->id)) return array('ok' => false, 'error' => 'Shipment Gallery publication was rejected.');
+    $db->begin();
+    $where = "rowid=".$publicationId." AND entity=".(int) $shipment->entity." AND fk_shipment=".$shipmentId." AND fk_soc=".(int) $shipment->fk_soc." AND customer_visible=1 AND status=1";
+    $lock = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document WHERE ".$where." FOR UPDATE");
+    if (!$lock || $db->num_rows($lock) !== 1) {
+        $db->rollback();
+        return array('ok' => false, 'error' => 'Shipment Gallery publication was not found.');
+    }
+    $sql = "UPDATE ".MAIN_DB_PREFIX."cpl_shipment_public_document SET customer_visible=0,status=0,fk_user_modif=".(int) $user->id." WHERE ".$where;
+    if (!$db->query($sql)) {
+        $error = $db->lasterror();
+        $db->rollback();
+        return array('ok' => false, 'error' => $error);
+    }
+    $db->commit();
+    return array('ok' => true, 'error' => '');
+}
+
+/** Return publication rows for staff rendering, keyed by private storage key. */
+function cpcc_portal_gallery_publications($db, $shipment, $activeOnly = false)
+{
+    if (!cpcc_portal_gallery_schema_ready($db)) return array();
+    $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
+    $sql = "SELECT rowid,storage_key,item_kind,customer_visible,status,date_publication,tms FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document WHERE entity=".(int) $shipment->entity." AND fk_shipment=".$shipmentId." AND fk_soc=".(int) $shipment->fk_soc;
+    if ($activeOnly) $sql .= " AND customer_visible=1 AND status=1";
+    $result = $db->query($sql);
+    $rows = array();
+    while ($result && ($row = $db->fetch_object($result))) $rows[(string) $row->storage_key] = $row;
+    return $rows;
+}

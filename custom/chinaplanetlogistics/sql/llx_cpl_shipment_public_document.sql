@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS llx_cpl_shipment_public_document (
+    rowid bigint AUTO_INCREMENT PRIMARY KEY,
+    entity integer NOT NULL DEFAULT 1,
+    fk_shipment integer NOT NULL,
+    fk_soc integer NOT NULL,
+    storage_key varchar(512) NOT NULL,
+    original_name varchar(255) NOT NULL,
+    mime_type varchar(150) NOT NULL,
+    file_size bigint NOT NULL DEFAULT 0,
+    file_sha256 char(64) NOT NULL,
+    item_kind varchar(16) NOT NULL DEFAULT 'document',
+    customer_visible tinyint NOT NULL DEFAULT 1,
+    status tinyint NOT NULL DEFAULT 1,
+    fk_user_publish integer NOT NULL,
+    fk_user_modif integer NULL,
+    date_publication datetime NOT NULL,
+    date_creation datetime NOT NULL,
+    tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE INDEX uk_cpl_gallery_file (entity, fk_shipment, storage_key),
+    INDEX idx_cpl_gallery_owner (entity, fk_soc, fk_shipment, customer_visible, status),
+    INDEX idx_cpl_gallery_updated (entity, fk_soc, tms, rowid)
+) ENGINE=innodb;

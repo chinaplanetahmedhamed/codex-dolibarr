@@ -239,6 +239,18 @@ if (GETPOST('sendit') && $id > 0 && $canwrite && $is_post) {
     }
 }
 
+if ($action === 'publish_gallery' && $id > 0 && $canwrite && $is_post) {
+    $publication = cpcc_portal_gallery_publish($db, $object, $user, GETPOST('file', 'none'));
+    if (!empty($publication['ok'])) setEventMessages($langs->trans('CPLGalleryPublished'), null, 'mesgs');
+    else setEventMessages($publication['error'], null, 'errors');
+}
+
+if ($action === 'unpublish_gallery' && $id > 0 && $canwrite && $is_post) {
+    $publication = cpcc_portal_gallery_unpublish($db, $object, $user, GETPOSTINT('publication_id'));
+    if (!empty($publication['ok'])) setEventMessages($langs->trans('CPLGalleryUnpublished'), null, 'mesgs');
+    else setEventMessages($publication['error'], null, 'errors');
+}
+
 /*
  * VIEW
  */
@@ -445,8 +457,8 @@ if ($action == 'create' || $action == 'edit') {
         'projecturl'=>$object->fk_project > 0 ? dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int)$object->fk_project : dol_buildpath('/chinaplanetcustomercenter/projects.php', 1),
     ));
 
-    // Legacy shipment file store remains internal-only. Customer documents are
-    // exposed solely through the validated checklist projection above.
+    // The legacy store remains private by default. Only an explicit, audited
+    // allowlist row can project one file into the customer Shipment Gallery.
     if (!$is_external_customer) {
         print '<section class="cpl-doc-panel">';
         print '<h3>'.$langs->trans('CPLInternalFiles').'</h3>';
@@ -469,16 +481,36 @@ if ($action == 'create' || $action == 'edit') {
                 }
             }
         }
+        $galleryReady = cpcc_portal_gallery_schema_ready($db);
+        $galleryRows = $galleryReady ? cpcc_portal_gallery_publications($db, $object, false) : array();
+        if (!$galleryReady) print '<div class="warning">'.dol_escape_htmltag($langs->trans('CPLGallerySchemaMissing')).'</div>';
         print '<table class="border centpercent">';
-        print '<tr class="liste_titre"><td>File Name</td><td align="right">Size</td><td align="center">Date</td></tr>';
-        if (empty($filearray)) print '<tr><td colspan="3" class="center opacitymedium">No documents uploaded yet.</td></tr>';
+        print '<tr class="liste_titre"><td>'.$langs->trans('CPLGalleryFileName').'</td><td align="right">'.$langs->trans('CPLGallerySize').'</td><td align="center">'.$langs->trans('CPLGalleryDate').'</td><td align="center">'.$langs->trans('CPLGalleryVisibility').'</td><td align="center">'.$langs->trans('CPLGalleryAction').'</td></tr>';
+        if (empty($filearray)) print '<tr><td colspan="5" class="center opacitymedium">'.$langs->trans('CPLGalleryNoFiles').'</td></tr>';
         else {
             foreach ($filearray as $file) {
                 $relativepath = basename($file['docroot']).'/'.$file['name'];
                 $dl_url = dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?type=shipment&id='.(int) $object->id.'&file='.urlencode($relativepath);
-                print '<tr><td><a href="'.$dl_url.'" target="_blank">'.dol_escape_htmltag($file['name']).'</a></td>';
+                $publication = isset($galleryRows[$relativepath]) ? $galleryRows[$relativepath] : null;
+                $isPublished = $publication && !empty($publication->customer_visible) && !empty($publication->status);
+                print '<tr><td><a href="'.dol_escape_htmltag($dl_url).'" target="_blank" rel="noopener">'.dol_escape_htmltag($file['name']).'</a></td>';
                 print '<td align="right">'.dol_print_size($file['size']).'</td>';
-                print '<td align="center">'.dol_print_date($file['date'], 'dayhour').'</td></tr>';
+                print '<td align="center">'.dol_print_date($file['date'], 'dayhour').'</td>';
+                print '<td align="center"><span class="badge '.($isPublished ? 'badge-status4' : 'badge-status0').'">'.$langs->trans($isPublished ? 'CPLGalleryCustomerVisible' : 'CPLGalleryInternalOnly').'</span></td>';
+                print '<td align="center">';
+                if ($canwrite && $galleryReady) {
+                    print '<form action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'?id='.(int) $id.'" method="POST" style="display:inline">';
+                    print '<input type="hidden" name="token" value="'.newToken().'">';
+                    if ($isPublished) {
+                        print '<input type="hidden" name="action" value="unpublish_gallery"><input type="hidden" name="publication_id" value="'.(int) $publication->rowid.'">';
+                        print '<button type="submit" class="button button-cancel">'.$langs->trans('CPLGalleryUnpublish').'</button>';
+                    } else {
+                        print '<input type="hidden" name="action" value="publish_gallery"><input type="hidden" name="file" value="'.dol_escape_htmltag($relativepath).'">';
+                        print '<button type="submit" class="button button-save">'.$langs->trans('CPLGalleryPublish').'</button>';
+                    }
+                    print '</form>';
+                } else print '&mdash;';
+                print '</td></tr>';
             }
         }
         print '</table></section>';

@@ -1,10 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen, BrandHeader, SectionHeader, ShipmentTimeline, StatusPill } from '@/src/components';
 import { EmptyState, ErrorState, LoadingState } from '@/src/components/AsyncState';
 import { DataCard, DetailRow, formatDate } from '@/src/components/DataCard';
 import { DownloadButton } from '@/src/components/DownloadButton';
+import { ShipmentGalleryItem } from '@/src/components/ShipmentGalleryItem';
 import { useResource } from '@/src/hooks/useResource';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { requestedFromLabel } from '@/src/i18n/domainLabels';
@@ -32,6 +33,8 @@ export default function ShipmentDetailScreen() {
     {shipment.customer_action?.required_from_customer && <><SectionHeader ar="إجراء مطلوب منك" en="Action required" /><View style={styles.action}><Text style={[styles.publicTitle, { textAlign: align }]}>{label(shipment.customer_action.label)}</Text>{shipment.customer_action.public_note && <Text style={[styles.publicNote, { textAlign: align }]}>{shipment.customer_action.public_note}</Text>}<DetailRow label={language === 'ar' ? 'الموعد' : 'Due'} value={formatDate(shipment.customer_action.due_at, language)} /></View></>}
     <SectionHeader ar="رحلة الشحنة" en="Shipment timeline" />
     {shipment.timeline.length ? <ShipmentTimeline steps={shipment.timeline} /> : <EmptyState />}
+    <SectionHeader ar="معرض الشحنة" en="Shipment Gallery" />
+    {(shipment.shipment_gallery ?? []).length ? <>{shipment.shipment_gallery.map((item) => <ShipmentGalleryItem item={item} key={item.id} />)}<Pressable accessibilityRole="button" onPress={() => router.push('/more/documents')} style={styles.galleryLink}><Text style={styles.galleryLinkText}>{language === 'ar' ? 'عرض كل ملفات الشحنات' : 'View all shipment files'}</Text></Pressable></> : <><EmptyState /><Pressable accessibilityRole="button" onPress={() => router.push('/more/documents')} style={styles.galleryLink}><Text style={styles.galleryLinkText}>{language === 'ar' ? 'فتح معارض الشحنات' : 'Open shipment galleries'}</Text></Pressable></>}
     <SectionHeader ar="المستندات المطلوبة" en="Document requirements" />
     {shipment.document_requirements.length ? shipment.document_requirements.map((requirement) => <DataCard key={requirement.code}><DetailRow label={label(requirement.label)} value={label(requirement.status_label)} alert={requirement.action_required} /><DetailRow label={language === 'ar' ? 'مطلوب من' : 'Requested from'} value={requestedFromLabel(requirement.requested_from, language)} /><DetailRow label={language === 'ar' ? 'الموعد' : 'Due'} value={formatDate(requirement.due_at, language)} />{requirement.document_id && <DownloadButton target={{ kind: 'document', id: requirement.document_id }} filename={requirement.code} />}{requirement.public_note && <Text style={[styles.publicNote, { textAlign: align }]}>{requirement.public_note}</Text>}</DataCard>) : <EmptyState />}
     <SectionHeader ar="تفاصيل الرحلة" en="Voyage details" />
@@ -40,5 +43,5 @@ export default function ShipmentDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { backgroundColor: palette.navy, borderRadius: radii.large, padding: 20, gap: 10, ...shadows.card }, heroHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, ref: { color: palette.brandRedLight, fontSize: 19, fontWeight: '900' }, container: { color: palette.white, fontSize: 15, fontWeight: '900' }, updated: { color: '#BFD5DE', fontSize: 10 }, alert: { backgroundColor: palette.orangeSoft, borderRadius: radii.medium, borderWidth: 1, borderColor: palette.orange, padding: 16, gap: 6 }, alertTitle: { color: '#795000', fontSize: 14, fontWeight: '900' }, alertText: { color: '#8A620F', fontSize: 11, lineHeight: 18 }, publicTitle: { color: palette.navy, fontSize: 14, fontWeight: '900' }, publicNote: { color: palette.text, fontSize: 12, lineHeight: 20 }, action: { backgroundColor: palette.brandRedSoft, borderWidth: 1, borderColor: palette.brandRed, borderRadius: radii.medium, padding: 16, gap: 10 },
+  hero: { backgroundColor: palette.navy, borderRadius: radii.large, padding: 20, gap: 10, ...shadows.card }, heroHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, ref: { color: palette.brandRedLight, fontSize: 19, fontWeight: '900' }, container: { color: palette.white, fontSize: 15, fontWeight: '900' }, updated: { color: '#BFD5DE', fontSize: 10 }, alert: { backgroundColor: palette.orangeSoft, borderRadius: radii.medium, borderWidth: 1, borderColor: palette.orange, padding: 16, gap: 6 }, alertTitle: { color: '#795000', fontSize: 14, fontWeight: '900' }, alertText: { color: '#8A620F', fontSize: 11, lineHeight: 18 }, publicTitle: { color: palette.navy, fontSize: 14, fontWeight: '900' }, publicNote: { color: palette.text, fontSize: 12, lineHeight: 20 }, action: { backgroundColor: palette.brandRedSoft, borderWidth: 1, borderColor: palette.brandRed, borderRadius: radii.medium, padding: 16, gap: 10 }, galleryLink: { minHeight: 46, borderRadius: 14, borderWidth: 1, borderColor: palette.brandRed, backgroundColor: palette.brandRedSoft, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14 }, galleryLinkText: { color: palette.brandRed, fontSize: 12, fontWeight: '900' },
 });

@@ -36,6 +36,9 @@ export class MobileRepository {
   transactions(query?: ListQuery) { return this.cached(this.pageKey('transactions', query), () => this.getList<Transaction>('/account/transactions', query)); }
   invoices(query?: ListQuery) { return this.cached(this.pageKey('service_invoices', query), () => this.getList<ServiceInvoice>('/service-invoices', query)); }
   documents(query?: ListQuery) { return this.cached(this.pageKey('documents', query), () => this.getList<Document>('/documents', query)); }
+  shipmentDocuments(query?: ListQuery) {
+    return this.cached(this.pageKey('shipment_documents', query), () => this.client.request<ListEnvelope<Document>>('/documents', { query: { ...listQuery(query), scope: 'shipment' } }));
+  }
   commercialDocuments(query?: ListQuery) { return this.cached(this.pageKey('commercial_documents', query), () => this.getList<CommercialDocumentSummary>('/commercial-documents', query)); }
   commercialDocument(id: string) { return this.cached(`commercial_document_${id}`, () => this.getOne<CommercialDocumentDetail>(`/commercial-documents/${encodeURIComponent(id)}`)); }
   reports(query?: ListQuery) { return this.cached(this.pageKey('reports', query), () => this.getList<ReportSummary>('/reports', query)); }

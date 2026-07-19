@@ -2,6 +2,7 @@
 /** Customer-safe read models for the M017 mobile API. */
 
 require_once __DIR__.'/mobile_api.lib.php';
+require_once __DIR__.'/portal.lib.php';
 
 function cpcc_mobile_envelope($data, $meta = null)
 {
@@ -251,6 +252,7 @@ function cpcc_mobile_shipment_detail($db, $context, $publicId)
 	$data['eta_change'] = $etaChange ? array('changed_at' => cpcc_mobile_iso($etaChange->event_at), 'previous_eta' => cpcc_mobile_iso($etaChange->date_value_old), 'current_eta' => cpcc_mobile_iso($etaChange->date_value_new), 'change_days' => (int) $data['eta_change_days'], 'source' => cpcc_mobile_public_source($etaChange->source_type), 'public_reason' => $etaChange->reason_public !== '' ? (string) $etaChange->reason_public : null) : null;
 	$data['customer_action'] = cpcc_mobile_shipment_action($db, $context, $id);
 	$data['timeline'] = cpcc_mobile_shipment_timeline($row, $events);
+	$data['shipment_gallery'] = cpcc_mobile_shipment_gallery($db, $context, $id);
 	$data['document_requirements'] = cpcc_mobile_shipment_requirements($db, $context, $id);
 	return cpcc_mobile_envelope($data);
 }
@@ -437,33 +439,53 @@ function cpcc_mobile_project_document_ids($db, $context, $projectId)
 	return $ids;
 }
 
-function cpcc_mobile_document_rows($db, $context)
+function cpcc_mobile_document_rows($db, $context, $scope = '')
 {
-	$sql = "SELECT a.rowid AS source_id,(a.rowid * 2) AS logical_id,'project_asset' AS source_type,p.rowid AS project_id,a.fk_shipment AS shipment_id,NULL AS report_id,a.original_name,a.stored_name,a.mime_type,a.file_size,a.version_no,a.date_creation AS approved_at,a.tms,a.fk_card,NULL AS operation_ref";
-	$sql .= " FROM ".MAIN_DB_PREFIX."cpkanban_asset a INNER JOIN ".MAIN_DB_PREFIX."cpkanban_card c ON c.rowid=a.fk_card AND c.entity=a.entity AND c.fk_soc=a.fk_soc INNER JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc";
-	$sql .= " WHERE a.entity=".(int) $context['entity']." AND a.fk_soc=".(int) $context['socid']." AND c.status=1 AND c.cust_visible=1 AND a.status=1 AND a.customer_visible=1 AND a.review_status IN ('approved','final_received')";
-	$sql .= " UNION ALL SELECT d.rowid AS source_id,(d.rowid * 2) + 1 AS logical_id,'operation_report_attachment' AS source_type,o.fk_project AS project_id,o.fk_shipment AS shipment_id,o.rowid AS report_id,d.original_name,d.stored_name,d.mime_type,d.file_size,d.version_no,COALESCE(d.date_review,d.date_creation) AS approved_at,d.tms,NULL AS fk_card,o.ref AS operation_ref";
-	$sql .= " FROM ".MAIN_DB_PREFIX."cpo_document d INNER JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=d.fk_operation AND o.entity=d.entity WHERE d.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1 AND d.visibility='customer_after_approval' AND d.review_status IN ('approved','final_received') AND d.is_current=1";
-	$sql = "SELECT * FROM (".$sql.") mobile_docs ORDER BY tms DESC,logical_id DESC";
+	$scope = (string) $scope;
+	if (!in_array($scope, array('', 'shipment'), true)) cpcc_mobile_throw(422, 'validation', array('scope'));
+	$queries = array();
+	$queries[] = "SELECT a.rowid AS source_id,(a.rowid * 2) AS logical_id,'project_asset' AS source_type,p.rowid AS project_id,a.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,a.original_name,a.stored_name,a.mime_type,a.file_size,a.version_no,a.date_creation AS approved_at,a.tms,a.fk_card,NULL AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpkanban_asset a INNER JOIN ".MAIN_DB_PREFIX."cpkanban_card c ON c.rowid=a.fk_card AND c.entity=a.entity AND c.fk_soc=a.fk_soc INNER JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=a.fk_shipment AND s.entity=a.entity AND s.fk_soc=a.fk_soc WHERE a.entity=".(int) $context['entity']." AND a.fk_soc=".(int) $context['socid']." AND c.status=1 AND c.cust_visible=1 AND a.status=1 AND a.customer_visible=1 AND a.review_status IN ('approved','final_received')";
+	$queries[] = "SELECT d.rowid AS source_id,(d.rowid * 2) + 1 AS logical_id,'operation_report_attachment' AS source_type,o.fk_project AS project_id,o.fk_shipment AS shipment_id,s.ref AS shipment_ref,o.rowid AS report_id,d.original_name,d.stored_name,d.mime_type,d.file_size,d.version_no,COALESCE(d.date_review,d.date_creation) AS approved_at,d.tms,NULL AS fk_card,o.ref AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpo_document d INNER JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=d.fk_operation AND o.entity=d.entity LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=o.fk_shipment AND s.entity=o.entity AND s.fk_soc=o.fk_soc WHERE d.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1 AND d.visibility='customer_after_approval' AND d.review_status IN ('approved','final_received') AND d.is_current=1";
+	if (cpcc_mobile_table_exists($db, 'cpl_shipment_public_document')) {
+		$queries[] = "SELECT g.rowid AS source_id,(0 - g.rowid) AS logical_id,'shipment_gallery' AS source_type,s.fk_project AS project_id,g.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,g.original_name,g.storage_key AS stored_name,g.mime_type,g.file_size,1 AS version_no,g.date_publication AS approved_at,g.tms,NULL AS fk_card,NULL AS operation_ref,g.file_sha256,g.item_kind FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document g INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=g.fk_shipment AND s.entity=g.entity AND s.fk_soc=g.fk_soc WHERE g.entity=".(int) $context['entity']." AND g.fk_soc=".(int) $context['socid']." AND g.customer_visible=1 AND g.status=1";
+	}
+	$sql = "SELECT * FROM (".implode(' UNION ALL ', $queries).") mobile_docs";
+	if ($scope === 'shipment') $sql .= " WHERE shipment_id IS NOT NULL";
+	$sql .= " ORDER BY tms DESC,logical_id DESC";
 	return cpcc_mobile_rows($db, cpcc_mobile_query_or_throw($db, $sql));
 }
 
 function cpcc_mobile_document_data($db, $context, $row)
 {
-	return array('id' => cpcc_mobile_public_id($db, 'document', $context, (int) $row->logical_id), 'source_type' => (string) $row->source_type, 'project_id' => !empty($row->project_id) ? cpcc_mobile_public_id($db, 'project', $context, (int) $row->project_id) : null, 'shipment_id' => !empty($row->shipment_id) ? cpcc_mobile_public_id($db, 'shipment', $context, (int) $row->shipment_id) : null, 'report_id' => !empty($row->report_id) ? cpcc_mobile_public_id($db, 'report', $context, (int) $row->report_id) : null, 'name' => basename((string) $row->original_name), 'mime_type' => (string) $row->mime_type, 'size_bytes' => max(0, (int) $row->file_size), 'version' => max(1, (int) $row->version_no), 'approved_at' => cpcc_mobile_iso($row->approved_at), 'updated_at' => cpcc_mobile_iso($row->tms));
+	$resource = $row->source_type === 'shipment_gallery' ? 'shipment_gallery_item' : 'document';
+	$objectId = $row->source_type === 'shipment_gallery' ? (int) $row->source_id : (int) $row->logical_id;
+	$kind = !empty($row->item_kind) ? (string) $row->item_kind : cpcc_portal_gallery_item_kind($row->mime_type);
+	return array('id' => cpcc_mobile_public_id($db, $resource, $context, $objectId), 'source_type' => (string) $row->source_type, 'kind' => $kind, 'project_id' => !empty($row->project_id) ? cpcc_mobile_public_id($db, 'project', $context, (int) $row->project_id) : null, 'shipment_id' => !empty($row->shipment_id) ? cpcc_mobile_public_id($db, 'shipment', $context, (int) $row->shipment_id) : null, 'shipment_ref' => !empty($row->shipment_ref) ? (string) $row->shipment_ref : null, 'report_id' => !empty($row->report_id) ? cpcc_mobile_public_id($db, 'report', $context, (int) $row->report_id) : null, 'name' => basename((string) $row->original_name), 'mime_type' => (string) $row->mime_type, 'size_bytes' => max(0, (int) $row->file_size), 'version' => max(1, (int) $row->version_no), 'approved_at' => cpcc_mobile_iso($row->approved_at), 'updated_at' => cpcc_mobile_iso($row->tms));
 }
 
-function cpcc_mobile_documents($db, $context, $limit, $cursor, $updatedSince)
+function cpcc_mobile_documents($db, $context, $limit, $cursor, $updatedSince, $scope = '')
 {
-	$limit = cpcc_mobile_list_limit($limit); $updated = cpcc_mobile_updated_since($updatedSince); $filters = array('updated_since' => $updated); $hash = cpcc_mobile_filter_hash('documents', $filters); $last = cpcc_mobile_cursor_decode($cursor, 'documents', $context, $hash, $limit); $wrapped = array();
-	foreach (cpcc_mobile_document_rows($db, $context) as $row) { if ($updated !== '' && strcmp((string) $row->tms, $updated) < 0) continue; if ($last !== null && !(strcmp((string) $row->tms, (string) $last['date']) < 0 || ((string) $row->tms === (string) $last['date'] && (int) $row->logical_id < (int) $last['id']))) continue; $wrapped[] = array('_row' => $row, 'tms' => (string) $row->tms, 'logical_id' => (int) $row->logical_id); if (count($wrapped) >= $limit + 1) break; }
+	$scope = (string) $scope;
+	if ($scope === '' && function_exists('GETPOST')) $scope = (string) GETPOST('scope', 'alpha');
+	if (!in_array($scope, array('', 'shipment'), true)) cpcc_mobile_throw(422, 'validation', array('scope'));
+	$limit = cpcc_mobile_list_limit($limit); $updated = cpcc_mobile_updated_since($updatedSince); $filters = array('updated_since' => $updated, 'scope' => $scope); $hash = cpcc_mobile_filter_hash('documents', $filters); $last = cpcc_mobile_cursor_decode($cursor, 'documents', $context, $hash, $limit); $wrapped = array();
+	foreach (cpcc_mobile_document_rows($db, $context, $scope) as $row) { if ($updated !== '' && strcmp((string) $row->tms, $updated) < 0) continue; if ($last !== null && !(strcmp((string) $row->tms, (string) $last['date']) < 0 || ((string) $row->tms === (string) $last['date'] && (int) $row->logical_id < (int) $last['id']))) continue; $wrapped[] = array('_row' => $row, 'tms' => (string) $row->tms, 'logical_id' => (int) $row->logical_id); if (count($wrapped) >= $limit + 1) break; }
 	$page = cpcc_mobile_page_meta($db, 'documents', $context, $filters, $limit, $wrapped, 'tms', 'logical_id'); $data = array(); foreach ($page['rows'] as $item) $data[] = cpcc_mobile_document_data($db, $context, $item['_row']); return cpcc_mobile_envelope($data, $page['meta']);
+}
+
+function cpcc_mobile_shipment_gallery($db, $context, $shipmentId)
+{
+	$data = array();
+	foreach (cpcc_mobile_document_rows($db, $context, 'shipment') as $row) if ((int) $row->shipment_id === (int) $shipmentId) $data[] = cpcc_mobile_document_data($db, $context, $row);
+	return $data;
 }
 
 function cpcc_mobile_document_record($db, $context, $publicId)
 {
-	$logicalId = cpcc_mobile_resolve_public_id($db, 'document', $context, $publicId); if ($logicalId === null || $logicalId === 0) return null;
-	foreach (cpcc_mobile_document_rows($db, $context) as $row) if ((int) $row->logical_id === (int) $logicalId) return $row;
+	$logicalId = cpcc_mobile_resolve_public_id($db, 'document', $context, $publicId);
+	if ($logicalId !== null && $logicalId !== 0) foreach (cpcc_mobile_document_rows($db, $context) as $row) if ($row->source_type !== 'shipment_gallery' && (int) $row->logical_id === (int) $logicalId) return $row;
+	$galleryId = cpcc_mobile_resolve_public_id($db, 'shipment_gallery_item', $context, $publicId);
+	if ($galleryId !== null && $galleryId > 0) foreach (cpcc_mobile_document_rows($db, $context, 'shipment') as $row) if ($row->source_type === 'shipment_gallery' && (int) $row->source_id === (int) $galleryId) return $row;
 	return null;
 }
 
@@ -472,16 +494,23 @@ function cpcc_mobile_safe_file_record($db, $context, $publicId, $requiredReportI
 	global $conf;
 	$row = cpcc_mobile_document_record($db, $context, $publicId); if (!$row) cpcc_mobile_throw(404, 'not_found');
 	if ((int) $requiredReportId > 0 && (int) $row->report_id !== (int) $requiredReportId) cpcc_mobile_throw(404, 'not_found');
-	if ($row->source_type === 'project_asset') $root = DOL_DATA_ROOT.'/cpkanban/card-'.(int) $row->fk_card;
-	else {
+	if ($row->source_type === 'shipment_gallery') {
+		$path = cpcc_portal_resolve_shipment_doc_path((int) $row->shipment_id, (string) $row->shipment_ref, (string) $row->stored_name);
+		if ($path === '' || !preg_match('/^[a-f0-9]{64}$/', (string) $row->file_sha256)) cpcc_mobile_throw(404, 'not_found');
+		$actualHash = hash_file('sha256', $path); if (!is_string($actualHash) || !hash_equals((string) $row->file_sha256, $actualHash)) cpcc_mobile_throw(404, 'not_found');
+	} elseif ($row->source_type === 'project_asset') {
+		$root = DOL_DATA_ROOT.'/cpkanban/card-'.(int) $row->fk_card;
+		$rootReal = realpath($root); $path = realpath($root.'/'.(string) $row->stored_name);
+		if ($rootReal === false || $path === false || !is_file($path) || !is_readable($path) || strpos($path, rtrim($rootReal, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR) !== 0) cpcc_mobile_throw(404, 'not_found');
+	} else {
 		$operationRoot = !empty($conf->chinaplanetoperations->dir_output) ? (string) $conf->chinaplanetoperations->dir_output : DOL_DATA_ROOT.'/chinaplanetoperations';
 		$root = rtrim($operationRoot, '/').'/documents/'.(int) $context['entity'].'/'.(string) $row->operation_ref;
+		$rootReal = realpath($root); $path = realpath($root.'/'.(string) $row->stored_name);
+		if ($rootReal === false || $path === false || !is_file($path) || !is_readable($path) || strpos($path, rtrim($rootReal, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR) !== 0) cpcc_mobile_throw(404, 'not_found');
 	}
-	$rootReal = realpath($root); $path = realpath($root.'/'.(string) $row->stored_name);
-	if ($rootReal === false || $path === false || !is_file($path) || !is_readable($path) || strpos($path, rtrim($rootReal, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR) !== 0) cpcc_mobile_throw(404, 'not_found');
 	$size = filesize($path); if ($size === false || (int) $size !== (int) $row->file_size) cpcc_mobile_throw(404, 'not_found');
 	$filename = basename(str_replace(array("\r", "\n", '"'), '', (string) $row->original_name)); if ($filename === '') $filename = 'document';
-	$allowedMimes = array('application/pdf','image/jpeg','image/png','image/webp','text/plain','text/csv','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation');
+	$allowedMimes = array('application/pdf','image/jpeg','image/png','image/webp','video/mp4','video/quicktime','text/plain','text/csv','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation');
 	$mime = in_array((string) $row->mime_type, $allowedMimes, true) ? (string) $row->mime_type : 'application/octet-stream';
 	return array('path' => $path, 'size' => (int) $size, 'filename' => $filename, 'mime_type' => $mime);
 }
