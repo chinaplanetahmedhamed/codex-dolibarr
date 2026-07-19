@@ -1,5 +1,5 @@
 import { PropsWithChildren, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { I18nManager, View } from 'react-native';
+import { I18nManager, Platform, View } from 'react-native';
 
 import { Language } from '@/src/api/types';
 import { secureSessionStore } from '@/src/storage/secureSession';
@@ -45,6 +45,10 @@ export function I18nProvider({ children }: PropsWithChildren) {
     const rtl = language === 'ar';
     I18nManager.allowRTL(true);
     if (I18nManager.isRTL !== rtl) I18nManager.forceRTL(rtl);
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.documentElement.lang = language;
+      document.documentElement.dir = rtl ? 'rtl' : 'ltr';
+    }
   }, [language]);
 
   const setLanguage = useCallback(async (next: Language) => {

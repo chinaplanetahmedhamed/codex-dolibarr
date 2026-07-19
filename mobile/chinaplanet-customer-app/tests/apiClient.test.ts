@@ -17,6 +17,18 @@ const rotated: Session = { ...initial, access_token: 'b'.repeat(43), refresh_tok
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 describe('MobileApiClient', () => {
+  it('calls the default browser fetch without an illegal receiver binding', async () => {
+    const browserFetch = vi.fn(async () => json({ data: initial, request_id: 'request_default_fetch' }));
+    vi.stubGlobal('fetch', browserFetch);
+    try {
+      const client = new MobileApiClient('http://local/mobile/v1', new SecureSessionStore(new MemorySecureStorage()), undefined, async () => true);
+      await client.login('customer', 'password');
+      expect(browserFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('login sends only the frozen credential/device fields and saves returned tokens', async () => {
     const store = new SecureSessionStore(new MemorySecureStorage());
     const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => json({ data: initial, request_id: 'request_1234567890' }));

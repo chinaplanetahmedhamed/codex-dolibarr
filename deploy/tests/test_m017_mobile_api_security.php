@@ -1,4 +1,6 @@
 <?php
+define('CPCC_MOBILE_TESTING', true);
+putenv('CPCC_MOBILE_TEST_PEPPER=m017-local-test-pepper-0123456789abcdef');
 $root = dirname(__DIR__, 2);
 $protocol = file_get_contents($root.'/custom/chinaplanetcustomercenter/lib/mobile_api.lib.php');
 $data = file_get_contents($root.'/custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php');
@@ -25,7 +27,6 @@ m017_security_assert(strpos((string) $protocol, "'api_key'") !== false, 'API-key
 $documentRoot = getenv('M017_DOL_DOCUMENT_ROOT');
 $credentialFile = getenv('M017_CREDENTIAL_FILE');
 if (is_string($documentRoot) && $documentRoot !== '' && is_string($credentialFile) && is_file($credentialFile)) {
-	define('CPCC_MOBILE_TESTING', true);
 	define('NOLOGIN', 1); define('NOREQUIREMENU', 1); define('NOREQUIREHTML', 1); define('NOREQUIREAJAX', 1); define('NOCSRFCHECK', 1);
 	$_SERVER['DOCUMENT_ROOT'] = rtrim($documentRoot, '/'); $_SERVER['SERVER_NAME'] = 'localhost'; $_SERVER['SERVER_PORT'] = '80'; $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 	require rtrim($documentRoot, '/').'/master.inc.php';
@@ -63,6 +64,27 @@ if (is_string($documentRoot) && $documentRoot !== '' && is_string($credentialFil
 			$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer '.$passwordSession['access_token']; $passwordRevoked = false; try { cpcc_mobile_access_context($db); } catch (\Luracast\Restler\RestException $exception) { $passwordRevoked = (int) $exception->getCode() === 401; }
 			$db->query("UPDATE ".MAIN_DB_PREFIX."user SET datelastpassvalidation=NULL WHERE rowid=".(int) $candidate->rowid);
 			m017_security_assert($passwordRevoked, 'A password change invalidates older access sessions');
+
+			$expiredAccessSession = cpcc_mobile_issue_session($db, $candidate, '77777777-7777-4777-8777-777777777777', 'M017 expired access test');
+			$expiredAccessHash = cpcc_mobile_hash_secret($expiredAccessSession['access_token'], 'access-token');
+			$db->query("UPDATE ".MAIN_DB_PREFIX."cpcc_mobile_access_token SET expires_at='2000-01-01 00:00:00' WHERE token_hash='".$db->escape($expiredAccessHash)."'");
+			$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer '.$expiredAccessSession['access_token'];
+			$accessExpired = false; try { cpcc_mobile_access_context($db); } catch (\Luracast\Restler\RestException $exception) { $accessExpired = (int) $exception->getCode() === 401; }
+			m017_security_assert($accessExpired, 'Expired access tokens fail immediately with session expiry');
+
+			$expiredRefreshDevice = '88888888-8888-4888-8888-888888888888';
+			$expiredRefreshSession = cpcc_mobile_issue_session($db, $candidate, $expiredRefreshDevice, 'M017 expired refresh test');
+			$expiredRefreshHash = cpcc_mobile_hash_secret($expiredRefreshSession['refresh_token'], 'refresh-token');
+			$db->query("UPDATE ".MAIN_DB_PREFIX."cpcc_mobile_refresh_token SET expires_at='2000-01-01 00:00:00' WHERE token_hash='".$db->escape($expiredRefreshHash)."'");
+			$refreshExpired = false; try { cpcc_mobile_refresh_session($db, $expiredRefreshSession['refresh_token'], $expiredRefreshDevice); } catch (\Luracast\Restler\RestException $exception) { $refreshExpired = (int) $exception->getCode() === 401; }
+			m017_security_assert($refreshExpired, 'Expired refresh tokens fail immediately with session expiry');
+
+			$disabledSession = cpcc_mobile_issue_session($db, $candidate, '99999999-9999-4999-8999-999999999999', 'M017 disabled user test');
+			$db->query("UPDATE ".MAIN_DB_PREFIX."user SET statut=0 WHERE rowid=".(int) $candidate->rowid);
+			$_SERVER['HTTP_AUTHORIZATION'] = 'Bearer '.$disabledSession['access_token'];
+			$disabledRevoked = false; try { cpcc_mobile_access_context($db); } catch (\Luracast\Restler\RestException $exception) { $disabledRevoked = (int) $exception->getCode() === 401; }
+			$db->query("UPDATE ".MAIN_DB_PREFIX."user SET statut=1 WHERE rowid=".(int) $candidate->rowid);
+			m017_security_assert($disabledRevoked, 'A disabled external user loses access immediately');
 		}
 	}
 }

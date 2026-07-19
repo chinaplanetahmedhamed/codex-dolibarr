@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
+import { Platform } from 'react-native';
 
 import { Session } from '@/src/api/types';
 
@@ -22,8 +23,30 @@ const expoSecureStorage: SecureStorageAdapter = {
   deleteItemAsync: (key) => SecureStore.deleteItemAsync(key),
 };
 
+// Expo SecureStore is a native Android/iOS facility and has no web backend.
+// The web target is a local design/QA preview only, so keep its session in
+// process memory: never LocalStorage, IndexedDB, cookies, or another persistent
+// browser store. A reload intentionally requires a fresh sign-in.
+const volatileWebValues = new Map<string, string>();
+const volatileWebStorage: SecureStorageAdapter = {
+  async getItemAsync(key) { return volatileWebValues.get(key) ?? null; },
+  async setItemAsync(key, value) { volatileWebValues.set(key, value); },
+  async deleteItemAsync(key) { volatileWebValues.delete(key); },
+};
+
+const defaultSecureStorage = Platform.OS === 'web' ? volatileWebStorage : expoSecureStorage;
+
+function webDeviceUuid() {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export class SecureSessionStore {
-  constructor(private readonly storage: SecureStorageAdapter = expoSecureStorage) {}
+  constructor(private readonly storage: SecureStorageAdapter = defaultSecureStorage) {}
 
   async readSession(): Promise<Session | null> {
     const serialized = await this.storage.getItemAsync(SESSION_KEY);
@@ -57,7 +80,9 @@ export class SecureSessionStore {
   async getOrCreateDeviceId() {
     const existing = await this.storage.getItemAsync(DEVICE_KEY);
     if (existing) return existing;
-    const created = Crypto.randomUUID();
+    const created = Platform.OS === 'web'
+      ? webDeviceUuid()
+      : Crypto.randomUUID();
     await this.storage.setItemAsync(DEVICE_KEY, created);
     return created;
   }

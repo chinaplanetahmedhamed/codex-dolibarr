@@ -4,6 +4,11 @@ putenv('CPCC_MOBILE_TEST_PEPPER=m017-local-test-pepper-0123456789abcdef');
 require_once dirname(__DIR__, 2).'/custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php';
 $failures = array();
 function m017_data_assert($condition, $message) { global $failures; if (!$condition) $failures[] = $message; }
+function m017_data_throws_status($callback, $status)
+{
+	try { $callback(); } catch (\Throwable $exception) { return (int) $exception->getCode() === (int) $status; }
+	return false;
+}
 function m017_schema_errors($value, $schema, $api, $path = '$')
 {
 	if (isset($schema['$ref'])) { $name = basename(str_replace('\\', '/', $schema['$ref'])); return m017_schema_errors($value, $api['components']['schemas'][$name], $api, $path); }
@@ -43,6 +48,8 @@ $codes = array_map(function ($item) { return $item['code']; }, $timeline);
 m017_data_assert(in_array('transit', $codes, true), 'Shipment timeline inserts transit events');
 $transitItem = $timeline[array_search('transit', $codes, true)];
 m017_data_assert($transitItem['label']['ar'] === 'ترانزيت' && $transitItem['label']['en'] === 'Transit', 'Transit naming follows approved Arabic wording');
+$inspectionLabel = cpcc_mobile_report_field_label('inspection_result');
+m017_data_assert($inspectionLabel['ar'] === 'نتيجة الفحص' && $inspectionLabel['en'] === 'Inspection result', 'Report fields have genuine Arabic and English labels');
 $context = array('entity'=>1,'socid'=>10);
 $filter = cpcc_mobile_filter_hash('projects', array('updated_since'=>''));
 $cursor = cpcc_mobile_cursor_encode(array('v'=>1,'resource'=>'projects','entity'=>1,'socid'=>10,'filter'=>$filter,'limit'=>25,'last'=>array('date'=>'2026-07-19 00:00:00','id'=>7)));
@@ -55,6 +62,9 @@ if (is_string($documentRoot) && $documentRoot !== '') {
 	define('NOLOGIN', 1); define('NOREQUIREMENU', 1); define('NOREQUIREHTML', 1); define('NOREQUIREAJAX', 1); define('NOCSRFCHECK', 1);
 	$_SERVER['DOCUMENT_ROOT'] = rtrim($documentRoot, '/'); $_SERVER['SERVER_NAME'] = 'localhost'; $_SERVER['SERVER_PORT'] = '80';
 	require rtrim($documentRoot, '/').'/master.inc.php';
+	require_once DOL_DOCUMENT_ROOT.'/includes/restler/framework/Luracast/Restler/AutoLoader.php';
+	$restlerLoader = \Luracast\Restler\AutoLoader::instance(); spl_autoload_register($restlerLoader);
+	require_once DOL_DOCUMENT_ROOT.'/api/class/api.class.php';
 	global $db;
 	$contexts = array();
 	foreach (array('A'=>'M017_SYNTH_E1_A','B'=>'M017_SYNTH_E1_B','C'=>'M017_SYNTH_E2_C') as $key => $ref) {
@@ -87,6 +97,74 @@ if (is_string($documentRoot) && $documentRoot !== '') {
 		m017_data_assert(count($documentsB['data']) === 2, 'Customer B receives only its own approved documents');
 		$file = cpcc_mobile_safe_file_record($db, $contexts['A'], $documentsA['data'][0]['id']);
 		m017_data_assert(is_file($file['path']) && $file['size'] > 0 && strpos(realpath($file['path']), realpath(DOL_DATA_ROOT).DIRECTORY_SEPARATOR) === 0 && strpos(basename($file['path']), 'm017-') === 0, 'Protected content resolves only to a confined synthetic file');
+
+		$resourceCases = array(
+			'project'=>array('call'=>'cpcc_mobile_projects','counts'=>array('A'=>2,'B'=>1,'C'=>1)),
+			'shipment'=>array('call'=>'cpcc_mobile_shipments','counts'=>array('A'=>2,'B'=>1,'C'=>1)),
+			'order'=>array('call'=>'cpcc_mobile_orders','counts'=>array('A'=>2,'B'=>1,'C'=>1)),
+			'transaction'=>array('call'=>'cpcc_mobile_transactions','counts'=>array('A'=>3,'B'=>1,'C'=>1)),
+			'invoice'=>array('call'=>'cpcc_mobile_service_invoices','counts'=>array('A'=>1,'B'=>1,'C'=>1)),
+			'document'=>array('call'=>'cpcc_mobile_documents','counts'=>array('A'=>2,'B'=>2,'C'=>2)),
+			'commercial_document'=>array('call'=>'cpcc_mobile_commercial_documents','counts'=>array('A'=>1,'B'=>1,'C'=>1)),
+			'report'=>array('call'=>'cpcc_mobile_reports','counts'=>array('A'=>1,'B'=>1,'C'=>1)),
+		);
+		foreach ($resourceCases as $resource => $case) {
+			$idsByContext = array();
+			foreach ($contexts as $key => $ownedContext) {
+				$list = call_user_func($case['call'], $db, $ownedContext, 25, '', '');
+				$idsByContext[$key] = array_map(function ($item) { return $item['id']; }, $list['data']);
+				m017_data_assert(count($list['data']) === $case['counts'][$key], $resource.' list/count is isolated for customer '.$key);
+				$future = call_user_func($case['call'], $db, $ownedContext, 25, '', '2100-01-01T00:00:00Z');
+				m017_data_assert(empty($future['data']), $resource.' updated_since cannot reveal older or foreign rows for customer '.$key);
+			}
+			m017_data_assert(!array_intersect($idsByContext['A'], $idsByContext['B']) && !array_intersect($idsByContext['A'], $idsByContext['C']) && !array_intersect($idsByContext['B'], $idsByContext['C']), $resource.' opaque IDs do not overlap across customers/entities');
+			if (!empty($idsByContext['A'][0])) {
+				m017_data_assert(cpcc_mobile_resolve_public_id($db, $resource, $contexts['B'], $idsByContext['A'][0]) === null, $resource.' valid foreign ID is non-resolvable for customer B');
+				m017_data_assert(cpcc_mobile_resolve_public_id($db, $resource, $contexts['C'], $idsByContext['A'][0]) === null, $resource.' valid cross-entity ID is non-resolvable for customer C');
+			}
+			foreach (array('1', cpcc_mobile_public_prefix($resource).'_forged12345678901234567890') as $invalidId) m017_data_assert(cpcc_mobile_resolve_public_id($db, $resource, $contexts['A'], $invalidId) === null, $resource.' raw/malformed/forged ID is non-resolvable');
+		}
+		$staleProjectId = cpcc_mobile_public_id($db, 'project', $contexts['A'], 2147480000);
+		m017_data_assert(m017_data_throws_status(function () use ($db, $contexts, $staleProjectId) { cpcc_mobile_project_detail($db, $contexts['A'], $staleProjectId); }, 404), 'Stale opaque mapping to a missing owned object returns non-revealing 404');
+		$db->query("DELETE FROM ".MAIN_DB_PREFIX."cpcc_mobile_public_id WHERE public_id='".$db->escape($staleProjectId)."'");
+
+		$dashboardA = cpcc_mobile_dashboard($db, $contexts['A']);
+		m017_data_assert($dashboardA['data']['active_projects'] === 2 && $dashboardA['data']['active_shipments'] === 2 && $dashboardA['data']['open_orders'] === 2, 'Dashboard aggregates equal customer A owned list counts');
+
+		$assetRows = cpcc_mobile_document_rows($db, $contexts['A']); $ownedAsset = null;
+		foreach ($assetRows as $assetRow) if ($assetRow->source_type === 'project_asset') { $ownedAsset = $assetRow; break; }
+		m017_data_assert($ownedAsset !== null, 'Synthetic project asset exists for negative file tests');
+		if ($ownedAsset) {
+			$insertAsset = function ($originalName, $storedName, $mimeType, $fileSize, $reviewStatus, $customerVisible, $status) use ($db, $contexts, $ownedAsset) {
+				$now = cpcc_mobile_now_sql();
+				$sql = "INSERT INTO ".MAIN_DB_PREFIX."cpkanban_asset (entity,fk_soc,fk_card,asset_type,document_type,original_name,stored_name,mime_type,file_size,caption,version_no,review_status,customer_visible,status,fk_user_creat,date_creation) VALUES (".(int) $contexts['A']['entity'].",".(int) $contexts['A']['socid'].",".(int) $ownedAsset->fk_card.",'document','final','".$db->escape($originalName)."','".$db->escape($storedName)."','".$db->escape($mimeType)."',".(int) $fileSize.",'M017 negative file',1,'".$db->escape($reviewStatus)."',".(int) $customerVisible.",".(int) $status.",".(int) $contexts['A']['user_id'].",'".$now."')";
+				m017_data_assert((bool) $db->query($sql), 'Synthetic negative file row can be created');
+				return (int) $db->last_insert_id(MAIN_DB_PREFIX.'cpkanban_asset');
+			};
+			$negativeVisibilityIds = array(
+				$insertAsset('m017-draft.txt', $ownedAsset->stored_name, 'text/plain', $ownedAsset->file_size, 'pending', 1, 1),
+				$insertAsset('m017-private.txt', $ownedAsset->stored_name, 'text/plain', $ownedAsset->file_size, 'approved', 0, 1),
+				$insertAsset('m017-replaced.txt', $ownedAsset->stored_name, 'text/plain', $ownedAsset->file_size, 'approved', 1, 0),
+			);
+			$documentsAfterHidden = cpcc_mobile_documents($db, $contexts['A'], 25, '', '');
+			m017_data_assert(count($documentsAfterHidden['data']) === 2, 'Draft, private, and replaced files remain absent from customer lists');
+			$db->query("DELETE FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE rowid IN (".implode(',', array_map('intval', $negativeVisibilityIds)).")");
+
+			$missingId = $insertAsset('m017-missing.txt', 'm017-missing-does-not-exist.txt', 'text/plain', 10, 'approved', 1, 1);
+			$missingPublic = cpcc_mobile_public_id($db, 'document', $contexts['A'], $missingId * 2);
+			m017_data_assert(m017_data_throws_status(function () use ($db, $contexts, $missingPublic) { cpcc_mobile_safe_file_record($db, $contexts['A'], $missingPublic); }, 404), 'Missing approved file fails closed without path disclosure');
+			$db->query("DELETE FROM ".MAIN_DB_PREFIX."cpcc_mobile_public_id WHERE public_id='".$db->escape($missingPublic)."'"); $db->query("DELETE FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE rowid=".(int) $missingId);
+
+			$traversalId = $insertAsset('m017-traversal.txt', '../../conf/conf.php', 'text/plain', 1, 'approved', 1, 1);
+			$traversalPublic = cpcc_mobile_public_id($db, 'document', $contexts['A'], $traversalId * 2);
+			m017_data_assert(m017_data_throws_status(function () use ($db, $contexts, $traversalPublic) { cpcc_mobile_safe_file_record($db, $contexts['A'], $traversalPublic); }, 404), 'Traversal stored name fails closed outside the authorized root');
+			$db->query("DELETE FROM ".MAIN_DB_PREFIX."cpcc_mobile_public_id WHERE public_id='".$db->escape($traversalPublic)."'"); $db->query("DELETE FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE rowid=".(int) $traversalId);
+
+			$mimeId = $insertAsset("m017-evil\r\nX-Test: injected.html", $ownedAsset->stored_name, 'text/html', $ownedAsset->file_size, 'approved', 1, 1);
+			$mimePublic = cpcc_mobile_public_id($db, 'document', $contexts['A'], $mimeId * 2); $mimeRecord = cpcc_mobile_safe_file_record($db, $contexts['A'], $mimePublic);
+			m017_data_assert($mimeRecord['mime_type'] === 'application/octet-stream' && strpos($mimeRecord['filename'], "\r") === false && strpos($mimeRecord['filename'], "\n") === false && strpos($mimeRecord['filename'], '"') === false, 'Unallowlisted MIME is downgraded and download filename is header-safe');
+			$db->query("DELETE FROM ".MAIN_DB_PREFIX."cpcc_mobile_public_id WHERE public_id='".$db->escape($mimePublic)."'"); $db->query("DELETE FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE rowid=".(int) $mimeId);
+		}
 		$balances = cpcc_mobile_balances($db, $contexts['A']);
 		$contractCases['BalanceListEnvelope'] = $balances;
 		m017_data_assert(count($balances['data']) === 3, 'Balances remain separated across USD, CNY, and EGP');

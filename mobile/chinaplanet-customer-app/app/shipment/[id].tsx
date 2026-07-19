@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppScreen, BrandHeader, SectionHeader, ShipmentTimeline, StatusPill } from '@/src/components';
 import { EmptyState, ErrorState, LoadingState } from '@/src/components/AsyncState';
 import { DataCard, DetailRow, formatDate } from '@/src/components/DataCard';
+import { DownloadButton } from '@/src/components/DownloadButton';
 import { useResource } from '@/src/hooks/useResource';
 import { useI18n } from '@/src/i18n/I18nProvider';
 import { requestedFromLabel } from '@/src/i18n/domainLabels';
@@ -32,7 +33,7 @@ export default function ShipmentDetailScreen() {
     <SectionHeader ar="رحلة الشحنة" en="Shipment timeline" />
     {shipment.timeline.length ? <ShipmentTimeline steps={shipment.timeline} /> : <EmptyState />}
     <SectionHeader ar="المستندات المطلوبة" en="Document requirements" />
-    {shipment.document_requirements.length ? shipment.document_requirements.map((requirement) => <DataCard key={requirement.code}><DetailRow label={label(requirement.label)} value={label(requirement.status_label)} alert={requirement.action_required} /><DetailRow label={language === 'ar' ? 'مطلوب من' : 'Requested from'} value={requestedFromLabel(requirement.requested_from, language)} /><DetailRow label={language === 'ar' ? 'الموعد' : 'Due'} value={formatDate(requirement.due_at, language)} />{requirement.document_id && <DetailRow label={language === 'ar' ? 'المستند المرتبط' : 'Linked document'} value={language === 'ar' ? 'متاح في قسم المستندات' : 'Available in Documents'} />}{requirement.public_note && <Text style={[styles.publicNote, { textAlign: align }]}>{requirement.public_note}</Text>}</DataCard>) : <EmptyState />}
+    {shipment.document_requirements.length ? shipment.document_requirements.map((requirement) => <DataCard key={requirement.code}><DetailRow label={label(requirement.label)} value={label(requirement.status_label)} alert={requirement.action_required} /><DetailRow label={language === 'ar' ? 'مطلوب من' : 'Requested from'} value={requestedFromLabel(requirement.requested_from, language)} /><DetailRow label={language === 'ar' ? 'الموعد' : 'Due'} value={formatDate(requirement.due_at, language)} />{requirement.document_id && <DownloadButton target={{ kind: 'document', id: requirement.document_id }} filename={requirement.code} />}{requirement.public_note && <Text style={[styles.publicNote, { textAlign: align }]}>{requirement.public_note}</Text>}</DataCard>) : <EmptyState />}
     <SectionHeader ar="تفاصيل الرحلة" en="Voyage details" />
     <DataCard><DetailRow label={language === 'ar' ? 'الحجز' : 'Booking'} value={shipment.booking_number || '—'} /><DetailRow label={language === 'ar' ? 'الخط الملاحي' : 'Shipping line'} value={shipment.shipping_line || '—'} /><DetailRow label={language === 'ar' ? 'السفينة' : 'Vessel'} value={shipment.vessel_name || '—'} /><DetailRow label={language === 'ar' ? 'الرحلة' : 'Voyage'} value={shipment.voyage_number || '—'} /><DetailRow label={language === 'ar' ? 'ميناء الشحن' : 'Port of loading'} value={shipment.port_loading || '—'} /><DetailRow label={language === 'ar' ? 'ميناء الوصول' : 'Destination port'} value={shipment.port_destination || '—'} /></DataCard>
   </AppScreen>;

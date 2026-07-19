@@ -18,8 +18,13 @@ export type RequestOptions = {
 
 type Fetcher = typeof fetch;
 type NetworkChecker = () => Promise<boolean>;
+const defaultFetcher: Fetcher = (...args) => fetch(...args);
 
 const defaultNetworkChecker: NetworkChecker = async () => {
+  // NetInfo and navigator.onLine can both report an offline internet state
+  // while the local QA API is reachable. Web is preview-only in M017, so let
+  // fetch provide the authoritative reachable/offline result on that target.
+  if (Platform.OS === 'web') return true;
   const state = await NetInfo.fetch();
   return state.isConnected !== false && state.isInternetReachable !== false;
 };
@@ -30,7 +35,7 @@ export class MobileApiClient {
   constructor(
     private readonly baseUrl = environment.apiBaseUrl,
     private readonly sessionStore: SecureSessionStore = secureSessionStore,
-    private readonly fetcher: Fetcher = fetch,
+    private readonly fetcher: Fetcher = defaultFetcher,
     private readonly networkChecker: NetworkChecker = defaultNetworkChecker,
   ) {}
 

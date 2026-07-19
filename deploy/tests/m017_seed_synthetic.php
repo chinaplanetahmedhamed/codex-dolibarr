@@ -45,6 +45,10 @@ function m017SeedCleanup($marker)
 {
 	global $db, $conf;
 	$like = m017SeedEsc($marker.'%');
+	// The M017 HTTP abuse tests use loopback as their origin. Reset only the
+	// extension-owned authentication buckets so repeated synthetic runs remain
+	// deterministic and never inherit a prior run's throttle state.
+	m017SeedDelete('cpcc_mobile_rate_limit', "route_key IN ('login_origin','login_account','refresh')");
 	$socids = array(); $result = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'societe WHERE ref_ext LIKE '.$like);
 	while ($result && ($row = $db->fetch_object($result))) $socids[] = (int) $row->rowid;
 	$userids = array(); $result = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE ref_ext LIKE '.$like);

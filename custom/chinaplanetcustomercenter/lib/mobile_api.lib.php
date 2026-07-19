@@ -325,6 +325,10 @@ function cpcc_mobile_verify_credentials($db, $login, $password)
 	$dummyHash = '$2y$10$wH8QvY7YtL2d7RrQ7I4X6eWd7Y5Uyl7plYzYIcbBpT5F5hHq2gVbe';
 	if (!$candidate) {
 		password_verify((string) $password, $dummyHash);
+		// Dolibarr's native password verifier sleeps for one second after a
+		// known-login failure. Match that path so an unknown login does not
+		// become distinguishable through a much faster negative response.
+		sleep(1);
 		return null;
 	}
 	$authMode = empty($dolibarr_main_authentication) || $dolibarr_main_authentication === 'openid_connect' ? 'dolibarr' : $dolibarr_main_authentication;
