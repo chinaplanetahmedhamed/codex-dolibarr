@@ -193,24 +193,10 @@ if ($action === 'add_transshipment' && $id > 0 && $canwrite && $is_post) {
     header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id); exit;
 }
 
-// CREATE/UPDATE SHIPMENT DOCUMENT REQUIREMENT (internal logistics writers only)
+// M023 retired the legacy checklist workflow. Keep old database rows for
+// audit/rollback, but reject direct attempts to revive the obsolete writer.
 if ($action === 'save_requirement' && $id > 0 && $canwrite && $is_post) {
-    if (empty($object->id)) accessforbidden();
-    $result = cpl_save_document_requirement($db, $object, $user, array(
-        'id' => GETPOSTINT('requirement_id'),
-        'document_code' => GETPOST('document_code', 'alphanohtml'),
-        'label_public' => GETPOST('label_public', 'alphanohtml'),
-        'requirement_status' => GETPOST('requirement_status', 'alpha'),
-        'requested_from' => GETPOST('requested_from', 'alpha'),
-        'due_at' => $parseDateTime(GETPOST('requirement_due_at', 'alphanohtml')),
-        'action_required' => GETPOSTINT('requirement_action_required') ? 1 : 0,
-        'source_type' => GETPOST('requirement_source_type', 'alpha'),
-        'source_id' => GETPOSTINT('requirement_source_id'),
-        'note_public' => GETPOST('requirement_note_public', 'alphanohtml'),
-        'customer_visible' => GETPOSTINT('requirement_customer_visible') ? 1 : 0,
-    ));
-    setEventMessages(!empty($result['ok']) ? $langs->trans('CPLRequirementSaved') : $result['error'], null, !empty($result['ok']) ? 'mesgs' : 'errors');
-    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id); exit;
+    accessforbidden();
 }
 
 // DELETE (confirmed)

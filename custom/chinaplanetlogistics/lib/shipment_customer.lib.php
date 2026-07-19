@@ -1,6 +1,6 @@
 <?php
 /**
- * M011 customer-safe shipment history, alerts, actions, and document checklist.
+ * Customer-safe shipment history and contextual shipment actions.
  *
  * This library deliberately keeps customer projections scoped by entity,
  * shipment and fk_soc. It never returns private operation fields or raw file
@@ -69,7 +69,6 @@ function cpl_schema_has_column($db, $table, $column)
 function cpl_shipment_schema_ready($db)
 {
     return cpl_schema_has_table($db, 'cpl_shipment_event')
-        && cpl_schema_has_table($db, 'cpl_document_requirement')
         && cpl_schema_has_column($db, 'chinaplanetlogistics', 'date_atd');
 }
 
@@ -397,7 +396,6 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     $candelete = !empty($context['candelete']);
     $schemaReady = cpl_shipment_schema_ready($db);
     $events = $schemaReady ? cpl_shipment_events($db, $shipment, $external) : array();
-    $requirements = $schemaReady ? cpl_document_requirements($db, $shipment, $external) : array();
     $latest = cpl_latest_customer_update($events);
     $etaChange = cpl_latest_eta_change($events);
     $nextOperation = cpl_customer_next_operation($db, $shipment);
@@ -483,26 +481,6 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
         if (!empty($nextOperation->note_public)) print '<p>'.nl2br(dol_escape_htmltag($nextOperation->note_public)).'</p>';
         print '</div>';
     } else print '<div class="cpl-empty">'.$langs->trans('CPLNoCustomerAction').'</div>';
-    print '</article>';
-
-    print '<article class="cpl-panel"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLDocuments').'</span><h2>'.$langs->trans('CPLDocumentChecklist').'</h2></div><b>'.count($requirements).'</b></div>';
-    if (empty($requirements)) print '<div class="cpl-empty">'.$langs->trans('CPLNoDocumentRequirements').'</div>';
-    else {
-        $allDocumentsComplete = true;
-        foreach ($requirements as $requirement) if ($requirement->requirement_status !== 'published' || empty($requirement->document_url)) { $allDocumentsComplete = false; break; }
-        if ($allDocumentsComplete) print '<div class="cpl-complete-notice">'.$langs->trans('CPLAllDocumentsComplete').'</div>';
-        print '<ul class="cpl-checklist">';
-        foreach ($requirements as $requirement) {
-            print '<li><div><strong>'.dol_escape_htmltag($requirement->label_public).'</strong><span>'.dol_escape_htmltag($langs->trans('CPLRequirementStatus_'.$requirement->requirement_status)).'</span>';
-            if (!empty($requirement->note_public)) print '<small>'.nl2br(dol_escape_htmltag($requirement->note_public)).'</small>';
-            print '</div>';
-            if (!empty($requirement->document_url)) print '<a href="'.dol_escape_htmltag($requirement->document_url).'" target="_blank" rel="noopener">'.$langs->trans('CPLOpenDocument').'</a>';
-            elseif (!empty($requirement->action_required) && $requirement->requested_from === 'customer') print '<b class="cpl-required-badge">'.$langs->trans('CPLRequiredFromYou').'</b>';
-            else print '<span class="cpl-no-file">'.$langs->trans('CPLNoFileYet').'</span>';
-            print '</li>';
-        }
-        print '</ul>';
-    }
     print '</article></section>';
 
     $details = array(
@@ -522,7 +500,7 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
         $sourceOptions = ''; foreach (cpl_public_source_types() as $key=>$label) $sourceOptions .= '<option value="'.dol_escape_htmltag($key).'">'.dol_escape_htmltag(cpl_public_source_label($langs, $key)).'</option>';
         print '<details class="cpl-panel cpl-internal-tools"><summary>'.$langs->trans('CPLInternalShipmentTools').'</summary><div class="cpl-internal-grid">';
         print '<form method="post" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="add_transshipment"><h3>'.$langs->trans('CPLAddTransshipment').'</h3><label>'.$langs->trans('CPLDateAndTime').'<input required type="datetime-local" name="transshipment_at"></label><label>'.$langs->trans('CPLLocation').'<input required maxlength="255" name="transshipment_location"></label><label>'.$langs->trans('CPLPublicSource').'<select name="transshipment_source_type">'.$sourceOptions.'</select></label><label>'.$langs->trans('CPLPublicNote').'<textarea name="transshipment_note" maxlength="1500"></textarea></label><label class="cpl-check"><input type="checkbox" name="transshipment_customer_visible" value="1" checked> '.$langs->trans('CPLPublishToCustomer').'</label><button type="submit">'.$langs->trans('CPLSave').'</button></form>';
-        print '<form method="post" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="save_requirement"><h3>'.$langs->trans('CPLAddDocumentRequirement').'</h3><label>'.$langs->trans('CPLRequirementIdForUpdate').'<input type="number" min="0" name="requirement_id"></label><label>'.$langs->trans('CPLDocumentCode').'<input required maxlength="64" name="document_code"></label><label>'.$langs->trans('CPLPublicLabel').'<input required maxlength="255" name="label_public"></label><label>'.$langs->trans('CPLStatus').'<select name="requirement_status">'; foreach (cpl_requirement_statuses() as $status) print '<option value="'.dol_escape_htmltag($status).'">'.dol_escape_htmltag($langs->trans('CPLRequirementStatus_'.$status)).'</option>'; print '</select></label><label>'.$langs->trans('CPLRequestedFrom').'<select name="requested_from">'; foreach (cpl_requirement_parties() as $party) print '<option value="'.dol_escape_htmltag($party).'">'.dol_escape_htmltag($langs->trans('CPLParty_'.$party)).'</option>'; print '</select></label><label>'.$langs->trans('CPLDueDate').'<input type="datetime-local" name="requirement_due_at"></label><label>'.$langs->trans('CPLDocumentSourceType').'<select name="requirement_source_type"><option value=""></option><option value="commercial_document">'.$langs->trans('CPLCommercialDocument').'</option><option value="operation_document">'.$langs->trans('CPLOperationDocument').'</option></select></label><label>'.$langs->trans('CPLDocumentSourceId').'<input type="number" min="0" name="requirement_source_id"></label><label>'.$langs->trans('CPLPublicNote').'<textarea name="requirement_note_public" maxlength="2000"></textarea></label><label class="cpl-check"><input type="checkbox" name="requirement_action_required" value="1"> '.$langs->trans('CPLActionRequired').'</label><label class="cpl-check"><input type="checkbox" name="requirement_customer_visible" value="1" checked> '.$langs->trans('CPLPublishToCustomer').'</label><button type="submit">'.$langs->trans('CPLSave').'</button></form></div></details>';
+        print '</div></details>';
     }
 
     print '<nav class="cpl-detail-actions" aria-label="'.$langs->trans('CPLShipmentActions').'">';
