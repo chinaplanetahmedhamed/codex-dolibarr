@@ -167,6 +167,7 @@ export type ShipmentDetail = ShipmentSummary & {
   customer_notes?: string | null;
   customer_action: CustomerAction;
   timeline: TimelineStep[];
+  shipment_gallery: Document[];
   document_requirements: DocumentRequirement[];
 };
 
@@ -208,9 +209,11 @@ export type ServiceInvoice = {
 
 export type Document = {
   id: OpaqueId;
-  source_type: 'project_asset' | 'operation_report_attachment';
+  source_type: 'project_asset' | 'operation_report_attachment' | 'shipment_gallery';
+  kind: 'image' | 'video' | 'document';
   project_id?: OpaqueId | null;
   shipment_id?: OpaqueId | null;
+  shipment_ref?: string | null;
   report_id?: OpaqueId | null;
   name: string;
   mime_type: string;

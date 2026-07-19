@@ -60,8 +60,8 @@ jobs:
           test "$GITHUB_REF" = 'refs/heads/mobile-develop'
           test "$CONFIRMATION" = 'PUBLISH_CHINAPLANET_INTERNAL_OTA'
           test -n "$EXPO_TOKEN"
-          test -n "$EAS_PROJECT_ID"
-          test -n "$EXPO_OWNER"
+          test "$EAS_PROJECT_ID" = 'a69d974c-5792-466c-80b2-bdded33cf0fb'
+          test "$EXPO_OWNER" = 'vision-trading'
           test -n "$UPDATE_MESSAGE"
           test "$(printf '%s' "$BINARY_SOURCE_COMMIT" | wc -c | tr -d ' ')" = '40'
           git cat-file -e "$BINARY_SOURCE_COMMIT^{commit}"
@@ -74,7 +74,6 @@ jobs:
           native_changes="$(git diff --name-only "$BINARY_SOURCE_COMMIT"..HEAD -- \
             mobile/chinaplanet-customer-app/package.json \
             mobile/chinaplanet-customer-app/package-lock.json \
-            mobile/chinaplanet-customer-app/app.json \
             mobile/chinaplanet-customer-app/app.config.ts \
             mobile/chinaplanet-customer-app/eas.json \
             mobile/chinaplanet-customer-app/android \
@@ -100,11 +99,12 @@ jobs:
           set -Eeuo pipefail
           npm ci
           npx expo install --check
+          npx -y expo-doctor
           npm run typecheck
           npm run lint -- --max-warnings=0
           npm test
           public_config="$(npx expo config --type public --json)"
-          node -e 'const c=JSON.parse(process.argv[1]); if(c.android.package!=="com.chinaplanet.customer.internal"||c.runtimeVersion.policy!=="appVersion"||c.updates.url!==`https://u.expo.dev/${process.env.EAS_PROJECT_ID}`) process.exit(1)' "$public_config"
+          node -e 'const c=JSON.parse(process.argv[1]); if(c.owner!=="vision-trading"||c.extra?.eas?.projectId!=="a69d974c-5792-466c-80b2-bdded33cf0fb"||c.android?.package!=="com.chinaplanet.customer.internal"||c.version!=="1.0.2"||c.runtimeVersion?.policy!=="appVersion"||c.updates?.enabled===false||c.updates?.url!=="https://u.expo.dev/a69d974c-5792-466c-80b2-bdded33cf0fb") process.exit(1)' "$public_config"
           test -z "$(git status --porcelain)"
 
       - name: Publish signed compatible update to internal only

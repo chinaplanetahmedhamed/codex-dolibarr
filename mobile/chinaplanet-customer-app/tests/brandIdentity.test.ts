@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import getConfig from '../app.config';
+
 const root = resolve(__dirname, '..');
 const logoPath = resolve(root, 'assets/images/chinaplanet-logo.png');
 
@@ -14,11 +16,11 @@ describe('official China Planet brand identity', () => {
   });
 
   it('uses the official logo for Expo identity surfaces', () => {
-    const app = JSON.parse(readFileSync(resolve(root, 'app.json'), 'utf8')).expo;
+    const app = getConfig();
     expect(app.icon).toBe('./assets/images/chinaplanet-logo.png');
-    expect(app.android.adaptiveIcon.foregroundImage).toBe('./assets/images/chinaplanet-logo.png');
-    expect(app.web.favicon).toBe('./assets/images/chinaplanet-logo.png');
-    expect(app.plugins[3][1].image).toBe('./assets/images/chinaplanet-logo.png');
+    expect(app.android?.adaptiveIcon?.foregroundImage).toBe('./assets/images/chinaplanet-logo.png');
+    expect(app.web?.favicon).toBe('./assets/images/chinaplanet-logo.png');
+    expect(app.plugins?.[3][1].image).toBe('./assets/images/chinaplanet-logo.png');
   });
 
   it('replaces temporary CP and V marks in visible application branding', () => {

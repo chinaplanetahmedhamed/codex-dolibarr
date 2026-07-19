@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -16,15 +16,27 @@ afterEach(() => {
 describe('internal EAS update controls', () => {
   it('pins the internal binary to the company project and app-version runtime', () => {
     process.env.CHINAPLANET_APP_VARIANT = 'internal';
-    process.env.EAS_PROJECT_ID = '00000000-0000-4000-8000-000000000001';
-    process.env.EXPO_OWNER = 'synthetic-owner';
     const config = getConfig();
-    expect(config.version).toBe('1.0.1');
+    expect(config.version).toBe('1.0.2');
     expect(config.runtimeVersion).toEqual({ policy: 'appVersion' });
-    expect(config.updates?.url).toBe('https://u.expo.dev/00000000-0000-4000-8000-000000000001');
+    expect(config.owner).toBe('vision-trading');
+    expect(config.extra?.eas?.projectId).toBe('a69d974c-5792-466c-80b2-bdded33cf0fb');
+    expect(config.updates?.enabled).toBe(true);
+    expect(config.updates?.url).toBe('https://u.expo.dev/a69d974c-5792-466c-80b2-bdded33cf0fb');
     expect(config.updates?.checkAutomatically).toBe('NEVER');
     expect(config.android?.package).toBe('com.chinaplanet.customer.internal');
     expect(config.extra?.internalUpdateChannel).toBe('internal');
+  });
+
+  it('cannot be redirected to another Expo owner or project by builder environment variables', () => {
+    process.env.CHINAPLANET_APP_VARIANT = 'internal';
+    process.env.EAS_PROJECT_ID = '00000000-0000-4000-8000-000000000001';
+    process.env.EXPO_OWNER = 'synthetic-owner';
+    const config = getConfig();
+    expect(config.owner).toBe('vision-trading');
+    expect(config.extra?.eas?.projectId).toBe('a69d974c-5792-466c-80b2-bdded33cf0fb');
+    expect(config.updates?.url).toBe('https://u.expo.dev/a69d974c-5792-466c-80b2-bdded33cf0fb');
+    expect(existsSync(resolve(root, 'app.json'))).toBe(false);
   });
 
   it('checks only the compiled internal channel and never overrides the update URL', () => {
