@@ -27,7 +27,7 @@ export default function HomeScreen() {
       <View style={styles.metrics}>
         <MetricCard icon="folder-open" value={String(dashboard.active_projects)} ar="مشاريع نشطة" en="Active projects" tone="navy" onPress={() => router.push('/projects')} />
         <MetricCard icon="boat" value={String(dashboard.active_shipments)} ar="شحنات نشطة" en="Active shipments" tone="green" onPress={() => router.push('/shipments')} />
-        <MetricCard icon="receipt" value={String(dashboard.open_orders)} ar="طلبات مفتوحة" en="Open orders" tone="red" onPress={() => router.push('/orders')} />
+        <MetricCard icon="receipt" value={String(dashboard.open_orders)} ar="طلبات مفتوحة" en="Open orders" tone="red" onPress={() => router.push('/more/orders')} />
       </View>
 
       {dashboard.current_project && <><SectionHeader ar="المشروع الحالي" en="Current project" /><Link href={{ pathname: '/project/[id]', params: { id: dashboard.current_project.id } }} asChild><Pressable><DataCard><View style={styles.head}><StatusPill ar={dashboard.current_project.status.label.ar} en={dashboard.current_project.status.label.en} tone="orange" /><Text style={styles.ref}>{dashboard.current_project.ref}</Text></View><Text style={[styles.title, { textAlign: isRtl ? 'right' : 'left' }]}>{dashboard.current_project.title}</Text><ProgressBar value={dashboard.current_project.progress_percent} /><DetailRow label={language === 'ar' ? 'نسبة الإنجاز' : 'Progress'} value={`${dashboard.current_project.progress_percent}%`} /></DataCard></Pressable></Link></>}

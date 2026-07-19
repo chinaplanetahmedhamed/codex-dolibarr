@@ -36,7 +36,7 @@ describe('official China Planet brand identity', () => {
     expect(home).not.toContain('icon="planet"');
     expect(home).toContain("router.push('/projects')");
     expect(home).toContain("router.push('/shipments')");
-    expect(home).toContain("router.push('/orders')");
+    expect(home).toContain("router.push('/more/orders')");
     expect(theme).toContain("brandRed: '#D91436'");
     expect(theme).not.toContain('gold:');
   });

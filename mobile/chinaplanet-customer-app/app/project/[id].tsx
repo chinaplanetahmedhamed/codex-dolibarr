@@ -30,8 +30,8 @@ export default function ProjectDetailScreen() {
     <SectionHeader ar="الروابط المتاحة" en="Related records" />
     <DataCard>
       {project.shipment_ids.map((shipmentId, index) => <Link key={shipmentId} href={{ pathname: '/shipment/[id]', params: { id: shipmentId } }} asChild><Pressable style={styles.relatedButton}><Text style={styles.relatedText}>{language === 'ar' ? `تتبع الشحنة ${index + 1}` : `Track shipment ${index + 1}`}</Text></Pressable></Link>)}
-      {project.report_ids.map((reportId, index) => <Link key={reportId} href={{ pathname: '/report/[id]', params: { id: reportId } }} asChild><Pressable style={styles.relatedButton}><Text style={styles.relatedText}>{language === 'ar' ? `فتح التقرير ${index + 1}` : `Open report ${index + 1}`}</Text></Pressable></Link>)}
-      {project.document_ids.length > 0 && <Link href="/documents" asChild><Pressable style={styles.relatedButton}><Text style={styles.relatedText}>{language === 'ar' ? `فتح الملفات (${project.document_ids.length})` : `Open documents (${project.document_ids.length})`}</Text></Pressable></Link>}
+      {project.report_ids.map((reportId, index) => <Link key={reportId} href={{ pathname: '/more/report/[id]', params: { id: reportId } }} asChild><Pressable style={styles.relatedButton}><Text style={styles.relatedText}>{language === 'ar' ? `فتح التقرير ${index + 1}` : `Open report ${index + 1}`}</Text></Pressable></Link>)}
+      {project.document_ids.length > 0 && <Link href="/more/documents" asChild><Pressable style={styles.relatedButton}><Text style={styles.relatedText}>{language === 'ar' ? `فتح الملفات (${project.document_ids.length})` : `Open documents (${project.document_ids.length})`}</Text></Pressable></Link>}
       {project.shipment_ids.length + project.report_ids.length + project.document_ids.length === 0 && <Text style={[styles.description, { textAlign: align }]}>{language === 'ar' ? 'لا توجد روابط متاحة حاليًا.' : 'No related records are available.'}</Text>}
     </DataCard>
     <SectionHeader ar="الأرصدة المرتبطة" en="Related balances" />

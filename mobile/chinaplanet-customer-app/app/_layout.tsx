@@ -63,22 +63,14 @@ function AppNavigator() {
             headerBackTitle: 'رجوع',
           }}
         />
-        <Stack.Screen
-          name="documents"
-          options={{
-            title: 'المستندات / Documents',
-            headerStyle: { backgroundColor: palette.navy },
-            headerTintColor: palette.white,
-            headerBackTitle: 'رجوع',
-          }}
-        />
-          <Stack.Screen name="orders" options={{ title: 'الطلبات / Orders', headerStyle: { backgroundColor: palette.navy }, headerTintColor: palette.white }} />
-          <Stack.Screen name="transactions" options={{ title: 'كشف الحساب / Transactions', headerStyle: { backgroundColor: palette.navy }, headerTintColor: palette.white }} />
-          <Stack.Screen name="service-invoices" options={{ title: 'فواتير الخدمات / Invoices', headerStyle: { backgroundColor: palette.navy }, headerTintColor: palette.white }} />
-          <Stack.Screen name="commercial-documents" options={{ title: 'المستندات التجارية / Commercial Documents', headerStyle: { backgroundColor: palette.navy }, headerTintColor: palette.white }} />
-          <Stack.Screen name="reports" options={{ title: 'تقارير الجودة والخدمة / Reports', headerStyle: { backgroundColor: palette.navy }, headerTintColor: palette.white }} />
-          <Stack.Screen name="commercial-document/[id]" options={{ title: 'المستند التجاري / Commercial Document', headerStyle: { backgroundColor: palette.navy }, headerTintColor: palette.white }} />
-          <Stack.Screen name="report/[id]" options={{ title: 'التقرير / Report', headerStyle: { backgroundColor: palette.navy }, headerTintColor: palette.white }} />
+          <Stack.Screen name="documents" options={{ headerShown: false }} />
+          <Stack.Screen name="orders" options={{ headerShown: false }} />
+          <Stack.Screen name="transactions" options={{ headerShown: false }} />
+          <Stack.Screen name="service-invoices" options={{ headerShown: false }} />
+          <Stack.Screen name="commercial-documents" options={{ headerShown: false }} />
+          <Stack.Screen name="reports" options={{ headerShown: false }} />
+          <Stack.Screen name="commercial-document/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="report/[id]" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
       <StatusBar style="light" />
