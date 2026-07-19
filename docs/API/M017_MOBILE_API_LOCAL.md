@@ -21,7 +21,7 @@ This API is an additive, read-only customer projection for the China Planet mobi
    php deploy/migrations/m017_customer_mobile_api_schema.php check
    ```
 
-3. Configure a local-only random secret of at least 32 characters as `CHINAPLANETCUSTOMERCENTER_MOBILE_TOKEN_PEPPER`. Never commit or transmit it to the app. Production and backup-erp secrets require separate environment-specific authorization.
+3. Configure a local-only random secret of at least 32 characters as `CHINAPLANETCUSTOMERCENTER_MOBILE_TOKEN_SECRET`. The `_SECRET` suffix uses Dolibarr's encrypted sensitive-constant storage path. Never commit or transmit it to the app. Production secrets require separate environment-specific authorization.
 4. Keep `MAIN_API_DEBUG` disabled. Login and refresh fail closed while API debug logging is enabled to prevent credential or token leakage.
 
 The API does not run DDL from a web request. If its additive tables are absent, it returns a generic request-ID-bearing server error.

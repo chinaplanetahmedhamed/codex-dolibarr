@@ -83,7 +83,7 @@ function cpcc_mobile_constant($name, $fallback = '')
 
 function cpcc_mobile_pepper()
 {
-	$pepper = cpcc_mobile_constant('CHINAPLANETCUSTOMERCENTER_MOBILE_TOKEN_PEPPER', '');
+	$pepper = cpcc_mobile_constant('CHINAPLANETCUSTOMERCENTER_MOBILE_TOKEN_SECRET', '');
 	if (defined('CPCC_MOBILE_TESTING') && CPCC_MOBILE_TESTING && $pepper === '') {
 		$testPepper = getenv('CPCC_MOBILE_TEST_PEPPER');
 		if (is_string($testPepper)) $pepper = $testPepper;
