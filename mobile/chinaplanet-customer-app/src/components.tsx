@@ -3,6 +3,7 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { PropsWithChildren, ReactNode } from 'react';
 import {
   Pressable,
+  Image,
   RefreshControl,
   ScrollView,
   StyleProp,
@@ -43,10 +44,15 @@ export function BrandHeader({ titleAr, titleEn }: { titleAr?: string; titleEn?: 
   return (
     <View style={[styles.brandHeader, { flexDirection: leadingRowDirection(isRtl) }]}>
       <View style={styles.brandMark}>
-        <Text style={styles.brandMarkText}>V</Text>
+        <Image
+          accessibilityLabel="شعار كوكب الصين / China Planet logo"
+          resizeMode="contain"
+          source={require('../assets/images/chinaplanet-logo.png')}
+          style={styles.brandMarkImage}
+        />
       </View>
       <View style={[styles.brandCopy, { alignItems: contentAlignment(isRtl) }]}>
-        <Text style={[styles.brandNameAr, { textAlign: align }]}>{titleAr ?? 'مركز العميل'}</Text>
+        <Text style={[styles.brandNameAr, { textAlign: align }]}>{titleAr ?? 'عملاء Vision Trading - كوكب الصين'}</Text>
         <Text style={[styles.brandNameEn, { textAlign: align }]}>{titleEn ?? 'Customer Center'}</Text>
       </View>
     </View>
@@ -183,8 +189,8 @@ const styles = StyleSheet.create({
   brandCopy: {},
   brandNameAr: { color: palette.navy, fontSize: 17, fontWeight: '900' },
   brandNameEn: { color: palette.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.6 },
-  brandMark: { width: 44, height: 44, borderRadius: 13, backgroundColor: palette.cyan, alignItems: 'center', justifyContent: 'center' },
-  brandMarkText: { color: palette.white, fontWeight: '900', fontSize: 23 },
+  brandMark: { width: 48, height: 48, borderRadius: 15, backgroundColor: palette.white, borderWidth: 1, borderColor: '#F0CDD1', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  brandMarkImage: { width: 43, height: 43 },
   hero: { position: 'relative', overflow: 'hidden', backgroundColor: palette.navy, borderRadius: radii.large, padding: 22, minHeight: 185, justifyContent: 'flex-end', ...shadows.card },
   heroOrb: { position: 'absolute', width: 170, height: 170, borderRadius: 90, borderWidth: 2, borderColor: '#FFFFFF16', right: -55, top: -45 },
   heroEyebrow: { color: palette.gold, fontSize: 11, fontWeight: '900', letterSpacing: 1.8, textTransform: 'uppercase', marginTop: 18 },

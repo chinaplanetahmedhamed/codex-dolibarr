@@ -4,7 +4,7 @@
     "slug": "chinaplanet-customer",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/chinaplanet-logo.png",
     "scheme": "chinaplanet",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -14,10 +14,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#102F49",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/chinaplanet-logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -30,7 +28,7 @@
     },
     "web": {
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/chinaplanet-logo.png"
     },
     "plugins": [
       "expo-router",
@@ -39,12 +37,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/chinaplanet-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#102F49",
+          "backgroundColor": "#FFFFFF",
           "dark": {
-            "backgroundColor": "#102F49"
+            "backgroundColor": "#FFFFFF"
           }
         }
       ]

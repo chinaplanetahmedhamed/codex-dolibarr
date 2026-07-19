@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MobileApiError, NetworkUnavailableError, RequestTimeoutError } from '@/src/api/errors';
@@ -43,7 +43,7 @@ export default function LoginScreen() {
       <StatusBar style="light" />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={[styles.brand, { flexDirection: leadingRowDirection(isRtl) }]}><View style={styles.logo}><Text style={styles.logoText}>CP</Text></View><View><Text style={[styles.brandAr, { textAlign: align }]}>عملاء كوكب الصين</Text><Text style={[styles.brandEn, { textAlign: align }]}>CHINAPLANET CUSTOMER</Text></View></View>
+          <View style={[styles.brand, { flexDirection: leadingRowDirection(isRtl) }]}><View style={styles.logo}><Image accessibilityLabel="شعار كوكب الصين / China Planet logo" resizeMode="contain" source={require('../assets/images/chinaplanet-logo.png')} style={styles.logoImage} /></View><View style={styles.brandCopy}><Text style={[styles.brandAr, { textAlign: align }]}>عملاء Vision Trading - كوكب الصين</Text><Text style={[styles.brandEn, { textAlign: align }]}>VISION TRADING · CHINA PLANET CUSTOMERS</Text></View></View>
           <View style={[styles.intro, { alignItems: contentAlignment(isRtl) }]}><Text style={[styles.title, { textAlign: align }]}>{language === 'ar' ? 'أعمالك في الصين، أمامك في كل وقت.' : 'Your China business, always within reach.'}</Text><Text style={[styles.subtitle, { textAlign: align }]}>{language === 'ar' ? 'مشاريعك وشحناتك وحسابك ومستنداتك المعتمدة في مكان آمن واحد.' : 'Your projects, shipments, account and approved documents in one secure place.'}</Text></View>
           <View style={styles.card}>
             <Text style={[styles.cardTitle, { textAlign: align }]}>{t('signIn')}</Text>
@@ -63,7 +63,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 }, safeArea: { flex: 1, backgroundColor: palette.navy }, content: { flexGrow: 1, justifyContent: 'center', gap: 28, padding: 24 },
-  brand: { alignItems: 'center', gap: 12 }, logo: { width: 52, height: 52, borderRadius: 15, backgroundColor: palette.cyan, alignItems: 'center', justifyContent: 'center' }, logoText: { color: palette.white, fontWeight: '900', fontSize: 18 },
+  brand: { alignItems: 'center', gap: 14 }, brandCopy: { flexShrink: 1 }, logo: { width: 74, height: 74, borderRadius: 22, backgroundColor: palette.white, borderWidth: 1, borderColor: '#F0CDD1', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', ...shadows.card }, logoImage: { width: 68, height: 68 },
   brandAr: { color: palette.white, fontSize: 18, fontWeight: '900' }, brandEn: { color: '#BAD4DF', fontSize: 10, fontWeight: '800', letterSpacing: 1.3 },
   intro: {}, title: { color: palette.white, fontSize: 30, lineHeight: 43, fontWeight: '900' }, subtitle: { color: '#BFD5DE', fontSize: 12, lineHeight: 20, marginTop: 8 },
   card: { backgroundColor: palette.surface, borderRadius: radii.large, padding: 20, gap: 12, ...shadows.card }, cardTitle: { color: palette.navy, fontSize: 23, fontWeight: '900', marginBottom: 4 },
