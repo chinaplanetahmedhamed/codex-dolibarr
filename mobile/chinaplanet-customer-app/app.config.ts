@@ -12,7 +12,14 @@ export default (): ExpoConfig => {
   return {
     ...base,
     name: isInternal ? 'chinaplanetCS Test' : base.name,
+    version: isInternal ? '1.0.1' : base.version,
     scheme: isInternal ? 'chinaplanet-internal' : base.scheme,
+    runtimeVersion: { policy: 'appVersion' },
+    updates: projectId ? {
+      url: `https://u.expo.dev/${projectId}`,
+      checkAutomatically: 'NEVER',
+      fallbackToCacheTimeout: 0,
+    } : { enabled: false },
     android: {
       ...base.android,
       package: isInternal ? 'com.chinaplanet.customer.internal' : 'com.chinaplanet.customer',
@@ -25,6 +32,7 @@ export default (): ExpoConfig => {
     extra: {
       ...(base.extra || {}),
       ...(projectId ? { eas: { projectId } } : {}),
+      internalUpdateChannel: isInternal ? 'internal' : null,
     },
   };
 };

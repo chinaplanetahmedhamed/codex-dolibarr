@@ -38,6 +38,22 @@ Store service-account JSON, Apple App Store Connect keys, Android upload/signing
 4. Install the internal build and test login, customer isolation, projects, shipments, account, and protected downloads.
 5. Record Ahmed's acceptance before opening the release pull request to `main`.
 
+### Internal OTA flow after the M021 replacement APK
+
+The existing pre-M021 APK cannot receive OTA updates. Build and install one new `internal` APK from the M021 native/config commit first. That binary is `com.chinaplanet.customer.internal`, uses channel `internal`, and uses the app-version runtime policy (`1.0.1` for the first M021 binary).
+
+For later JavaScript, style, and bundled-asset updates:
+
+1. Merge the reviewed change into `mobile-develop` without changing native dependencies, `app.json`, `app.config.ts`, `eas.json`, or native project files after the retained binary-source commit.
+2. Open **Actions → Publish mobile internal OTA update → Run workflow** from `mobile-develop`.
+3. Enter `PUBLISH_CHINAPLANET_INTERNAL_OTA`, the full Git SHA used to build the installed replacement APK, and a short non-customer update message.
+4. Approve the protected `mobile-internal-ota` GitHub Environment. The workflow verifies the branch, project/owner secrets, clean source, tests, runtime configuration, and absence of native changes since the retained binary commit.
+5. Open the internal app. It checks the compiled `internal` channel, offers to download the compatible update, and asks before restarting.
+
+If native dependencies, permissions, app identifiers, Expo SDK, Android/iOS configuration, or runtime version changed, stop and build a new internal binary. Never use OTA to bypass that native-build boundary.
+
+Rollback is internal-only: republish the last accepted compatible source commit to `internal`, or use the Expo project's supported rollback-to-embedded control. Retain the accepted APK and record the update group IDs. Revoking `EXPO_TOKEN` stops future publications without affecting the embedded app.
+
 Internal builds use real customer-visible ERP data but remain read-only. Do not use an administrator account or copy payloads/documents into issues, logs, or artifacts.
 
 ## Store release flow
@@ -63,3 +79,4 @@ The workflow builds with EAS and submits the Android AAB to the Google Play prod
 - Revoke `EXPO_TOKEN` if exposure is suspected.
 - Disable/remove the GitHub Environment approval or set `MOBILE_STORE_ACCOUNTS_READY=false` to prevent store submission.
 - Store rollback or phased-release halt is a separate exact Ahmed-approved operation.
+- Remove approval from `mobile-internal-ota` or revoke `EXPO_TOKEN` to stop internal OTA publication. This does not authorize or affect the production/store channel.

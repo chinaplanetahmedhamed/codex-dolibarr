@@ -9,11 +9,12 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/src/auth/AuthProvider';
 import { I18nProvider } from '@/src/i18n/I18nProvider';
 import { palette } from '@/src/theme';
+import { InternalUpdateProvider } from '@/src/updates/InternalUpdateProvider';
 
 export default function RootLayout() {
   return (
     <I18nProvider>
-      <AuthProvider><AppNavigator /></AuthProvider>
+      <InternalUpdateProvider><AuthProvider><AppNavigator /></AuthProvider></InternalUpdateProvider>
     </I18nProvider>
   );
 }

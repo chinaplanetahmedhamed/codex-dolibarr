@@ -8,6 +8,7 @@
     "internal": {
       "distribution": "internal",
       "channel": "internal",
+      "autoIncrement": true,
       "android": {
         "buildType": "apk"
       },
