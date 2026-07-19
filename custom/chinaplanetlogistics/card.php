@@ -22,7 +22,7 @@ require_once __DIR__.'/../chinaplanetcustomercenter/lib/portal.lib.php';
 require_once __DIR__.'/../chinaplanetcustomercenter/lib/admin_shell.lib.php';
 require_once __DIR__.'/class/chinaplanetlogistics.class.php';
 
-$langs->loadLangs(array("companies", "orders", "projects", "sendings", "other", "chinaplanetlogistics@chinaplanetlogistics"));
+$langs->loadLangs(array("companies", "orders", "projects", "sendings", "other", "chinaplanetlogistics@chinaplanetlogistics", "chinaplanetcustomercenter@chinaplanetcustomercenter"));
 
 $id      = GETPOST('id', 'int');
 $action  = GETPOST('action', 'alpha');
