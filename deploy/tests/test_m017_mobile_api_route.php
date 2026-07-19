@@ -40,11 +40,18 @@ function m017_http_concurrent_refresh($url, $refreshToken, $deviceId)
 	curl_multi_close($multi); return $responses;
 }
 
-$apiBase = getenv('M017_API_BASE'); $credentialFile = getenv('M017_CREDENTIAL_FILE');
+$apiBase = getenv('M017_API_BASE'); $credentialFile = getenv('M017_CREDENTIAL_FILE'); $testDb = null;
 if (is_string($apiBase) && $apiBase !== '' && is_string($credentialFile) && is_file($credentialFile)) {
 	$credentials = json_decode(file_get_contents($credentialFile), true); $deviceA = '44444444-4444-4444-8444-444444444444'; $deviceB = '55555555-5555-4555-8555-555555555555';
 	m017_route_assert(is_array($credentials) && count($credentials) >= 2, 'Synthetic HTTP credentials are available');
 	if (is_array($credentials) && count($credentials) >= 2) {
+		$documentRoot = getenv('M017_DOL_DOCUMENT_ROOT');
+		if (is_string($documentRoot) && is_file(rtrim($documentRoot, '/').'/master.inc.php')) {
+			if (!defined('CPCC_MOBILE_TESTING')) define('CPCC_MOBILE_TESTING', true); putenv('CPCC_MOBILE_TEST_PEPPER=m017-local-test-pepper-0123456789abcdef');
+			if (!defined('NOLOGIN')) define('NOLOGIN', 1); if (!defined('NOREQUIREMENU')) define('NOREQUIREMENU', 1); if (!defined('NOREQUIREHTML')) define('NOREQUIREHTML', 1); if (!defined('NOREQUIREAJAX')) define('NOREQUIREAJAX', 1); if (!defined('NOCSRFCHECK')) define('NOCSRFCHECK', 1);
+			$_SERVER['DOCUMENT_ROOT'] = rtrim($documentRoot, '/'); $_SERVER['SERVER_NAME'] = 'localhost'; $_SERVER['SERVER_PORT'] = '80'; $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+			require rtrim($documentRoot, '/').'/master.inc.php'; require_once $root.'/custom/chinaplanetcustomercenter/lib/mobile_api.lib.php'; global $db; $testDb = $db;
+		}
 		$loginA = m017_http_call('POST', rtrim($apiBase, '/').'/auth/login', array('login'=>$credentials[0]['login'],'password'=>$credentials[0]['password'],'device_id'=>$deviceA,'device_name'=>'M017 HTTP A'));
 		m017_route_assert($loginA['status'] === 200 && !empty($loginA['json']['data']['access_token']) && !empty($loginA['json']['data']['refresh_token']), 'Synthetic customer A can log in over HTTP');
 		$accessA = !empty($loginA['json']['data']['access_token']) ? $loginA['json']['data']['access_token'] : '';
@@ -57,14 +64,54 @@ if (is_string($apiBase) && $apiBase !== '' && is_string($credentialFile) && is_f
 		$reportsA = m017_http_call('GET', rtrim($apiBase, '/').'/reports', null, $accessA); $foreignReportId = !empty($reportsA['json']['data'][0]['id']) ? $reportsA['json']['data'][0]['id'] : '';
 		$documentsA = m017_http_call('GET', rtrim($apiBase, '/').'/documents', null, $accessA); $foreignDocumentId = !empty($documentsA['json']['data'][0]['id']) ? $documentsA['json']['data'][0]['id'] : '';
 		m017_route_assert($shipmentsA['status'] === 200 && $commercialA['status'] === 200 && $reportsA['status'] === 200 && $documentsA['status'] === 200, 'All customer A detail-bearing resource lists are reachable');
+		if ($testDb) {
+			$userResult = $testDb->query("SELECT entity,fk_soc,rowid FROM ".MAIN_DB_PREFIX."user WHERE login='".$testDb->escape($credentials[0]['login'])."' LIMIT 1"); $userRow = $userResult ? $testDb->fetch_object($userResult) : null;
+			$assetResult = $userRow ? $testDb->query("SELECT a.fk_card,a.stored_name,a.mime_type,a.file_size FROM ".MAIN_DB_PREFIX."cpkanban_asset a WHERE a.entity=".(int) $userRow->entity." AND a.fk_soc=".(int) $userRow->fk_soc." AND a.status=1 AND a.customer_visible=1 AND a.review_status IN ('approved','final_received') ORDER BY a.rowid ASC LIMIT 1") : false; $assetRow = $assetResult ? $testDb->fetch_object($assetResult) : null;
+			m017_route_assert($userRow && $assetRow, 'Synthetic owned asset is available for direct hidden-content HTTP tests');
+			if ($userRow && $assetRow) {
+				$hiddenDefinitions = array(array('pending',1,1),array('approved',0,1),array('approved',1,0)); $hiddenRows = array();
+				foreach ($hiddenDefinitions as $index => $hidden) {
+					$hiddenSql = "INSERT INTO ".MAIN_DB_PREFIX."cpkanban_asset (entity,fk_soc,fk_card,asset_type,document_type,original_name,stored_name,mime_type,file_size,caption,version_no,review_status,customer_visible,status,fk_user_creat,date_creation) VALUES (".(int) $userRow->entity.",".(int) $userRow->fk_soc.",".(int) $assetRow->fk_card.",'document','final','m017-http-hidden-".$index.".txt','".$testDb->escape($assetRow->stored_name)."','".$testDb->escape($assetRow->mime_type)."',".(int) $assetRow->file_size.",'M017 hidden HTTP',1,'".$testDb->escape($hidden[0])."',".(int) $hidden[1].",".(int) $hidden[2].",".(int) $userRow->rowid.",'".cpcc_mobile_now_sql()."')";
+					$created = $testDb->query($hiddenSql); $hiddenId = $created ? (int) $testDb->last_insert_id(MAIN_DB_PREFIX.'cpkanban_asset') : 0; $hiddenRows[] = $hiddenId;
+					$hiddenContext = array('entity'=>(int) $userRow->entity,'socid'=>(int) $userRow->fk_soc); $hiddenPublic = $hiddenId > 0 ? cpcc_mobile_public_id($testDb, 'document', $hiddenContext, $hiddenId * 2) : '';
+					$hiddenContent = m017_http_call('GET', rtrim($apiBase, '/').'/documents/'.rawurlencode($hiddenPublic).'/content', null, $accessA);
+					m017_route_assert($hiddenId > 0 && $hiddenContent['status'] === 404 && $hiddenContent['json']['error']['code'] === 'not_found', 'Direct content returns 404 for hidden document state '.$index);
+					if ($hiddenPublic !== '') $testDb->query("DELETE FROM ".MAIN_DB_PREFIX."cpcc_mobile_public_id WHERE public_id='".$testDb->escape($hiddenPublic)."'");
+				}
+				$hiddenRows = array_filter(array_map('intval', $hiddenRows)); if ($hiddenRows) $testDb->query("DELETE FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE rowid IN (".implode(',', $hiddenRows).")");
+			}
+		}
+		$dashboardA = m017_http_call('GET', rtrim($apiBase, '/').'/dashboard', null, $accessA);
+		$projectDetailA = m017_http_call('GET', rtrim($apiBase, '/').'/projects/'.rawurlencode($foreignProjectId), null, $accessA);
+		$shipmentDetailA = m017_http_call('GET', rtrim($apiBase, '/').'/shipments/'.rawurlencode($foreignShipmentId), null, $accessA);
+		$ordersA = m017_http_call('GET', rtrim($apiBase, '/').'/orders', null, $accessA);
+		$balancesA = m017_http_call('GET', rtrim($apiBase, '/').'/account/balances', null, $accessA);
+		$transactionsA = m017_http_call('GET', rtrim($apiBase, '/').'/account/transactions', null, $accessA);
+		$invoicesA = m017_http_call('GET', rtrim($apiBase, '/').'/service-invoices', null, $accessA);
+		$commercialDetailA = m017_http_call('GET', rtrim($apiBase, '/').'/commercial-documents/'.rawurlencode($foreignCommercialId), null, $accessA);
+		$reportDetailA = m017_http_call('GET', rtrim($apiBase, '/').'/reports/'.rawurlencode($foreignReportId), null, $accessA);
+		$reportDocumentId = !empty($reportDetailA['json']['data']['documents'][0]['id']) ? $reportDetailA['json']['data']['documents'][0]['id'] : '';
+		$reportContentA = m017_http_call('GET', rtrim($apiBase, '/').'/reports/'.rawurlencode($foreignReportId).'/documents/'.rawurlencode($reportDocumentId).'/content', null, $accessA);
+		foreach (array('dashboard'=>$dashboardA,'project detail'=>$projectDetailA,'shipment detail'=>$shipmentDetailA,'orders'=>$ordersA,'balances'=>$balancesA,'transactions'=>$transactionsA,'service invoices'=>$invoicesA,'commercial detail'=>$commercialDetailA,'report detail'=>$reportDetailA,'report content'=>$reportContentA) as $routeName => $routeResponse) {
+			m017_route_assert($routeResponse['status'] === 200, 'Owned HTTP route is reachable: '.$routeName.' (actual '.$routeResponse['status'].')');
+		}
 
 		preg_match('/^ETag:\s*(.+)\r?$/mi', $projectsA['headers'], $etagMatch); $etag = isset($etagMatch[1]) ? trim($etagMatch[1]) : '';
 		$notModified = m017_http_call('GET', rtrim($apiBase, '/').'/projects', null, $accessA, array('If-None-Match: '.$etag));
 		$futureProjects = m017_http_call('GET', rtrim($apiBase, '/').'/projects?updated_since=2100-01-01T00%3A00%3A00Z', null, $accessA);
 		m017_route_assert($etag !== '' && $notModified['status'] === 304 && $notModified['body'] === '', 'Customer-bound ETag supports If-None-Match without returning data');
 		m017_route_assert($futureProjects['status'] === 200 && empty($futureProjects['json']['data']), 'updated_since filters the owned list without leakage');
+		$pageOne = m017_http_call('GET', rtrim($apiBase, '/').'/projects?limit=1', null, $accessA); $boundCursor = !empty($pageOne['json']['meta']['next_cursor']) ? $pageOne['json']['meta']['next_cursor'] : '';
 
 		$loginB = m017_http_call('POST', rtrim($apiBase, '/').'/auth/login', array('login'=>$credentials[1]['login'],'password'=>$credentials[1]['password'],'device_id'=>$deviceB,'device_name'=>'M017 HTTP B')); $accessB = !empty($loginB['json']['data']['access_token']) ? $loginB['json']['data']['access_token'] : '';
+		$deviceC = '77777777-7777-4777-8777-777777777777'; $loginC = count($credentials) >= 3 ? m017_http_call('POST', rtrim($apiBase, '/').'/auth/login', array('login'=>$credentials[2]['login'],'password'=>$credentials[2]['password'],'device_id'=>$deviceC,'device_name'=>'M017 HTTP C')) : array('status'=>0,'json'=>array()); $accessC = !empty($loginC['json']['data']['access_token']) ? $loginC['json']['data']['access_token'] : '';
+		$cursorCustomerB = m017_http_call('GET', rtrim($apiBase, '/').'/projects?limit=1&cursor='.rawurlencode($boundCursor), null, $accessB);
+		$cursorEntityC = m017_http_call('GET', rtrim($apiBase, '/').'/projects?limit=1&cursor='.rawurlencode($boundCursor), null, $accessC);
+		$cursorResource = m017_http_call('GET', rtrim($apiBase, '/').'/shipments?limit=1&cursor='.rawurlencode($boundCursor), null, $accessA);
+		$cursorFilter = m017_http_call('GET', rtrim($apiBase, '/').'/projects?limit=1&updated_since=2026-07-20T00%3A00%3A00Z&cursor='.rawurlencode($boundCursor), null, $accessA);
+		$cursorLimit = m017_http_call('GET', rtrim($apiBase, '/').'/projects?limit=2&cursor='.rawurlencode($boundCursor), null, $accessA);
+		m017_route_assert($boundCursor !== '' && $loginC['status'] === 200, 'Synthetic cursor and cross-entity customer session are available');
+		foreach (array('customer'=>$cursorCustomerB,'entity'=>$cursorEntityC,'resource'=>$cursorResource,'filter'=>$cursorFilter,'limit'=>$cursorLimit) as $binding => $cursorResponse) m017_route_assert($cursorResponse['status'] === 404 && $cursorResponse['json']['error']['code'] === 'not_found', 'Opaque cursor rejects different '.$binding.' binding');
 		$foreignRead = m017_http_call('GET', rtrim($apiBase, '/').'/projects/'.rawurlencode($foreignProjectId), null, $accessB);
 		m017_route_assert($loginB['status'] === 200 && $foreignRead['status'] === 404 && isset($foreignRead['json']['error']['code']) && $foreignRead['json']['error']['code'] === 'not_found', 'Valid foreign opaque IDs are non-disclosing over HTTP');
 		foreach (array('shipments/'.$foreignShipmentId,'commercial-documents/'.$foreignCommercialId,'reports/'.$foreignReportId) as $foreignPath) {
@@ -125,7 +172,11 @@ if (is_string($apiBase) && $apiBase !== '' && is_string($credentialFile) && is_f
 
 		$logoutA = m017_http_call('POST', rtrim($apiBase, '/').'/auth/logout/revoke', null, $accessA); $afterLogout = m017_http_call('GET', rtrim($apiBase, '/').'/me', null, $accessA);
 		m017_route_assert($logoutA['status'] === 204 && $logoutA['body'] === '' && $afterLogout['status'] === 401, 'Logout returns 204 and invalidates the device family');
+		$httpRouteStatuses = array(
+			$loginA['status'],$refreshB['status'],$logoutA['status'],$meA['status'],$dashboardA['status'],$projectsA['status'],$projectDetailA['status'],$shipmentsA['status'],$shipmentDetailA['status'],$ordersA['status'],$balancesA['status'],$transactionsA['status'],$invoicesA['status'],$documentsA['status'],$contentB['status'],$commercialA['status'],$commercialDetailA['status'],$reportsA['status'],$reportDetailA['status'],$reportContentA['status'],
+		);
+		m017_route_assert(count($httpRouteStatuses) === 20 && !array_diff($httpRouteStatuses, array(200,204)), 'All 20 frozen routes are exercised successfully over local HTTP');
 	}
 }
 if ($failures) { fwrite(STDERR, "M017_ROUTE=FAIL\n- ".implode("\n- ", $failures)."\n"); exit(1); }
-echo "M017_ROUTE=PASS ROUTES=".count($actual).($apiBase ? ' HTTP_INTEGRATION=PASS' : '')."\n";
+echo "M017_ROUTE=PASS ROUTES=".count($actual).($apiBase ? ' HTTP_ROUTES=20 HTTP_INTEGRATION=PASS' : '')."\n";

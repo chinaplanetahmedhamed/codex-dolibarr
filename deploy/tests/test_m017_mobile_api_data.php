@@ -75,6 +75,14 @@ if (is_string($documentRoot) && $documentRoot !== '') {
 	}
 	if (count($contexts) === 3) {
 		$openapi = json_decode(file_get_contents(dirname(__DIR__, 2).'/docs/API/mobile-v1.openapi.json'), true); $contractCases = array();
+		$boundFilter = cpcc_mobile_filter_hash('projects', array('updated_since'=>''));
+		$boundCursor = cpcc_mobile_cursor_encode(array('v'=>1,'resource'=>'projects','entity'=>$contexts['A']['entity'],'socid'=>$contexts['A']['socid'],'filter'=>$boundFilter,'limit'=>25,'last'=>array('date'=>'2026-07-19 00:00:00','id'=>7)));
+		m017_data_assert(m017_data_throws_status(function () use ($boundCursor, $contexts, $boundFilter) { cpcc_mobile_cursor_decode($boundCursor, 'projects', $contexts['B'], $boundFilter, 25); }, 404), 'Cursor is rejected for a different customer');
+		m017_data_assert(m017_data_throws_status(function () use ($boundCursor, $contexts, $boundFilter) { cpcc_mobile_cursor_decode($boundCursor, 'projects', $contexts['C'], $boundFilter, 25); }, 404), 'Cursor is rejected for a different entity');
+		m017_data_assert(m017_data_throws_status(function () use ($boundCursor, $contexts, $boundFilter) { cpcc_mobile_cursor_decode($boundCursor, 'shipments', $contexts['A'], $boundFilter, 25); }, 404), 'Cursor is rejected for a different resource');
+		$differentFilter = cpcc_mobile_filter_hash('projects', array('updated_since'=>'2026-07-20T00:00:00Z'));
+		m017_data_assert(m017_data_throws_status(function () use ($boundCursor, $contexts, $differentFilter) { cpcc_mobile_cursor_decode($boundCursor, 'projects', $contexts['A'], $differentFilter, 25); }, 404), 'Cursor is rejected for different filters');
+		m017_data_assert(m017_data_throws_status(function () use ($boundCursor, $contexts, $boundFilter) { cpcc_mobile_cursor_decode($boundCursor, 'projects', $contexts['A'], $boundFilter, 50); }, 404), 'Cursor is rejected for a different page limit');
 		$projectsA = cpcc_mobile_projects($db, $contexts['A'], 25, '', '');
 		$projectsB = cpcc_mobile_projects($db, $contexts['B'], 25, '', '');
 		$projectsC = cpcc_mobile_projects($db, $contexts['C'], 25, '', '');
@@ -131,6 +139,23 @@ if (is_string($documentRoot) && $documentRoot !== '') {
 		$dashboardA = cpcc_mobile_dashboard($db, $contexts['A']);
 		m017_data_assert($dashboardA['data']['active_projects'] === 2 && $dashboardA['data']['active_shipments'] === 2 && $dashboardA['data']['open_orders'] === 2, 'Dashboard aggregates equal customer A owned list counts');
 
+		$orderResult = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."commande WHERE ref='M017_SYNTH_E1_A_SO1' LIMIT 1"); $orderRow = $orderResult ? $db->fetch_object($orderResult) : null;
+		$invoiceResult = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."facture WHERE ref='M017_SYNTH_E1_B_INV' LIMIT 1"); $invoiceRow = $invoiceResult ? $db->fetch_object($invoiceResult) : null;
+		$paymentModeResult = $db->query("SELECT id FROM ".MAIN_DB_PREFIX."c_paiement WHERE active=1 ORDER BY id ASC LIMIT 1"); $paymentModeRow = $paymentModeResult ? $db->fetch_object($paymentModeResult) : null;
+		m017_data_assert($orderRow && $invoiceRow && $paymentModeRow, 'Synthetic foreign-invoice payment scenario prerequisites exist');
+		if ($orderRow && $invoiceRow && $paymentModeRow) {
+			$db->begin(); $now = cpcc_mobile_now_sql();
+			$paymentCreated = $db->query("INSERT INTO ".MAIN_DB_PREFIX."paiement (ref,entity,datec,datep,amount,multicurrency_amount,fk_paiement,fk_bank,statut) VALUES ('M017_FOREIGN_PAY',1,'".$db->escape($now)."','".$db->escape($now)."',777,777,".(int) $paymentModeRow->id.",0,1)");
+			$paymentId = $paymentCreated ? (int) $db->last_insert_id(MAIN_DB_PREFIX.'paiement') : 0;
+			$linkCreated = $paymentId > 0 && $db->query("INSERT INTO ".MAIN_DB_PREFIX."paiement_facture (fk_paiement,fk_facture,amount,multicurrency_code,multicurrency_tx,multicurrency_amount) VALUES (".$paymentId.",".(int) $invoiceRow->rowid.",777,'USD',1,777)");
+			$relationCreated = $db->query("INSERT INTO ".MAIN_DB_PREFIX."element_element (fk_source,sourcetype,fk_target,targettype,relationtype) VALUES (".(int) $orderRow->rowid.",'commande',".(int) $invoiceRow->rowid.",'facture','m017_foreign_test')");
+			m017_data_assert($paymentCreated && $linkCreated && $relationCreated, 'Synthetic cross-customer order-to-invoice link can be created inside a rollback-only transaction');
+			$ordersWithForeignLink = cpcc_mobile_orders($db, $contexts['A'], 25, '', ''); $testedOrder = null;
+			foreach ($ordersWithForeignLink['data'] as $orderData) if ($orderData['ref'] === 'M017_SYNTH_E1_A_SO1') { $testedOrder = $orderData; break; }
+			m017_data_assert($testedOrder && $testedOrder['paid']['amount'] === '0' && $testedOrder['remaining']['amount'] === '1000', 'A foreign customer invoice payment never contributes to the owned order paid/remaining amounts');
+			$db->rollback();
+		}
+
 		$assetRows = cpcc_mobile_document_rows($db, $contexts['A']); $ownedAsset = null;
 		foreach ($assetRows as $assetRow) if ($assetRow->source_type === 'project_asset') { $ownedAsset = $assetRow; break; }
 		m017_data_assert($ownedAsset !== null, 'Synthetic project asset exists for negative file tests');
@@ -148,6 +173,11 @@ if (is_string($documentRoot) && $documentRoot !== '') {
 			);
 			$documentsAfterHidden = cpcc_mobile_documents($db, $contexts['A'], 25, '', '');
 			m017_data_assert(count($documentsAfterHidden['data']) === 2, 'Draft, private, and replaced files remain absent from customer lists');
+			foreach ($negativeVisibilityIds as $hiddenId) {
+				$hiddenPublic = cpcc_mobile_public_id($db, 'document', $contexts['A'], $hiddenId * 2);
+				m017_data_assert(m017_data_throws_status(function () use ($db, $contexts, $hiddenPublic) { cpcc_mobile_safe_file_record($db, $contexts['A'], $hiddenPublic); }, 404), 'Direct content resolution returns 404 for draft/private/replaced opaque document IDs');
+				$db->query("DELETE FROM ".MAIN_DB_PREFIX."cpcc_mobile_public_id WHERE public_id='".$db->escape($hiddenPublic)."'");
+			}
 			$db->query("DELETE FROM ".MAIN_DB_PREFIX."cpkanban_asset WHERE rowid IN (".implode(',', array_map('intval', $negativeVisibilityIds)).")");
 
 			$missingId = $insertAsset('m017-missing.txt', 'm017-missing-does-not-exist.txt', 'text/plain', 10, 'approved', 1, 1);

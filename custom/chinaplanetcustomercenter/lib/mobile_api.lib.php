@@ -145,7 +145,9 @@ function cpcc_mobile_money($amount, $currency)
 
 function cpcc_mobile_origin()
 {
-	$origin = function_exists('getUserRemoteIP') ? getUserRemoteIP() : (!empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown');
+	// Rate-limit identity must use the non-spoofable peer address. The default
+	// Dolibarr helper accepts X-Forwarded-For supplied by the caller.
+	$origin = function_exists('getUserRemoteIP') ? getUserRemoteIP(1) : (!empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown');
 	return substr((string) $origin, 0, 128);
 }
 

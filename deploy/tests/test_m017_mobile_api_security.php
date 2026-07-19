@@ -5,8 +5,9 @@ $root = dirname(__DIR__, 2);
 $protocol = file_get_contents($root.'/custom/chinaplanetcustomercenter/lib/mobile_api.lib.php');
 $data = file_get_contents($root.'/custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php');
 $route = file_get_contents($root.'/custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php');
-$failures = array();
+$failures = array(); $timingEvidence = '';
 function m017_security_assert($condition, $message) { global $failures; if (!$condition) $failures[] = $message; }
+function m017_security_median($values) { sort($values, SORT_NUMERIC); $count = count($values); $middle = (int) floor($count / 2); return $count % 2 ? $values[$middle] : ($values[$middle - 1] + $values[$middle]) / 2; }
 m017_security_assert(strpos((string) $protocol, "'entity', 'socid', 'fk_soc'") !== false, 'Caller-selected customer/entity overrides are rejected');
 m017_security_assert(strpos((string) $protocol, 'u.admin=0') !== false && strpos((string) $protocol, 'u.fk_soc>0') !== false, 'Only active external customer users can log in');
 m017_security_assert(strpos((string) $protocol, 's.entity=') !== false && strpos((string) $protocol, 'u.fk_soc=') !== false, 'Every access request reloads authoritative customer/entity ownership');
@@ -42,6 +43,16 @@ if (is_string($documentRoot) && $documentRoot !== '' && is_string($credentialFil
 		$candidate = cpcc_mobile_verify_credentials($db, $credential['login'], $credential['password']);
 		m017_security_assert($candidate !== null, 'Synthetic external customer can authenticate');
 		m017_security_assert(cpcc_mobile_verify_credentials($db, $credential['login'], 'wrong-synthetic-password') === null, 'Wrong password is rejected');
+		cpcc_mobile_verify_credentials($db, $credential['login'], 'timing-warmup-known');
+		cpcc_mobile_verify_credentials($db, 'm017_timing_unknown_warmup', 'timing-warmup-unknown');
+		$knownTimings = array(); $unknownTimings = array();
+		for ($sample = 0; $sample < 20; $sample++) {
+			$knownStarted = microtime(true); cpcc_mobile_verify_credentials($db, $credential['login'], 'timing-known-'.$sample); $knownTimings[] = microtime(true) - $knownStarted;
+			$unknownStarted = microtime(true); cpcc_mobile_verify_credentials($db, 'm017_timing_unknown_'.$sample, 'timing-unknown-'.$sample); $unknownTimings[] = microtime(true) - $unknownStarted;
+		}
+		$knownMedian = m017_security_median($knownTimings); $unknownMedian = m017_security_median($unknownTimings);
+		$timingEvidence = ' TIMING_SAMPLES=20 KNOWN_MEDIAN_MS='.round($knownMedian * 1000, 1).' UNKNOWN_MEDIAN_MS='.round($unknownMedian * 1000, 1).' MEDIAN_DELTA_MS='.round(abs($knownMedian - $unknownMedian) * 1000, 1);
+		m017_security_assert(abs($knownMedian - $unknownMedian) <= 0.100, 'Known/unknown login failure warmed medians over 20 samples differ by at most 100ms (known '.round($knownMedian, 3).'s, unknown '.round($unknownMedian, 3).'s)');
 		foreach (array('m017_e1_inactive','m017_e1_internal','m017_e1_nosoc') as $rejectedLogin) m017_security_assert(cpcc_mobile_find_login_candidate($db, $rejectedLogin) === null, 'Rejected login class: '.$rejectedLogin);
 		if ($candidate) {
 			$deviceId = '11111111-1111-4111-8111-111111111111';
@@ -89,4 +100,4 @@ if (is_string($documentRoot) && $documentRoot !== '' && is_string($credentialFil
 	}
 }
 if ($failures) { fwrite(STDERR, "M017_SECURITY=FAIL\n- ".implode("\n- ", $failures)."\n"); exit(1); }
-echo "M017_SECURITY=PASS".($documentRoot ? ' DB_INTEGRATION=PASS' : '')."\n";
+echo "M017_SECURITY=PASS".($documentRoot ? ' DB_INTEGRATION=PASS'.$timingEvidence : '')."\n";
