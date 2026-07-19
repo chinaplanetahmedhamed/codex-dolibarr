@@ -1,0 +1,590 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "China Planet Customer Mobile API",
+    "version": "1.0.0-m017",
+    "description": "Read-only customer API. Entity and customer ownership are always derived server-side from the authenticated external Dolibarr user."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8088/api/index.php/chinaplanetcustomercenter/mobile/v1",
+      "description": "Local M017 development only"
+    }
+  ],
+  "security": [
+    {"bearerAuth": []}
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "operationId": "mobileLogin",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/LoginRequest"}}
+          }
+        },
+        "responses": {
+          "200": {"description": "Authenticated", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SessionEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "429": {"$ref": "#/components/responses/RateLimited"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "mobileRefresh",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/RefreshRequest"}}
+          }
+        },
+        "responses": {
+          "200": {"description": "Rotated session", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SessionEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "409": {"$ref": "#/components/responses/Conflict"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "429": {"$ref": "#/components/responses/RateLimited"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/auth/logout/revoke": {
+      "post": {
+        "operationId": "mobileLogout",
+        "responses": {
+          "204": {"description": "Current device token family revoked"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "responses": {
+          "200": {"description": "Current customer identity", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/MeEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "operationId": "getDashboard",
+        "responses": {
+          "200": {"description": "Customer dashboard", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DashboardEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Owned projects", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProjectListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/projects/{opaqueId}": {
+      "get": {
+        "operationId": "getProject",
+        "parameters": [
+          {"$ref": "#/components/parameters/OpaqueId"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Owned project detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProjectDetailEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/shipments": {
+      "get": {
+        "operationId": "listShipments",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Owned shipments", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ShipmentListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/shipments/{opaqueId}": {
+      "get": {
+        "operationId": "getShipment",
+        "parameters": [
+          {"$ref": "#/components/parameters/OpaqueId"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Owned shipment detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ShipmentDetailEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "operationId": "listOrders",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Owned orders", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/OrderListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/account/balances": {
+      "get": {
+        "operationId": "listBalances",
+        "parameters": [{"$ref": "#/components/parameters/IfNoneMatch"}],
+        "responses": {
+          "200": {"description": "Per-currency balances", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BalanceListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/account/transactions": {
+      "get": {
+        "operationId": "listTransactions",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Customer-visible transactions", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TransactionListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/service-invoices": {
+      "get": {
+        "operationId": "listServiceInvoices",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Customer service invoices", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InvoiceListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/documents": {
+      "get": {
+        "operationId": "listDocuments",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Approved customer-visible files", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DocumentListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/documents/{opaqueId}/content": {
+      "get": {
+        "operationId": "downloadDocument",
+        "parameters": [
+          {"$ref": "#/components/parameters/OpaqueId"},
+          {"$ref": "#/components/parameters/Range"}
+        ],
+        "responses": {
+          "200": {"$ref": "#/components/responses/BinaryContent"},
+          "206": {"$ref": "#/components/responses/BinaryContent"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "416": {"$ref": "#/components/responses/RangeNotSatisfiable"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/commercial-documents": {
+      "get": {
+        "operationId": "listCommercialDocuments",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Structured commercial documents", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CommercialDocumentListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/commercial-documents/{opaqueId}": {
+      "get": {
+        "operationId": "getCommercialDocument",
+        "parameters": [
+          {"$ref": "#/components/parameters/OpaqueId"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Structured commercial document detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CommercialDocumentDetailEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/reports": {
+      "get": {
+        "operationId": "listReports",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"},
+          {"$ref": "#/components/parameters/UpdatedSince"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Approved customer-visible reports", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ReportListEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/reports/{opaqueId}": {
+      "get": {
+        "operationId": "getReport",
+        "parameters": [
+          {"$ref": "#/components/parameters/OpaqueId"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Approved report detail", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ReportDetailEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/reports/{opaqueId}/documents/{documentOpaqueId}/content": {
+      "get": {
+        "operationId": "downloadReportDocument",
+        "parameters": [
+          {"$ref": "#/components/parameters/OpaqueId"},
+          {"$ref": "#/components/parameters/DocumentOpaqueId"},
+          {"$ref": "#/components/parameters/Range"}
+        ],
+        "responses": {
+          "200": {"$ref": "#/components/responses/BinaryContent"},
+          "206": {"$ref": "#/components/responses/BinaryContent"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "416": {"$ref": "#/components/responses/RangeNotSatisfiable"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "opaque"}
+    },
+    "parameters": {
+      "OpaqueId": {"name": "opaqueId", "in": "path", "required": true, "schema": {"$ref": "#/components/schemas/OpaqueId"}},
+      "DocumentOpaqueId": {"name": "documentOpaqueId", "in": "path", "required": true, "schema": {"$ref": "#/components/schemas/OpaqueId"}},
+      "Limit": {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 25}},
+      "Cursor": {"name": "cursor", "in": "query", "required": false, "schema": {"type": "string", "minLength": 22, "maxLength": 512}},
+      "UpdatedSince": {"name": "updated_since", "in": "query", "required": false, "schema": {"type": "string", "format": "date-time"}},
+      "IfNoneMatch": {"name": "If-None-Match", "in": "header", "required": false, "schema": {"type": "string", "maxLength": 200}},
+      "Range": {"name": "Range", "in": "header", "required": false, "schema": {"type": "string", "pattern": "^bytes=[0-9]*-[0-9]*$", "maxLength": 100}}
+    },
+    "responses": {
+      "Unauthorized": {"description": "Invalid credentials or expired/revoked session", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "NotFound": {"description": "Absent or outside authenticated customer scope", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "Conflict": {"description": "Refresh replay or state conflict", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "Validation": {"description": "Safe validation error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "RateLimited": {"description": "Rate limit exceeded", "headers": {"Retry-After": {"schema": {"type": "integer", "minimum": 1, "maximum": 900}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "ServerError": {"description": "Generic internal error", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "NotModified": {"description": "Authorized resource unchanged", "headers": {"ETag": {"schema": {"type": "string"}}}},
+      "RangeNotSatisfiable": {"description": "Invalid or unsupported range", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorEnvelope"}}}},
+      "BinaryContent": {
+        "description": "Authenticated approved content",
+        "headers": {
+          "Content-Disposition": {"schema": {"type": "string"}},
+          "Content-Length": {"schema": {"type": "integer", "minimum": 0}},
+          "Content-Range": {"schema": {"type": "string"}},
+          "Cache-Control": {"schema": {"type": "string", "const": "private, no-store"}},
+          "X-Content-Type-Options": {"schema": {"type": "string", "const": "nosniff"}}
+        },
+        "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}
+      }
+    },
+    "schemas": {
+      "OpaqueId": {"type": "string", "pattern": "^[A-Za-z0-9_-]{22,128}$"},
+      "Decimal": {"type": "string", "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$"},
+      "Currency": {"type": "string", "pattern": "^[A-Z]{3}$", "examples": ["USD", "CNY", "EGP"]},
+      "BilingualLabel": {
+        "type": "object", "additionalProperties": false, "required": ["ar", "en"],
+        "properties": {"ar": {"type": "string", "maxLength": 200}, "en": {"type": "string", "maxLength": 200}}
+      },
+      "Status": {
+        "type": "object", "additionalProperties": false, "required": ["code", "label"],
+        "properties": {"code": {"type": "string", "maxLength": 64}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}
+      },
+      "Money": {
+        "type": "object", "additionalProperties": false, "required": ["amount", "currency"],
+        "properties": {"amount": {"$ref": "#/components/schemas/Decimal"}, "currency": {"$ref": "#/components/schemas/Currency"}}
+      },
+      "PageMeta": {
+        "type": "object", "additionalProperties": false, "required": ["limit", "has_more"],
+        "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 100}, "has_more": {"type": "boolean"}, "next_cursor": {"type": ["string", "null"], "maxLength": 512}}
+      },
+      "ErrorEnvelope": {
+        "type": "object", "additionalProperties": false, "required": ["error", "request_id"],
+        "properties": {
+          "error": {
+            "type": "object", "additionalProperties": false, "required": ["code", "message"],
+            "properties": {
+              "code": {"type": "string", "enum": ["bad_request", "invalid_credentials", "session_expired", "forbidden", "not_found", "conflict", "validation", "rate_limited", "server_error"]},
+              "message": {"$ref": "#/components/schemas/BilingualLabel"},
+              "field_codes": {"type": "array", "maxItems": 20, "items": {"type": "string", "pattern": "^[a-z0-9_]{1,64}$"}},
+              "retry_after": {"type": "integer", "minimum": 1, "maximum": 900}
+            }
+          },
+          "request_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{16,80}$"}
+        }
+      },
+      "LoginRequest": {
+        "type": "object", "additionalProperties": false, "required": ["login", "password", "device_id"],
+        "properties": {
+          "login": {"type": "string", "minLength": 1, "maxLength": 190},
+          "password": {"type": "string", "minLength": 1, "maxLength": 1024, "writeOnly": true},
+          "device_id": {"type": "string", "format": "uuid"},
+          "device_name": {"type": "string", "maxLength": 80}
+        }
+      },
+      "RefreshRequest": {
+        "type": "object", "additionalProperties": false, "required": ["refresh_token", "device_id"],
+        "properties": {"refresh_token": {"type": "string", "minLength": 43, "maxLength": 512, "writeOnly": true}, "device_id": {"type": "string", "format": "uuid"}}
+      },
+      "SessionEnvelope": {
+        "type": "object", "additionalProperties": false, "required": ["data", "request_id"],
+        "properties": {
+          "data": {
+            "type": "object", "additionalProperties": false, "required": ["access_token", "refresh_token", "token_type", "access_expires_in", "refresh_expires_at"],
+            "properties": {
+              "access_token": {"type": "string", "minLength": 43, "maxLength": 512, "writeOnly": true},
+              "refresh_token": {"type": "string", "minLength": 43, "maxLength": 512, "writeOnly": true},
+              "token_type": {"type": "string", "const": "Bearer"},
+              "access_expires_in": {"type": "integer", "const": 900},
+              "refresh_expires_at": {"type": "string", "format": "date-time"}
+            }
+          },
+          "request_id": {"type": "string"}
+        }
+      },
+      "Me": {
+        "type": "object", "additionalProperties": false, "required": ["id", "display_name", "company_name", "preferred_language"],
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"},
+          "display_name": {"type": "string", "maxLength": 200},
+          "company_name": {"type": "string", "maxLength": 255},
+          "preferred_language": {"type": "string", "enum": ["ar", "en"]}
+        }
+      },
+      "MeEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/Me"}, "request_id": {"type": "string"}}},
+      "Balance": {
+        "type": "object", "additionalProperties": false, "required": ["currency", "debit", "credit", "balance", "updated_at"],
+        "properties": {"currency": {"$ref": "#/components/schemas/Currency"}, "debit": {"$ref": "#/components/schemas/Decimal"}, "credit": {"$ref": "#/components/schemas/Decimal"}, "balance": {"$ref": "#/components/schemas/Decimal"}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "BalanceListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Balance"}}, "request_id": {"type": "string"}}},
+      "ProjectStatusCode": {"type": "string", "enum": ["draft", "validated", "in_progress", "completed", "closed"]},
+      "ProjectSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "title", "status", "progress_percent", "updated_at"],
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"}, "ref": {"type": "string", "maxLength": 100}, "title": {"type": "string", "maxLength": 255},
+          "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/ProjectStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}},
+          "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100}, "current_step": {"$ref": "#/components/schemas/BilingualLabel"}, "next_step": {"$ref": "#/components/schemas/BilingualLabel"},
+          "expected_next_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_by": {"$ref": "#/components/schemas/BilingualLabel"}, "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "TimelineStep": {
+        "type": "object", "additionalProperties": false, "required": ["code", "label", "state", "state_label"],
+        "properties": {"code": {"type": "string", "maxLength": 64}, "label": {"$ref": "#/components/schemas/BilingualLabel"}, "state": {"type": "string", "enum": ["completed", "current", "next", "planned", "unconfirmed"]}, "state_label": {"$ref": "#/components/schemas/BilingualLabel"}, "occurred_at": {"type": ["string", "null"], "format": "date-time"}, "source": {"oneOf": [{"$ref": "#/components/schemas/BilingualLabel"}, {"type": "null"}]}, "location": {"type": ["string", "null"], "maxLength": 255}, "public_note": {"type": ["string", "null"], "maxLength": 2000}, "public_reason": {"type": ["string", "null"], "maxLength": 1000}}
+      },
+      "ProjectDetail": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "ref", "title", "status", "progress_percent", "updated_at", "description", "timeline", "shipment_ids", "document_ids", "report_ids", "balances"],
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"}, "ref": {"type": "string", "maxLength": 100}, "title": {"type": "string", "maxLength": 255},
+          "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/ProjectStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}},
+          "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100}, "current_step": {"$ref": "#/components/schemas/BilingualLabel"}, "next_step": {"$ref": "#/components/schemas/BilingualLabel"},
+          "expected_next_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_by": {"$ref": "#/components/schemas/BilingualLabel"}, "updated_at": {"type": "string", "format": "date-time"},
+          "description": {"type": "string", "maxLength": 5000}, "start_at": {"type": ["string", "null"], "format": "date-time"}, "end_at": {"type": ["string", "null"], "format": "date-time"}, "timeline": {"type": "array", "items": {"$ref": "#/components/schemas/TimelineStep"}}, "shipment_ids": {"type": "array", "items": {"$ref": "#/components/schemas/OpaqueId"}}, "document_ids": {"type": "array", "items": {"$ref": "#/components/schemas/OpaqueId"}}, "report_ids": {"type": "array", "items": {"$ref": "#/components/schemas/OpaqueId"}}, "balances": {"type": "array", "items": {"$ref": "#/components/schemas/Balance"}}
+        }
+      },
+      "ProjectListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/ProjectSummary"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "ProjectDetailEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/ProjectDetail"}, "request_id": {"type": "string"}}},
+      "ShipmentStatusCode": {"type": "string", "enum": ["inquiry", "booking_confirmed", "loaded_export_customs", "export_customs_cleared", "on_vessel", "arrived_port", "under_customs", "customs_cleared", "delivered", "closed"]},
+      "ShipmentSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "status", "container_count", "updated_at"],
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100},
+          "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/ShipmentStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}},
+          "container_number": {"type": ["string", "null"], "maxLength": 100}, "container_type": {"type": ["string", "null"], "maxLength": 40}, "container_count": {"type": "integer", "minimum": 0}, "bl_number": {"type": ["string", "null"], "maxLength": 100}, "eta": {"type": ["string", "null"], "format": "date-time"}, "ata": {"type": ["string", "null"], "format": "date-time"}, "free_time_end": {"type": ["string", "null"], "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "LatestShipmentUpdate": {
+        "type": ["object", "null"], "additionalProperties": false,
+        "required": ["title", "occurred_at", "source"],
+        "properties": {"title": {"$ref": "#/components/schemas/BilingualLabel"}, "public_note": {"type": ["string", "null"], "maxLength": 2000}, "occurred_at": {"type": "string", "format": "date-time"}, "source": {"$ref": "#/components/schemas/BilingualLabel"}}
+      },
+      "EtaChange": {
+        "type": ["object", "null"], "additionalProperties": false,
+        "required": ["changed_at", "previous_eta", "current_eta", "change_days", "source"],
+        "properties": {"changed_at": {"type": "string", "format": "date-time"}, "previous_eta": {"type": "string", "format": "date-time"}, "current_eta": {"type": "string", "format": "date-time"}, "change_days": {"type": "integer"}, "source": {"$ref": "#/components/schemas/BilingualLabel"}, "public_reason": {"type": ["string", "null"], "maxLength": 1000}}
+      },
+      "CustomerAction": {
+        "type": ["object", "null"], "additionalProperties": false,
+        "required": ["label", "responsibility", "required_from_customer"],
+        "properties": {"label": {"$ref": "#/components/schemas/BilingualLabel"}, "responsibility": {"type": "string", "enum": ["customer", "china_planet", "external_party", "none"]}, "required_from_customer": {"type": "boolean"}, "due_at": {"type": ["string", "null"], "format": "date-time"}, "public_note": {"type": ["string", "null"], "maxLength": 2000}}
+      },
+      "DocumentRequirement": {
+        "type": "object", "additionalProperties": false, "required": ["code", "label", "status", "status_label", "requested_from", "action_required"],
+        "properties": {"code": {"type": "string", "maxLength": 64}, "label": {"$ref": "#/components/schemas/BilingualLabel"}, "status": {"type": "string", "enum": ["required", "requested", "received", "under_review", "correction_required", "approved", "published"]}, "status_label": {"$ref": "#/components/schemas/BilingualLabel"}, "requested_from": {"type": "string", "enum": ["customer", "china_planet", "carrier", "customs", "other"]}, "action_required": {"type": "boolean"}, "due_at": {"type": ["string", "null"], "format": "date-time"}, "public_note": {"type": ["string", "null"], "maxLength": 2000}, "document_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}}
+      },
+      "ShipmentDetail": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "ref", "status", "container_count", "updated_at", "timeline", "document_requirements", "eta_changed", "latest_update", "eta_change", "customer_action"],
+        "properties": {
+          "id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100},
+          "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/ShipmentStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}},
+          "container_number": {"type": ["string", "null"], "maxLength": 100}, "container_type": {"type": ["string", "null"], "maxLength": 40}, "container_count": {"type": "integer", "minimum": 0}, "bl_number": {"type": ["string", "null"], "maxLength": 100}, "eta": {"type": ["string", "null"], "format": "date-time"}, "ata": {"type": ["string", "null"], "format": "date-time"}, "free_time_end": {"type": ["string", "null"], "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"},
+          "booking_number": {"type": ["string", "null"], "maxLength": 100}, "shipping_line": {"type": ["string", "null"], "maxLength": 120}, "vessel_name": {"type": ["string", "null"], "maxLength": 120}, "voyage_number": {"type": ["string", "null"], "maxLength": 100}, "port_loading": {"type": ["string", "null"], "maxLength": 120}, "port_destination": {"type": ["string", "null"], "maxLength": 120}, "etd": {"type": ["string", "null"], "format": "date-time"}, "atd": {"type": ["string", "null"], "format": "date-time"}, "free_time_days": {"type": ["integer", "null"], "minimum": 0}, "free_time_start": {"type": ["string", "null"], "format": "date-time"}, "eta_changed": {"type": "boolean"}, "previous_eta": {"type": ["string", "null"], "format": "date-time"}, "eta_change_days": {"type": ["integer", "null"]}, "latest_update_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_source": {"$ref": "#/components/schemas/BilingualLabel"}, "latest_update": {"$ref": "#/components/schemas/LatestShipmentUpdate"}, "eta_change": {"$ref": "#/components/schemas/EtaChange"}, "customer_notes": {"type": ["string", "null"], "maxLength": 5000}, "customer_action": {"$ref": "#/components/schemas/CustomerAction"}, "timeline": {"type": "array", "items": {"$ref": "#/components/schemas/TimelineStep"}}, "document_requirements": {"type": "array", "items": {"$ref": "#/components/schemas/DocumentRequirement"}}
+        }
+      },
+      "ShipmentListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/ShipmentSummary"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "ShipmentDetailEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/ShipmentDetail"}, "request_id": {"type": "string"}}},
+      "OrderStatusCode": {"type": "string", "enum": ["draft", "validated", "in_progress", "shipped", "delivered", "closed", "canceled"]},
+      "OrderSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "ordered_at", "status", "total", "paid", "remaining", "updated_at"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100}, "ordered_at": {"type": "string", "format": "date-time"}, "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/OrderStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}}, "total": {"$ref": "#/components/schemas/Money"}, "paid": {"$ref": "#/components/schemas/Money"}, "remaining": {"$ref": "#/components/schemas/Money"}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "OrderListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/OrderSummary"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "Transaction": {
+        "type": "object", "additionalProperties": false, "required": ["id", "occurred_at", "description", "direction", "amount", "updated_at"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "occurred_at": {"type": "string", "format": "date-time"}, "description": {"type": "string", "maxLength": 500}, "direction": {"type": "string", "enum": ["debit", "credit"]}, "amount": {"$ref": "#/components/schemas/Money"}, "reference": {"type": ["string", "null"], "maxLength": 100}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "TransactionListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Transaction"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "InvoiceStatusCode": {"type": "string", "enum": ["draft", "validated", "partially_paid", "paid", "overdue", "canceled"]},
+      "ServiceInvoice": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "issued_at", "status", "total", "paid", "remaining", "updated_at"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100}, "issued_at": {"type": "string", "format": "date-time"}, "due_at": {"type": ["string", "null"], "format": "date-time"}, "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/InvoiceStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}}, "total": {"$ref": "#/components/schemas/Money"}, "paid": {"$ref": "#/components/schemas/Money"}, "remaining": {"$ref": "#/components/schemas/Money"}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "InvoiceListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/ServiceInvoice"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "Document": {
+        "type": "object", "additionalProperties": false, "required": ["id", "source_type", "name", "mime_type", "size_bytes", "version", "approved_at", "updated_at"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "source_type": {"type": "string", "enum": ["project_asset", "operation_report_attachment"]}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "shipment_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "report_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "name": {"type": "string", "maxLength": 255}, "mime_type": {"type": "string", "maxLength": 150}, "size_bytes": {"type": "integer", "minimum": 0}, "version": {"type": "integer", "minimum": 1}, "approved_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "DocumentListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Document"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "CommercialDocumentType": {"type": "string", "enum": ["commercial_invoice", "packing_list", "bill_of_lading", "cargox", "certificate_origin", "inspection", "other"]},
+      "CommercialDocumentSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "document_type", "document_date", "updated_at"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "shipment_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100}, "document_type": {"$ref": "#/components/schemas/CommercialDocumentType"}, "document_date": {"type": "string", "format": "date"}, "currency": {"oneOf": [{"$ref": "#/components/schemas/Currency"}, {"type": "null"}]}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "CommercialDocumentLine": {
+        "type": "object", "additionalProperties": false, "required": ["position", "description", "quantity", "unit_price", "total"],
+        "properties": {"position": {"type": "integer", "minimum": 1}, "description": {"type": "string", "maxLength": 500}, "hs_code": {"type": ["string", "null"], "maxLength": 32}, "quantity": {"$ref": "#/components/schemas/Decimal"}, "unit": {"type": ["string", "null"], "maxLength": 16}, "unit_price": {"$ref": "#/components/schemas/Money"}, "total": {"$ref": "#/components/schemas/Money"}, "cartons": {"oneOf": [{"$ref": "#/components/schemas/Decimal"}, {"type": "null"}]}, "net_weight": {"oneOf": [{"$ref": "#/components/schemas/Decimal"}, {"type": "null"}]}, "gross_weight": {"oneOf": [{"$ref": "#/components/schemas/Decimal"}, {"type": "null"}]}, "country_of_origin": {"type": ["string", "null"], "maxLength": 64}}
+      },
+      "CommercialDocumentDetail": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "document_type", "document_date", "updated_at", "lines"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "shipment_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100}, "document_type": {"$ref": "#/components/schemas/CommercialDocumentType"}, "document_date": {"type": "string", "format": "date"}, "currency": {"oneOf": [{"$ref": "#/components/schemas/Currency"}, {"type": "null"}]}, "consignee": {"type": ["string", "null"], "maxLength": 255}, "port_loading": {"type": ["string", "null"], "maxLength": 128}, "port_destination": {"type": ["string", "null"], "maxLength": 128}, "incoterm": {"type": ["string", "null"], "maxLength": 32}, "public_notes": {"type": ["string", "null"], "maxLength": 5000}, "updated_at": {"type": "string", "format": "date-time"}, "lines": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/components/schemas/CommercialDocumentLine"}}}
+      },
+      "CommercialDocumentListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/CommercialDocumentSummary"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "CommercialDocumentDetailEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/CommercialDocumentDetail"}, "request_id": {"type": "string"}}},
+      "ReportType": {"type": "string", "enum": ["order", "factory_audit", "quality_control", "shipping_inquiry", "shipping_booking", "loading", "customs", "claim", "other"]},
+      "ReportStage": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"type": "string", "maxLength": 64}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}},
+      "ReportSummary": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "report_type", "title", "stage", "progress_percent", "updated_at"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100}, "report_type": {"$ref": "#/components/schemas/ReportType"}, "title": {"type": "string", "maxLength": 255}, "stage": {"$ref": "#/components/schemas/ReportStage"}, "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100}, "next_action": {"type": ["string", "null"], "maxLength": 500}, "due_at": {"type": ["string", "null"], "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "ReportFieldCode": {"type": "string", "enum": ["customer_requirements", "product_summary", "quantity", "production_deadline", "audit_mode", "audit_scope", "audit_date", "business_license", "certificates", "production_capacity", "quality_system", "social_compliance", "findings", "advice", "report_status", "product_name", "model_no", "product_details", "customer_notes", "customer_warnings", "inspection_standard", "aql_level", "sample_size", "critical_limit", "major_limit", "minor_limit", "inspection_result", "corrective_action", "pol", "pod", "destination_country", "shipping_line", "container_type", "incoterm", "cargo_type", "cargo_weight", "cargo_cbm", "dangerous_goods", "required_services", "final_destination", "etd", "eta", "load_type", "container_request", "cargo_summary", "cartons", "net_weight", "gross_weight", "cbm", "hs_code", "free_time", "shipping_order_no", "carrier_booking_no", "vessel", "voyage", "cutoff_si", "cutoff_cy", "bl_no", "mbl_no", "hbl_no", "container_numbers", "seal_numbers", "booking_status", "document_status", "loading_status", "original_document_status", "loading_date", "evidence_status", "country", "submission_status", "submission_date", "completion_date", "claim_type", "incident_date", "evidence_summary", "resolution", "details", "result"]},
+      "ReportField": {"type": "object", "additionalProperties": false, "required": ["code", "label", "value"], "properties": {"code": {"$ref": "#/components/schemas/ReportFieldCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}, "value": {"type": "string", "maxLength": 10000}}},
+      "ReportDetail": {
+        "type": "object", "additionalProperties": false, "required": ["id", "ref", "report_type", "title", "stage", "progress_percent", "updated_at", "public_note", "fields", "documents"],
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100}, "report_type": {"$ref": "#/components/schemas/ReportType"}, "title": {"type": "string", "maxLength": 255}, "stage": {"$ref": "#/components/schemas/ReportStage"}, "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100}, "next_action": {"type": ["string", "null"], "maxLength": 500}, "due_at": {"type": ["string", "null"], "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}, "public_note": {"type": ["string", "null"], "maxLength": 10000}, "fields": {"type": "array", "items": {"$ref": "#/components/schemas/ReportField"}}, "documents": {"type": "array", "items": {"$ref": "#/components/schemas/Document"}}}
+      },
+      "ReportListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/ReportSummary"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "ReportDetailEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/ReportDetail"}, "request_id": {"type": "string"}}},
+      "Dashboard": {
+        "type": "object", "additionalProperties": false, "required": ["active_projects", "active_shipments", "open_orders", "balances", "updated_at"],
+        "properties": {"active_projects": {"type": "integer", "minimum": 0}, "active_shipments": {"type": "integer", "minimum": 0}, "open_orders": {"type": "integer", "minimum": 0}, "current_project": {"oneOf": [{"$ref": "#/components/schemas/ProjectSummary"}, {"type": "null"}]}, "current_shipment": {"oneOf": [{"$ref": "#/components/schemas/ShipmentSummary"}, {"type": "null"}]}, "balances": {"type": "array", "items": {"$ref": "#/components/schemas/Balance"}}, "updated_at": {"type": "string", "format": "date-time"}}
+      },
+      "DashboardEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/Dashboard"}, "request_id": {"type": "string"}}}
+    }
+  }
+}
