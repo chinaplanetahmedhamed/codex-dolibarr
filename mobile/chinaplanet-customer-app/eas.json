@@ -1,0 +1,40 @@
+{
+  "cli": {
+    "version": "=21.0.2",
+    "appVersionSource": "remote",
+    "requireCommit": true
+  },
+  "build": {
+    "internal": {
+      "distribution": "internal",
+      "channel": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_API_BASE_URL": "https://erp.visiontrading.biz/api/index.php/chinaplanetcustomercenter/mobile/v1",
+        "EXPO_PUBLIC_PRODUCTION_APPROVED": "true"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "channel": "production",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_API_BASE_URL": "https://erp.visiontrading.biz/api/index.php/chinaplanetcustomercenter/mobile/v1",
+        "EXPO_PUBLIC_PRODUCTION_APPROVED": "true"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "production",
+        "releaseStatus": "completed"
+      },
+      "ios": {}
+    }
+  }
+}

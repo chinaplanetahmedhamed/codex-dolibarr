@@ -1,0 +1,92 @@
+name: Mobile customer app CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mobile/chinaplanet-customer-app/**'
+      - 'custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php'
+      - 'custom/chinaplanetcustomercenter/lib/mobile_api*.php'
+      - 'custom/chinaplanetcustomercenter/sql/llx_cpcc_mobile_*.sql'
+      - 'deploy/migrations/m017_customer_mobile_api_schema.php'
+      - 'docs/API/**'
+      - '.github/workflows/mobile-*.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mobile/chinaplanet-customer-app/**'
+      - 'custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php'
+      - 'custom/chinaplanetcustomercenter/lib/mobile_api*.php'
+      - 'custom/chinaplanetcustomercenter/sql/llx_cpcc_mobile_*.sql'
+      - 'deploy/migrations/m017_customer_mobile_api_schema.php'
+      - 'docs/API/**'
+      - '.github/workflows/mobile-*.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Type, lint, test, and customer safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile/chinaplanet-customer-app
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/chinaplanet-customer-app/package-lock.json
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Check Expo dependency compatibility
+        run: npx expo install --check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Validate Expo public configuration
+        run: npx expo config --type public --json >/dev/null
+
+      - name: Reject credentials, customer exports, and release binaries
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if git grep -I -E -- '(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AIza[0-9A-Za-z_-]{30,}|[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})' -- .; then
+            echo 'Potential credential material detected.' >&2
+            exit 1
+          fi
+          if find . -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name '*.jks' -o -name '*.keystore' -o -name '*service-account*.json' \) -print -quit | grep -q .; then
+            echo 'Prohibited binary or credential artifact detected.' >&2
+            exit 1
+          fi
+          test ! -d node_modules/.git
+
+      - name: Verify production endpoint policy
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -Fq 'https://erp.visiontrading.biz/api/index.php/chinaplanetcustomercenter/mobile/v1' eas.json
+          grep -Fq 'EXPO_PUBLIC_PRODUCTION_APPROVED' src/config/environment.ts
+          ! grep -R -E 'DOLAPIKEY|vision_db|BEGIN .*PRIVATE KEY' app src components assets --exclude='*.test.*'

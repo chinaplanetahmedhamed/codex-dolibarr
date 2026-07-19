@@ -20,7 +20,7 @@
 - العربية افتراضيًا والإنجليزية متاحة، مع RTL/LTR وحالات loading/empty/offline/error.
 - لا يوجد fallback إلى fixtures في تشغيل العميل.
 
-الإشعارات والمتاجر والإنتاج خارج M017.
+الإشعارات خارج M017. إعداد فروع GitHub والبناء الداخلي والنشر المحمي للمتاجر موثق في `docs/RELEASE_PROCESS.md`; لا يعمل نشر المتاجر حتى تُجهز الحسابات المملوكة للشركة وتُعتمد بيئة `mobile-production` يدويًا.
 
 ## التشغيل المحلي
 
@@ -41,6 +41,8 @@ npm run web
 `http://127.0.0.1:8088/api/index.php/chinaplanetcustomercenter/mobile/v1`
 
 ملفات البناء تستخدم `EXPO_PUBLIC_APP_ENV` بقيمة `local` أو `backup-erp` أو `production`. يجب تمرير `EXPO_PUBLIC_API_BASE_URL` صراحة لأي بيئة غير محلية، ولا توجد عناوين staging أو production مضمنة في المصدر. بناء production يتطلب كذلك بوابة `EXPO_PUBLIC_PRODUCTION_APPROVED=true` بعد الموافقة الدقيقة المنفصلة. يمكن للمطور محليًا تغيير العنوان للمحاكي عند الحاجة.
+
+ملفا EAS `internal` و`production` هما الاستثناء المراجع لهذه القاعدة: كلاهما يثبت عنوان Mobile API العام على ERP الحي عبر HTTPS، من دون أي مفتاح أو بيانات دخول. فرع `develop` مخصص للاختبار الداخلي، و`main` وحده مصدر المتاجر.
 
 لا تضع كلمات مرور أو tokens أو مفاتيح ERP في متغيرات Expo؛ القيم `EXPO_PUBLIC_*` مضمنة في التطبيق وليست أسرارًا.
 

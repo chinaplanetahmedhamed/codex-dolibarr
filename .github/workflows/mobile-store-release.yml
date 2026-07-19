@@ -1,0 +1,86 @@
+name: Release mobile app to stores
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type RELEASE_CHINAPLANET_MOBILE_TO_STORES
+        required: true
+        type: string
+      platform:
+        description: Store platform
+        required: true
+        default: all
+        type: choice
+        options: [android, ios, all]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-store-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and submit approved main release
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    environment: mobile-production
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile/chinaplanet-customer-app
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+      EXPO_OWNER: ${{ vars.EXPO_OWNER }}
+      MOBILE_STORE_ACCOUNTS_READY: ${{ vars.MOBILE_STORE_ACCOUNTS_READY }}
+
+    steps:
+      - name: Require exact main release approval and account readiness
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$CONFIRMATION" = 'RELEASE_CHINAPLANET_MOBILE_TO_STORES'
+          test "$MOBILE_STORE_ACCOUNTS_READY" = 'true'
+          test -n "$EXPO_TOKEN"
+          test -n "$EAS_PROJECT_ID"
+          test -n "$EXPO_OWNER"
+
+      - name: Check out exact main commit
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/chinaplanet-customer-app/package-lock.json
+
+      - name: Set up pinned EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: 21.0.2
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Run release checks
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          npx expo install --check
+          npm run typecheck
+          npm run lint -- --max-warnings=0
+          npm test
+          npx expo config --type public --json >/dev/null
+
+      - name: Build and submit to Google Play and App Store Connect
+        env:
+          PLATFORM: ${{ inputs.platform }}
+        run: eas build --platform "$PLATFORM" --profile production --auto-submit --non-interactive --no-wait
