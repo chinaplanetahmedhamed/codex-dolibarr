@@ -472,3 +472,178 @@ function cpcc_portal_gallery_publications($db, $shipment, $activeOnly = false)
     while ($result && ($row = $db->fetch_object($result))) $rows[(string) $row->storage_key] = $row;
     return $rows;
 }
+
+/**
+ * Return the private key used to derive one-way customer gallery identifiers.
+ *
+ * The same installation-owned secret already protects Mobile API credentials.
+ * It is never sent to the browser. Tests may provide an isolated synthetic
+ * secret without changing Dolibarr configuration.
+ */
+function cpcc_portal_gallery_token_secret()
+{
+    $secret = function_exists('getDolGlobalString') ? (string) getDolGlobalString('CHINAPLANETCUSTOMERCENTER_MOBILE_TOKEN_SECRET', '') : '';
+    if (defined('CPCC_PORTAL_GALLERY_TESTING') && CPCC_PORTAL_GALLERY_TESTING && $secret === '') {
+        $testSecret = getenv('CPCC_PORTAL_GALLERY_TEST_SECRET');
+        if (is_string($testSecret)) $secret = $testSecret;
+    }
+    return strlen($secret) >= 32 ? hash('sha256', "customer-web-gallery\0".$secret, true) : '';
+}
+
+function cpcc_portal_gallery_base64url($value)
+{
+    return rtrim(strtr(base64_encode((string) $value), '+/', '-_'), '=');
+}
+
+/** Build a non-reversible browser identifier without exposing a database ID. */
+function cpcc_portal_gallery_public_token($publicationId, $entity, $socid)
+{
+    $secret = cpcc_portal_gallery_token_secret();
+    $publicationId = (int) $publicationId;
+    $entity = (int) $entity;
+    $socid = (int) $socid;
+    if ($secret === '' || $publicationId <= 0 || $entity <= 0 || $socid <= 0) return '';
+    $digest = hash_hmac('sha256', "v1\0".$publicationId."\0".$entity."\0".$socid, $secret, true);
+    return 'gal_'.cpcc_portal_gallery_base64url($digest);
+}
+
+/**
+ * List active gallery publications for the authenticated external customer.
+ * Authority is derived only from the session and active entity.
+ */
+function cpcc_portal_customer_gallery_items($db, $user, $shipment = null)
+{
+    global $conf;
+
+    $scope = cpcc_portal_user_scope($user);
+    $entity = !empty($conf->entity) ? (int) $conf->entity : 0;
+    $socid = !empty($scope['is_external']) ? (int) $scope['socid'] : 0;
+    if ($entity <= 0 || $socid <= 0 || !cpcc_portal_gallery_schema_ready($db) || cpcc_portal_gallery_token_secret() === '') return array();
+
+    $shipmentId = 0;
+    if ($shipment !== null) {
+        $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) ($shipment->rowid ?? 0);
+        if ($shipmentId <= 0 || !cpcc_portal_authorized_shipment($db, $user, $shipmentId)) return array();
+    }
+
+    $sql = "SELECT p.rowid,p.fk_shipment,p.original_name,p.mime_type,p.file_size,p.item_kind,p.date_publication,";
+    $sql .= " t.ref AS shipment_ref,t.container_no,t.bl_no";
+    $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
+    $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid." AND p.customer_visible=1 AND p.status=1";
+    if ($shipmentId > 0) $sql .= " AND p.fk_shipment=".$shipmentId;
+    $sql .= " ORDER BY p.date_publication DESC,p.rowid DESC";
+
+    $result = $db->query($sql);
+    $items = array();
+    while ($result && ($row = $db->fetch_object($result))) {
+        $token = cpcc_portal_gallery_public_token($row->rowid, $entity, $socid);
+        if ($token === '') continue;
+        $row->public_token = $token;
+        unset($row->rowid);
+        $items[] = $row;
+    }
+    return $items;
+}
+
+/** Resolve one opaque publication token inside the current customer scope. */
+function cpcc_portal_customer_gallery_publication($db, $user, $publicToken)
+{
+    global $conf;
+
+    if (!preg_match('/^gal_[A-Za-z0-9_-]{43}$/', (string) $publicToken)) return null;
+    $scope = cpcc_portal_user_scope($user);
+    $entity = !empty($conf->entity) ? (int) $conf->entity : 0;
+    $socid = !empty($scope['is_external']) ? (int) $scope['socid'] : 0;
+    if ($entity <= 0 || $socid <= 0 || !cpcc_portal_gallery_schema_ready($db) || cpcc_portal_gallery_token_secret() === '') return null;
+
+    $sql = "SELECT p.rowid,p.fk_shipment,p.storage_key,p.original_name,p.mime_type,p.file_size,p.file_sha256,p.item_kind,";
+    $sql .= " t.ref AS shipment_ref";
+    $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
+    $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid." AND p.customer_visible=1 AND p.status=1";
+    $result = $db->query($sql);
+    while ($result && ($row = $db->fetch_object($result))) {
+        $candidate = cpcc_portal_gallery_public_token($row->rowid, $entity, $socid);
+        if ($candidate !== '' && hash_equals($candidate, (string) $publicToken)) return $row;
+    }
+    return null;
+}
+
+/**
+ * Revalidate the immutable publication snapshot immediately before delivery.
+ */
+function cpcc_portal_resolve_customer_gallery_content($db, $user, $publicToken)
+{
+    $row = cpcc_portal_customer_gallery_publication($db, $user, $publicToken);
+    if (!$row) return null;
+
+    $fullPath = cpcc_portal_resolve_shipment_doc_path((int) $row->fk_shipment, (string) $row->shipment_ref, (string) $row->storage_key);
+    if ($fullPath === '' || is_link($fullPath) || !is_file($fullPath) || !is_readable($fullPath)) return null;
+    $actualSize = filesize($fullPath);
+    if ($actualSize === false || (int) $actualSize <= 0 || (int) $actualSize !== (int) $row->file_size) return null;
+
+    $validation = cpcc_portal_validate_shipment_upload((string) $row->original_name, $fullPath, (int) $actualSize);
+    if (empty($validation['ok'])) return null;
+    if (!hash_equals(strtolower((string) $row->mime_type), strtolower((string) $validation['mime']))) return null;
+    if (!hash_equals((string) $row->item_kind, cpcc_portal_gallery_item_kind($validation['mime']))) return null;
+
+    $actualHash = hash_file('sha256', $fullPath);
+    if (!is_string($actualHash) || !preg_match('/^[a-f0-9]{64}$/', (string) $row->file_sha256) || !hash_equals((string) $row->file_sha256, $actualHash)) return null;
+
+    return array(
+        'full_path' => $fullPath,
+        'name' => basename((string) $validation['name']),
+        'mime' => strtolower((string) $validation['mime']),
+        'size' => (int) $actualSize,
+        'kind' => (string) $row->item_kind,
+    );
+}
+
+function cpcc_portal_customer_gallery_content_url($publicToken, $preview = false)
+{
+    $parameters = array('type' => 'gallery', 'publication' => (string) $publicToken);
+    if ($preview) $parameters['mode'] = 'preview';
+    return dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?'.http_build_query($parameters);
+}
+
+/** Render safe gallery items shared by the shipment card and Documents page. */
+function cpcc_portal_customer_gallery_items_html(array $items)
+{
+    global $langs;
+
+    if (empty($items)) return '<div class="cpcc-gallery-empty"><span class="fas fa-photo-video" aria-hidden="true"></span><strong>'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerEmpty')).'</strong><small>'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerEmptyHint')).'</small></div>';
+
+    $html = '<div class="cpcc-gallery-grid">';
+    foreach ($items as $item) {
+        $downloadUrl = cpcc_portal_customer_gallery_content_url($item->public_token, false);
+        $isImage = (string) $item->item_kind === 'image';
+        $html .= '<article class="cpcc-gallery-item'.($isImage ? ' is-image' : '').'">';
+        if ($isImage) {
+            $previewUrl = cpcc_portal_customer_gallery_content_url($item->public_token, true);
+            $html .= '<a class="cpcc-gallery-preview" href="'.dol_escape_htmltag($downloadUrl).'" aria-label="'.dol_escape_htmltag($item->original_name).'">';
+            $html .= '<img loading="lazy" src="'.dol_escape_htmltag($previewUrl).'" alt="'.dol_escape_htmltag($item->original_name).'">';
+            $html .= '</a>';
+        } else {
+            $icon = (string) $item->item_kind === 'video' ? 'fa-file-video' : 'fa-file-download';
+            $html .= '<span class="cpcc-gallery-file-icon fas '.dol_escape_htmltag($icon).'" aria-hidden="true"></span>';
+        }
+        $html .= '<div class="cpcc-gallery-item-copy"><strong>'.dol_escape_htmltag($item->original_name).'</strong>';
+        $html .= '<small>'.dol_escape_htmltag(dol_print_size((int) $item->file_size)).'</small>';
+        $html .= '<a class="cpcc-gallery-download" href="'.dol_escape_htmltag($downloadUrl).'">'.dol_escape_htmltag($langs->trans('CPLGalleryDownload')).'</a></div>';
+        $html .= '</article>';
+    }
+    return $html.'</div>';
+}
+
+function cpcc_portal_customer_shipment_gallery_html($db, $user, $shipment, $includeHeading = true)
+{
+    global $langs;
+    $items = cpcc_portal_customer_gallery_items($db, $user, $shipment);
+    $html = '<section class="cpl-panel cpcc-shipment-gallery" aria-labelledby="cpcc-gallery-title">';
+    if ($includeHeading) {
+        $html .= '<div class="cpl-section-title cpcc-gallery-title"><div><span>'.dol_escape_htmltag($langs->trans('CPLGalleryEyebrow')).'</span>';
+        $html .= '<h2 id="cpcc-gallery-title">'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerTitle')).'</h2></div><b>'.count($items).'</b></div>';
+    }
+    return $html.cpcc_portal_customer_gallery_items_html($items).'</section>';
+}

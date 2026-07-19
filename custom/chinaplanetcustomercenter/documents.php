@@ -10,6 +10,8 @@ require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once __DIR__.'/lib/portal.lib.php';
 require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
+$langs->loadLangs(array('chinaplanetcustomercenter@chinaplanetcustomercenter', 'chinaplanetlogistics@chinaplanetlogistics'));
+
 cpcc_portal_require_access($user, array(
     array('chinaplanetcustomercenter', 'read'),
     array('chinaplanetlogistics', 'read'),
@@ -97,18 +99,18 @@ if ($action === 'rename' || $action === 'deletefile') {
 
 $pageCss = array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'));
 if (!$is_external) $pageCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
-llxHeader('', 'Documents / المستندات', '', '', 0, 0, array(), $pageCss);
+llxHeader('', $is_external ? $langs->trans('CPLGalleryPageTitle') : 'Documents / المستندات', '', '', 0, 0, array(), $pageCss);
 if ($is_external) cpcc_portal_navigation($user, 'documents');
 else cpcc_admin_shell_open('documents', 'Shipment Documents / مستندات الشحن', 'رفع وإدارة ملفات الشحنات ومستندات العملاء', 'fa-folder-open', array('socid'=>$socid));
 
 print '<main class="cpcc-dashboard cpcc-documents-page" dir="rtl">';
 print '<header class="cpcc-page-head"><div>';
-print '<span class="cpcc-eyebrow">SHIPMENT DOCUMENTS</span>';
-print '<h1>المستندات / Documents</h1>';
-print '<p>اعرض مستندات الشحن المسموح بها ونزّلها بأمان من مكان واحد. / View and securely download approved shipment documents in one place.</p>';
+print '<span class="cpcc-eyebrow">'.dol_escape_htmltag($is_external ? $langs->trans('CPLGalleryEyebrow') : 'SHIPMENT DOCUMENTS').'</span>';
+print '<h1>'.dol_escape_htmltag($is_external ? $langs->trans('CPLGalleryPageTitle') : 'المستندات / Documents').'</h1>';
+print '<p>'.dol_escape_htmltag($is_external ? $langs->trans('CPLGalleryPageIntro') : 'اعرض مستندات الشحن المسموح بها ونزّلها بأمان من مكان واحد. / View and securely download approved shipment documents in one place.').'</p>';
 print '</div></header>';
 print '<div class="div-table-responsive-no-min">';
-print '<div class="info"><strong>Commercial documents / مستندات التصدير:</strong> الفواتير التجارية وقوائم التعبئة موجودة في صفحة مستقلة. <a class="button button-small" href="'.dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php', 1).($socid > 0 && !$is_external ? '?socid='.(int) $socid : '').'">Open commercial documents</a></div>';
+if (!$is_external) print '<div class="info"><strong>Commercial documents / مستندات التصدير:</strong> الفواتير التجارية وقوائم التعبئة موجودة في صفحة مستقلة. <a class="button button-small" href="'.dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php', 1).($socid > 0 ? '?socid='.(int) $socid : '').'">Open commercial documents</a></div>';
 
 if ($is_external && $socid <= 0) {
     print '<div class="warning">No linked customer account was found for this portal user.</div>';
@@ -143,8 +145,12 @@ if ($is_external && $socid <= 0) {
         print '</form>';
     }
 
-    print '<table class="noborder centpercent">';
-    print '<tr class="liste_titre"><th>رقم / ID</th><th>الشحنة / Shipment</th><th>العميل / Customer</th><th>الحاوية / Container</th><th>البوليصة / BL</th><th>الوصول / ETA</th><th>الحالة / Status</th><th>المستندات / Documents</th><th>الإجراءات / Actions</th></tr>';
+    print '<table class="noborder centpercent'.($is_external ? ' cpcc-mobile-cards cpcc-gallery-table' : '').'">';
+    if ($is_external) {
+        print '<thead><tr class="liste_titre cpcc-mobile-header-row"><th>'.$langs->trans('CPLGalleryShipment').'</th><th>'.$langs->trans('CPLGalleryContainer').'</th><th>'.$langs->trans('CPLGalleryBillOfLading').'</th><th>'.$langs->trans('CPLGalleryEta').'</th><th>'.$langs->trans('CPLGalleryCustomerTitle').'</th><th>'.$langs->trans('CPLGalleryAction').'</th></tr></thead><tbody>';
+    } else {
+        print '<tr class="liste_titre"><th>رقم / ID</th><th>الشحنة / Shipment</th><th>العميل / Customer</th><th>الحاوية / Container</th><th>البوليصة / BL</th><th>الوصول / ETA</th><th>الحالة / Status</th><th>المستندات / Documents</th><th>الإجراءات / Actions</th></tr>';
+    }
     if ($resql && $db->num_rows($resql) > 0) {
         while ($obj = $db->fetch_object($resql)) {
             $docs = array();
@@ -159,6 +165,18 @@ if ($is_external && $socid <= 0) {
                         }
                     }
                 }
+            }
+            if ($is_external) {
+                $galleryItems = cpcc_portal_customer_gallery_items($db, $user, $obj);
+                print '<tr>';
+                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryShipment')).'"><a href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'">'.dol_escape_htmltag($obj->ref).'</a></td>';
+                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryContainer')).'">'.dol_escape_htmltag($obj->container_no ?: '-').'</td>';
+                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryBillOfLading')).'">'.dol_escape_htmltag($obj->bl_no ?: '-').'</td>';
+                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryEta')).'">'.(!empty($obj->date_eta) ? dol_print_date($obj->date_eta, 'day') : '-').'</td>';
+                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerTitle')).'">'.cpcc_portal_customer_gallery_items_html($galleryItems).'</td>';
+                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryAction')).'"><a class="button button-small" href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'">'.dol_escape_htmltag($langs->trans('CPLGalleryOpenShipment')).'</a></td>';
+                print '</tr>';
+                continue;
             }
             print '<tr>';
             print '<td><b>'.(int) $obj->rowid.'</b></td>';
@@ -211,8 +229,9 @@ if ($is_external && $socid <= 0) {
             print '</tr>';
         }
     } else {
-        print '<tr><td colspan="9" class="opacitymedium center">لا توجد شحنات أو مستندات / No shipments with documents found.</td></tr>';
+        print '<tr><td colspan="'.($is_external ? '6' : '9').'" class="opacitymedium center" data-cpcc-empty-row="1">'.dol_escape_htmltag($is_external ? $langs->trans('CPLGalleryNoShipments') : 'لا توجد شحنات أو مستندات / No shipments with documents found.').'</td></tr>';
     }
+    if ($is_external) print '</tbody>';
     print '</table>';
 }
 

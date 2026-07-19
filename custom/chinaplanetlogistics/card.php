@@ -451,11 +451,24 @@ if ($action == 'create' || $action == 'edit') {
         if ($r && ($o = $db->fetch_object($r))) $project_label = $o->ref.' - '.$o->title;
     }
 
+    if ($is_external_customer) ob_start();
     cpl_render_shipment_command_center($db, $object, array(
         'external'=>$is_external_customer, 'modal'=>$is_modal, 'canwrite'=>$canwrite, 'candelete'=>$candelete,
         'customer_name'=>$customer_name, 'project_label'=>$project_label, 'listurl'=>$listurl,
         'projecturl'=>$object->fk_project > 0 ? dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int)$object->fk_project : dol_buildpath('/chinaplanetcustomercenter/projects.php', 1),
     ));
+    if ($is_external_customer) {
+        $commandCenterHtml = ob_get_clean();
+        $galleryHtml = cpcc_portal_customer_shipment_gallery_html($db, $user, $object, true);
+        $insertBefore = '<section class="cpl-two-column">';
+        $markerPosition = strpos($commandCenterHtml, $insertBefore);
+        if ($markerPosition !== false) {
+            $commandCenterHtml = substr($commandCenterHtml, 0, $markerPosition).$galleryHtml.substr($commandCenterHtml, $markerPosition);
+        } else {
+            $commandCenterHtml = str_replace('</main>', $galleryHtml.'</main>', $commandCenterHtml);
+        }
+        print $commandCenterHtml;
+    }
 
     // The legacy store remains private by default. Only an explicit, audited
     // allowlist row can project one file into the customer Shipment Gallery.
