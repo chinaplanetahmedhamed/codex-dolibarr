@@ -47,6 +47,10 @@ export class MobileApiClient {
       body: request,
       auth: false,
     });
+    // A successful login may belong to a different customer than a prior
+    // device session. Remove every last-known response and downloaded file
+    // before persisting the new account session.
+    await customerCache.clear();
     await this.sessionStore.writeSession(envelope.data);
     return envelope.data;
   }

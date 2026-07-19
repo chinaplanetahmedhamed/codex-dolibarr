@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MobileApiClient } from '@/src/api/client';
@@ -24,6 +25,7 @@ describe('MobileApiClient', () => {
     const request = JSON.parse(String(fetcher.mock.calls[0][1]?.body));
     expect(Object.keys(request).sort()).toEqual(['device_id', 'device_name', 'login', 'password']);
     expect(request).not.toHaveProperty('socid'); expect(request).not.toHaveProperty('entity');
+    expect(FileSystem.deleteAsync).toHaveBeenCalledWith('/tmp/chinaplanet-tests/chinaplanet-m017/', { idempotent: true });
     expect(await store.readSession()).toEqual(initial);
   });
 
