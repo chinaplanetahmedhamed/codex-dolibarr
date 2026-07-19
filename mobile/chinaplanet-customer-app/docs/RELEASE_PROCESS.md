@@ -2,9 +2,11 @@
 
 ## Branches
 
-- `feature/*`: isolated mobile work; open a pull request into `develop`.
-- `develop`: internal-test source. It uses the live, read-only customer Mobile API and may build an installable Android APK or an iOS internal-distribution build.
-- `main`: accepted store source only. Merge `develop` into `main` after Ahmed accepts the internal build.
+- `feature/*`: isolated mobile work; open a pull request into `mobile-develop`.
+- `mobile-develop`: internal-test source. It uses the live, read-only customer Mobile API and may build an installable Android APK or an iOS internal-distribution build.
+- `main`: accepted store source only. Merge `mobile-develop` into `main` after Ahmed accepts the internal build.
+
+The internal build is named `chinaplanetCS Test` and uses `com.chinaplanet.customer.internal`. The official build remains `chinaplanetCS` with `com.chinaplanet.customer`, so both can be installed on the same phone.
 
 The live API root is public configuration, not a credential:
 
@@ -30,8 +32,8 @@ Store service-account JSON, Apple App Store Connect keys, Android upload/signing
 
 ## Internal test flow
 
-1. Merge a reviewed `feature/*` pull request into `develop` after Mobile CI passes.
-2. Open **Actions → Build mobile internal test release → Run workflow** from `develop`.
+1. Merge a reviewed `feature/*` pull request into `mobile-develop` after Mobile CI passes.
+2. Open **Actions → Build mobile internal test release → Run workflow** from `mobile-develop`.
 3. Enter `BUILD_CHINAPLANET_MOBILE_INTERNAL` and select Android, iOS, or both.
 4. Install the internal build and test login, customer isolation, projects, shipments, account, and protected downloads.
 5. Record Ahmed's acceptance before opening the release pull request to `main`.
@@ -40,7 +42,7 @@ Internal builds use real customer-visible ERP data but remain read-only. Do not 
 
 ## Store release flow
 
-1. Merge the accepted `develop` release pull request into `main`.
+1. Merge the accepted `mobile-develop` release pull request into `main`.
 2. Confirm version/store metadata and that `MOBILE_STORE_ACCOUNTS_READY` is true.
 3. Open **Actions → Release mobile app to stores → Run workflow** from `main`.
 4. Enter `RELEASE_CHINAPLANET_MOBILE_TO_STORES` and select the platform.

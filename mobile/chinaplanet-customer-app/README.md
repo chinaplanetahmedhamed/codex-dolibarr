@@ -42,7 +42,7 @@ npm run web
 
 ملفات البناء تستخدم `EXPO_PUBLIC_APP_ENV` بقيمة `local` أو `backup-erp` أو `production`. يجب تمرير `EXPO_PUBLIC_API_BASE_URL` صراحة لأي بيئة غير محلية، ولا توجد عناوين staging أو production مضمنة في المصدر. بناء production يتطلب كذلك بوابة `EXPO_PUBLIC_PRODUCTION_APPROVED=true` بعد الموافقة الدقيقة المنفصلة. يمكن للمطور محليًا تغيير العنوان للمحاكي عند الحاجة.
 
-ملفا EAS `internal` و`production` هما الاستثناء المراجع لهذه القاعدة: كلاهما يثبت عنوان Mobile API العام على ERP الحي عبر HTTPS، من دون أي مفتاح أو بيانات دخول. فرع `develop` مخصص للاختبار الداخلي، و`main` وحده مصدر المتاجر.
+ملفا EAS `internal` و`production` هما الاستثناء المراجع لهذه القاعدة: كلاهما يثبت عنوان Mobile API العام على ERP الحي عبر HTTPS، من دون أي مفتاح أو بيانات دخول. فرع `mobile-develop` مخصص للاختبار الداخلي، و`main` وحده مصدر المتاجر. النسخة الداخلية تستخدم `com.chinaplanet.customer.internal` واسم `chinaplanetCS Test` لتُثبت بجانب النسخة الرسمية.
 
 لا تضع كلمات مرور أو tokens أو مفاتيح ERP في متغيرات Expo؛ القيم `EXPO_PUBLIC_*` مضمنة في التطبيق وليست أسرارًا.
 

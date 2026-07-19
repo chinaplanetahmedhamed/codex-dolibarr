@@ -2,7 +2,7 @@ name: Mobile customer app CI
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, mobile-develop]
     paths:
       - 'mobile/chinaplanet-customer-app/**'
       - 'custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php'
@@ -12,7 +12,7 @@ on:
       - 'docs/API/**'
       - '.github/workflows/mobile-*.yml'
   push:
-    branches: [main, develop]
+    branches: [main, mobile-develop]
     paths:
       - 'mobile/chinaplanet-customer-app/**'
       - 'custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php'

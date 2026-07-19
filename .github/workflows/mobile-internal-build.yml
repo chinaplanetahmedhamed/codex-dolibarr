@@ -23,8 +23,8 @@ concurrency:
 
 jobs:
   build:
-    name: Build from develop for internal testers
-    if: ${{ github.ref == 'refs/heads/develop' }}
+    name: Build from mobile-develop for internal testers
+    if: ${{ github.ref == 'refs/heads/mobile-develop' }}
     runs-on: ubuntu-latest
     environment: mobile-internal
     timeout-minutes: 30
@@ -43,16 +43,16 @@ jobs:
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -Eeuo pipefail
-          test "$GITHUB_REF" = 'refs/heads/develop'
+          test "$GITHUB_REF" = 'refs/heads/mobile-develop'
           test "$CONFIRMATION" = 'BUILD_CHINAPLANET_MOBILE_INTERNAL'
           test -n "$EXPO_TOKEN"
           test -n "$EAS_PROJECT_ID"
           test -n "$EXPO_OWNER"
 
-      - name: Check out develop
+      - name: Check out mobile-develop
         uses: actions/checkout@v4
         with:
-          ref: develop
+          ref: mobile-develop
           persist-credentials: false
 
       - name: Set up Node 22 LTS
