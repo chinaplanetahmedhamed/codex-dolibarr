@@ -24,11 +24,20 @@ describe('official China Planet brand identity', () => {
   it('replaces temporary CP and V marks in visible application branding', () => {
     const login = readFileSync(resolve(root, 'app/index.tsx'), 'utf8');
     const components = readFileSync(resolve(root, 'src/components.tsx'), 'utf8');
+    const home = readFileSync(resolve(root, 'app/(tabs)/home.tsx'), 'utf8');
+    const theme = readFileSync(resolve(root, 'src/theme.ts'), 'utf8');
     expect(login).toContain("require('../assets/images/chinaplanet-logo.png')");
     expect(components).toContain("require('../assets/images/chinaplanet-logo.png')");
     expect(login).toContain('عملاء Vision Trading - كوكب الصين');
     expect(components).toContain('عملاء Vision Trading - كوكب الصين');
     expect(login).not.toContain('>CP<');
     expect(components).not.toContain('>V<');
+    expect(home).toContain('brandLogo');
+    expect(home).not.toContain('icon="planet"');
+    expect(home).toContain("router.push('/projects')");
+    expect(home).toContain("router.push('/shipments')");
+    expect(home).toContain("router.push('/orders')");
+    expect(theme).toContain("brandRed: '#D91436'");
+    expect(theme).not.toContain('gold:');
   });
 });

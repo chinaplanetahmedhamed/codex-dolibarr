@@ -7,7 +7,7 @@ import { palette, radii } from '@/src/theme';
 
 export function LoadingState() {
   const { t } = useI18n();
-  return <View style={styles.state}><ActivityIndicator color={palette.gold} /><Text style={styles.text}>{t('loading')}</Text></View>;
+  return <View style={styles.state}><ActivityIndicator color={palette.brandRedLight} /><Text style={styles.text}>{t('loading')}</Text></View>;
 }
 
 export function EmptyState() {

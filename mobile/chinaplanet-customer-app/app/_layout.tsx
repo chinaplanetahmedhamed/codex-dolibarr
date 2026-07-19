@@ -25,7 +25,7 @@ function AppNavigator() {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      primary: palette.gold,
+      primary: palette.brandRed,
       background: palette.background,
       card: palette.navy,
       text: palette.text,
@@ -34,7 +34,7 @@ function AppNavigator() {
   };
 
   if ((!fontsLoaded && !fontError) || status === 'booting') {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.navy }}><ActivityIndicator color={palette.gold} /></View>;
+    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.navy }}><ActivityIndicator color={palette.brandRed} /></View>;
   }
 
   return (

@@ -10,7 +10,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: palette.gold,
+        tabBarActiveTintColor: palette.brandRed,
         tabBarInactiveTintColor: '#728995',
         tabBarStyle: {
           height: 72,
