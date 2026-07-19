@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppScreen, BrandHeader, Hero, SectionHeader } from '@/src/components';
 import { useAuth } from '@/src/auth/AuthProvider';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { contentAlignment, leadingRowDirection, textAlignment } from '@/src/i18n/layout';
 import { palette, radii, shadows } from '@/src/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -16,7 +17,9 @@ export default function MoreScreen() {
 }
 
 function Item({ icon, ar, en, onPress }: { icon: IconName; ar: string; en: string; onPress: () => void }) {
-  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.item, pressed && { opacity: 0.7 }]}><Ionicons name="chevron-back" size={18} color={palette.muted} /><View style={styles.copy}><Text style={styles.ar}>{ar}</Text><Text style={styles.en}>{en}</Text></View><View style={styles.icon}><Ionicons name={icon} size={20} color={palette.blue} /></View></Pressable>;
+  const { isRtl } = useI18n();
+  const align = textAlignment(isRtl);
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.item, { flexDirection: leadingRowDirection(isRtl) }, pressed && { opacity: 0.7 }]}><View style={styles.icon}><Ionicons name={icon} size={20} color={palette.blue} /></View><View style={[styles.copy, { alignItems: contentAlignment(isRtl) }]}><Text style={[styles.ar, { textAlign: align }]}>{ar}</Text><Text style={[styles.en, { textAlign: align }]}>{en}</Text></View><Ionicons name={isRtl ? 'chevron-back' : 'chevron-forward'} size={18} color={palette.muted} /></Pressable>;
 }
 
-const styles = StyleSheet.create({ menu: { backgroundColor: palette.surface, borderRadius: radii.medium, borderWidth: 1, borderColor: palette.border, overflow: 'hidden', ...shadows.card }, item: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#EAF0F3' }, copy: { flex: 1, alignItems: 'flex-end' }, ar: { color: palette.navy, fontSize: 13, fontWeight: '900' }, en: { color: palette.muted, fontSize: 10, marginTop: 2 }, icon: { width: 40, height: 40, borderRadius: 12, backgroundColor: palette.surfaceAlt, alignItems: 'center', justifyContent: 'center' }, logout: { minHeight: 51, borderRadius: 14, borderWidth: 1, borderColor: '#F2C8C6', backgroundColor: palette.redSoft, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }, logoutText: { color: palette.red, fontSize: 12, fontWeight: '900' }, version: { color: palette.muted, fontSize: 9, textAlign: 'center' } });
+const styles = StyleSheet.create({ menu: { backgroundColor: palette.surface, borderRadius: radii.medium, borderWidth: 1, borderColor: palette.border, overflow: 'hidden', ...shadows.card }, item: { minHeight: 68, alignItems: 'center', gap: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#EAF0F3' }, copy: { flex: 1 }, ar: { color: palette.navy, fontSize: 13, fontWeight: '900' }, en: { color: palette.muted, fontSize: 10, marginTop: 2 }, icon: { width: 40, height: 40, borderRadius: 12, backgroundColor: palette.surfaceAlt, alignItems: 'center', justifyContent: 'center' }, logout: { minHeight: 51, borderRadius: 14, borderWidth: 1, borderColor: '#F2C8C6', backgroundColor: palette.redSoft, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }, logoutText: { color: palette.red, fontSize: 12, fontWeight: '900' }, version: { color: palette.muted, fontSize: 9, textAlign: 'center' } });

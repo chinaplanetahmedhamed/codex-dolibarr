@@ -96,9 +96,19 @@ if (is_string($documentRoot) && $documentRoot !== '') {
 		$fieldCodes = array_map(function ($item) { return $item['code']; }, $report['data']['fields']);
 		m017_data_assert(!in_array('factory_name', $fieldCodes, true), 'Forbidden factory identity is removed from report fields');
 		m017_data_assert(in_array('inspection_result', $fieldCodes, true), 'Allowed quality result remains customer-visible');
+		if (in_array('shipping_line', $fieldCodes, true)) {
+			$shippingField = $report['data']['fields'][array_search('shipping_line', $fieldCodes, true)];
+			$reportId = cpcc_mobile_resolve_public_id($db, 'report', $contexts['A'], $report['data']['id']);
+			$ownedShipment = $db->query("SELECT o.fk_shipment FROM ".MAIN_DB_PREFIX."cpo_operation o INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=o.fk_shipment AND s.entity=o.entity AND s.fk_soc=o.fk_soc WHERE o.rowid=".(int) $reportId." AND o.entity=".(int) $contexts['A']['entity']." AND o.fk_soc=".(int) $contexts['A']['socid']." LIMIT 1");
+			$ownedShipmentRow = $ownedShipment ? $db->fetch_object($ownedShipment) : null;
+			m017_data_assert($ownedShipmentRow && cpcc_mobile_report_shipping_line_visible($db, $contexts['A'], $ownedShipmentRow->fk_shipment, $shippingField['value']), 'Report shipping line is verified against the owned shipment');
+		}
 		$contractCases['MeEnvelope'] = cpcc_mobile_envelope(cpcc_mobile_me_data($db, $contexts['A']));
 		$contractCases['DashboardEnvelope'] = cpcc_mobile_dashboard($db, $contexts['A']);
 		$projectDetail = cpcc_mobile_project_detail($db, $contexts['A'], $projectsA['data'][0]['id']); $contractCases['ProjectDetailEnvelope'] = $projectDetail;
+		$documentIds = array_map(function ($document) { return $document['id']; }, $documentsA['data']);
+		m017_data_assert(!array_diff($projectDetail['data']['document_ids'], $documentIds), 'Project document IDs resolve to the same customer-visible document resources');
+		m017_data_assert(count($projectDetail['data']['balances']) <= count($balances['data']), 'Project detail never substitutes the complete customer balance list');
 		$contractCases['OrderListEnvelope'] = cpcc_mobile_orders($db, $contexts['A'], 25, '', '');
 		$contractCases['TransactionListEnvelope'] = cpcc_mobile_transactions($db, $contexts['A'], 25, '', '');
 		$contractCases['InvoiceListEnvelope'] = cpcc_mobile_service_invoices($db, $contexts['A'], 25, '', '');

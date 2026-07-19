@@ -15,12 +15,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TimelineStep } from '@/src/api/types';
 import { useI18n } from '@/src/i18n/I18nProvider';
+import { contentAlignment, leadingRowDirection, textAlignment } from '@/src/i18n/layout';
 import { palette, radii, shadows } from '@/src/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
 export function AppScreen({ children, contentStyle, refreshing = false, onRefresh }: PropsWithChildren<{ contentStyle?: StyleProp<ViewStyle>; refreshing?: boolean; onRefresh?: () => void }>) {
   const network = useNetInfo();
+  const { isRtl } = useI18n();
   const offline = network.isConnected === false || network.isInternetReachable === false;
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -28,7 +30,7 @@ export function AppScreen({ children, contentStyle, refreshing = false, onRefres
         contentContainerStyle={[styles.screen, contentStyle]}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.gold} /> : undefined}
         showsVerticalScrollIndicator={false}>
-        {offline && <View style={styles.offlineBanner}><Ionicons name="cloud-offline-outline" size={18} color="#795000" /><Text style={styles.offlineText}>وضع عدم الاتصال · عرض آخر بيانات محفوظة / Offline · last known data</Text></View>}
+        {offline && <View style={[styles.offlineBanner, { flexDirection: leadingRowDirection(isRtl) }]}><Ionicons name="cloud-offline-outline" size={18} color="#795000" /><Text style={styles.offlineText}>وضع عدم الاتصال · عرض آخر بيانات محفوظة / Offline · last known data</Text></View>}
         {children}
       </ScrollView>
     </SafeAreaView>
@@ -36,14 +38,16 @@ export function AppScreen({ children, contentStyle, refreshing = false, onRefres
 }
 
 export function BrandHeader({ titleAr, titleEn }: { titleAr?: string; titleEn?: string }) {
+  const { isRtl } = useI18n();
+  const align = textAlignment(isRtl);
   return (
-    <View style={styles.brandHeader}>
-      <View style={styles.brandCopy}>
-        <Text style={styles.brandNameAr}>{titleAr ?? 'مركز العميل'}</Text>
-        <Text style={styles.brandNameEn}>{titleEn ?? 'Customer Center'}</Text>
-      </View>
+    <View style={[styles.brandHeader, { flexDirection: leadingRowDirection(isRtl) }]}>
       <View style={styles.brandMark}>
         <Text style={styles.brandMarkText}>V</Text>
+      </View>
+      <View style={[styles.brandCopy, { alignItems: contentAlignment(isRtl) }]}>
+        <Text style={[styles.brandNameAr, { textAlign: align }]}>{titleAr ?? 'مركز العميل'}</Text>
+        <Text style={[styles.brandNameEn, { textAlign: align }]}>{titleEn ?? 'Customer Center'}</Text>
       </View>
     </View>
   );
@@ -64,11 +68,13 @@ export function Hero({ eyebrow, title, subtitle, icon = 'sparkles' }: { eyebrow:
 }
 
 export function SectionHeader({ ar, en, action }: { ar: string; en: string; action?: ReactNode }) {
+  const { isRtl } = useI18n();
+  const align = textAlignment(isRtl);
   return (
-    <View style={styles.sectionHeader}>
-      <View>
-        <Text style={styles.sectionAr}>{ar}</Text>
-        <Text style={styles.sectionEn}>{en}</Text>
+    <View style={[styles.sectionHeader, { flexDirection: leadingRowDirection(isRtl) }]}>
+      <View style={{ alignItems: contentAlignment(isRtl) }}>
+        <Text style={[styles.sectionAr, { textAlign: align }]}>{ar}</Text>
+        <Text style={[styles.sectionEn, { textAlign: align }]}>{en}</Text>
       </View>
       {action}
     </View>
@@ -76,13 +82,15 @@ export function SectionHeader({ ar, en, action }: { ar: string; en: string; acti
 }
 
 export function MetricCard({ icon, value, ar, en, tone = 'navy' }: { icon: IconName; value: string; ar: string; en: string; tone?: 'navy' | 'green' | 'gold' }) {
+  const { isRtl } = useI18n();
+  const align = textAlignment(isRtl);
   const toneStyle = tone === 'green' ? styles.metricGreen : tone === 'gold' ? styles.metricGold : styles.metricNavy;
   return (
     <View style={[styles.metric, toneStyle]}>
       <Ionicons name={icon} size={22} color={tone === 'gold' ? palette.navy : palette.white} />
-      <Text style={[styles.metricValue, tone === 'gold' && styles.metricDark]}>{value}</Text>
-      <Text style={[styles.metricAr, tone === 'gold' && styles.metricDark]}>{ar}</Text>
-      <Text style={[styles.metricEn, tone === 'gold' && styles.metricDark]}>{en}</Text>
+      <Text style={[styles.metricValue, tone === 'gold' && styles.metricDark, { textAlign: align }]}>{value}</Text>
+      <Text style={[styles.metricAr, tone === 'gold' && styles.metricDark, { textAlign: align }]}>{ar}</Text>
+      <Text style={[styles.metricEn, tone === 'gold' && styles.metricDark, { textAlign: align }]}>{en}</Text>
     </View>
   );
 }
@@ -110,12 +118,14 @@ export function ProgressBar({ value }: { value: number }) {
 }
 
 export function InfoRow({ icon, ar, en, value }: { icon: IconName; ar: string; en: string; value: string }) {
+  const { isRtl } = useI18n();
+  const align = textAlignment(isRtl);
   return (
-    <View style={styles.infoRow}>
+    <View style={[styles.infoRow, { flexDirection: leadingRowDirection(isRtl) }]}>
       <View style={styles.infoIcon}><Ionicons name={icon} size={19} color={palette.blue} /></View>
-      <View style={styles.infoCopy}>
-        <Text style={styles.infoLabel}>{ar} / {en}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
+      <View style={[styles.infoCopy, { alignItems: contentAlignment(isRtl) }]}>
+        <Text style={[styles.infoLabel, { textAlign: align }]}>{ar} / {en}</Text>
+        <Text style={[styles.infoValue, { textAlign: align }]}>{value}</Text>
       </View>
     </View>
   );
@@ -131,6 +141,8 @@ export function ActionButton({ label, icon = 'arrow-back', onPress, secondary = 
 }
 
 export function ShipmentTimeline({ steps }: { steps: TimelineStep[] }) {
+  const { isRtl, label } = useI18n();
+  const align = textAlignment(isRtl);
   return (
     <View style={styles.timeline}>
       {steps.map((step, index) => {
@@ -138,7 +150,7 @@ export function ShipmentTimeline({ steps }: { steps: TimelineStep[] }) {
         const isCurrent = step.state === 'current';
         const color = isDone ? palette.green : isCurrent ? palette.gold : '#B8C7CE';
         return (
-          <View key={`${step.code}-${index}`} style={styles.timelineRow}>
+          <View key={`${step.code}-${index}`} style={[styles.timelineRow, { flexDirection: leadingRowDirection(isRtl) }]}>
             <View style={styles.timelineRail}>
               <View style={[styles.timelineDot, { backgroundColor: color }, isCurrent && styles.timelineCurrent]}>
                 <Ionicons name={isDone ? 'checkmark' : isCurrent ? 'time' : 'ellipse-outline'} size={16} color={isCurrent ? palette.navy : palette.white} />
@@ -146,11 +158,16 @@ export function ShipmentTimeline({ steps }: { steps: TimelineStep[] }) {
               {index < steps.length - 1 && <View style={[styles.timelineLine, { backgroundColor: isDone ? palette.green : palette.border }]} />}
             </View>
             <View style={[styles.timelineCard, isCurrent && styles.timelineCardCurrent]}>
-              <View style={styles.timelineTitles}>
-                <Text style={styles.timelineAr}>{step.label.ar}</Text>
-                <Text style={styles.timelineEn}>{step.label.en}</Text>
+              <View style={[styles.timelineTitles, { alignItems: contentAlignment(isRtl) }]}>
+                <Text style={[styles.timelineAr, { textAlign: align }]}>{step.label.ar}</Text>
+                <Text style={[styles.timelineEn, { textAlign: align }]}>{step.label.en}</Text>
+                <Text style={[styles.timelineState, { textAlign: align }]}>{label(step.state_label)}</Text>
+                {step.location && <Text style={[styles.timelineMeta, { textAlign: align }]}>{step.location}</Text>}
+                {step.source && <Text style={[styles.timelineMeta, { textAlign: align }]}>{label(step.source)}</Text>}
+                {step.public_note && <Text style={[styles.timelineNote, { textAlign: align }]}>{step.public_note}</Text>}
+                {step.public_reason && <Text style={[styles.timelineReason, { textAlign: align }]}>{step.public_reason}</Text>}
               </View>
-              {step.occurred_at && <Text style={styles.timelineDate}>{new Date(step.occurred_at).toLocaleDateString()}</Text>}
+              {step.occurred_at && <Text style={[styles.timelineDate, { textAlign: align }]}>{new Date(step.occurred_at).toLocaleString()}</Text>}
             </View>
           </View>
         );
@@ -162,54 +179,58 @@ export function ShipmentTimeline({ steps }: { steps: TimelineStep[] }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: palette.background },
   screen: { paddingHorizontal: 18, paddingBottom: 36, gap: 18 },
-  brandHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingVertical: 8, gap: 11 },
-  brandCopy: { alignItems: 'flex-end' },
-  brandNameAr: { color: palette.navy, fontSize: 17, fontWeight: '900', textAlign: 'right' },
+  brandHeader: { alignItems: 'center', paddingVertical: 8, gap: 11 },
+  brandCopy: {},
+  brandNameAr: { color: palette.navy, fontSize: 17, fontWeight: '900' },
   brandNameEn: { color: palette.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.6 },
   brandMark: { width: 44, height: 44, borderRadius: 13, backgroundColor: palette.cyan, alignItems: 'center', justifyContent: 'center' },
   brandMarkText: { color: palette.white, fontWeight: '900', fontSize: 23 },
   hero: { position: 'relative', overflow: 'hidden', backgroundColor: palette.navy, borderRadius: radii.large, padding: 22, minHeight: 185, justifyContent: 'flex-end', ...shadows.card },
   heroOrb: { position: 'absolute', width: 170, height: 170, borderRadius: 90, borderWidth: 2, borderColor: '#FFFFFF16', right: -55, top: -45 },
-  heroEyebrow: { color: palette.gold, fontSize: 11, fontWeight: '900', letterSpacing: 1.8, textTransform: 'uppercase', marginTop: 18, textAlign: 'right' },
-  heroTitle: { color: palette.white, fontSize: 29, fontWeight: '900', textAlign: 'right', marginTop: 4 },
-  heroSubtitle: { color: '#C9DDE6', fontSize: 13, fontWeight: '600', textAlign: 'right', lineHeight: 21, marginTop: 7 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
-  sectionAr: { color: palette.navy, fontSize: 19, fontWeight: '900', textAlign: 'right' },
+  heroEyebrow: { color: palette.gold, fontSize: 11, fontWeight: '900', letterSpacing: 1.8, textTransform: 'uppercase', marginTop: 18 },
+  heroTitle: { color: palette.white, fontSize: 29, fontWeight: '900', marginTop: 4 },
+  heroSubtitle: { color: '#C9DDE6', fontSize: 13, fontWeight: '600', lineHeight: 21, marginTop: 7 },
+  sectionHeader: { justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
+  sectionAr: { color: palette.navy, fontSize: 19, fontWeight: '900' },
   sectionEn: { color: palette.muted, fontSize: 12, fontWeight: '700', marginTop: 2 },
   metric: { flex: 1, minWidth: 145, borderRadius: radii.medium, padding: 16, gap: 4, ...shadows.card },
   metricNavy: { backgroundColor: palette.navySoft },
   metricGreen: { backgroundColor: palette.green },
   metricGold: { backgroundColor: palette.gold },
   metricValue: { color: palette.white, fontSize: 28, fontWeight: '900', marginTop: 8 },
-  metricAr: { color: palette.white, fontSize: 13, fontWeight: '900', textAlign: 'right' },
+  metricAr: { color: palette.white, fontSize: 13, fontWeight: '900' },
   metricEn: { color: '#FFFFFFCC', fontSize: 11, fontWeight: '600' },
   metricDark: { color: palette.navy },
   pill: { alignSelf: 'flex-start', borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 6 },
   pillText: { fontSize: 11, fontWeight: '900' },
   progressTrack: { width: '100%', height: 8, borderRadius: radii.pill, backgroundColor: '#E5EDF1', overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radii.pill, backgroundColor: palette.gold },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EAF0F3' },
+  infoRow: { alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EAF0F3' },
   infoIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: palette.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  infoCopy: { flex: 1, alignItems: 'flex-end' },
-  infoLabel: { color: palette.muted, fontSize: 11, fontWeight: '700', textAlign: 'right' },
-  infoValue: { color: palette.text, fontSize: 14, fontWeight: '800', textAlign: 'right', marginTop: 3 },
+  infoCopy: { flex: 1 },
+  infoLabel: { color: palette.muted, fontSize: 11, fontWeight: '700' },
+  infoValue: { color: palette.text, fontSize: 14, fontWeight: '800', marginTop: 3 },
   actionButton: { minHeight: 48, borderRadius: 13, backgroundColor: palette.navy, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   actionSecondary: { backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.navy },
   actionText: { color: palette.white, fontSize: 13, fontWeight: '900' },
   actionSecondaryText: { color: palette.navy },
   pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
   timeline: { gap: 0 },
-  timelineRow: { minHeight: 82, flexDirection: 'row', alignItems: 'stretch' },
+  timelineRow: { minHeight: 82, alignItems: 'stretch' },
   timelineRail: { width: 42, alignItems: 'center' },
   timelineDot: { width: 34, height: 34, borderRadius: 18, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   timelineCurrent: { borderWidth: 4, borderColor: palette.goldSoft },
   timelineLine: { position: 'absolute', top: 34, bottom: -2, width: 3 },
-  timelineCard: { flex: 1, minHeight: 62, marginBottom: 12, borderRadius: 13, backgroundColor: palette.surface, padding: 13, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: palette.border },
+  timelineCard: { flex: 1, minHeight: 62, marginBottom: 12, borderRadius: 13, backgroundColor: palette.surface, padding: 13, gap: 7, borderWidth: 1, borderColor: palette.border },
   timelineCardCurrent: { backgroundColor: '#FFF9E9', borderColor: palette.gold },
-  timelineTitles: { flex: 1, alignItems: 'flex-end' },
-  timelineAr: { color: palette.navy, fontSize: 14, fontWeight: '900', textAlign: 'right' },
+  timelineTitles: { flex: 1 },
+  timelineAr: { color: palette.navy, fontSize: 14, fontWeight: '900' },
   timelineEn: { color: palette.muted, fontSize: 11, fontWeight: '700', marginTop: 2 },
-  timelineDate: { color: palette.blue, fontSize: 11, fontWeight: '800', marginRight: 8 },
-  offlineBanner: { minHeight: 46, borderRadius: 12, backgroundColor: palette.orangeSoft, borderWidth: 1, borderColor: palette.gold, paddingHorizontal: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  timelineState: { color: palette.blue, fontSize: 10, fontWeight: '900', marginTop: 5 },
+  timelineMeta: { color: palette.muted, fontSize: 10, fontWeight: '700', marginTop: 3 },
+  timelineNote: { color: palette.text, fontSize: 11, lineHeight: 17, marginTop: 5 },
+  timelineReason: { color: '#8A5A00', fontSize: 10, lineHeight: 16, marginTop: 3 },
+  timelineDate: { color: palette.blue, fontSize: 10, fontWeight: '800' },
+  offlineBanner: { minHeight: 46, borderRadius: 12, backgroundColor: palette.orangeSoft, borderWidth: 1, borderColor: palette.gold, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', gap: 8 },
   offlineText: { color: '#795000', fontSize: 10, fontWeight: '900', textAlign: 'center' },
 });

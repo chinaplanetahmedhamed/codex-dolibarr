@@ -33,6 +33,13 @@ class CpccMobileApiCompose extends \Luracast\Restler\Compose
 
 \Luracast\Restler\Defaults::$composeClass = 'CpccMobileApiCompose';
 
+// The Dolibarr API bootstrap exposes its Restler instance as $api while this
+// class file is included. Register the debug-mode credential gate before the
+// request is handled; direct library/unit includes intentionally skip it.
+if (isset($api) && is_object($api) && isset($api->r)) {
+	cpcc_mobile_register_debug_auth_gate($api->r);
+}
+
 /**
  * Customer-only mobile projection authenticated by extension Bearer tokens.
  *

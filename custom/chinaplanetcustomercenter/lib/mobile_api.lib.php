@@ -131,6 +131,13 @@ function cpcc_mobile_currency($value, $fallback = 'USD')
 	return preg_match('/^[A-Z]{3}$/', $value) ? $value : (string) $fallback;
 }
 
+function cpcc_mobile_base_currency()
+{
+	global $conf;
+	$currency = isset($conf->currency) ? (string) $conf->currency : '';
+	return cpcc_mobile_currency($currency, 'USD');
+}
+
 function cpcc_mobile_money($amount, $currency)
 {
 	return array('amount' => cpcc_mobile_decimal($amount), 'currency' => cpcc_mobile_currency($currency));
@@ -165,7 +172,7 @@ function cpcc_mobile_reject_overrides($body = array())
 {
 	$forbidden = array('entity', 'socid', 'fk_soc', 'dolapientity', 'dolapikey', 'api_key', 'token', 'role', 'permission', 'permissions');
 	$headers = cpcc_mobile_request_headers();
-	foreach (array('dolapientity', 'dolapikey', 'api-key', 'x-dolapikey') as $name) {
+	foreach (array('dolapientity', 'dolapikey', 'api-key', 'api_key', 'x-dolapikey') as $name) {
 		if (isset($headers[$name]) && trim($headers[$name]) !== '') cpcc_mobile_throw(403, 'forbidden');
 	}
 	foreach ((array) $_GET as $key => $value) {
@@ -174,6 +181,24 @@ function cpcc_mobile_reject_overrides($body = array())
 	foreach ((array) $body as $key => $value) {
 		if (in_array(strtolower((string) $key), $forbidden, true)) cpcc_mobile_throw(403, 'forbidden');
 	}
+}
+
+/**
+ * Stop credential-bearing routes before Restler's onCall debug logger runs.
+ * The route event is dispatched after the request is decoded but before the
+ * API method is selected and before any onCall callback can log its payload.
+ */
+function cpcc_mobile_register_debug_auth_gate($restler)
+{
+	// Restler exposes onRoute through __call(), so method_exists() is false even
+	// though registering the event is supported.
+	if (!cpcc_mobile_debug_logging_enabled() || !is_object($restler)) return;
+	$restler->onRoute(function () use ($restler) {
+		$path = isset($restler->url) ? trim((string) $restler->url, '/') : '';
+		if (preg_match('#(?:^|/)chinaplanetcustomercenter/mobile/v1/auth/(?:login|refresh)$#', $path)) {
+			cpcc_mobile_throw(503, 'server_error');
+		}
+	});
 }
 
 function cpcc_mobile_request_json($allowed, $required)

@@ -18,6 +18,9 @@ m017_security_assert(strpos((string) $data, 'customer_visible=1') !== false && s
 m017_security_assert(strpos((string) $data, 'realpath') !== false && strpos((string) $data, 'Cache-Control: private, no-store') !== false, 'File streams are path-confined and non-cacheable');
 m017_security_assert(strpos((string) $data, 'shipper_name') === false && strpos((string) $data, 'note_private') === false && strpos((string) $data, 'bank_label') === false, 'Read models do not select supplier/private/bank metadata');
 m017_security_assert(strpos((string) $route, 'MAIN_API_DEBUG') === false || strpos((string) $route, 'cpcc_mobile_debug_logging_enabled') !== false, 'Credential routes fail closed in API debug mode');
+m017_security_assert(strpos((string) $route, 'cpcc_mobile_register_debug_auth_gate') !== false && strpos((string) $protocol, "->onRoute") !== false, 'Credential routes are stopped before the core onCall debug logger');
+m017_security_assert(strpos((string) $protocol, "method_exists(\$restler, 'onRoute')") === false, 'Restler magic event registration is not incorrectly blocked by method_exists');
+m017_security_assert(strpos((string) $protocol, "'api_key'") !== false, 'API-key header alias is rejected');
 
 $documentRoot = getenv('M017_DOL_DOCUMENT_ROOT');
 $credentialFile = getenv('M017_CREDENTIAL_FILE');
