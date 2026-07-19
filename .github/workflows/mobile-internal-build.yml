@@ -39,6 +39,7 @@ jobs:
     steps:
       - name: Require exact branch and confirmation
         shell: bash
+        working-directory: .
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
