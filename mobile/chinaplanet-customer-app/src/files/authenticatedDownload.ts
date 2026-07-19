@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 
 import { MobileApiClient, mobileApiClient } from '@/src/api/client';
 import { environment } from '@/src/config/environment';
@@ -8,6 +9,11 @@ import { customerCache } from '@/src/storage/customerCache';
 export type DownloadTarget =
   | { kind: 'document'; id: string }
   | { kind: 'report-document'; reportId: string; documentId: string };
+
+type DownloadAuthClient = {
+  getAccessToken: () => Promise<string>;
+  request: (path: string) => Promise<unknown>;
+};
 
 export function safeDownloadName(name: string) {
   const cleaned = name.replace(/[\\/:*?"<>|\r\n]/g, '_').replace(/^\.+/, '').slice(0, 180);
@@ -24,6 +30,7 @@ export async function downloadAndShare(
   filename: string,
   client: MobileApiClient = mobileApiClient,
 ) {
+  if (Platform.OS === 'web') return downloadForWeb(target, filename, client);
   await customerCache.ensureDirectory();
   const destination = `${customerCache.directory}${Date.now()}-${safeDownloadName(filename)}`;
   let result = await performDownload(target, destination, await client.getAccessToken());
@@ -39,6 +46,45 @@ export async function downloadAndShare(
   if (!(await Sharing.isAvailableAsync())) return result.uri;
   await Sharing.shareAsync(result.uri, { dialogTitle: filename });
   return result.uri;
+}
+
+export async function fetchAuthenticatedDownload(
+  target: DownloadTarget,
+  client: DownloadAuthClient = mobileApiClient,
+  fetcher: typeof fetch = fetch,
+) {
+  const request = (accessToken: string) => fetcher(
+    `${environment.apiBaseUrl}${targetPath(target)}`,
+    {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: '*/*' },
+      cache: 'no-store',
+      credentials: 'omit',
+    },
+  );
+  let response = await request(await client.getAccessToken());
+  if (response.status === 401) {
+    await client.request('/me');
+    response = await request(await client.getAccessToken());
+  }
+  return response;
+}
+
+async function downloadForWeb(target: DownloadTarget, filename: string, client: MobileApiClient) {
+  const response = await fetchAuthenticatedDownload(target, client);
+  if (response.status !== 200 && response.status !== 206) throw new Error(`download_failed_${response.status}`);
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = safeDownloadName(filename);
+  anchor.rel = 'noopener';
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  return objectUrl;
 }
 
 function performDownload(target: DownloadTarget, destination: string, accessToken: string) {
