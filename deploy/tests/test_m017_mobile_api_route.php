@@ -46,6 +46,10 @@ if (is_string($apiBase) && $apiBase !== '' && is_string($credentialFile) && is_f
 	m017_route_assert(is_array($credentials) && count($credentials) >= 2, 'Synthetic HTTP credentials are available');
 	if (is_array($credentials) && count($credentials) >= 2) {
 		$documentRoot = getenv('M017_DOL_DOCUMENT_ROOT');
+		if (!is_string($documentRoot) || !is_file(rtrim($documentRoot, '/').'/master.inc.php')) {
+			fwrite(STDERR, "M017_ROUTE=FAIL\n- HTTP integration requires a valid M017_DOL_DOCUMENT_ROOT\n");
+			exit(1);
+		}
 		if (is_string($documentRoot) && is_file(rtrim($documentRoot, '/').'/master.inc.php')) {
 			if (!defined('CPCC_MOBILE_TESTING')) define('CPCC_MOBILE_TESTING', true); putenv('CPCC_MOBILE_TEST_PEPPER=m017-local-test-pepper-0123456789abcdef');
 			if (!defined('NOLOGIN')) define('NOLOGIN', 1); if (!defined('NOREQUIREMENU')) define('NOREQUIREMENU', 1); if (!defined('NOREQUIREHTML')) define('NOREQUIREHTML', 1); if (!defined('NOREQUIREAJAX')) define('NOREQUIREAJAX', 1); if (!defined('NOCSRFCHECK')) define('NOCSRFCHECK', 1);
