@@ -1,0 +1,5 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m026-c01-hero-contrast-deploy preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m026-c01-hero-contrast-deploy apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m026-c01-hero-contrast-deploy verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m026-c01-hero-contrast-deploy rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m026-c01-hero-contrast-deploy status
