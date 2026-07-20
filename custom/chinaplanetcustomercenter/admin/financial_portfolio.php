@@ -173,7 +173,7 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
 <section class="cpad-panel">
   <div class="cpad-title"><span>Finance Totals by Currency / إجمالي التمويل حسب العملة</span><small>Aggregated without mixing currencies / تمثيل بكل عملة</small></div>
   <div class="cpad-table-scroll">
-    <table class="cpad-table">
+    <table class="cpad-table cpad-responsive-table cpad-finance-totals-table">
       <thead>
         <tr>
           <th>Currency / العملة</th>
@@ -187,12 +187,12 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
       <tbody>
       <?php foreach ($portfolioSummary as $currency => $totals) { ?>
         <tr>
-          <td><b><?php echo dol_escape_htmltag($currency); ?></b></td>
-          <td><?php echo cpcc_portal_money($totals['available']); ?></td>
-          <td><?php echo cpcc_portal_money($totals['obligations']); ?></td>
-          <td><?php echo cpcc_portal_money($totals['unpaid_invoices']); ?></td>
-          <td><?php echo cpcc_portal_money(isset($portfolioOverdueByCurrency[$currency]) ? $portfolioOverdueByCurrency[$currency] : 0); ?></td>
-          <td><?php echo cpcc_portal_money($totals['required_funding']); ?></td>
+          <td data-label="Currency / العملة"><span class="cpad-cell-value"><b><?php echo dol_escape_htmltag($currency); ?></b></span></td>
+          <td data-label="Available / متاح"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['available']); ?></span></td>
+          <td data-label="Obligations / إجمالي الالتزامات"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['obligations']); ?></span></td>
+          <td data-label="Unpaid Invoices / الفواتير غير المدفوعة"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['unpaid_invoices']); ?></span></td>
+          <td data-label="Overdue Invoices / الفواتير المتأخرة"><span class="cpad-cell-value"><?php echo cpcc_portal_money(isset($portfolioOverdueByCurrency[$currency]) ? $portfolioOverdueByCurrency[$currency] : 0); ?></span></td>
+          <td data-label="Required Funding / التمويل المطلوب"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['required_funding']); ?></span></td>
         </tr>
       <?php } ?>
       </tbody>
@@ -206,7 +206,7 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
 <section class="cpad-panel">
   <div class="cpad-title"><span>Customer Finance Matrix / مصفوفة تمويل العملاء</span><small>Link customer name for Customer Statement / اسم العميل يفتح كشف الحساب</small></div>
   <div class="cpad-table-scroll">
-    <table class="cpad-table">
+    <table class="cpad-table cpad-responsive-table cpad-customer-finance-table">
       <thead>
         <tr>
           <th>Customer / العميل</th>
@@ -221,7 +221,7 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
       </thead>
       <tbody>
       <?php if (empty($customers)) { ?>
-        <tr>
+        <tr class="cpad-empty-row">
           <td colspan="8">No customers found / لا يوجد عملاء.</td>
         </tr>
       <?php } else { foreach ($customers as $row) {
@@ -231,23 +231,23 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
         $lateInvoiceUrl = dol_buildpath('/compta/facture/list.php',1).'?search_status=1&search_socid='.(int)$row['id'].'&search_datelimit_end='.urlencode($row['as_of']);
       ?>
         <tr>
-          <td><a href="<?php echo $balanceUrl; ?>"><?php echo $name; ?> <small>(<?php echo (int)$row['id']; ?>)</small></a></td>
-          <td><b><?php echo cpcc_portal_money($row['usd_total']); ?></b></td>
-          <td><?php echo cpad_portfolio_currency_text($row['summary'], 'available'); ?></td>
-          <td><?php echo cpcc_portal_money($row['obligations']); ?></td>
-          <td><?php echo cpad_portfolio_currency_text($row['summary'], 'unpaid_invoices'); ?></td>
-          <td>
+          <td data-label="Customer / العميل"><span class="cpad-cell-value"><a href="<?php echo $balanceUrl; ?>"><?php echo $name; ?> <small>(<?php echo (int)$row['id']; ?>)</small></a></span></td>
+          <td data-label="Available (USD) / متاح (USD)"><span class="cpad-cell-value"><b><?php echo cpcc_portal_money($row['usd_total']); ?></b></span></td>
+          <td data-label="Available by Currency / متاح حسب العملة"><span class="cpad-cell-value"><?php echo cpad_portfolio_currency_text($row['summary'], 'available'); ?></span></td>
+          <td data-label="Obligations / الالتزامات"><span class="cpad-cell-value"><?php echo cpcc_portal_money($row['obligations']); ?></span></td>
+          <td data-label="Unpaid / غير مدفوع"><span class="cpad-cell-value"><?php echo cpad_portfolio_currency_text($row['summary'], 'unpaid_invoices'); ?></span></td>
+          <td data-label="Overdue / متأخر"><span class="cpad-cell-value">
             <a href="<?php echo $lateInvoiceUrl; ?>"><b><?php echo (int) $row['overdue_count']; ?></b></a>
             <?php if ($row['overdue_count'] > 0) { echo ' · '.cpad_portfolio_currency_text($row['overdue_by_currency'], 'amount'); } ?>
+          </span></td>
+          <td data-label="Required Funding / التمويل المطلوب" class="<?php echo $row['required_funding'] > 0 ? 'warn' : ''; ?>">
+            <span class="cpad-cell-value"><b><?php echo cpcc_portal_money($row['required_funding']); ?></b></span>
           </td>
-          <td class="<?php echo $row['required_funding'] > 0 ? 'warn' : ''; ?>">
-            <b><?php echo cpcc_portal_money($row['required_funding']); ?></b>
-          </td>
-          <td>
+          <td data-label="Action / إجراء"><span class="cpad-cell-value cpad-cell-actions">
             <a href="<?php echo $financeUrl; ?>">Admin Entry / تسجيل مالي</a>
-            ·
+            <span aria-hidden="true">·</span>
             <a href="<?php echo $balanceUrl; ?>">Statement / كشف حساب</a>
-          </td>
+          </span></td>
         </tr>
       <?php }} ?>
       </tbody>
