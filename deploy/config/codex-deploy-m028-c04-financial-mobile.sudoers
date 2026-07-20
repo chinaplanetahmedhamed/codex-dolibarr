@@ -1,0 +1,12 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy live-compare
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy live-preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy live-apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy live-verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy live-rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy live-status
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy backup-compare
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy backup-preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy backup-apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy backup-verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy backup-rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m028-c04-financial-mobile-deploy backup-status
