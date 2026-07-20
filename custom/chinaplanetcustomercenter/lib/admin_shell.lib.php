@@ -22,7 +22,9 @@ if (!function_exists('cpcc_admin_shell_asset')) {
     function cpcc_admin_shell_asset($path)
     {
         $fullPath = DOL_DOCUMENT_ROOT.$path;
-        $version = is_file($fullPath) ? (string) filemtime($fullPath) : '1';
+        // Version shared assets by their contents so deployments that preserve
+        // file timestamps cannot leave every admin page on stale cached CSS.
+        $version = is_file($fullPath) ? substr((string) hash_file('sha256', $fullPath), 0, 16) : '1';
         return $path.'?v='.rawurlencode($version);
     }
 }
