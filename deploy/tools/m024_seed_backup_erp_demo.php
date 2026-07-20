@@ -133,6 +133,22 @@ function m024DemoPublish($context, $shipment, $name, $bytes)
     if (empty($result['ok'])) m024DemoFail('PUBLISH_'.$name);
     return $result;
 }
+function m024DemoCustomerUpload($context, $shipment, $name, $bytes, $note)
+{
+    global $db;
+    $relativePath = m024DemoWriteFile($shipment, $name, $bytes);
+    $result = cpcc_portal_publish_customer_upload($db, $shipment, $context['customer'], $relativePath, $note);
+    if (empty($result['ok'])) m024DemoFail('CUSTOMER_UPLOAD_'.$name);
+    return $result;
+}
+function m024DemoCustomerUploadStatus($context, $shipment, $publicationId, array $statuses)
+{
+    global $db;
+    foreach ($statuses as $status) {
+        $result = cpcc_portal_staff_customer_upload_status($db, $shipment, $context['staff'], (int)$publicationId, $status, 'Synthetic customer upload workflow: '.$status);
+        if (empty($result['ok'])) m024DemoFail('CUSTOMER_UPLOAD_STATUS_'.$status);
+    }
+}
 function m024DemoItem($context, $shipment, $name)
 {
     global $db;
@@ -203,12 +219,19 @@ $pdf = "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF\n";
 $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
 m024DemoPublish($context, $pending, 'Packing-List-Pending.pdf', $pdf.'pending');
 m024DemoPublish($context, $pending, 'Container-Loading.png', $png);
+$customerWaiting = m024DemoCustomerUpload($context, $pending, 'Customer-Uploaded-Photo.png', $png, 'Customer photo remains a customer file, not gallery media.');
 m024DemoPublish($context, $amend, 'Bill-of-Lading-Amendment.pdf', $pdf.'amendment');
 m024DemoResponse($context, $amend, 'Bill-of-Lading-Amendment.pdf', 'amendment_requested', 'Please correct the consignee name before final issue.');
+$customerReceived = m024DemoCustomerUpload($context, $amend, 'Customer-Uploaded-Received.pdf', $pdf.'customer-received', 'Customer support file awaiting staff review.');
+m024DemoCustomerUploadStatus($context, $amend, (int)$customerReceived['id'], array('received'));
 m024DemoPublish($context, $confirmed, 'Commercial-Invoice-Confirmed.pdf', $pdf.'confirmed');
 m024DemoResponse($context, $confirmed, 'Commercial-Invoice-Confirmed.pdf', 'confirmed');
 m024DemoPublish($context, $confirmed, 'Container-Seal.png', $png);
+$customerHandling = m024DemoCustomerUpload($context, $confirmed, 'Customer-Uploaded-Handling.pdf', $pdf.'customer-handling', 'Customer file under staff handling.');
+m024DemoCustomerUploadStatus($context, $confirmed, (int)$customerHandling['id'], array('received','handling'));
 m024DemoPublish($context, $delivery, 'Original-Documents-Await-Receipt.pdf', $pdf.'delivery');
+$customerDone = m024DemoCustomerUpload($context, $delivery, 'Customer-Uploaded-Done.png', $png, 'Customer delivery evidence completed by staff.');
+m024DemoCustomerUploadStatus($context, $delivery, (int)$customerDone['id'], array('received','handling','done'));
 foreach (array('preparing','finished','government_uploaded','sent_dhl','in_transit','delivered') as $status) {
     $result = cpcc_portal_staff_original_document_status($db, $context['staff'], $delivery, $status, 'Synthetic original document timeline: '.$status);
     if (empty($result['ok'])) m024DemoFail('ORIGINAL_DOCUMENT_'.$status);
@@ -225,5 +248,5 @@ if (empty($result['ok'])) m024DemoFail('ORIGINAL_RECEIPT');
 m024DemoFinance($context, $projectId);
 $db->commit();
 $counts = m024DemoInspect($context);
-foreach (array('projects'=>1,'shipments'=>5,'documents'=>7,'orders'=>3,'invoices'=>3,'financial_entries'=>3) as $key=>$expected) if ((int)$counts[$key] !== $expected) m024DemoFail('POST_APPLY_COUNT_'.$key);
+foreach (array('projects'=>1,'shipments'=>5,'documents'=>11,'events'=>26,'orders'=>3,'invoices'=>3,'financial_entries'=>3) as $key=>$expected) if ((int)$counts[$key] !== $expected) m024DemoFail('POST_APPLY_COUNT_'.$key);
 echo "M024_DEMO_APPLY=PASS\n";
