@@ -2,8 +2,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 import { MobileApiClient, mobileApiClient } from '@/src/api/client';
-import { DownloadTarget, fetchAuthenticatedDownload, safeDownloadName, targetPath } from '@/src/files/authenticatedDownload';
 import { environment } from '@/src/config/environment';
+import { DownloadTarget, fetchAuthenticatedDownload, safeDownloadName, targetPath } from '@/src/files/authenticatedDownload';
 import { customerCache } from '@/src/storage/customerCache';
 
 export type AuthenticatedPreview = { uri: string; revoke: () => void };

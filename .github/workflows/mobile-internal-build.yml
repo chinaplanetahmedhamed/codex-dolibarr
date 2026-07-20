@@ -47,8 +47,8 @@ jobs:
           test "$GITHUB_REF" = 'refs/heads/mobile-develop'
           test "$CONFIRMATION" = 'BUILD_CHINAPLANET_MOBILE_INTERNAL'
           test -n "$EXPO_TOKEN"
-          test -n "$EAS_PROJECT_ID"
-          test -n "$EXPO_OWNER"
+          test "$EAS_PROJECT_ID" = 'a69d974c-5792-466c-80b2-bdded33cf0fb'
+          test "$EXPO_OWNER" = 'vision-trading'
 
       - name: Check out mobile-develop
         uses: actions/checkout@v4
@@ -74,9 +74,12 @@ jobs:
           set -Eeuo pipefail
           npm ci
           npx expo install --check
+          npx -y expo-doctor
           npm run typecheck
           npm run lint -- --max-warnings=0
           npm test
+          public_config="$(CHINAPLANET_APP_VARIANT=internal npx expo config --type public --json)"
+          node -e 'const c=JSON.parse(process.argv[1]); if(c.owner!=="vision-trading"||c.extra?.eas?.projectId!=="a69d974c-5792-466c-80b2-bdded33cf0fb"||c.android?.package!=="com.chinaplanet.customer.internal"||c.version!=="1.0.2"||c.runtimeVersion?.policy!=="appVersion"||c.updates?.enabled===false||c.updates?.url!=="https://u.expo.dev/a69d974c-5792-466c-80b2-bdded33cf0fb") process.exit(1)' "$public_config"
 
       - name: Dispatch internal EAS build
         env:

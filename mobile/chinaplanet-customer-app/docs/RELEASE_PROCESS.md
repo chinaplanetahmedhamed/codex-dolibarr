@@ -24,8 +24,8 @@ Create two protected GitHub Environments:
 `mobile-production` must require Ahmed or a company-authorized reviewer. Add these values to each environment only after the company-owned Expo project exists:
 
 - Secret `EXPO_TOKEN`: revocable least-privilege Expo robot/access token.
-- Variable `EAS_PROJECT_ID`: Expo project ID for `com.chinaplanet.customer`.
-- Variable `EXPO_OWNER`: company-controlled Expo account/organization.
+- Variable `EAS_PROJECT_ID`: expected public Expo project ID used as a workflow guard (`a69d974c-5792-466c-80b2-bdded33cf0fb`).
+- Variable `EXPO_OWNER`: expected company-controlled Expo organization used as a workflow guard (`vision-trading`).
 - Variable `MOBILE_STORE_ACCOUNTS_READY=true`: production environment only, after Google Play and Apple credentials are configured and reviewed.
 
 Store service-account JSON, Apple App Store Connect keys, Android upload/signing keys, certificates, and provisioning profiles must not be committed to GitHub. Configure them in the company-owned store and Expo/EAS credential systems.
@@ -40,11 +40,11 @@ Store service-account JSON, Apple App Store Connect keys, Android upload/signing
 
 ### Internal OTA flow after the M021 replacement APK
 
-The existing pre-M021 APK cannot receive OTA updates. Build and install one new `internal` APK from the M021 native/config commit first. That binary is `com.chinaplanet.customer.internal`, uses channel `internal`, and uses the app-version runtime policy (`1.0.1` for the first M021 binary).
+The existing pre-M021 APK cannot receive OTA updates. Build and install one corrected `internal` APK from the M021-C02 native/config commit first. That binary is `com.chinaplanet.customer.internal`, uses channel `internal`, and uses the app-version runtime policy (`1.0.2` for the corrected binary).
 
 For later JavaScript, style, and bundled-asset updates:
 
-1. Merge the reviewed change into `mobile-develop` without changing native dependencies, `app.json`, `app.config.ts`, `eas.json`, or native project files after the retained binary-source commit.
+1. Merge the reviewed change into `mobile-develop` without changing native dependencies, `app.config.ts`, `eas.json`, or native project files after the retained binary-source commit. `app.json` was removed in M021-C02 because dynamic configuration is authoritative.
 2. Open **Actions → Publish mobile internal OTA update → Run workflow** from `mobile-develop`.
 3. Enter `PUBLISH_CHINAPLANET_INTERNAL_OTA`, the full Git SHA used to build the installed replacement APK, and a short non-customer update message.
 4. Approve the protected `mobile-internal-ota` GitHub Environment. The workflow verifies the branch, project/owner secrets, clean source, tests, runtime configuration, and absence of native changes since the retained binary commit.
