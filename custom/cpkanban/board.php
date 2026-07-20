@@ -32,6 +32,12 @@ if ($is_external && $socid <= 0) {
     accessforbidden("No company linked to this user.");
 }
 
+// Customer Center has one canonical home. Keep this route for internal operations only.
+if ($is_external) {
+    header('Location: '.dol_buildpath('/chinaplanetcustomercenter/board.php', 1));
+    exit;
+}
+
 $canwrite = (!$is_external && ($user->hasRight('cpkanban', 'write') || $user->hasRight('chinaplanetcustomercenter', 'write') || !empty($user->admin)));
 
 if ($is_external && $socid > 0) {
