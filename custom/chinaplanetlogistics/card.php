@@ -237,6 +237,44 @@ if ($action === 'unpublish_gallery' && $id > 0 && $canwrite && $is_post) {
     else setEventMessages($publication['error'], null, 'errors');
 }
 
+if (in_array($action, array('customer_document_confirm','customer_document_amend','customer_document_comment'), true) && $id > 0 && $is_external_customer && $is_post) {
+    $responseMap = array('customer_document_confirm'=>'confirmed','customer_document_amend'=>'amendment_requested','customer_document_comment'=>'comment');
+    $response = cpcc_portal_customer_document_response($db, $user, $object, GETPOST('publication', 'alphanohtml'), $responseMap[$action], GETPOST('response_note', 'alphanohtml'));
+    setEventMessages(!empty($response['ok']) ? $langs->trans('CPLCustomerResponseSaved') : $response['error'], null, !empty($response['ok']) ? 'mesgs' : 'errors');
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id.'#shipment-documents'); exit;
+}
+
+if ($action === 'customer_document_upload' && $id > 0 && $is_external_customer && $is_post) {
+    if (!cpcc_portal_collaboration_schema_ready($db)) accessforbidden();
+    $upload = $_FILES['customer_file'] ?? array();
+    $uploadDir = cpcc_portal_shipment_doc_root($object->id);
+    $stored = cpcc_portal_store_uploaded_shipment_file($object->id, $uploadDir, $upload['name'] ?? '', $upload['tmp_name'] ?? '', $upload['size'] ?? 0, $upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    if (!empty($stored['ok'])) {
+        $relativePath = 'ship-'.(int)$object->id.'/'.(string)$stored['file'];
+        $stored = cpcc_portal_publish_customer_upload($db, $object, $user, $relativePath, GETPOST('response_note', 'alphanohtml'));
+    }
+    setEventMessages(!empty($stored['ok']) ? $langs->trans('CPLCustomerUploadSaved') : ($stored['error'] ?? $langs->trans('Error')), null, !empty($stored['ok']) ? 'mesgs' : 'errors');
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id.'#shipment-documents'); exit;
+}
+
+if ($action === 'customer_container_received' && $id > 0 && $is_external_customer && $is_post) {
+    $receipt = cpcc_portal_customer_container_received($db, $user, $object, GETPOST('response_note', 'alphanohtml'));
+    setEventMessages(!empty($receipt['ok']) ? $langs->trans('CPLContainerReceiptSaved') : $receipt['error'], null, !empty($receipt['ok']) ? 'mesgs' : 'errors');
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id.'#shipment-timeline'); exit;
+}
+
+if ($action === 'staff_original_document_status' && $id > 0 && $canwrite && $is_post) {
+    $status = cpcc_portal_staff_original_document_status($db, $user, $object, GETPOST('original_document_status', 'alpha'), GETPOST('original_document_note', 'alphanohtml'));
+    setEventMessages(!empty($status['ok']) ? $langs->trans('CPLOriginalDocumentStatusSaved') : $status['error'], null, !empty($status['ok']) ? 'mesgs' : 'errors');
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id.'#shipment-files-manager'); exit;
+}
+
+if ($action === 'customer_original_documents_received' && $id > 0 && $is_external_customer && $is_post) {
+    $receipt = cpcc_portal_customer_original_documents_received($db, $user, $object, GETPOST('response_note', 'alphanohtml'));
+    setEventMessages(!empty($receipt['ok']) ? $langs->trans('CPLOriginalDocumentsReceiptSaved') : $receipt['error'], null, !empty($receipt['ok']) ? 'mesgs' : 'errors');
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int)$id.'#shipment-documents'); exit;
+}
+
 /*
  * VIEW
  */
@@ -244,11 +282,11 @@ if ($is_modal) {
     $isRtl = ($langs->trans('DIRECTION') === 'rtl');
     header('Content-Type: text/html; charset=UTF-8');
     print '<!doctype html><html lang="'.dol_escape_htmltag($langs->defaultlang).'" dir="'.($isRtl?'rtl':'ltr').'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
-    print '<link rel="stylesheet" href="'.dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260719-m011">';
+    print '<link rel="stylesheet" href="'.dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260720-m024">';
     print '<style>body{margin:0;padding:20px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif;line-height:1.45}h1,h2,h3{margin-top:0}.fichecenter,.fichehalfleft,.fichehalfright{width:100%}.fiche{margin:0}.fiche-title{margin-bottom:18px}.border{width:100%;border-collapse:collapse;background:#fff}.border td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:start}.border tr:nth-child(even){background:#f8fafc}.titlefield{width:220px}.tabsAction{display:none}.opacitymedium{color:#6b7280}@media(max-width:640px){body{padding:12px}.border td{padding:8px;display:block;width:auto!important}.border tr{display:block;padding:6px 0}}</style>';
     print '</head><body class="cpl-modal-body">';
 } else {
-    $cardCss=array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'), dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260719-m011');
+    $cardCss=array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'), dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260720-m024');
     if(!$is_external_customer) $cardCss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
     llxHeader('', $langs->trans('CPLShipmentCardTitle'), '', '', 0, 0, array(), $cardCss);
     if($is_external_customer) cpcc_portal_navigation($user, 'shipments');
@@ -413,6 +451,11 @@ if ($action == 'create' || $action == 'edit') {
     print '</div>';
     print '</form>';
     print '<script src="'.dol_buildpath('/chinaplanetlogistics/js/card-freetime.js', 1).'?v=20260714"></script>';
+    if ($action === 'edit' && $id > 0 && !$is_external_customer) {
+        print cpcc_portal_staff_shipment_files_html($db, $object, $canwrite, $_SERVER['PHP_SELF'].'?id='.(int) $id.'&action=edit');
+    } elseif ($action === 'create') {
+        print '<div class="info">'.$langs->trans('CPLShipmentFilesAfterSave').'</div>';
+    }
 
 } else {
     // ─── VIEW MODE ────────────────────────────────────────────────────────
@@ -445,74 +488,21 @@ if ($action == 'create' || $action == 'edit') {
     ));
     if ($is_external_customer) {
         $commandCenterHtml = ob_get_clean();
-        $galleryHtml = cpcc_portal_customer_shipment_gallery_html($db, $user, $object, true);
-        $insertBefore = '<section class="cpl-two-column">';
+        $galleryHtml = cpcc_portal_customer_shipment_files_html($db, $user, $object);
+        $insertBefore = '<!--CPL_SHIPMENT_FILES-->';
         $markerPosition = strpos($commandCenterHtml, $insertBefore);
         if ($markerPosition !== false) {
-            $commandCenterHtml = substr($commandCenterHtml, 0, $markerPosition).$galleryHtml.substr($commandCenterHtml, $markerPosition);
+            $commandCenterHtml = str_replace($insertBefore, $galleryHtml, $commandCenterHtml);
         } else {
             $commandCenterHtml = str_replace('</main>', $galleryHtml.'</main>', $commandCenterHtml);
         }
         print $commandCenterHtml;
     }
 
-    // The legacy store remains private by default. Only an explicit, audited
-    // allowlist row can project one file into the customer Shipment Gallery.
+    // The private file store remains internal until an explicit allowlist row
+    // projects a document or media item into the owning customer portal.
     if (!$is_external_customer) {
-        print '<section class="cpl-doc-panel">';
-        print '<h3>'.$langs->trans('CPLInternalFiles').'</h3>';
-        if ($canwrite) {
-        print '<form action="'.$_SERVER['PHP_SELF'].'?id='.$id.'" method="POST" enctype="multipart/form-data" style="margin-bottom:15px">';
-        print '<input type="hidden" name="token" value="'.newToken().'">';
-        print '<input type="hidden" name="sendit" value="1">';
-        print '<input type="file" name="userfile"> <input type="submit" class="button" value="Upload / رفع">';
-        print '</form>';
-        }
-
-        $filearray = array();
-        foreach (cpcc_portal_shipment_doc_roots($object->id, $object->ref) as $docroot) {
-            if (!is_dir($docroot)) continue;
-            $docs = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
-            if (!empty($docs)) {
-                foreach ($docs as $doc) {
-                    $doc['docroot'] = $docroot;
-                    $filearray[] = $doc;
-                }
-            }
-        }
-        $galleryReady = cpcc_portal_gallery_schema_ready($db);
-        $galleryRows = $galleryReady ? cpcc_portal_gallery_publications($db, $object, false) : array();
-        if (!$galleryReady) print '<div class="warning">'.dol_escape_htmltag($langs->trans('CPLGallerySchemaMissing')).'</div>';
-        print '<table class="border centpercent">';
-        print '<tr class="liste_titre"><td>'.$langs->trans('CPLGalleryFileName').'</td><td align="right">'.$langs->trans('CPLGallerySize').'</td><td align="center">'.$langs->trans('CPLGalleryDate').'</td><td align="center">'.$langs->trans('CPLGalleryVisibility').'</td><td align="center">'.$langs->trans('CPLGalleryAction').'</td></tr>';
-        if (empty($filearray)) print '<tr><td colspan="5" class="center opacitymedium">'.$langs->trans('CPLGalleryNoFiles').'</td></tr>';
-        else {
-            foreach ($filearray as $file) {
-                $relativepath = basename($file['docroot']).'/'.$file['name'];
-                $dl_url = dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?type=shipment&id='.(int) $object->id.'&file='.urlencode($relativepath);
-                $publication = isset($galleryRows[$relativepath]) ? $galleryRows[$relativepath] : null;
-                $isPublished = $publication && !empty($publication->customer_visible) && !empty($publication->status);
-                print '<tr><td><a href="'.dol_escape_htmltag($dl_url).'" target="_blank" rel="noopener">'.dol_escape_htmltag($file['name']).'</a></td>';
-                print '<td align="right">'.dol_print_size($file['size']).'</td>';
-                print '<td align="center">'.dol_print_date($file['date'], 'dayhour').'</td>';
-                print '<td align="center"><span class="badge '.($isPublished ? 'badge-status4' : 'badge-status0').'">'.$langs->trans($isPublished ? 'CPLGalleryCustomerVisible' : 'CPLGalleryInternalOnly').'</span></td>';
-                print '<td align="center">';
-                if ($canwrite && $galleryReady) {
-                    print '<form action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'?id='.(int) $id.'" method="POST" style="display:inline">';
-                    print '<input type="hidden" name="token" value="'.newToken().'">';
-                    if ($isPublished) {
-                        print '<input type="hidden" name="action" value="unpublish_gallery"><input type="hidden" name="publication_id" value="'.(int) $publication->rowid.'">';
-                        print '<button type="submit" class="button button-cancel">'.$langs->trans('CPLGalleryUnpublish').'</button>';
-                    } else {
-                        print '<input type="hidden" name="action" value="publish_gallery"><input type="hidden" name="file" value="'.dol_escape_htmltag($relativepath).'">';
-                        print '<button type="submit" class="button button-save">'.$langs->trans('CPLGalleryPublish').'</button>';
-                    }
-                    print '</form>';
-                } else print '&mdash;';
-                print '</td></tr>';
-            }
-        }
-        print '</table></section>';
+        print cpcc_portal_staff_shipment_files_html($db, $object, $canwrite, $_SERVER['PHP_SELF'].'?id='.(int) $id);
     }
 
     print '<script>(function(){var root=document.querySelector(".cpl-command-center");if(!root)return;var title=root.getAttribute("data-cpl-shipment-title")||document.title;document.title=title;try{if(window.parent!==window){var d=window.parent.document,t=d.querySelector("#cpk-card-dialog .cpk-dialog-title, #cpk-card-dialog h2");if(t)t.textContent=title;}}catch(e){}var b=document.querySelector("[data-cpl-back-project]");if(b)b.addEventListener("click",function(){var fallback=b.getAttribute("data-cpl-back-url");if(window.history.length>1)window.history.back();else if(fallback)window.location.href=fallback;});})();</script>';

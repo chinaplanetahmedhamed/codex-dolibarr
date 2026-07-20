@@ -93,16 +93,16 @@ m011Assert(strpos($class, 'safe deletion is blocked') !== false && substr_count(
 m011Assert(strpos($operations, 'validateShipmentLink') !== false && strpos($operations, 'fk_soc=".$socid') !== false && strpos($operations, 'COALESCE(fk_project,0)=".$projectId') !== false, 'operation shipment link validates exact entity, customer and project including zero project');
 m011Assert(strpos($operations, 'FOR UPDATE') !== false && strpos($operationEdit, "'fk_shipment'=>GETPOSTINT('fk_shipment')") !== false, 'internal operation form persists a locked validated shipment link');
 m011Assert(substr_count($helper, 'COALESCE(') >= 3, 'customer action and document projections revalidate exact project ownership');
-m011Assert(strpos($helper, "\$row->requirement_status === 'published'") !== false, 'approved source is linked only after checklist publication');
+m011Assert(strpos($helper, 'function cpl_document_requirements') !== false && strpos($helper, 'class="cpl-checklist"') === false, 'legacy requirement audit remains available without rendering a checklist');
 m011Assert(strpos($helper, "action=confirm_delete&amp;token=") !== false && strpos($card, 'data-cpl-back-url') !== false && strpos($card, 'window.location.href=fallback') !== false, 'delete confirmation and modal return have explicit safe navigation tokens/routes');
-m011Assert(strpos($css, '.cpl-checklist a') !== false && strpos($css, 'min-height:44px') !== false, 'checklist actions meet the 44px touch target');
+m011Assert(strpos($css, '.cpcc-document-actions button{min-height:44px}') !== false, 'shipment document response actions meet the 44px touch target');
 
 m011Assert(substr_count($shipmentSql, 'date_atd date') === 1 && strpos($shipmentSql, 'ALTER TABLE llx_chinaplanetlogistics ADD COLUMN date_atd') !== false, 'ATD migration is additive and non-duplicated');
 m011Assert(strpos($eventSql, 'date_value_old') !== false && strpos($eventSql, 'date_value_new') !== false && strpos($eventSql, 'actual_at') !== false, 'event schema records typed ETA and actual dates');
 m011Assert(strpos($requirementSql, 'UNIQUE INDEX uk_cpl_requirement_code') !== false && strpos($requirementSql, 'customer_visible') !== false, 'document requirements are stable and publication-scoped');
 m011Assert(strpos($helper, 'CREATE TABLE') === false && strpos($helper, 'ALTER TABLE') === false, 'web helper never runs DDL');
 
-foreach (array('cpl-command-hero','cpl-timeline','cpl-checklist','cpl-internal-grid') as $component) m011Assert(strpos($card.$helper, $component) !== false && strpos($css, '.'.$component) !== false, 'command-center component is rendered and styled: '.$component);
+foreach (array('cpl-command-hero','cpl-timeline','cpl-alert-action','cpl-internal-grid') as $component) m011Assert(strpos($card.$helper, $component) !== false && strpos($css, '.'.$component) !== false, 'command-center component is rendered and styled: '.$component);
 m011Assert(strpos($css, '@media(max-width:520px)') !== false && strpos($css, 'grid-template-columns:1fr') !== false, 'command center has a 390px-safe single-column layout');
 m011Assert(strpos($css, 'max-width:calc(100vw - 16px)') !== false, 'customer shipment page shell is bounded to the mobile viewport');
 m011Assert(strpos($css, 'overflow-x:hidden') !== false, 'customer shipment page prevents fractional page-level horizontal overflow');

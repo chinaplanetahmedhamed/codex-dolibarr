@@ -296,6 +296,26 @@ function cpl_customer_next_operation($db, $shipment)
     return $resql ? $db->fetch_object($resql) : null;
 }
 
+function cpl_customer_contextual_alert($db, $shipment, $nextOperation)
+{
+    if ($nextOperation && (string)$nextOperation->waiting_on === 'customer') {
+        return array('code'=>'operation','title'=>(string)($nextOperation->next_action ?: $nextOperation->title),'note'=>(string)$nextOperation->note_public,'due'=>(string)$nextOperation->date_deadline);
+    }
+    if (!function_exists('cpcc_portal_collaboration_schema_ready') || !cpcc_portal_collaboration_schema_ready($db)) return null;
+    $pending = $db->query("SELECT COUNT(*) AS total FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document WHERE entity=".(int)$shipment->entity." AND fk_shipment=".(int)$shipment->id." AND fk_soc=".(int)$shipment->fk_soc." AND item_kind='document' AND source_origin='staff' AND customer_visible=1 AND status=1 AND response_status='awaiting_confirmation'");
+    if ($pending && ($row = $db->fetch_object($pending)) && (int)$row->total > 0) return array('code'=>'documents','count'=>(int)$row->total);
+    $events = cpcc_portal_shipment_collaboration_events($db, $shipment);
+    $containerReceived = false; $originalStatus = ''; $originalReceived = false;
+    foreach ($events as $event) {
+        if ($event->event_type === 'container_received') $containerReceived = true;
+        if ($event->event_type === 'original_document_status') $originalStatus = (string)$event->status_code;
+        if ($event->event_type === 'original_documents_received') $originalReceived = true;
+    }
+    if (in_array((int)$shipment->fk_statut, array(6,7), true) && !$containerReceived) return array('code'=>'container_receipt');
+    if ($originalStatus === 'delivered' && !$originalReceived) return array('code'=>'original_documents_receipt');
+    return null;
+}
+
 function cpl_add_transshipment_event($db, $shipment, $user, $data)
 {
     if (!cpl_shipment_schema_ready($db)) return array('ok' => false, 'error' => 'Shipment command-center schema is not installed.');
@@ -399,6 +419,7 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     $latest = cpl_latest_customer_update($events);
     $etaChange = cpl_latest_eta_change($events);
     $nextOperation = cpl_customer_next_operation($db, $shipment);
+    $contextualAlert = $external ? cpl_customer_contextual_alert($db, $shipment, $nextOperation) : null;
     $timeline = cpl_timeline_rows($shipment, $events);
     $now = dol_now();
     $customerNote = trim((string) $shipment->customer_note);
@@ -421,6 +442,17 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
         print '<b>'.dol_escape_htmltag($deltaLabel).'</b><small>'.dol_escape_htmltag(cpl_public_datetime($event->event_at)).' · '.dol_escape_htmltag(cpl_public_source_label($langs, $event->source_type)).'</small>';
         if (!empty($event->reason_public)) print '<p>'.nl2br(dol_escape_htmltag($event->reason_public)).'</p>';
         print '</section>';
+    }
+    if ($contextualAlert) {
+        $alertTitle = 'CPLCustomerActionNotice'; $alertText = '';
+        if ($contextualAlert['code'] === 'operation') { $alertTitle = 'CPLCustomerActionNotice'; $alertText = (string)$contextualAlert['title']; }
+        elseif ($contextualAlert['code'] === 'documents') $alertText = $langs->trans('CPLDocumentsAwaitingYourConfirmation', (int)$contextualAlert['count']);
+        elseif ($contextualAlert['code'] === 'container_receipt') $alertText = $langs->trans('CPLConfirmContainerReceiptNotice');
+        elseif ($contextualAlert['code'] === 'original_documents_receipt') $alertText = $langs->trans('CPLConfirmOriginalDocumentsReceiptNotice');
+        print '<aside class="cpl-alert cpl-alert-action" role="alert"><strong>'.dol_escape_htmltag($langs->trans($alertTitle)).'</strong><span>'.dol_escape_htmltag($alertText).'</span>';
+        if (!empty($contextualAlert['note'])) print '<p>'.nl2br(dol_escape_htmltag($contextualAlert['note'])).'</p>';
+        if (!empty($contextualAlert['due'])) print '<small>'.dol_escape_htmltag($langs->trans('CPLDueDate')).' '.dol_escape_htmltag(cpl_public_datetime($contextualAlert['due'], 'day')).'</small>';
+        print '</aside>';
     }
 
     print '<section class="cpl-overview" aria-label="'.$langs->trans('CPLCurrentShipmentSnapshot').'">';
@@ -458,7 +490,9 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     }
     print '<article class="cpl-snapshot cpl-'.$freeClass.'"><span>'.$langs->trans('CPLFreeTime').'</span><strong>'.dol_escape_htmltag($freeTitle).'</strong><small>'.dol_escape_htmltag($freeText).'</small></article></section>';
 
-    print '<section class="cpl-panel" aria-labelledby="cpl-timeline-title"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLShipmentJourney').'</span><h2 id="cpl-timeline-title">'.$langs->trans('CPLTimeline').'</h2></div></div><ol class="cpl-timeline">';
+    print '<section id="shipment-timeline" class="cpl-panel" aria-labelledby="cpl-timeline-title"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLShipmentJourney').'</span><h2 id="cpl-timeline-title">'.$langs->trans('CPLTimeline').'</h2></div>';
+    if ($external && $contextualAlert && $contextualAlert['code'] === 'container_receipt') print '<form method="POST" class="cpl-inline-receipt"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_container_received"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmContainerReceived')).'</button></form>';
+    print '</div><ol class="cpl-timeline">';
     foreach ($timeline as $step) {
         $stateKeys = array('complete'=>'CPLStateComplete','current'=>'CPLStateCurrent','next'=>'CPLStateNext','planned'=>'CPLStatePlanned','unconfirmed'=>'CPLStateUnconfirmed');
         $stateText = $langs->trans(isset($stateKeys[$step['state']]) ? $stateKeys[$step['state']] : 'CPLStatePlanned');
@@ -470,18 +504,7 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
         print '</div></li>';
     }
     print '</ol></section>';
-
-    print '<section class="cpl-two-column"><article class="cpl-panel"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLRequiredAction').'</span><h2>'.$langs->trans('CPLCustomsAndDelivery').'</h2></div></div>';
-    print '<div class="cpl-customs-state"><span>'.$langs->trans('CPLCurrentStatus').'</span><strong>'.dol_escape_htmltag($statusLabel).'</strong><small>'.dol_escape_htmltag(cpl_milestone_label($langs, cpl_status_milestone($shipment->fk_statut))).'</small></div>';
-    if ($nextOperation) {
-        $waitingCustomer = $nextOperation->waiting_on === 'customer';
-        print '<div class="cpl-action-card '.($waitingCustomer ? 'is-customer' : 'is-team').'"><strong>'.dol_escape_htmltag($nextOperation->next_action ?: $nextOperation->title).'</strong>';
-        print '<p>'.($waitingCustomer ? $langs->trans('CPLActionRequiredFromYou') : $langs->trans('CPLTeamHandlingAction')).'</p>';
-        if (!empty($nextOperation->date_deadline)) print '<small>'.$langs->trans('CPLDueDate').' '.dol_escape_htmltag(cpl_public_datetime($nextOperation->date_deadline, 'day')).'</small>';
-        if (!empty($nextOperation->note_public)) print '<p>'.nl2br(dol_escape_htmltag($nextOperation->note_public)).'</p>';
-        print '</div>';
-    } else print '<div class="cpl-empty">'.$langs->trans('CPLNoCustomerAction').'</div>';
-    print '</article></section>';
+    if ($external) print '<!--CPL_SHIPMENT_FILES-->';
 
     $details = array(
         'CPLContainer' => trim((string)$shipment->container_no.' · '.(string)$shipment->container_type, ' ·'),

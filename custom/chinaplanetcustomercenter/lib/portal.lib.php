@@ -344,6 +344,19 @@ function cpcc_portal_gallery_schema_ready($db)
     return $result && $db->num_rows($result) === 1;
 }
 
+function cpcc_portal_collaboration_schema_ready($db)
+{
+    if (!cpcc_portal_gallery_schema_ready($db)) return false;
+    $tablePattern = str_replace(array('\\', '_', '%'), array('\\\\', '\\_', '\\%'), MAIN_DB_PREFIX.'cpl_shipment_customer_event');
+    $table = $db->query("SHOW TABLES LIKE '".$db->escape($tablePattern)."'");
+    if (!$table || $db->num_rows($table) !== 1) return false;
+    foreach (array('source_origin','response_status','response_note','fk_user_response','date_response') as $column) {
+        $result = $db->query("SHOW COLUMNS FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document LIKE '".$db->escape($column)."'");
+        if (!$result || $db->num_rows($result) !== 1) return false;
+    }
+    return true;
+}
+
 /** Classify a validated shipment file without trusting its filename alone. */
 function cpcc_portal_gallery_item_kind($mime)
 {
@@ -399,7 +412,7 @@ function cpcc_portal_gallery_file_metadata($shipment, $file)
 }
 
 /** Publish exactly one validated shipment file to its owning customer. */
-function cpcc_portal_gallery_publish($db, $shipment, $user, $file)
+function cpcc_portal_gallery_publish($db, $shipment, $user, $file, $sourceOrigin = 'staff')
 {
     if (!cpcc_portal_gallery_schema_ready($db)) return array('ok' => false, 'error' => 'Shipment Gallery schema is not installed.');
     $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
@@ -409,6 +422,8 @@ function cpcc_portal_gallery_publish($db, $shipment, $user, $file)
     $metadata = cpcc_portal_gallery_file_metadata($shipment, $file);
     if (empty($metadata['ok'])) return $metadata;
 
+    $sourceOrigin = $sourceOrigin === 'customer' ? 'customer' : 'staff';
+    $responseStatus = $sourceOrigin === 'customer' ? 'customer_upload' : 'awaiting_confirmation';
     $db->begin();
     $lock = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid=".$shipmentId." AND entity=".(int) $shipment->entity." AND fk_soc=".(int) $shipment->fk_soc." FOR UPDATE");
     if (!$lock || $db->num_rows($lock) !== 1) {
@@ -420,10 +435,16 @@ function cpcc_portal_gallery_publish($db, $shipment, $user, $file)
     $row = $existing ? $db->fetch_object($existing) : null;
     $now = $db->idate(dol_now());
     if ($row) {
-        $sql = "UPDATE ".MAIN_DB_PREFIX."cpl_shipment_public_document SET fk_soc=".(int) $shipment->fk_soc.",original_name='".$db->escape($metadata['original_name'])."',mime_type='".$db->escape($metadata['mime_type'])."',file_size=".(int) $metadata['file_size'].",file_sha256='".$db->escape($metadata['file_sha256'])."',item_kind='".$db->escape($metadata['item_kind'])."',customer_visible=1,status=1,fk_user_modif=".(int) $user->id.",date_publication='".$now."' WHERE rowid=".(int) $row->rowid;
+        $sql = "UPDATE ".MAIN_DB_PREFIX."cpl_shipment_public_document SET fk_soc=".(int) $shipment->fk_soc.",original_name='".$db->escape($metadata['original_name'])."',mime_type='".$db->escape($metadata['mime_type'])."',file_size=".(int) $metadata['file_size'].",file_sha256='".$db->escape($metadata['file_sha256'])."',item_kind='".$db->escape($metadata['item_kind'])."',customer_visible=1,status=1,fk_user_modif=".(int) $user->id.",date_publication='".$now."'";
+        if (cpcc_portal_collaboration_schema_ready($db)) $sql .= ",source_origin='".$sourceOrigin."',response_status='".$responseStatus."',response_note=NULL,fk_user_response=NULL,date_response=NULL";
+        $sql .= " WHERE rowid=".(int) $row->rowid;
         $publicationId = (int) $row->rowid;
     } else {
-        $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpl_shipment_public_document(entity,fk_shipment,fk_soc,storage_key,original_name,mime_type,file_size,file_sha256,item_kind,customer_visible,status,fk_user_publish,date_publication,date_creation) VALUES(".(int) $shipment->entity.",".$shipmentId.",".(int) $shipment->fk_soc.",'".$db->escape($metadata['storage_key'])."','".$db->escape($metadata['original_name'])."','".$db->escape($metadata['mime_type'])."',".(int) $metadata['file_size'].",'".$db->escape($metadata['file_sha256'])."','".$db->escape($metadata['item_kind'])."',1,1,".(int) $user->id.",'".$now."','".$now."')";
+        if (cpcc_portal_collaboration_schema_ready($db)) {
+            $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpl_shipment_public_document(entity,fk_shipment,fk_soc,storage_key,original_name,mime_type,file_size,file_sha256,item_kind,source_origin,response_status,customer_visible,status,fk_user_publish,date_publication,date_creation) VALUES(".(int) $shipment->entity.",".$shipmentId.",".(int) $shipment->fk_soc.",'".$db->escape($metadata['storage_key'])."','".$db->escape($metadata['original_name'])."','".$db->escape($metadata['mime_type'])."',".(int) $metadata['file_size'].",'".$db->escape($metadata['file_sha256'])."','".$db->escape($metadata['item_kind'])."','".$sourceOrigin."','".$responseStatus."',1,1,".(int) $user->id.",'".$now."','".$now."')";
+        } else {
+            $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpl_shipment_public_document(entity,fk_shipment,fk_soc,storage_key,original_name,mime_type,file_size,file_sha256,item_kind,customer_visible,status,fk_user_publish,date_publication,date_creation) VALUES(".(int) $shipment->entity.",".$shipmentId.",".(int) $shipment->fk_soc.",'".$db->escape($metadata['storage_key'])."','".$db->escape($metadata['original_name'])."','".$db->escape($metadata['mime_type'])."',".(int) $metadata['file_size'].",'".$db->escape($metadata['file_sha256'])."','".$db->escape($metadata['item_kind'])."',1,1,".(int) $user->id.",'".$now."','".$now."')";
+        }
         $publicationId = 0;
     }
     if (!$db->query($sql)) {
@@ -465,12 +486,120 @@ function cpcc_portal_gallery_publications($db, $shipment, $activeOnly = false)
 {
     if (!cpcc_portal_gallery_schema_ready($db)) return array();
     $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
-    $sql = "SELECT rowid,storage_key,item_kind,customer_visible,status,date_publication,tms FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document WHERE entity=".(int) $shipment->entity." AND fk_shipment=".$shipmentId." AND fk_soc=".(int) $shipment->fk_soc;
+    $sql = "SELECT rowid,storage_key,item_kind,customer_visible,status,date_publication,tms";
+    if (cpcc_portal_collaboration_schema_ready($db)) $sql .= ",source_origin,response_status,response_note,fk_user_response,date_response";
+    $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document WHERE entity=".(int) $shipment->entity." AND fk_shipment=".$shipmentId." AND fk_soc=".(int) $shipment->fk_soc;
     if ($activeOnly) $sql .= " AND customer_visible=1 AND status=1";
     $result = $db->query($sql);
     $rows = array();
     while ($result && ($row = $db->fetch_object($result))) $rows[(string) $row->storage_key] = $row;
     return $rows;
+}
+
+function cpcc_portal_shipment_customer_event_types()
+{
+    return array('document_confirmed','document_amendment_requested','document_comment','customer_upload','container_received','original_document_status','original_documents_received');
+}
+
+function cpcc_portal_shipment_event_insert($db, $shipment, $user, $eventType, $statusCode = '', $note = '', $publicationId = 0, $actorType = 'staff')
+{
+    if (!cpcc_portal_collaboration_schema_ready($db) || !in_array($eventType, cpcc_portal_shipment_customer_event_types(), true)) return false;
+    $actorType = $actorType === 'customer' ? 'customer' : 'staff';
+    $note = trim((string) $note);
+    if (function_exists('mb_substr')) $note = mb_substr($note, 0, 2000, 'UTF-8'); else $note = substr($note, 0, 2000);
+    $now = $db->idate(dol_now());
+    $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpl_shipment_customer_event(entity,fk_shipment,fk_soc,fk_public_document,event_type,status_code,note_public,actor_type,fk_user,customer_visible,event_at,date_creation) VALUES(".(int)$shipment->entity.",".(int)$shipment->id.",".(int)$shipment->fk_soc.",".((int)$publicationId > 0 ? (int)$publicationId : 'NULL').",'".$db->escape($eventType)."',".($statusCode !== '' ? "'".$db->escape($statusCode)."'" : 'NULL').",".($note !== '' ? "'".$db->escape($note)."'" : 'NULL').",'".$actorType."',".(int)$user->id.",1,'".$now."','".$now."')";
+    return (bool) $db->query($sql);
+}
+
+function cpcc_portal_shipment_collaboration_events($db, $shipment, $publicationId = 0)
+{
+    if (!cpcc_portal_collaboration_schema_ready($db)) return array();
+    $sql = "SELECT rowid,fk_public_document,event_type,status_code,note_public,actor_type,event_at FROM ".MAIN_DB_PREFIX."cpl_shipment_customer_event WHERE entity=".(int)$shipment->entity." AND fk_shipment=".(int)$shipment->id." AND fk_soc=".(int)$shipment->fk_soc." AND customer_visible=1";
+    if ((int)$publicationId > 0) $sql .= " AND fk_public_document=".(int)$publicationId;
+    $sql .= " ORDER BY event_at,rowid";
+    $result = $db->query($sql); $rows = array();
+    while ($result && ($row = $db->fetch_object($result))) $rows[] = $row;
+    return $rows;
+}
+
+function cpcc_portal_customer_document_response($db, $user, $shipment, $publicToken, $response, $note = '')
+{
+    $allowed = array('confirmed'=>'document_confirmed','amendment_requested'=>'document_amendment_requested','comment'=>'document_comment');
+    if (!isset($allowed[$response]) || !cpcc_portal_collaboration_schema_ready($db)) return array('ok'=>false,'error'=>'Customer response is unavailable.');
+    $scope = cpcc_portal_user_scope($user);
+    if (empty($scope['is_external']) || (int)$scope['socid'] !== (int)$shipment->fk_soc) return array('ok'=>false,'error'=>'Customer response was rejected.');
+    $row = cpcc_portal_customer_gallery_publication($db, $user, $publicToken);
+    if (!$row || (int)$row->fk_shipment !== (int)$shipment->id || (string)$row->item_kind !== 'document') return array('ok'=>false,'error'=>'Shipment document was not found.');
+    $note = trim((string)$note);
+    if (($response === 'amendment_requested' || $response === 'comment') && $note === '') return array('ok'=>false,'error'=>'Please write your note.');
+
+    $db->begin();
+    $where = "rowid=".(int)$row->rowid." AND entity=".(int)$shipment->entity." AND fk_shipment=".(int)$shipment->id." AND fk_soc=".(int)$shipment->fk_soc." AND customer_visible=1 AND status=1";
+    $lock = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document WHERE ".$where." FOR UPDATE");
+    if (!$lock || $db->num_rows($lock) !== 1) { $db->rollback(); return array('ok'=>false,'error'=>'Shipment document was not found.'); }
+    if ($response !== 'comment') {
+        $now = $db->idate(dol_now());
+        $sql = "UPDATE ".MAIN_DB_PREFIX."cpl_shipment_public_document SET response_status='".$db->escape($response)."',response_note=".($note !== '' ? "'".$db->escape($note)."'" : 'NULL').",fk_user_response=".(int)$user->id.",date_response='".$now."' WHERE ".$where;
+        if (!$db->query($sql)) { $db->rollback(); return array('ok'=>false,'error'=>$db->lasterror()); }
+    }
+    if (!cpcc_portal_shipment_event_insert($db, $shipment, $user, $allowed[$response], $response, $note, (int)$row->rowid, 'customer')) { $db->rollback(); return array('ok'=>false,'error'=>$db->lasterror()); }
+    $db->commit(); return array('ok'=>true,'error'=>'');
+}
+
+function cpcc_portal_publish_customer_upload($db, $shipment, $user, $relativePath, $note = '')
+{
+    if (!cpcc_portal_collaboration_schema_ready($db)) return array('ok'=>false,'error'=>'Customer upload is unavailable.');
+    $publication = cpcc_portal_gallery_publish($db, $shipment, $user, $relativePath, 'customer');
+    if (empty($publication['ok'])) return $publication;
+    if (!cpcc_portal_shipment_event_insert($db, $shipment, $user, 'customer_upload', 'customer_upload', $note, (int)$publication['id'], 'customer')) {
+        cpcc_portal_gallery_unpublish($db, $shipment, $user, (int)$publication['id']);
+        return array('ok'=>false,'error'=>'Customer upload history could not be recorded.');
+    }
+    return $publication;
+}
+
+function cpcc_portal_customer_container_received($db, $user, $shipment, $note = '')
+{
+    $scope = cpcc_portal_user_scope($user);
+    if (empty($scope['is_external']) || (int)$scope['socid'] !== (int)$shipment->fk_soc || !cpcc_portal_collaboration_schema_ready($db)) return array('ok'=>false,'error'=>'Container receipt is not available yet.');
+    $current = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE rowid=".(int)$shipment->id." AND entity=".(int)$shipment->entity." AND fk_soc=".(int)$shipment->fk_soc." AND fk_statut IN (6,7) LIMIT 1");
+    if (!$current || $db->num_rows($current) !== 1) return array('ok'=>false,'error'=>'Container receipt is not available yet.');
+    $existing = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpl_shipment_customer_event WHERE entity=".(int)$shipment->entity." AND fk_shipment=".(int)$shipment->id." AND fk_soc=".(int)$shipment->fk_soc." AND event_type='container_received' LIMIT 1");
+    if ($existing && $db->num_rows($existing) > 0) return array('ok'=>true,'error'=>'');
+    return cpcc_portal_shipment_event_insert($db, $shipment, $user, 'container_received', 'received', $note, 0, 'customer') ? array('ok'=>true,'error'=>'') : array('ok'=>false,'error'=>$db->lasterror());
+}
+
+function cpcc_portal_original_document_statuses()
+{
+    return array('preparing','finished','government_uploaded','sent_dhl','in_transit','delivered','customer_received');
+}
+
+function cpcc_portal_staff_original_document_status($db, $user, $shipment, $status, $note = '')
+{
+    if (!in_array($status, cpcc_portal_original_document_statuses(), true) || $status === 'customer_received') return array('ok'=>false,'error'=>'Original document status was rejected.');
+    $events = cpcc_portal_shipment_collaboration_events($db, $shipment);
+    $workflow = array('preparing','finished','government_uploaded','sent_dhl','in_transit','delivered');
+    $latest = '';
+    foreach ($events as $event) if ($event->event_type === 'original_document_status') $latest = (string)$event->status_code;
+    if ($latest === $status) return array('ok'=>true,'error'=>'');
+    if ($latest !== '' && array_search($status, $workflow, true) < array_search($latest, $workflow, true)) return array('ok'=>false,'error'=>'Original document status cannot move backwards.');
+    return cpcc_portal_shipment_event_insert($db, $shipment, $user, 'original_document_status', $status, $note, 0, 'staff') ? array('ok'=>true,'error'=>'') : array('ok'=>false,'error'=>$db->lasterror());
+}
+
+function cpcc_portal_customer_original_documents_received($db, $user, $shipment, $note = '')
+{
+    $scope = cpcc_portal_user_scope($user);
+    if (empty($scope['is_external']) || (int)$scope['socid'] !== (int)$shipment->fk_soc || !cpcc_portal_collaboration_schema_ready($db)) return array('ok'=>false,'error'=>'Original document receipt was rejected.');
+    $events = cpcc_portal_shipment_collaboration_events($db, $shipment);
+    $latest = ''; $received = false;
+    foreach ($events as $event) {
+        if ($event->event_type === 'original_document_status') $latest = (string)$event->status_code;
+        if ($event->event_type === 'original_documents_received') $received = true;
+    }
+    if ($received) return array('ok'=>true,'error'=>'');
+    if ($latest !== 'delivered') return array('ok'=>false,'error'=>'Original documents are not marked delivered yet.');
+    return cpcc_portal_shipment_event_insert($db, $shipment, $user, 'original_documents_received', 'customer_received', $note, 0, 'customer') ? array('ok'=>true,'error'=>'') : array('ok'=>false,'error'=>$db->lasterror());
 }
 
 /**
@@ -527,6 +656,8 @@ function cpcc_portal_customer_gallery_items($db, $user, $shipment = null)
     }
 
     $sql = "SELECT p.rowid,p.fk_shipment,p.original_name,p.mime_type,p.file_size,p.item_kind,p.date_publication,";
+    if (cpcc_portal_collaboration_schema_ready($db)) $sql .= "p.source_origin,p.response_status,p.response_note,p.date_response,";
+    else $sql .= "'staff' AS source_origin,'published' AS response_status,NULL AS response_note,NULL AS date_response,";
     $sql .= " t.ref AS shipment_ref,t.container_no,t.bl_no";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
@@ -540,6 +671,7 @@ function cpcc_portal_customer_gallery_items($db, $user, $shipment = null)
         $token = cpcc_portal_gallery_public_token($row->rowid, $entity, $socid);
         if ($token === '') continue;
         $row->public_token = $token;
+        $row->events = cpcc_portal_collaboration_schema_ready($db) ? cpcc_portal_shipment_collaboration_events($db, $shipment !== null ? $shipment : (object) array('id'=>(int)$row->fk_shipment,'entity'=>$entity,'fk_soc'=>$socid), (int)$row->rowid) : array();
         unset($row->rowid);
         $items[] = $row;
     }
@@ -558,6 +690,8 @@ function cpcc_portal_customer_gallery_publication($db, $user, $publicToken)
     if ($entity <= 0 || $socid <= 0 || !cpcc_portal_gallery_schema_ready($db) || cpcc_portal_gallery_token_secret() === '') return null;
 
     $sql = "SELECT p.rowid,p.fk_shipment,p.storage_key,p.original_name,p.mime_type,p.file_size,p.file_sha256,p.item_kind,";
+    if (cpcc_portal_collaboration_schema_ready($db)) $sql .= "p.source_origin,p.response_status,p.response_note,p.date_response,";
+    else $sql .= "'staff' AS source_origin,'published' AS response_status,NULL AS response_note,NULL AS date_response,";
     $sql .= " t.ref AS shipment_ref";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
@@ -636,6 +770,79 @@ function cpcc_portal_customer_gallery_items_html(array $items)
     return $html.'</div>';
 }
 
+/** Split one authorized publication list into documents and visual media. */
+function cpcc_portal_customer_shipment_file_groups(array $items)
+{
+    $groups = array('documents' => array(), 'gallery' => array());
+    foreach ($items as $item) {
+        if (in_array((string) $item->item_kind, array('image', 'video'), true)) $groups['gallery'][] = $item;
+        else $groups['documents'][] = $item;
+    }
+    return $groups;
+}
+
+/** Render customer-downloadable shipment documents, never raw paths or IDs. */
+function cpcc_portal_customer_document_items_html(array $items, $shipmentId = 0)
+{
+    global $langs;
+    if (empty($items)) {
+        return '<div class="cpcc-gallery-empty cpcc-document-empty"><span class="fas fa-file-download" aria-hidden="true"></span><strong>'.dol_escape_htmltag($langs->trans('CPLShipmentDocumentsEmpty')).'</strong><small>'.dol_escape_htmltag($langs->trans('CPLShipmentDocumentsEmptyHint')).'</small></div>';
+    }
+
+    $html = '<div class="cpcc-shipment-documents-list">';
+    foreach ($items as $item) {
+        $downloadUrl = cpcc_portal_customer_gallery_content_url($item->public_token, false);
+        $html .= '<article class="cpcc-shipment-document"><span class="fas fa-file-download" aria-hidden="true"></span><div><strong>'.dol_escape_htmltag($item->original_name).'</strong>';
+        $statusKey = array('awaiting_confirmation'=>'CPLDocumentAwaitingConfirmation','confirmed'=>'CPLDocumentConfirmed','amendment_requested'=>'CPLDocumentAmendmentRequested','customer_upload'=>'CPLDocumentCustomerUpload');
+        $status = isset($statusKey[(string)$item->response_status]) ? $statusKey[(string)$item->response_status] : 'CPLDocumentPublished';
+        $html .= '<small>'.dol_escape_htmltag(dol_print_size((int) $item->file_size)).' · '.dol_escape_htmltag($langs->trans($status)).'</small>';
+        $hasEventNote = false;
+        foreach ((array)($item->events ?? array()) as $event) {
+            if (empty($event->note_public)) continue;
+            $hasEventNote = true;
+            $html .= '<p class="cpcc-document-event"><b>'.dol_escape_htmltag($event->actor_type === 'customer' ? $langs->trans('CPLCustomer') : $langs->trans('CPLChinaPlanetTeam')).':</b> '.nl2br(dol_escape_htmltag($event->note_public)).'</p>';
+        }
+        if (!$hasEventNote && !empty($item->response_note)) $html .= '<p class="cpcc-document-note">'.nl2br(dol_escape_htmltag($item->response_note)).'</p>';
+        $html .= '</div><div class="cpcc-document-actions"><a class="cpcc-gallery-download" href="'.dol_escape_htmltag($downloadUrl).'">'.dol_escape_htmltag($langs->trans('CPLGalleryDownload')).'</a>';
+        if ((string)$item->source_origin === 'staff' && (string)$item->response_status !== 'confirmed' && (int)$shipmentId > 0) {
+            $html .= '<form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipmentId.'"><input type="hidden" name="action" value="customer_document_confirm"><input type="hidden" name="publication" value="'.dol_escape_htmltag($item->public_token).'"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmDocument')).'</button></form>';
+        }
+        if ((string)$item->source_origin === 'staff' && (int)$shipmentId > 0) {
+            $html .= '<details class="cpcc-document-response"><summary>'.dol_escape_htmltag($langs->trans('CPLRequestAmendmentOrComment')).'</summary><form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipmentId.'"><input type="hidden" name="publication" value="'.dol_escape_htmltag($item->public_token).'"><textarea required name="response_note" maxlength="2000" placeholder="'.dol_escape_htmltag($langs->trans('CPLWriteCustomerNote')).'"></textarea><button type="submit" name="action" value="customer_document_amend" class="button button-cancel">'.dol_escape_htmltag($langs->trans('CPLRequestAmendment')).'</button><button type="submit" name="action" value="customer_document_comment" class="button">'.dol_escape_htmltag($langs->trans('CPLAddComment')).'</button></form></details>';
+        }
+        $html .= '</div></article>';
+    }
+    return $html.'</div>';
+}
+
+/** Customer projection shared by shipment details and the Documents page. */
+function cpcc_portal_customer_shipment_files_html($db, $user, $shipment)
+{
+    global $langs;
+    $groups = cpcc_portal_customer_shipment_file_groups(cpcc_portal_customer_gallery_items($db, $user, $shipment));
+    $html = '<section id="shipment-documents" class="cpl-panel cpcc-shipment-documents" aria-labelledby="cpcc-documents-title">';
+    $html .= '<div class="cpl-section-title cpcc-gallery-title"><div><span>'.dol_escape_htmltag($langs->trans('CPLShipmentDocumentsEyebrow')).'</span><h2 id="cpcc-documents-title">'.dol_escape_htmltag($langs->trans('CPLShipmentDocumentsTitle')).'</h2></div><b>'.count($groups['documents']).'</b></div>';
+    $html .= cpcc_portal_customer_document_items_html($groups['documents'], (int)$shipment->id);
+    if (cpcc_portal_collaboration_schema_ready($db)) {
+        $html .= '<div class="cpcc-customer-upload"><h3>'.dol_escape_htmltag($langs->trans('CPLUploadShipmentDocument')).'</h3><form method="POST" enctype="multipart/form-data"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_document_upload"><input required type="file" name="customer_file"><textarea name="response_note" maxlength="2000" placeholder="'.dol_escape_htmltag($langs->trans('CPLWriteCustomerNote')).'"></textarea><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLUpload')).'</button></form></div>';
+        $events = cpcc_portal_shipment_collaboration_events($db, $shipment);
+        $originalStatuses = cpcc_portal_original_document_statuses(); $latestOriginal = ''; $originalReceived = false;
+        foreach ($events as $event) { if ($event->event_type === 'original_document_status') $latestOriginal = (string)$event->status_code; if ($event->event_type === 'original_documents_received') $originalReceived = true; }
+        if ($latestOriginal !== '') {
+            $currentIndex = array_search($originalReceived ? 'customer_received' : $latestOriginal, $originalStatuses, true);
+            $html .= '<div class="cpcc-original-documents"><h3>'.dol_escape_htmltag($langs->trans('CPLOriginalDocumentsTimeline')).'</h3><ol>';
+            foreach ($originalStatuses as $index=>$code) $html .= '<li class="'.($index <= $currentIndex ? 'is-complete' : '').'"><span>'.dol_escape_htmltag($langs->trans('CPLOriginalStatus'.str_replace(' ', '', ucwords(str_replace('_', ' ', $code))))).'</span></li>';
+            $html .= '</ol>';
+            if ($latestOriginal === 'delivered' && !$originalReceived) $html .= '<form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_original_documents_received"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmOriginalDocumentsReceived')).'</button></form>';
+            $html .= '</div>';
+        }
+    }
+    $html .= '</section>';
+    $html .= '<section id="shipment-gallery" class="cpl-panel cpcc-shipment-gallery" aria-labelledby="cpcc-gallery-title">';
+    $html .= '<div class="cpl-section-title cpcc-gallery-title"><div><span>'.dol_escape_htmltag($langs->trans('CPLGalleryEyebrow')).'</span><h2 id="cpcc-gallery-title">'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerTitle')).'</h2></div><b>'.count($groups['gallery']).'</b></div>';
+    return $html.cpcc_portal_customer_gallery_items_html($groups['gallery']).'</section>';
+}
+
 function cpcc_portal_customer_shipment_gallery_html($db, $user, $shipment, $includeHeading = true)
 {
     global $langs;
@@ -646,4 +853,85 @@ function cpcc_portal_customer_shipment_gallery_html($db, $user, $shipment, $incl
         $html .= '<h2 id="cpcc-gallery-title">'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerTitle')).'</h2></div><b>'.count($items).'</b></div>';
     }
     return $html.cpcc_portal_customer_gallery_items_html($items).'</section>';
+}
+
+/** Staff-only manager embedded in shipment view and edit pages. */
+function cpcc_portal_staff_shipment_files_html($db, $shipment, $canwrite, $actionUrl)
+{
+    global $langs;
+    $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) ($shipment->rowid ?? 0);
+    if ($shipmentId <= 0) return '';
+
+    $files = array();
+    foreach (cpcc_portal_shipment_doc_roots($shipmentId, (string) $shipment->ref) as $docroot) {
+        if (!is_dir($docroot)) continue;
+        $rows = dol_dir_list($docroot, 'files', 0, '', '(\\.meta|_preview.*\\.png)$', 'date', SORT_DESC);
+        foreach ((array) $rows as $row) {
+            $row['docroot'] = $docroot;
+            $files[] = $row;
+        }
+    }
+
+    $ready = cpcc_portal_gallery_schema_ready($db);
+    $publications = $ready ? cpcc_portal_gallery_publications($db, $shipment, false) : array();
+    $html = '<section id="shipment-files-manager" class="cpl-doc-panel"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLShipmentFilesManagerEyebrow').'</span><h2>'.$langs->trans('CPLShipmentFilesManagerTitle').'</h2></div></div>';
+    $html .= '<p class="opacitymedium">'.$langs->trans('CPLShipmentFilesManagerHint').'</p>';
+    if ($canwrite) {
+        $html .= '<form action="'.dol_escape_htmltag($actionUrl).'" method="POST" enctype="multipart/form-data" class="cpl-file-upload-form"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="sendit" value="1"><input required type="file" name="userfile"><button type="submit" class="button button-save">'.$langs->trans('CPLShipmentFileUpload').'</button></form>';
+    }
+    if (!$ready) $html .= '<div class="warning">'.dol_escape_htmltag($langs->trans('CPLGallerySchemaMissing')).'</div>';
+    $collaborationReady = cpcc_portal_collaboration_schema_ready($db);
+    $collaborationEvents = $collaborationReady ? cpcc_portal_shipment_collaboration_events($db, $shipment) : array();
+    $latestOriginal = ''; $originalReceived = false; $containerReceived = false; $containerReceiptNote = '';
+    foreach ($collaborationEvents as $event) {
+        if ($event->event_type === 'original_document_status') $latestOriginal = (string)$event->status_code;
+        if ($event->event_type === 'original_documents_received') $originalReceived = true;
+        if ($event->event_type === 'container_received') { $containerReceived = true; $containerReceiptNote = (string)$event->note_public; }
+    }
+    if ($containerReceived) $html .= '<div class="cpl-staff-customer-event"><strong>'.dol_escape_htmltag($langs->trans('CPLContainerReceivedByCustomer')).'</strong>'.($containerReceiptNote !== '' ? '<small>'.nl2br(dol_escape_htmltag($containerReceiptNote)).'</small>' : '').'</div>';
+    if ($latestOriginal !== '') {
+        $statuses = cpcc_portal_original_document_statuses();
+        $currentIndex = array_search($originalReceived ? 'customer_received' : $latestOriginal, $statuses, true);
+        $html .= '<div class="cpcc-original-documents"><h3>'.dol_escape_htmltag($langs->trans('CPLOriginalDocumentsTimeline')).'</h3><ol>';
+        foreach ($statuses as $index=>$code) { $key = 'CPLOriginalStatus'.str_replace(' ', '', ucwords(str_replace('_', ' ', $code))); $html .= '<li class="'.($index <= $currentIndex ? 'is-complete' : '').'"><span>'.dol_escape_htmltag($langs->trans($key)).'</span></li>'; }
+        $html .= '</ol></div>';
+    }
+    if ($canwrite && $collaborationReady) {
+        $html .= '<form action="'.dol_escape_htmltag($actionUrl).'" method="POST" class="cpl-original-status-form"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="staff_original_document_status"><label>'.$langs->trans('CPLOriginalDocumentsTimeline').'<select name="original_document_status">';
+        foreach (cpcc_portal_original_document_statuses() as $status) { if ($status === 'customer_received') continue; $key = 'CPLOriginalStatus'.str_replace(' ', '', ucwords(str_replace('_', ' ', $status))); $html .= '<option value="'.dol_escape_htmltag($status).'">'.dol_escape_htmltag($langs->trans($key)).'</option>'; }
+        $html .= '</select></label><input type="text" name="original_document_note" maxlength="2000" placeholder="'.dol_escape_htmltag($langs->trans('CPLPublicNote')).'"><button type="submit" class="button">'.dol_escape_htmltag($langs->trans('CPLUpdateOriginalDocuments')).'</button></form>';
+    }
+    $html .= '<div class="div-table-responsive"><table class="border centpercent"><tr class="liste_titre"><td>'.$langs->trans('CPLGalleryFileName').'</td><td>'.$langs->trans('CPLShipmentFileType').'</td><td align="right">'.$langs->trans('CPLGallerySize').'</td><td align="center">'.$langs->trans('CPLGalleryDate').'</td><td align="center">'.$langs->trans('CPLGalleryVisibility').'</td><td align="center">'.$langs->trans('CPLDocumentCustomerResponse').'</td><td align="center">'.$langs->trans('CPLGalleryAction').'</td></tr>';
+    if (empty($files)) $html .= '<tr><td colspan="7" class="center opacitymedium">'.$langs->trans('CPLGalleryNoFiles').'</td></tr>';
+    foreach ($files as $file) {
+        $relativePath = basename($file['docroot']).'/'.$file['name'];
+        $publication = isset($publications[$relativePath]) ? $publications[$relativePath] : null;
+        $metadata = cpcc_portal_gallery_file_metadata($shipment, $relativePath);
+        $kind = !empty($metadata['ok']) ? (string) $metadata['item_kind'] : 'document';
+        $isMedia = in_array($kind, array('image', 'video'), true);
+        $isPublished = $publication && !empty($publication->customer_visible) && !empty($publication->status);
+        $downloadUrl = dol_buildpath('/chinaplanetcustomercenter/download.php', 1).'?type=shipment&id='.$shipmentId.'&file='.urlencode($relativePath);
+        $html .= '<tr><td><a href="'.dol_escape_htmltag($downloadUrl).'" target="_blank" rel="noopener">'.dol_escape_htmltag($file['name']).'</a></td>';
+        $html .= '<td>'.dol_escape_htmltag($langs->trans($isMedia ? 'CPLShipmentFileTypeGallery' : 'CPLShipmentFileTypeDocument')).'</td><td align="right">'.dol_print_size((int) $file['size']).'</td><td align="center">'.dol_print_date($file['date'], 'dayhour').'</td>';
+        $responseStatus = $publication && isset($publication->response_status) ? (string)$publication->response_status : '';
+        $responseKey = array('awaiting_confirmation'=>'CPLDocumentAwaitingConfirmation','confirmed'=>'CPLDocumentConfirmed','amendment_requested'=>'CPLDocumentAmendmentRequested','customer_upload'=>'CPLDocumentCustomerUpload');
+        $html .= '<td align="center"><span class="badge '.($isPublished ? 'badge-status4' : 'badge-status0').'">'.$langs->trans($isPublished ? 'CPLGalleryCustomerVisible' : 'CPLGalleryInternalOnly').'</span></td><td align="center">'.($responseStatus !== '' ? dol_escape_htmltag($langs->trans($responseKey[$responseStatus] ?? 'CPLDocumentPublished')) : '&mdash;');
+        $publicationEvents = ($publication && $collaborationReady) ? cpcc_portal_shipment_collaboration_events($db, $shipment, (int)$publication->rowid) : array();
+        $hasPublicationEventNote = false;
+        foreach ($publicationEvents as $event) {
+            if (empty($event->note_public)) continue;
+            $hasPublicationEventNote = true;
+            $html .= '<br><small><b>'.dol_escape_htmltag($event->actor_type === 'customer' ? $langs->trans('CPLCustomer') : $langs->trans('CPLChinaPlanetTeam')).':</b> '.nl2br(dol_escape_htmltag($event->note_public)).'</small>';
+        }
+        if (!$hasPublicationEventNote && $publication && !empty($publication->response_note)) $html .= '<br><small>'.nl2br(dol_escape_htmltag($publication->response_note)).'</small>';
+        $html .= '</td><td align="center">';
+        if ($canwrite && $ready) {
+            $html .= '<form action="'.dol_escape_htmltag($actionUrl).'" method="POST" style="display:inline"><input type="hidden" name="token" value="'.newToken().'">';
+            if ($isPublished) $html .= '<input type="hidden" name="action" value="unpublish_gallery"><input type="hidden" name="publication_id" value="'.(int) $publication->rowid.'"><button type="submit" class="button button-cancel">'.$langs->trans('CPLGalleryUnpublish').'</button>';
+            else $html .= '<input type="hidden" name="action" value="publish_gallery"><input type="hidden" name="file" value="'.dol_escape_htmltag($relativePath).'"><button type="submit" class="button button-save">'.$langs->trans('CPLGalleryPublish').'</button>';
+            $html .= '</form>';
+        } else $html .= '&mdash;';
+        $html .= '</td></tr>';
+    }
+    return $html.'</table></div></section>';
 }

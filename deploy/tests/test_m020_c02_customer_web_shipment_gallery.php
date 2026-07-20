@@ -25,8 +25,11 @@ m020C02Assert(strpos($portalSource, 'cpcc_portal_validate_shipment_upload') !== 
 m020C02Assert(strpos($downloadSource, "\$type === 'gallery'") !== false && strpos($downloadSource, "GETPOST('publication'") !== false, 'Protected route accepts an opaque publication token');
 m020C02Assert(strpos($downloadSource, "Cache-Control: private, no-store") !== false && strpos($downloadSource, 'X-Content-Type-Options: nosniff') !== false, 'Protected route emits private and nosniff headers');
 m020C02Assert(strpos($downloadSource, "if (\$type === 'shipment')") !== false && strpos($downloadSource, "if (!empty(\$scope['is_external'])) accessforbidden()") !== false, 'Legacy raw-path downloads remain internal-only');
-m020C02Assert(strpos($documentsSource, 'CPLGalleryPageTitle') !== false && strpos($documentsSource, 'cpcc_portal_customer_gallery_items_html') !== false, 'Customer Documents projection is replaced by Shipment Galleries');
-m020C02Assert(strpos($cardSource, 'cpcc_portal_customer_shipment_gallery_html') !== false && strpos($cardSource, '<section class="cpl-two-column">') !== false, 'Shipment card inserts the gallery before the checklist area');
+m020C02Assert(strpos($documentsSource, 'CPLShipmentFilesPageTitle') !== false && strpos($documentsSource, 'cpcc_portal_customer_shipment_file_groups') !== false, 'Customer Documents page projects Shipment Documents and Gallery from one allowlist');
+m020C02Assert(strpos($cardSource, 'cpcc_portal_customer_shipment_files_html') !== false && strpos($cardSource, '<!--CPL_SHIPMENT_FILES-->') !== false, 'Shipment card inserts documents and gallery directly after the timeline');
+m020C02Assert(strpos($cardSource, 'cpcc_portal_staff_shipment_files_html') !== false, 'Shipment view and edit modes expose the shared staff file manager');
+
+m020C02Assert(strpos($portalSource, 'function cpcc_portal_customer_shipment_file_groups') !== false, 'Customer publication grouping helper exists');
 
 $documentRoot = getenv('M020_C02_DOL_DOCUMENT_ROOT');
 if (is_string($documentRoot) && $documentRoot !== '') {
@@ -41,6 +44,13 @@ if (is_string($documentRoot) && $documentRoot !== '') {
     require rtrim($documentRoot, '/').'/master.inc.php';
     require_once $root.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
     global $db, $conf;
+
+    $grouped = cpcc_portal_customer_shipment_file_groups(array(
+        (object) array('item_kind' => 'document'),
+        (object) array('item_kind' => 'image'),
+        (object) array('item_kind' => 'video'),
+    ));
+    m020C02Assert(count($grouped['documents']) === 1 && count($grouped['gallery']) === 2, 'Documents and visual media are rendered in separate customer sections');
 
     $userRows = array();
     foreach (array('A' => 'M017_SYNTH_E1_A', 'B' => 'M017_SYNTH_E1_B') as $key => $refExt) {
