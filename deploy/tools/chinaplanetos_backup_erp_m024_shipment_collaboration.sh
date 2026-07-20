@@ -3,12 +3,12 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M020-C03_M023_M024_M025'
-readonly RUNTIME_COMMIT='66656e31c6bba13fa258e14d1b1a37e2c9c5477a'
-readonly SHORT_COMMIT='66656e3'
+readonly RELEASE='M020-C03_M023_M024_M024-C01_M025'
+readonly RUNTIME_COMMIT='7b4a216d0dba2f611b457d804e85f1e07317812d'
+readonly SHORT_COMMIT='7b4a216'
 readonly INBOX='/home/codex-deploy/staging-inbox'
-readonly ARTIFACT="${INBOX}/m024-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='efccb3d7411559f55ef033f90183d4bbf17d328f024ac861d6dec68b5cc5e97a'
+readonly ARTIFACT="${INBOX}/m024-c01-${SHORT_COMMIT}.tar.gz"
+readonly ARTIFACT_SHA='ac60dc483d39ff6722108f0667bab3a4f0d7046a2b43a8a2e31d74a1a79c8198'
 
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'
@@ -17,9 +17,9 @@ readonly TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_da
 readonly TARGET_HTTP='http://127.0.0.1:18088/'
 readonly BACKUP_ROOT='/root/backup-erp-code-backups'
 readonly DB_BACKUP_ROOT='/root/backup-erp-db-backups'
-readonly STATE_ROOT='/var/lib/chinaplanetos-backup-erp-m024-deploy'
-readonly STATE_FILE="${STATE_ROOT}/m024.state"
-readonly LOCK_FILE="${STATE_ROOT}/m024.lock"
+readonly STATE_ROOT='/var/lib/chinaplanetos-backup-erp-m024-c01-deploy'
+readonly STATE_FILE="${STATE_ROOT}/m024-c01.state"
+readonly LOCK_FILE="${STATE_ROOT}/m024-c01.lock"
 
 readonly M020_SCHEMA='deploy/migrations/m020_c01_shipment_public_document_schema.php'
 readonly M024_SCHEMA='deploy/migrations/m024_shipment_customer_collaboration_schema.php'
@@ -28,7 +28,7 @@ readonly C01_CONFIG='deploy/tools/m020_c01_shipment_gallery_config.php'
 readonly C02_CONFIG='deploy/tools/m020_c02_customer_web_gallery_config.php'
 readonly DEMO_TOOL='deploy/tools/m024_seed_backup_erp_demo.php'
 readonly DEMO_CUSTOMER_LOGIN='mohamed.azmy'
-readonly DEMO_STATE_FILE="${STATE_ROOT}/m024-demo.state"
+readonly DEMO_STATE_FILE="${STATE_ROOT}/m024-c01-demo.state"
 
 readonly -a PHP_RUNTIME_FILES=(
 	'custom/chinaplanetcustomercenter/documents.php'
@@ -126,7 +126,7 @@ validate_artifact() {
 }
 
 candidate_checks() {
-	CANDIDATE_REMOTE="/tmp/m024-staging-candidate-$$"
+	CANDIDATE_REMOTE="/tmp/m024-c01-staging-candidate-$$"
 	docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE"
 	docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
 	local file
@@ -151,7 +151,7 @@ secret_state() {
 }
 
 create_database_backup() {
-	DB_BACKUP="${DB_BACKUP_ROOT}/m024-before-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').sql"
+	DB_BACKUP="${DB_BACKUP_ROOT}/m024-c01-before-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').sql"
 	docker exec "$TARGET_DB_CONTAINER" sh -eu -c '
 		db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
 		user=${MARIADB_USER:-${MYSQL_USER:-root}}
@@ -175,8 +175,8 @@ apply_database_changes() {
 create_code_backup() {
 	local stamp file rel target
 	stamp=$(date -u '+%Y%m%dT%H%M%SZ')
-	CODE_BACKUP="${BACKUP_ROOT}/m024-before-${SHORT_COMMIT}-${stamp}.tar.gz"
-	ABSENT_LIST="${BACKUP_ROOT}/m024-absent-before-${SHORT_COMMIT}-${stamp}.txt"
+	CODE_BACKUP="${BACKUP_ROOT}/m024-c01-before-${SHORT_COMMIT}-${stamp}.tar.gz"
+	ABSENT_LIST="${BACKUP_ROOT}/m024-c01-absent-before-${SHORT_COMMIT}-${stamp}.txt"
 	: >"$ABSENT_LIST"; local -a existing=()
 	for file in "${RUNTIME_FILES[@]}"; do
 		rel=${file#custom/}; target="$TARGET_ROOT/$rel"
@@ -272,7 +272,7 @@ command_seed_demo() {
 	create_database_backup
 	docker exec -e M024_DEMO_ALLOWED=backup-erp -e M024_DEMO_CUSTOMER_LOGIN="$DEMO_CUSTOMER_LOGIN" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$DEMO_TOOL" apply >/dev/null || die 'DEMO_APPLY_FAILED'
 	local inspection; inspection=$(demo_inspect) || die 'DEMO_INSPECT_FAILED'
-	[[ "$inspection" == *'"projects":1,"shipments":5,"documents":7,"events":16,"orders":3,"invoices":3,"financial_entries":3'* ]] || die 'DEMO_COUNTS_INVALID'
+	[[ "$inspection" == *'"projects":1,"shipments":5,"documents":11,"events":26,"orders":3,"invoices":3,"financial_entries":3'* ]] || die 'DEMO_COUNTS_INVALID'
 	cat >"$DEMO_STATE_FILE" <<EOF
 STATE_RELEASE=$RELEASE
 STATE_RUNTIME_COMMIT=$RUNTIME_COMMIT
@@ -281,13 +281,13 @@ STATE_DEMO_DB_BACKUP_SHA=$DB_BACKUP_SHA
 STATE_DEMO_APPLIED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 EOF
 	chmod 0600 "$DEMO_STATE_FILE"
-	echo "M024_STAGING_DEMO_APPLY=PASS DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA COUNTS=projects:1,shipments:5,documents:7,events:16,orders:3,invoices:3,financial_entries:3"
+	echo "M024_STAGING_DEMO_APPLY=PASS DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA COUNTS=projects:1,shipments:5,documents:11,events:26,orders:3,invoices:3,financial_entries:3"
 }
 command_verify_demo() {
 	check_environment; validate_artifact; candidate_checks; live_checks || die 'LIVE_VERIFY_FAILED'
 	local inspection; inspection=$(demo_inspect) || die 'DEMO_INSPECT_FAILED'
-	[[ "$inspection" == *'"projects":1,"shipments":5,"documents":7,"events":16,"orders":3,"invoices":3,"financial_entries":3'* ]] || die 'DEMO_COUNTS_INVALID'
-	echo "M024_STAGING_DEMO_VERIFY=PASS COUNTS=projects:1,shipments:5,documents:7,events:16,orders:3,invoices:3,financial_entries:3"
+	[[ "$inspection" == *'"projects":1,"shipments":5,"documents":11,"events":26,"orders":3,"invoices":3,"financial_entries":3'* ]] || die 'DEMO_COUNTS_INVALID'
+	echo "M024_STAGING_DEMO_VERIFY=PASS COUNTS=projects:1,shipments:5,documents:11,events:26,orders:3,invoices:3,financial_entries:3"
 }
 command_cleanup_demo() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; validate_artifact; candidate_checks; live_checks || die 'LIVE_VERIFY_FAILED'
@@ -299,7 +299,7 @@ command_cleanup_demo() {
 }
 command_rollback() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; validate_artifact; candidate_checks; load_state
-	local reapply="${BACKUP_ROOT}/m024-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"; local -a current=(); local file rel
+	local reapply="${BACKUP_ROOT}/m024-c01-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"; local -a current=(); local file rel
 	for file in "${RUNTIME_FILES[@]}"; do rel=${file#custom/}; [[ -f "$TARGET_ROOT/$rel" ]] && current+=("$rel"); done
 	if [[ ${#current[@]} -gt 0 ]]; then tar -czf "$reapply" -C "$TARGET_ROOT" "${current[@]}"; else tar -czf "$reapply" --files-from /dev/null; fi
 	chmod 0600 "$reapply"; restore_code_backup || die 'ROLLBACK_CODE_RESTORE_FAILED'

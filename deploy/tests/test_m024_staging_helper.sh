@@ -12,8 +12,10 @@ grep -Fq "TARGET_CONTAINER='erp-staging-dolibarr-1'" "$HELPER"
 grep -Fq "TARGET_DB_CONTAINER='erp-staging-mariadb-1'" "$HELPER"
 grep -Fq "TARGET_VOLUME='erp-staging_erp-staging_custom'" "$HELPER"
 grep -Fq "TARGET_HTTP='http://127.0.0.1:18088/'" "$HELPER"
-grep -Fq "RUNTIME_COMMIT='66656e31c6bba13fa258e14d1b1a37e2c9c5477a'" "$HELPER"
-grep -Fq "ARTIFACT_SHA='efccb3d7411559f55ef033f90183d4bbf17d328f024ac861d6dec68b5cc5e97a'" "$HELPER"
+grep -Fq "RELEASE='M020-C03_M023_M024_M024-C01_M025'" "$HELPER"
+grep -Fq "RUNTIME_COMMIT='7b4a216d0dba2f611b457d804e85f1e07317812d'" "$HELPER"
+grep -Fq "ARTIFACT_SHA='ac60dc483d39ff6722108f0667bab3a4f0d7046a2b43a8a2e31d74a1a79c8198'" "$HELPER"
+grep -Fq "ARTIFACT=\"\${INBOX}/m024-c01-\${SHORT_COMMIT}.tar.gz\"" "$HELPER"
 ! grep -Fq 'PLACEHOLDER' "$HELPER"
 ! grep -Fq "vision_erp" "$HELPER"
 ! grep -Fq "erp.visiontrading.biz" "$HELPER"
@@ -24,6 +26,7 @@ grep -Fq "M024_STAGING_AUTO_CODE_ROLLBACK" "$HELPER"
 grep -Fq "ADDITIVE_SCHEMA_RETAINED=1" "$HELPER"
 grep -Fq "DEMO_CUSTOMER_LOGIN='mohamed.azmy'" "$HELPER"
 grep -Fq "m024_seed_backup_erp_demo.php" "$HELPER"
+grep -Fq 'documents:11,events:26' "$HELPER"
 grep -Fq "M024_STAGING_DEMO_VERIFY=PASS" "$HELPER"
 ! grep -Eq '(^|[^A-Za-z])(rm -rf|docker compose down|DROP DATABASE|TRUNCATE TABLE)([^A-Za-z]|$)' "$HELPER"
 
@@ -32,9 +35,14 @@ for command in compare preflight apply verify seed-demo verify-demo cleanup-demo
 	grep -Fqx "codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m024-shipment-collaboration-deploy $command" "$SUDOERS"
 done
 ! grep -Eq '(ALL=\(ALL|NOPASSWD: ALL|\*)' "$SUDOERS"
-grep -Fq "HELPER_SHA='97a9ec92b151eccf46b624c64b6d6e20e001c0bdfc46dacdb11b541fa8d22530'" "$INSTALLER"
+grep -Fq "HELPER_SHA='d4a2c1c23efa8a9ef4b76a2c800d43a1264514f2d20aa49a99125bcc2cf46bc6'" "$INSTALLER"
+grep -Fq "OBSOLETE_HELPER_SHA='97a9ec92b151eccf46b624c64b6d6e20e001c0bdfc46dacdb11b541fa8d22530'" "$INSTALLER"
 grep -Fq "SUDOERS_SHA='a5fa71eb1aec148b97e4ed2d59ceeaca30e082d300b93a2f7916fdeef8ca5811'" "$INSTALLER"
 grep -Fq 'DEPLOY_EXECUTED=NO PRODUCTION_ACCESSED=NO' "$INSTALLER"
+grep -Fq "die 'UNEXPECTED_EXISTING_HELPER_HASH'" "$INSTALLER"
+helper_guard_line=$(grep -n "UNEXPECTED_EXISTING_HELPER_HASH" "$INSTALLER" | head -1 | cut -d: -f1)
+sudoers_write_line=$(grep -n 'tmp_sudoers=' "$INSTALLER" | head -1 | cut -d: -f1)
+[[ "$helper_guard_line" -lt "$sudoers_write_line" ]]
 ! grep -Fq 'vision_erp' "$INSTALLER"
 ! grep -Fq 'erp.visiontrading.biz' "$INSTALLER"
 
