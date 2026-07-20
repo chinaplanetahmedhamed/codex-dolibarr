@@ -81,8 +81,9 @@ if ($action === 'rename' || $action === 'deletefile') {
     if ($old_full === '') accessforbidden();
 
     if ($action === 'deletefile') {
-        if (!@unlink($old_full)) setEventMessages('Document operation failed.', null, 'errors');
-        else setEventMessages('Document deleted.', null, 'mesgs');
+        $archived = cpcc_portal_archive_shipment_file($db, $shipment, $user, $file);
+        if (empty($archived['ok'])) setEventMessages($archived['error'] ?? 'Document operation failed.', null, 'errors');
+        else setEventMessages($langs->trans('CPLShipmentFileArchived'), null, 'mesgs');
     } else {
         $safe_new = cpcc_portal_validate_shipment_filename($newname);
         $base_dir = realpath(dirname($old_full));
@@ -173,7 +174,7 @@ if ($is_external && $socid <= 0) {
                 print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryContainer')).'">'.dol_escape_htmltag($obj->container_no ?: '-').'</td>';
                 print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryBillOfLading')).'">'.dol_escape_htmltag($obj->bl_no ?: '-').'</td>';
                 print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryEta')).'">'.(!empty($obj->date_eta) ? dol_print_date($obj->date_eta, 'day') : '-').'</td>';
-                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLShipmentFilesColumn')).'"><div class="cpcc-files-summary"><strong>'.dol_escape_htmltag($langs->trans('CPLShipmentDocumentsTitle')).'</strong>'.cpcc_portal_customer_document_items_html($publishedGroups['documents']).'<strong>'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerTitle')).'</strong>'.cpcc_portal_customer_gallery_items_html($publishedGroups['gallery']).'</div></td>';
+                print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLShipmentFilesColumn')).'"><div class="cpcc-files-summary"><strong>'.dol_escape_htmltag($langs->trans('CPLShipmentDocumentsTitle')).'</strong>'.cpcc_portal_customer_document_items_html($publishedGroups['documents']).'<strong>'.dol_escape_htmltag($langs->trans('CPLCustomerUploadedFilesTitle')).'</strong>'.cpcc_portal_customer_upload_items_html($publishedGroups['customer_uploads']).'<strong>'.dol_escape_htmltag($langs->trans('CPLGalleryCustomerTitle')).'</strong>'.cpcc_portal_customer_gallery_items_html($publishedGroups['gallery']).'</div></td>';
                 print '<td data-label="'.dol_escape_htmltag($langs->trans('CPLGalleryAction')).'"><a class="button button-small" href="'.dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int) $obj->rowid.'">'.dol_escape_htmltag($langs->trans('CPLGalleryOpenShipment')).'</a></td>';
                 print '</tr>';
                 continue;
@@ -219,7 +220,7 @@ if ($is_external && $socid <= 0) {
                             print '<input type="text" class="flat minwidth150" name="newname" value="'.dol_escape_htmltag($doc['name']).'">';
                             print '<button class="button button-small" type="submit" name="action" value="rename">Rename</button>';
                         }
-                        if ($candelete) print '<button class="button button-small" type="submit" name="action" value="deletefile" onclick="return confirm(\'Delete this document?\')">Delete file</button>';
+                        if ($candelete) print '<button class="button button-small" type="submit" name="action" value="deletefile" onclick="return confirm(\'Remove this file from active use and move it to the private archive?\')">Delete / Archive file</button>';
                         print '</form>';
                     }
                     print '</div>';

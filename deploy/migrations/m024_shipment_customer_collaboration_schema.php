@@ -42,7 +42,7 @@ function m024Verify($db)
     $documentTable = MAIN_DB_PREFIX.'cpl_shipment_public_document';
     $eventTable = MAIN_DB_PREFIX.'cpl_shipment_customer_event';
     if (!m024TableExists($db, $documentTable) || !m024TableExists($db, $eventTable)) return false;
-    foreach (array('source_origin','response_status','response_note','fk_user_response','date_response') as $column) if (!m024ColumnExists($db, $documentTable, $column)) return false;
+    foreach (array('source_origin','response_status','customer_upload_status','response_note','fk_user_response','date_response') as $column) if (!m024ColumnExists($db, $documentTable, $column)) return false;
     foreach (array('entity','fk_shipment','fk_soc','fk_public_document','event_type','status_code','note_public','actor_type','fk_user','customer_visible','event_at') as $column) if (!m024ColumnExists($db, $eventTable, $column)) return false;
     return true;
 }
@@ -57,7 +57,8 @@ if (!m024TableExists($db, $documentTable)) { fwrite(STDERR, "M024_SCHEMA=FAIL RE
 $columns = array(
     'source_origin' => "varchar(16) NOT NULL DEFAULT 'staff' AFTER `item_kind`",
     'response_status' => "varchar(32) NOT NULL DEFAULT 'awaiting_confirmation' AFTER `source_origin`",
-    'response_note' => "text NULL AFTER `response_status`",
+    'customer_upload_status' => "varchar(32) NULL AFTER `response_status`",
+    'response_note' => "text NULL AFTER `customer_upload_status`",
     'fk_user_response' => "integer NULL AFTER `response_note`",
     'date_response' => "datetime NULL AFTER `fk_user_response`",
 );

@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS llx_cpl_shipment_public_document (
     item_kind varchar(16) NOT NULL DEFAULT 'document',
     source_origin varchar(16) NOT NULL DEFAULT 'staff',
     response_status varchar(32) NOT NULL DEFAULT 'awaiting_confirmation',
+    customer_upload_status varchar(32) NULL,
     response_note text NULL,
     fk_user_response integer NULL,
     date_response datetime NULL,

@@ -46,11 +46,13 @@ if (is_string($documentRoot) && $documentRoot !== '') {
     global $db, $conf;
 
     $grouped = cpcc_portal_customer_shipment_file_groups(array(
-        (object) array('item_kind' => 'document'),
-        (object) array('item_kind' => 'image'),
-        (object) array('item_kind' => 'video'),
+        (object) array('item_kind' => 'document', 'source_origin' => 'staff'),
+        (object) array('item_kind' => 'image', 'source_origin' => 'staff'),
+        (object) array('item_kind' => 'video', 'source_origin' => 'staff'),
+        (object) array('item_kind' => 'image', 'source_origin' => 'customer'),
+        (object) array('item_kind' => 'document', 'source_origin' => 'customer'),
     ));
-    m020C02Assert(count($grouped['documents']) === 1 && count($grouped['gallery']) === 2, 'Documents and visual media are rendered in separate customer sections');
+    m020C02Assert(count($grouped['documents']) === 1 && count($grouped['customer_uploads']) === 2 && count($grouped['gallery']) === 2, 'Staff documents, every customer upload, and staff visual media render in three separate sections');
 
     $userRows = array();
     foreach (array('A' => 'M017_SYNTH_E1_A', 'B' => 'M017_SYNTH_E1_B') as $key => $refExt) {
