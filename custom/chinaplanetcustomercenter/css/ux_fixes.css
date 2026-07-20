@@ -1,6 +1,55 @@
 .cpcc-table thead th{background:#173e56!important;color:#fff!important}
-.cpcc-statement-button{display:inline-flex;align-items:center;padding:.65rem .9rem;border-radius:8px;background:#0d5d7d;color:#fff!important;text-decoration:none}
+.cpcc-statement-button{display:inline-flex;align-items:center;gap:8px;padding:.58rem .95rem;border-radius:8px;background:#0d5d7d;color:#fff!important;text-decoration:none;font-size:12px;font-weight:700}
 .cpcc-statement-button:hover,.cpcc-statement-button:focus{background:#08749a;outline:3px solid #83e8ff;outline-offset:2px}
+.cpcc-statement-row{margin:.55rem 0 0}
+
+.cpad-finance-portfolio-theme{color:#eaf8ff;font-size:14px;line-height:1.45}
+.cpad-finance-portfolio-theme .cpad-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.cpad-finance-portfolio-theme .cpad-kpi{min-width:0;min-height:94px;text-align:center;padding:15px 8px;border-radius:4px;background:linear-gradient(180deg,rgba(10,57,103,.66),rgba(4,24,49,.8));border:1px solid rgba(20,217,255,.25);position:relative;overflow:hidden}
+.cpad-finance-portfolio-theme .cpad-kpi b{color:#ffffff!important}
+.cpad-finance-portfolio-theme .cpad-kpi b{display:block;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(20,217,255,.48)}
+.cpad-finance-portfolio-theme .cpad-kpi span,
+.cpad-finance-portfolio-theme .cpad-kpi small{color:#b4d5ea!important;font-size:12px}
+.cpad-finance-portfolio-theme .cpad-kpi b{font-size:clamp(24px,2.5vw,36px)}
+.cpad-finance-portfolio-theme .cpad-kpi.danger{border-color:rgba(255,105,126,.55);background:linear-gradient(180deg,rgba(101,26,50,.92),rgba(40,16,39,.97))}
+.cpad-finance-portfolio-theme .cpad-kpi.gold{border-color:rgba(255,216,74,.48);background:linear-gradient(180deg,rgba(104,72,10,.9),rgba(43,31,13,.97))}
+.cpad-finance-portfolio-theme .cpad-kpi:before,
+.cpad-finance-portfolio-theme .cpad-kpi:after{content:"";position:absolute;width:18px;height:18px;border-color:#14d9ff;pointer-events:none}
+.cpad-finance-portfolio-theme .cpad-kpi:before{left:0;top:0;border-left:2px solid;border-top:2px solid}
+.cpad-finance-portfolio-theme .cpad-kpi:after{right:0;bottom:0;border-right:2px solid;border-bottom:2px solid}
+.cpad-finance-portfolio-theme .cpad-title{color:#f2fbff!important;font-size:14px;gap:10px}
+.cpad-finance-portfolio-theme .cpad-title span,
+.cpad-finance-portfolio-theme .cpad-title small{color:inherit!important}
+.cpad-finance-portfolio-theme .cpad-title span{font-size:14px}
+.cpad-finance-portfolio-theme .cpad-title small{font-size:11px}
+.cpad-finance-portfolio-theme .cpad-panel,
+.cpad-finance-portfolio-theme .cpad-table-scroll{overflow-x:auto}
+.cpad-finance-portfolio-theme .cpad-table{min-width:680px}
+.cpad-finance-portfolio-theme .cpad-table th{color:#d5f0ff!important;font-size:12px}
+.cpad-finance-portfolio-theme .cpad-table td{color:#eaf8ff!important;font-size:12px}
+.cpad-finance-portfolio-theme .cpad-table td b{color:#eaf8ff}
+.cpad-finance-portfolio-theme .cpad-table td a{color:#8be6ff!important}
+.cpad-finance-portfolio-theme .cpad-table td a:hover{color:#ffffff!important}
+.cpad-finance-portfolio-theme .cpad-table small{color:#b4d5ea!important;font-size:11px}
+.cpad-finance-portfolio-theme .cpad-footnote{color:#9fc6de!important}
+
+@media (max-width: 768px){
+  .cpcc-statement-button{font-size:14px;min-height:40px;padding:.72rem 1rem}
+  .cpcc-statement-row{margin-top:.7rem}
+  .cpad-finance-portfolio-theme{font-size:16px;line-height:1.4}
+  .cpad-finance-portfolio-theme .cpad-kpis{grid-template-columns:1fr 1fr;gap:8px}
+  .cpad-finance-portfolio-theme .cpad-kpi b{font-size:30px}
+  .cpad-finance-portfolio-theme .cpad-kpi span,
+  .cpad-finance-portfolio-theme .cpad-kpi small{font-size:12px}
+  .cpad-finance-portfolio-theme .cpad-title{font-size:15px}
+  .cpad-finance-portfolio-theme .cpad-title span{font-size:15px}
+  .cpad-finance-portfolio-theme .cpad-title small{font-size:11px}
+  .cpad-finance-portfolio-theme .cpad-table{min-width:0}
+  .cpad-finance-portfolio-theme .cpad-table th{font-size:11px}
+  .cpad-finance-portfolio-theme .cpad-table td,
+  .cpad-finance-portfolio-theme .cpad-table small,
+  .cpad-finance-portfolio-theme .cpad-table a{font-size:13px}
+}
 .cpad-section-content .cpcc-page-head,.cpad-section-content .cpcc-hero{color:#fff!important}
 .cpad-section-content .cpcc-page-head h1,.cpad-section-content .cpcc-page-head h2,.cpad-section-content .cpcc-page-head p,.cpad-section-content .cpcc-hero h1,.cpad-section-content .cpcc-hero h2,.cpad-section-content .cpcc-hero p{color:#fff!important}
 .cpad-section-content .cpcc-page-head p,.cpad-section-content .cpcc-hero p{color:#d7e9ef!important}

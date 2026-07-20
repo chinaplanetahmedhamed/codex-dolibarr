@@ -120,7 +120,7 @@ function cpcc_financial_is_supplier_category($category)
  * excluded from future-services totals later, because that invoice is counted
  * in the native unpaid-invoice balance instead.
  */
-function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid = 0)
+function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
 {
     $rows = array();
     if (!cpcc_financial_schema_ready($db) || (int) $socid <= 0) return $rows;
@@ -134,6 +134,9 @@ function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $project
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facture fi ON c.source_type IN ('customer_invoice','invoice') AND fi.rowid=c.source_id AND fi.fk_soc=c.fk_soc";
     $sql .= " WHERE c.entity=".(int) $GLOBALS['conf']->entity." AND c.fk_soc=".(int) $socid." AND c.status=1 AND c.customer_visible=1";
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+        $sql .= " AND c.charge_date<='".$db->escape($asOf)."'";
+    }
     if ((int) $projectid > 0) $sql .= " AND c.fk_project=".(int) $projectid;
     $sql .= " GROUP BY c.rowid,c.fk_project,c.charge_date,c.category,c.label,c.supplier_label,c.amount,c.currency_code,c.reference,c.source_type,c.source_id,p.ref,p.title,fi.rowid,fi.ref,fi.fk_statut,fi.type";
     $sql .= " ORDER BY c.charge_date,c.rowid";
@@ -171,7 +174,7 @@ function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $project
 }
 
 /** Return open native Dolibarr customer invoices in their original currency. */
-function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $projectid = 0)
+function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
 {
     $rows = array();
     $socid = (int) $socid;
@@ -186,6 +189,9 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
     $sql .= " LEFT JOIN (SELECT r.fk_facture,SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM ".MAIN_DB_PREFIX."societe_remise_except r WHERE r.fk_facture IS NOT NULL GROUP BY r.fk_facture) discount ON discount.fk_facture=f.rowid";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
     $sql .= " WHERE f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5)";
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+        $sql .= " AND f.datef<='".$db->escape($asOf)."'";
+    }
     if ((int) $projectid > 0) $sql .= " AND f.fk_projet=".(int) $projectid;
     $sql .= " ORDER BY f.datef,f.rowid";
 
@@ -216,6 +222,24 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
     return $rows;
 }
 
+/**
+ * Return open unpaid customer invoices that are overdue as of the given date.
+ *
+ * The overdue condition is strict: due date must be set and earlier than today.
+ */
+function cpcc_financial_overdue_unpaid_invoices($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
+{
+    $rows = cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $projectid, $asOf);
+    $asOf = preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf) ? $asOf : date('Y-m-d');
+    $out = array();
+    foreach ($rows as $row) {
+        if (!empty($row['due_date']) && $row['due_date'] !== '0000-00-00' && $row['due_date'] < $asOf) {
+            $out[] = $row;
+        }
+    }
+    return $out;
+}
+
 /** Return all validated customer invoices with paid and remaining values. */
 function cpcc_financial_customer_invoices($db, $socid, $currencyFallback, $projectid = 0)
 {
@@ -240,7 +264,7 @@ function cpcc_financial_customer_invoices($db, $socid, $currencyFallback, $proje
     return $rows;
 }
 
-function cpcc_financial_native_receipts($db, $socid, $currencyFallback)
+function cpcc_financial_native_receipts($db, $socid, $currencyFallback, $asOf = '')
 {
     $rows = array();
     $socid = (int) $socid;
@@ -253,6 +277,9 @@ function cpcc_financial_native_receipts($db, $socid, $currencyFallback)
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid";
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
     $sql .= " WHERE f.fk_soc=".$socid." AND f.fk_statut>0 AND p.statut=1";
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+        $sql .= " AND p.datep<='".$db->escape($asOf)."'";
+    }
     if (cpcc_financial_schema_ready($db)) {
         $sql .= " AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_financial_entry ce WHERE ce.entity=p.entity AND ce.fk_soc=f.fk_soc AND ce.source_type='payment' AND ce.source_id=p.rowid AND ce.status=1)";
     }
@@ -282,12 +309,15 @@ function cpcc_financial_native_receipts($db, $socid, $currencyFallback)
     return $rows;
 }
 
-function cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projectid = 0)
+function cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
 {
     $rows = array();
     if (!cpcc_financial_schema_ready($db)) return $rows;
     $sql = "SELECT rowid,entry_date,entry_type,direction,description,amount,currency_code,reference,bank_label,fk_project,fk_charge,allocated_amount,allocated_currency,exchange_rate,transfer_group,proof_ecm_id";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".(int) $GLOBALS['conf']->entity." AND fk_soc=".(int) $socid." AND status=1 AND customer_visible=1";
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+        $sql .= " AND entry_date<='".$db->escape($asOf)."'";
+    }
     if ($projectid > 0) $sql .= " AND fk_project=".(int) $projectid;
     $sql .= " ORDER BY entry_date,rowid";
     $resql = $db->query($sql);
@@ -315,10 +345,10 @@ function cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projecti
     return $rows;
 }
 
-function cpcc_financial_statement($db, $socid, $currencyFallback, $projectid = 0)
+function cpcc_financial_statement($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
 {
-    $rows = cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projectid);
-    if ($projectid <= 0) $rows = array_merge($rows, cpcc_financial_native_receipts($db, $socid, $currencyFallback));
+    $rows = cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projectid, $asOf);
+    if ($projectid <= 0) $rows = array_merge($rows, cpcc_financial_native_receipts($db, $socid, $currencyFallback, $asOf));
     usort($rows, function ($a, $b) {
         $cmp = strcmp($a['date'], $b['date']);
         return $cmp !== 0 ? $cmp : strcmp($a['id'], $b['id']);
@@ -335,10 +365,10 @@ function cpcc_financial_statement($db, $socid, $currencyFallback, $projectid = 0
     return $rows;
 }
 
-function cpcc_financial_summary($db, $socid, $currencyFallback)
+function cpcc_financial_summary($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
 {
-    $summary = cpcc_financial_summarize_rows(cpcc_financial_statement($db, $socid, $currencyFallback));
-    foreach (cpcc_financial_commitment_rows($db, $socid, $currencyFallback) as $commitment) {
+    $summary = cpcc_financial_summarize_rows(cpcc_financial_statement($db, $socid, $currencyFallback, $projectid, $asOf));
+    foreach (cpcc_financial_commitment_rows($db, $socid, $currencyFallback, (int) $projectid, $asOf) as $commitment) {
         $currency = $commitment['currency'];
         if (!isset($summary[$currency])) $summary[$currency] = cpcc_financial_empty_summary();
         $remaining = (float) $commitment['remaining'];
@@ -348,7 +378,7 @@ function cpcc_financial_summary($db, $socid, $currencyFallback)
             $summary[$currency]['future_services'] += $remaining;
         }
     }
-    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback) as $invoice) {
+    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, 0, $asOf) as $invoice) {
         $currency = $invoice['currency'];
         if (!isset($summary[$currency])) $summary[$currency] = cpcc_financial_empty_summary();
         $summary[$currency]['unpaid_invoices'] += (float) $invoice['remaining'];
