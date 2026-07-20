@@ -31,7 +31,10 @@ $search_container = GETPOST('search_container', 'alpha');
 $search_bl = GETPOST('search_bl', 'alpha');
 $search_any = GETPOST('search_any', 'alphanohtml');
 $statusFilter = GETPOST('status', 'alpha');
-if (!in_array($statusFilter, array('active','intransit','arriving','arrived','critical'), true)) $statusFilter = '';
+if (!in_array($statusFilter, array('active','intransit','arriving','arrived','critical','missingdocs'), true)) $statusFilter = '';
+$hasExportDocumentTable = false;
+$exportDocTableRes = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.'cpcc_export_document')."'");
+if ($exportDocTableRes && $db->num_rows($exportDocTableRes) > 0) $hasExportDocumentTable = true;
 $form = new Form($db);
 $customerOptions = array();
 if (!$is_external) {
@@ -76,12 +79,21 @@ print '<h1>الشحنات / Shipments</h1>';
 print '<p>تابع حالة الشحنة ومواعيد الوصول والوقت الحر من مكان واحد. / Track shipment status, arrival dates, and free time in one place.</p>';
 print '</div></header>';
 print '<form method="GET" action="'.$_SERVER["PHP_SELF"].'">';
-if ($statusFilter !== '') print '<input type="hidden" name="status" value="'.dol_escape_htmltag($statusFilter).'">';
 print '<div class="div-table-responsive">';
 print '<table class="tagtable liste">';
 print '<tr class="liste_titre_filter">';
 print '<td class="liste_titre"><input type="text" class="flat maxwidth100" name="search_container" value="'.dol_escape_htmltag($search_container).'" placeholder="الحاوية / Container"></td>';
 print '<td class="liste_titre"><input type="text" class="flat maxwidth100" name="search_bl" value="'.dol_escape_htmltag($search_bl).'" placeholder="البوليصة / BL"></td>';
+print '<td class="liste_titre">'.Form::selectarray('status', array(
+    '' => 'All statuses / كل الحالات',
+    'active' => 'Active / نشطة',
+    'intransit' => 'In transit / في الطريق',
+    'arriving' => 'ETA within 14 days / خلال 14 يوم',
+    'arrived' => 'Arrived / وصلت',
+    'critical' => 'Critical / حرجة',
+    'missingdocs' => 'Missing export docs / بدون مستندات تصدير',
+), $statusFilter, 0, 0, 0, '', 0, 0, 0, '', '', 1);
+print '</td>';
 if (!$is_external) print '<td class="liste_titre">'.Form::selectarray('socid',$customerOptions,$socid,'كل العملاء / All customers',0,0,'aria-label="Customer filter / فلتر العميل"',0,0,0,'','minwidth200',1).'</td>';
 print '<td class="liste_titre" colspan="4"></td>';
 print '<td class="liste_titre center"><input type="submit" class="button small" value="بحث / Search"></td>';
@@ -117,7 +129,8 @@ if ($statusFilter === 'active') $sql.= " AND t.fk_statut IN (".chinaplanetlogist
 elseif ($statusFilter === 'intransit') $sql.= " AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('in_transit').")";
 elseif ($statusFilter === 'arriving') $sql.= " AND t.date_eta BETWEEN '".$db->escape(date('Y-m-d'))."' AND '".$db->escape(date('Y-m-d',strtotime('+14 days')))."' AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
 elseif ($statusFilter === 'arrived') $sql.= " AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('arrived').")";
-elseif ($statusFilter === 'critical') $sql.= " AND t.freetime_end BETWEEN '".$db->escape(date('Y-m-d'))."' AND '".$db->escape(date('Y-m-d',strtotime('+7 days')))."' AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
+elseif ($statusFilter === 'critical') $sql.= " AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND ((t.date_eta < '".$db->escape(date('Y-m-d'))."') OR (t.freetime_end BETWEEN '".$db->escape(date('Y-m-d'))."' AND '".$db->escape(date('Y-m-d',strtotime('+7 days')))."'))";
+elseif ($statusFilter === 'missingdocs' && $hasExportDocumentTable) $sql.= " AND t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_export_document d WHERE d.entity=t.entity AND d.fk_shipment=t.rowid AND d.status=1)";
 
 if ($search_container) $sql.= " AND t.container_no LIKE '%".$db->escape($search_container)."%'";
 if ($search_bl) $sql.= " AND t.bl_no LIKE '%".$db->escape($search_bl)."%'";

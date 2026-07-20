@@ -195,8 +195,8 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <div class="cpad-title"><span>Action Required / مطلوب إجراء</span><small>ابدأ من هنا لمعالجة المخاطر الحالية</small></div>
     <div class="cpad-attention-grid">
       <a class="<?php echo $critical > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="fas fa-ship"></span><strong><?php echo $critical; ?></strong><b>Critical shipments / شحنات حرجة</b><small>Review ETA and free time</small></a>
-      <a class="<?php echo $overdueCount > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/invoices.php',1); ?>"><span class="fas fa-file-invoice-dollar"></span><strong><?php echo $overdueCount; ?></strong><b>Overdue invoices / فواتير متأخرة</b><small><?php echo $unpaidCount; ?> total unpaid</small></a>
-      <a class="<?php echo $shipmentsWithoutExportDocs > 0 ? 'is-warn' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/documents.php',1); ?>"><span class="fas fa-file-export"></span><strong><?php echo $shipmentsWithoutExportDocs; ?></strong><b>Missing export docs / بدون مستندات تصدير</b><small>Active shipments requiring files</small></a>
+      <a class="<?php echo $overdueCount > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/compta/facture/list.php',1); ?>?search_status=1&search_datelimit_end=<?php echo date('Y-m-d'); ?>"><span class="fas fa-file-invoice-dollar"></span><strong><?php echo $overdueCount; ?></strong><b>Overdue invoices / فواتير متأخرة</b><small><?php echo $unpaidCount; ?> total unpaid</small></a>
+      <a class="<?php echo $shipmentsWithoutExportDocs > 0 ? 'is-warn' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1).'?status=missingdocs'; ?>"><span class="fas fa-file-export"></span><strong><?php echo $shipmentsWithoutExportDocs; ?></strong><b>Missing export docs / بدون مستندات تصدير</b><small>Active shipments requiring files</small></a>
       <a class="is-info" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-tasks"></span><strong><?php echo $cardsActive; ?></strong><b>Open tasks / مهام مفتوحة</b><small>Continue internal operations</small></a>
     </div>
   </section>
@@ -271,10 +271,10 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
   </section>
 
   <section class="cpad-panel" data-cpad-widget="recent_finance" data-default-size="large">
-    <div class="cpad-title"><span>Recent Financial Activity / أحدث الحركات المالية</span><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>">Record entry / تسجيل حركة →</a></div>
+    <div class="cpad-title"><span>Recent Financial Activity / أحدث الحركات المالية</span></div>
     <?php if (empty($recentFinance)) { ?><div class="cpad-empty">No recent custom financial entries / لا توجد حركات مالية حديثة.</div><?php } else { ?>
     <div class="cpad-activity-list"><?php foreach ($recentFinance as $entry) { ?>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php?socid='.(int)$entry->fk_soc,1); ?>"><span class="cpad-activity-icon <?php echo $entry->direction==='C'?'credit':'debit'; ?> fas <?php echo $entry->direction==='C'?'fa-arrow-down':'fa-arrow-up'; ?>"></span><span><b><?php echo dol_escape_htmltag($entry->customer ?: '—'); ?></b><small><?php echo dol_escape_htmltag($entry->description); ?></small></span><strong><?php echo $entry->direction==='C'?'+':'−'; ?> <?php echo dol_escape_htmltag(number_format($entry->amount,2).' '.$entry->currency_code); ?></strong><time><?php echo dol_escape_htmltag(substr($entry->entry_date,0,10)); ?></time></a>
+      <a href="<?php echo ($entry->fk_soc > 0) ? dol_buildpath('/chinaplanetcustomercenter/balance.php',1).'?socid='.(int)$entry->fk_soc : dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>"><span class="cpad-activity-icon <?php echo $entry->direction==='C'?'credit':'debit'; ?> fas <?php echo $entry->direction==='C'?'fa-arrow-down':'fa-arrow-up'; ?>"></span><span><b><?php echo dol_escape_htmltag($entry->customer ?: '—'); ?></b><small><?php echo dol_escape_htmltag($entry->description); ?></small></span><strong><?php echo $entry->direction==='C'?'+':'−'; ?> <?php echo dol_escape_htmltag(number_format($entry->amount,2).' '.$entry->currency_code); ?></strong><time><?php echo dol_escape_htmltag(substr($entry->entry_date,0,10)); ?></time></a>
     <?php } ?></div><?php } ?>
   </section>
 
@@ -311,7 +311,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
       <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b>Operations Kanban</b><small>لوحة كانبان</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span><b>Shipping Price</b><small>سعر شحن</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="fas fa-user-tie"></span><b>Customer Center</b><small>مركز العملاء</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>"><span class="fas fa-list"></span><b>All Shipments</b><small>كل الشحنات</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-list"></span><b>All Shipments</b><small>كل الشحنات</small></a>
     </div>
   </section>
   <aside id="cpad-widget-library" class="cpad-widget-library" hidden>

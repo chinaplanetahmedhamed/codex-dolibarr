@@ -15,6 +15,7 @@ require_once __DIR__.'/class/cpkanbancolumn.class.php';
 require_once __DIR__.'/lib/cpkanban.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/projectsync.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 $langs->loadLangs(array("companies", "projects", "other"));
 
@@ -74,8 +75,12 @@ $customerStats = $is_external ? cpkanban_customer_center_stats($db, $socid) : ar
 
 llxHeader('', 'Customer Projects / مشاريع العملاء', '', '', 0, 0,
     array('/custom/cpkanban/js/board.js'),
-    array('/custom/cpkanban/css/board.css'));
-cpcc_portal_navigation($user, 'dashboard');
+    array('/custom/cpkanban/css/board.css', cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
+if ($is_external) {
+    cpcc_portal_navigation($user, 'dashboard');
+} else {
+    cpcc_admin_shell_open('dashboard', 'Operations Kanban / لوحة كانبان', 'لوحة مهام التشغيل الداخلية', 'fa-columns');
+}
 
 // CSRF token for AJAX moves
 $ajaxtoken = newToken();
@@ -187,4 +192,5 @@ if ($is_external) {
 
 </div><!-- /cpk-wrap -->
 <?php
+if (!$is_external) cpcc_admin_shell_close();
 llxFooter();

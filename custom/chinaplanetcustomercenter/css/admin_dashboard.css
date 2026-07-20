@@ -30,18 +30,21 @@
 
 /* Semantic contrast contract: headings stay dark on light panels, but every
  * known dark hero surface gets a consistent accessible foreground palette. */
-.cpad-section-content :is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero){
+.cpad-section-content :is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero,.cpl-command-hero){
 	--cpcc-on-dark:#fff;
 	--cpcc-on-dark-muted:#d7e9ef;
 	--cpcc-on-dark-accent:#f2cc72;
 }
-.cpad-section-content :is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero) :is(h1,h2,h3,h4){
+.cpad-section-content :is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero,.cpl-command-hero) :is(h1,h2,h3,h4){
 	color:var(--cpcc-on-dark)!important;
 }
-.cpad-section-content :is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero) p{
+.cpad-section-content :is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero,.cpl-command-hero) p{
 	color:var(--cpcc-on-dark-muted)!important;
 }
 .cpad-section-content :is(.cpcc-hero,.cpcc-page-head) .cpcc-eyebrow{
+	color:var(--cpcc-on-dark-accent)!important;
+}
+.cpad-section-content .cpl-command-hero .cpl-eyebrow{
 	color:var(--cpcc-on-dark-accent)!important;
 }
 
