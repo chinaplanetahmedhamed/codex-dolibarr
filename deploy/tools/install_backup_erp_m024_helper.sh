@@ -6,8 +6,8 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m024_shipment_collaboration.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-backup-erp-m024-shipment-collaboration.sudoers"
-readonly HELPER_SHA='d4a2c1c23efa8a9ef4b76a2c800d43a1264514f2d20aa49a99125bcc2cf46bc6'
-readonly OBSOLETE_HELPER_SHA='97a9ec92b151eccf46b624c64b6d6e20e001c0bdfc46dacdb11b541fa8d22530'
+readonly HELPER_SHA='e4dc0872c9f452265d7459f93968c5abb4426abbd293d139fdda3785d957e178'
+readonly OBSOLETE_HELPER_SHA='d4a2c1c23efa8a9ef4b76a2c800d43a1264514f2d20aa49a99125bcc2cf46bc6'
 readonly SUDOERS_SHA='a5fa71eb1aec148b97e4ed2d59ceeaca30e082d300b93a2f7916fdeef8ca5811'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-backup-erp-m024-shipment-collaboration-deploy'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-backup-erp-m024-shipment-collaboration'

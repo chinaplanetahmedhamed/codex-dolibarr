@@ -7,8 +7,8 @@ readonly RELEASE='M020-C03_M023_M024_M024-C01_M025'
 readonly RUNTIME_COMMIT='7b4a216d0dba2f611b457d804e85f1e07317812d'
 readonly SHORT_COMMIT='7b4a216'
 readonly INBOX='/home/codex-deploy/staging-inbox'
-readonly ARTIFACT="${INBOX}/m024-c01-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='ac60dc483d39ff6722108f0667bab3a4f0d7046a2b43a8a2e31d74a1a79c8198'
+readonly ARTIFACT="${INBOX}/m024-c01-r2-${SHORT_COMMIT}.tar.gz"
+readonly ARTIFACT_SHA='dcb020f773e399f83df99f1416358f18f2dc96ee9559699e86c9049ab0974e35'
 
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'
@@ -56,6 +56,22 @@ readonly -a TEST_FILES=(
 	'deploy/tests/test_m023_remove_document_checklist.php'
 	'deploy/tests/test_m024_shipment_customer_collaboration.php'
 )
+readonly -a PHP_TEST_DEPENDENCY_FILES=(
+	'custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php'
+	'custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php'
+	'custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php'
+	'custom/chinaplanetlogistics/list.php'
+	'custom/chinaplanetoperations/class/OperationsService.class.php'
+	'custom/chinaplanetoperations/operations/edit.php'
+	'custom/cpkanban/lib/customer_project_center.lib.php'
+)
+readonly -a STATIC_TEST_DEPENDENCY_FILES=(
+	'custom/chinaplanetlogistics/css/shipment-list.css'
+	'custom/chinaplanetlogistics/sql/llx_chinaplanetlogistics.sql'
+	'custom/chinaplanetlogistics/sql/llx_cpl_document_requirement.sql'
+	'custom/chinaplanetlogistics/sql/llx_cpl_shipment_event.sql'
+	'docs/API/mobile-v1.openapi.json'
+)
 readonly -a SUPPORT_FILES=(
 	"$M020_SCHEMA"
 	"$M024_SCHEMA"
@@ -64,6 +80,8 @@ readonly -a SUPPORT_FILES=(
 	"$C02_CONFIG"
 	"$DEMO_TOOL"
 	"${TEST_FILES[@]}"
+	"${PHP_TEST_DEPENDENCY_FILES[@]}"
+	"${STATIC_TEST_DEPENDENCY_FILES[@]}"
 )
 readonly -a ALL_FILES=("${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}")
 
@@ -130,7 +148,7 @@ candidate_checks() {
 	docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE"
 	docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
 	local file
-	for file in "${PHP_RUNTIME_FILES[@]}" "$M020_SCHEMA" "$M024_SCHEMA" "$SECRET_TOOL" "$C01_CONFIG" "$C02_CONFIG" "$DEMO_TOOL" "${TEST_FILES[@]}"; do
+	for file in "${PHP_RUNTIME_FILES[@]}" "${PHP_TEST_DEPENDENCY_FILES[@]}" "$M020_SCHEMA" "$M024_SCHEMA" "$SECRET_TOOL" "$C01_CONFIG" "$C02_CONFIG" "$DEMO_TOOL" "${TEST_FILES[@]}"; do
 		docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$file" >/dev/null || die "CANDIDATE_LINT_FAILED_${file//\//_}"
 	done
 	for file in "${TEST_FILES[@]}"; do docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$file" >/dev/null || die "CANDIDATE_TEST_FAILED_${file//\//_}"; done
