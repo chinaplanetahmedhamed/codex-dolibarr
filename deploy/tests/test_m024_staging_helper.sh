@@ -3,8 +3,10 @@ set -Eeuo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 HELPER="$ROOT/deploy/tools/chinaplanetos_backup_erp_m024_shipment_collaboration.sh"
 SUDOERS="$ROOT/deploy/config/codex-deploy-backup-erp-m024-shipment-collaboration.sudoers"
+INSTALLER="$ROOT/deploy/tools/install_backup_erp_m024_helper.sh"
 
 bash -n "$HELPER"
+bash -n "$INSTALLER"
 [[ $(stat -f '%Lp' "$HELPER" 2>/dev/null || stat -c '%a' "$HELPER") =~ ^(644|755)$ ]]
 grep -Fq "TARGET_CONTAINER='erp-staging-dolibarr-1'" "$HELPER"
 grep -Fq "TARGET_DB_CONTAINER='erp-staging-mariadb-1'" "$HELPER"
@@ -30,5 +32,10 @@ for command in compare preflight apply verify seed-demo verify-demo cleanup-demo
 	grep -Fqx "codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m024-shipment-collaboration-deploy $command" "$SUDOERS"
 done
 ! grep -Eq '(ALL=\(ALL|NOPASSWD: ALL|\*)' "$SUDOERS"
+grep -Fq "HELPER_SHA='97a9ec92b151eccf46b624c64b6d6e20e001c0bdfc46dacdb11b541fa8d22530'" "$INSTALLER"
+grep -Fq "SUDOERS_SHA='a5fa71eb1aec148b97e4ed2d59ceeaca30e082d300b93a2f7916fdeef8ca5811'" "$INSTALLER"
+grep -Fq 'DEPLOY_EXECUTED=NO PRODUCTION_ACCESSED=NO' "$INSTALLER"
+! grep -Fq 'vision_erp' "$INSTALLER"
+! grep -Fq 'erp.visiontrading.biz' "$INSTALLER"
 
 echo 'M024_STAGING_HELPER_TEST=PASS'
