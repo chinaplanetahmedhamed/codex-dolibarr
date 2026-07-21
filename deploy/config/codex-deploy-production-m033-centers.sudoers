@@ -1,0 +1,2 @@
+Cmnd_Alias CHINAPLANETOS_PRODUCTION_M033_CENTERS = /usr/local/sbin/chinaplanetos-production-m033-centers-deploy compare, /usr/local/sbin/chinaplanetos-production-m033-centers-deploy preflight, /usr/local/sbin/chinaplanetos-production-m033-centers-deploy apply, /usr/local/sbin/chinaplanetos-production-m033-centers-deploy verify, /usr/local/sbin/chinaplanetos-production-m033-centers-deploy rollback, /usr/local/sbin/chinaplanetos-production-m033-centers-deploy status
+codex-deploy ALL=(root) NOPASSWD: CHINAPLANETOS_PRODUCTION_M033_CENTERS
