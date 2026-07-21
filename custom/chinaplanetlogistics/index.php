@@ -55,7 +55,7 @@ if (!function_exists('cpl_color')) {
 llxHeader('', 'China Planet Logistics - Dashboard', '', '', 0, 0, array(), $is_external ? array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css') : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
 
 if ($is_external) { cpcc_portal_navigation($user,'shipments'); print load_fiche_titre('Logistics Dashboard / لوحة تحكم الشحن', '', 'ship'); }
-else cpcc_admin_shell_open('tracking', 'Shipment Tracking / متابعة الشحن', 'لوحة مواعيد الوصول والحاويات والتنبيهات التشغيلية', 'fa-ship', array('socid'=>$socid));
+else cpcc_admin_shell_open('shipping', 'Shipping Center / مركز الشحن', 'التتبع وقائمة الشحنات وأسعار الشحن من نقطة تشغيل واحدة', 'fa-ship', array('socid'=>$socid));
 
 $today = date('Y-m-d');
 
@@ -84,10 +84,21 @@ print '<style>
 .cpl-card .lbl { font-size: 13px; margin-top: 8px; font-weight: 600; }
 .cpl-section-title { font-size: 16px; font-weight: 700; margin: 20px 0 10px 0; color: #2c3e50; border-left: 4px solid #c0392b; padding-left: 10px; }
 .cpl-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.cpl-show-all{padding:9px 14px;border-radius:8px;background:#0d5d7d;color:#fff!important;text-decoration:none;font-weight:700}.cpl-show-all:hover,.cpl-show-all:focus{background:#08749a;outline:3px solid #83e8ff}
+.cpl-center-launch{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:13px;margin:0 0 25px}.cpl-center-launch a{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;gap:12px;min-height:94px;padding:15px;border:1px solid #a9cede;border-radius:11px;background:#fff;color:#123b5b!important;text-decoration:none!important;box-shadow:0 5px 16px rgba(20,64,91,.08)}.cpl-center-launch a:hover,.cpl-center-launch a:focus-visible{transform:translateY(-2px);border-color:#0788b9;box-shadow:0 10px 24px rgba(20,64,91,.15);outline:3px solid #ffbf47;outline-offset:2px}.cpl-center-launch span{display:grid;place-items:center;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#0756a5,#0789b8);color:#fff;font-size:20px}.cpl-center-launch b,.cpl-center-launch small{display:block}.cpl-center-launch b{font-size:15px}.cpl-center-launch small{margin-top:5px;color:#58758a;font-size:11px;line-height:1.45}
+@media(max-width:600px){.cpl-center-launch{grid-template-columns:1fr}.cpl-center-launch a{min-height:82px;padding:12px}.cpl-grid{display:grid;grid-template-columns:1fr 1fr}.cpl-card{min-width:0}.cpl-center-launch span{width:44px;height:44px}}
+@media(max-width:390px){.cpl-grid{grid-template-columns:1fr}.cpl-card{width:auto}}
 </style>';
 
+if (!$is_external) {
+    print '<section class="cpl-center-launch" aria-label="Shipping operations / عمليات مركز الشحن">';
+    print '<a href="#tracking-overview"><span class="fas fa-map-marked-alt" aria-hidden="true"></span><div><b>Tracking Dashboard / لوحة التتبع</b><small>مواعيد الوصول والوقت الحر والتنبيهات</small></div></a>';
+    print '<a href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).'"><span class="fas fa-list" aria-hidden="true"></span><div><b>Shipments / الشحنات</b><small>البحث وفتح وإدارة سجلات الشحن</small></div></a>';
+    print '<a href="'.dol_buildpath('/chinaplanetshippingprices/index.php',1).'"><span class="fas fa-search-dollar" aria-hidden="true"></span><div><b>Shipping Prices / أسعار الشحن</b><small>البحث في الأسعار والمسارات والخدمات</small></div></a>';
+    print '</section>';
+}
+
 // --- CONTAINER STATUS ---
-print '<div class="cpl-section-head"><div class="cpl-section-title">Container Status / حالة الحاويات</div><a class="cpl-show-all" href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).($socid>0?'?socid='.(int)$socid:'').'">عرض كل الشحنات / Show all shipments</a></div>';
+print '<div class="cpl-section-head" id="tracking-overview"><div class="cpl-section-title">Container Status / حالة الحاويات</div><a class="cpl-show-all" href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).($socid>0?'?socid='.(int)$socid:'').'">عرض كل الشحنات / Show all shipments</a></div>';
 print '<div class="cpl-grid">';
 $filterBase=dol_buildpath('/chinaplanetlogistics/list.php',1).'?'.($socid>0?'socid='.(int)$socid.'&':'');
 print '<a class="cpl-card" href="'.$filterBase.'status=intransit" style="background:linear-gradient(135deg,#34495e,#2c3e50);"><div class="num">'.$c_intransit.'</div><div class="lbl">In Transit / في البحر</div></a>';
