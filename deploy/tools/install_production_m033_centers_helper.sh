@@ -9,7 +9,7 @@ readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-production-m033-centers.sud
 readonly HELPER_SHA='55990c8788a7ecc4561ca03dc4b9b1163c44f042244a95cbd084484ecb0755c9'
 readonly SUDOERS_SHA='0f0398d1a985827c9c75ff9baa0690de3e6740ca412fbba399b58f2c54936fd8'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m033-centers-deploy-v5'
-readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m033-centers-v4'
+readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m033-centers-v5'
 
 die() { echo "M033_PRODUCTION_HELPER_INSTALL=FAIL REASON=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
