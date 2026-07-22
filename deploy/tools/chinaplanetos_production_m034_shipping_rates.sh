@@ -43,7 +43,7 @@ sha256() { sha256sum "$1" | awk '{print $1}'; }
 require_root() {
 	[[ $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
 	[[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
-	[[ $(basename "$0") == 'chinaplanetos-production-m034-shipping-rates-deploy-v3' ]] || die 'HELPER_PATH_NOT_ALLOWED'
+	[[ $(basename "$0") == 'chinaplanetos-production-m034-shipping-rates-deploy-v4' ]] || die 'HELPER_PATH_NOT_ALLOWED'
 }
 
 cleanup() {
@@ -87,8 +87,9 @@ candidate_checks() {
 	local file
 	for file in "${PHP_FILES[@]}"; do docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$file" >/dev/null || die "CANDIDATE_LINT_FAILED_${file//\//_}"; done
 	grep -Fq "'duplicate' => true" "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php" || die 'DUPLICATE_STATE_ASSERTION_FAILED'
-	grep -q 'Published & current' "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/admin/import.php" || die 'CURRENT_STATE_LABEL_ASSERTION_FAILED'
-	grep -q "getToken()" "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/admin/batch.php" || die 'CSRF_ASSERTION_FAILED'
+	grep -Fq 'already published and are currently active' "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/admin/import.php" || die 'DUPLICATE_MESSAGE_ASSERTION_FAILED'
+	grep -Fq 'Published & current' "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/admin/batch.php" || die 'CURRENT_STATE_LABEL_ASSERTION_FAILED'
+	grep -Fq 'newToken()' "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/admin/batch.php" || die 'CSRF_ASSERTION_FAILED'
 }
 
 compare_files() {

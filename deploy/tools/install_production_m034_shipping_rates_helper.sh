@@ -6,10 +6,10 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_production_m034_shipping_rates.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-production-m034-shipping-rates.sudoers"
-readonly HELPER_SHA='d6815b71176a3ca017e8e34ca42ea6dfe4cd79fb0a0c7c8f750da127eaeb9fca'
-readonly SUDOERS_SHA='d0e144c812040629589d4b69f473b4efba2d9f9cb1354d834237d3b044ead5c9'
-readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m034-shipping-rates-deploy-v3'
-readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m034-shipping-rates-v3'
+readonly HELPER_SHA='711c458c3f3e75821d493883f912ffe3e13fb2e13aa332524521ebd1a663d25d'
+readonly SUDOERS_SHA='2c1ff3425d608c085d241faa0c62af2b2997801e38a85a7a770fbdba2daef536'
+readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m034-shipping-rates-deploy-v4'
+readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m034-shipping-rates-v4'
 
 die() { echo "M034_PRODUCTION_HELPER_INSTALL=FAIL REASON=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
