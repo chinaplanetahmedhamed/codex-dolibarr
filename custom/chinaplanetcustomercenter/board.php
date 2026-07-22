@@ -9,6 +9,41 @@ require_once __DIR__.'/lib/operation_reports.lib.php';
 require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 
+if (!function_exists('cpcc_board_customer_document_count')) {
+    /** Count active documents published to one customer without relying on newer portal-library helpers. */
+    function cpcc_board_customer_document_count($db, $user, $requestedSocid = 0)
+    {
+        global $conf;
+
+        $scope = cpcc_portal_user_scope($user);
+        $socid = !empty($scope['is_external']) ? (int) $scope['socid'] : (int) $requestedSocid;
+        $entity = !empty($conf->entity) ? (int) $conf->entity : 0;
+        if ($entity <= 0 || $socid <= 0) return 0;
+
+        $total = 0;
+        if (cpcc_portal_gallery_schema_ready($db)) {
+            $sql = "SELECT COUNT(*) AS nb";
+            $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
+            $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s";
+            $sql .= " ON s.rowid=p.fk_shipment AND s.entity=p.entity AND s.fk_soc=p.fk_soc";
+            $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid;
+            $sql .= " AND p.status=1 AND p.customer_visible=1";
+            $resql = $db->query($sql);
+            if ($resql && ($obj = $db->fetch_object($resql))) $total += (int) $obj->nb;
+        }
+
+        if (function_exists('cpcc_export_schema_ready') && cpcc_export_schema_ready($db)) {
+            $sql = "SELECT COUNT(*) AS nb FROM ".MAIN_DB_PREFIX."cpcc_export_document";
+            $sql .= " WHERE entity=".$entity." AND fk_soc=".$socid;
+            $sql .= " AND status=1 AND customer_visible=1";
+            $resql = $db->query($sql);
+            if ($resql && ($obj = $db->fetch_object($resql))) $total += (int) $obj->nb;
+        }
+
+        return $total;
+    }
+}
+
 cpcc_portal_require_access($user);
 $scope = cpcc_portal_user_scope($user);
 $is_external = !empty($scope['is_external']);
@@ -79,7 +114,7 @@ if ($socid > 0) {
     if ($resql && ($obj=$db->fetch_object($resql))) $projectsTotal=(int)$obj->nb;
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."facture WHERE entity IN (".getEntity('invoice').") AND fk_soc=".$socid." AND fk_statut>0");
     if ($resql && ($obj=$db->fetch_object($resql))) $invoiceTotal=(int)$obj->nb;
-	$documentTotal = cpcc_portal_customer_document_count($db, $user, $socid);
+	$documentTotal = cpcc_board_customer_document_count($db, $user, $socid);
     if (cpcc_operation_reports_schema_ready($db)) {
         $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND status=1 AND customer_visible=1");
         if ($resql && ($obj=$db->fetch_object($resql))) $operationReportTotal=(int)$obj->nb;
