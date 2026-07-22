@@ -7,8 +7,8 @@ readonly RELEASE='M034'
 readonly RUNTIME_COMMIT='aa6e56ca5faf197cc92c79bd4cb5c45df88a7bd1'
 readonly SHORT_COMMIT='aa6e56c'
 readonly INBOX='/home/codex-deploy/staging-inbox'
-readonly ARTIFACT="${INBOX}/m034-${SHORT_COMMIT}-flat-v2.tar.gz"
-readonly ARTIFACT_SHA='423c3a6eef9a9d5f7a21a0b17f0024908bf1fcddc26d31858ba6e4d6de97afb1'
+readonly ARTIFACT="${INBOX}/m034-${SHORT_COMMIT}-flat-v3.tar.gz"
+readonly ARTIFACT_SHA='e5149add03c1e45685ee6eef8bf33af81ec2fc161a95f5e1d4a8d4a1c05a133e'
 
 readonly TARGET_CONTAINER='vision_erp'
 readonly TARGET_VOLUME='vision-os_dolibarr_custom'
@@ -43,7 +43,7 @@ sha256() { sha256sum "$1" | awk '{print $1}'; }
 require_root() {
 	[[ $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
 	[[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
-	[[ $(basename "$0") == 'chinaplanetos-production-m034-shipping-rates-deploy-v2' ]] || die 'HELPER_PATH_NOT_ALLOWED'
+	[[ $(basename "$0") == 'chinaplanetos-production-m034-shipping-rates-deploy-v3' ]] || die 'HELPER_PATH_NOT_ALLOWED'
 }
 
 cleanup() {
@@ -86,7 +86,7 @@ candidate_checks() {
 	docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
 	local file
 	for file in "${PHP_FILES[@]}"; do docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$file" >/dev/null || die "CANDIDATE_LINT_FAILED_${file//\//_}"; done
-	grep -q 'wasReusedDuplicate' "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php" || die 'DUPLICATE_STATE_ASSERTION_FAILED'
+	grep -Fq "'duplicate' => true" "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php" || die 'DUPLICATE_STATE_ASSERTION_FAILED'
 	grep -q 'Published & current' "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/admin/import.php" || die 'CURRENT_STATE_LABEL_ASSERTION_FAILED'
 	grep -q "getToken()" "$CANDIDATE_ROOT/custom/chinaplanetshippingprices/admin/batch.php" || die 'CSRF_ASSERTION_FAILED'
 }

@@ -63,7 +63,8 @@
   - `custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php`
   - `custom/chinaplanetshippingprices/admin/import.php`
   - `custom/chinaplanetshippingprices/admin/batch.php`
-- الحزمة النظيفة: `m034-aa6e56c-flat-v2.tar.gz`، SHA-256 `423c3a6eef9a9d5f7a21a0b17f0024908bf1fcddc26d31858ba6e4d6de97afb1`.
+- الحزمة النظيفة المعتمدة: `m034-aa6e56c-flat-v3.tar.gz`، SHA-256 `e5149add03c1e45685ee6eef8bf33af81ec2fc161a95f5e1d4a8d4a1c05a133e`.
 - مسار النشر: أداة إنتاج مقيدة خاصة بـ M034، مع compare وpreflight ونسخة احتياطية قبل التطبيق وverify وتراجع تلقائي عند الفشل.
 - لا يجيز هذا الاعتماد تغيير قاعدة البيانات أو البيانات أو المستندات أو الإعدادات أو حالة الموديول أو Core أو Compose أو الصورة أو الشبكة أو proxy أو DNS أو firewall أو أي ملف خارج القائمة.
 - حالة الإصدار: `AWAITING_PRODUCTION_DEPLOYMENT` حتى اكتمال compare وpreflight وapply وverify والقبول الحي.
+- مراجعة v2: توقفت compare قبل أي تعديل بسبب metadata ممتدة من macOS وفحص ثابت قديم؛ جُمّد ذلك الإصدار وأُنشئت v3 بلا xattrs وبفحص مطابق للمصدر الفعلي.

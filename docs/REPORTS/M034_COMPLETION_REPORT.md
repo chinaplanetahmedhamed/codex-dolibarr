@@ -65,7 +65,8 @@
 
 - أحمد أعطى أمرًا مباشرًا بنشر M034 إلى ERP الحي.
 - Runtime commit: `aa6e56ca5faf197cc92c79bd4cb5c45df88a7bd1`.
-- Artifact SHA-256: `423c3a6eef9a9d5f7a21a0b17f0024908bf1fcddc26d31858ba6e4d6de97afb1`.
+- Artifact v3 SHA-256: `e5149add03c1e45685ee6eef8bf33af81ec2fc161a95f5e1d4a8d4a1c05a133e`.
 - Allowlist: ملفات التطبيق الثلاثة المذكورة في تقرير الإنجاز فقط.
 - الحالة الحالية: `AWAITING_PRODUCTION_DEPLOYMENT`؛ ستُسجل نتيجة النسخ الاحتياطي والتطبيق والتحقق والتراجع بعد التنفيذ.
 - إعادة التحقق في 2026-07-23: تطابق محتوى الحزمة مع الـRuntime commit واختبار المصدر وPHP lint نجح؛ اختبار قاعدة البيانات المحلي للقراءة فقط تعذر لأن نقطة MariaDB المحلية لم تكن متاحة، لذلك يلزم نجاح preflight والتحقق الحي قبل اعتبار الإصدار مقبولًا.
+- محاولة v2: فشلت compare بصورة آمنة قبل أي تغيير بسبب Apple extended metadata وفحص ثابت قديم؛ v2 مجمدة وغير منشورة، وv3 مبنية من نفس Runtime commit دون xattrs وبفحص ثابت صحيح.
