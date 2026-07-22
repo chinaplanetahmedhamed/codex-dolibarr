@@ -8,7 +8,7 @@ readonly RUNTIME_COMMIT='0f8508b078b68ee13e04cc8924078d485dac5640'
 readonly SHORT_COMMIT='0f8508b'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m033-${SHORT_COMMIT}-flat.tar.gz"
-readonly ARTIFACT_SHA='a6f5ba633ac315a773663c87af826d106ce00a9acdcf2657aa079bb5bde8e63c'
+readonly ARTIFACT_SHA='89adf111f03d1ba2739249d247d1a2ba804ab5ee3b0ca878b1debc5b36639da3'
 
 readonly TARGET_CONTAINER='vision_erp'
 readonly TARGET_VOLUME='vision-os_dolibarr_custom'
@@ -44,7 +44,7 @@ sha256() { sha256sum "$1" | awk '{print $1}'; }
 require_root() {
 	[[ $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
 	[[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
-	[[ $(basename "$0") == 'chinaplanetos-production-m033-centers-deploy-v4' ]] || die 'HELPER_PATH_NOT_ALLOWED'
+	[[ $(basename "$0") == 'chinaplanetos-production-m033-centers-deploy-v5' ]] || die 'HELPER_PATH_NOT_ALLOWED'
 }
 
 cleanup() {

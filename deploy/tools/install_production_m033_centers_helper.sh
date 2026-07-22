@@ -6,9 +6,9 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_production_m033_centers.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-production-m033-centers.sudoers"
-readonly HELPER_SHA='c3ecd47031d54b68c37736a40bbe6e150e8e85fc6121bcb43c202cbacad16893'
-readonly SUDOERS_SHA='aea301ca03f37954928c35a542b14f6c8426fbce033c70d7748bf04a08b6e653'
-readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m033-centers-deploy-v4'
+readonly HELPER_SHA='55990c8788a7ecc4561ca03dc4b9b1163c44f042244a95cbd084484ecb0755c9'
+readonly SUDOERS_SHA='0f0398d1a985827c9c75ff9baa0690de3e6740ca412fbba399b58f2c54936fd8'
+readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m033-centers-deploy-v5'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m033-centers-v4'
 
 die() { echo "M033_PRODUCTION_HELPER_INSTALL=FAIL REASON=$1" >&2; exit 1; }
