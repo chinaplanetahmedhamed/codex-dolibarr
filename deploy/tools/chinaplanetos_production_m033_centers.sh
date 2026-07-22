@@ -4,11 +4,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M033'
-readonly RUNTIME_COMMIT='1c27961c15d00413162d1a897e2645244e31b9fe'
-readonly SHORT_COMMIT='1c27961'
+readonly RUNTIME_COMMIT='0f8508b078b68ee13e04cc8924078d485dac5640'
+readonly SHORT_COMMIT='0f8508b'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m033-${SHORT_COMMIT}-flat.tar.gz"
-readonly ARTIFACT_SHA='61be19423dbd80933735215aa97a03ba01bdfc41307a80daa0df6a2df7097b05'
+readonly ARTIFACT_SHA='a6f5ba633ac315a773663c87af826d106ce00a9acdcf2657aa079bb5bde8e63c'
 
 readonly TARGET_CONTAINER='vision_erp'
 readonly TARGET_VOLUME='vision-os_dolibarr_custom'
@@ -44,7 +44,7 @@ sha256() { sha256sum "$1" | awk '{print $1}'; }
 require_root() {
 	[[ $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
 	[[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
-	[[ $(basename "$0") == 'chinaplanetos-production-m033-centers-deploy-v3' ]] || die 'HELPER_PATH_NOT_ALLOWED'
+	[[ $(basename "$0") == 'chinaplanetos-production-m033-centers-deploy-v4' ]] || die 'HELPER_PATH_NOT_ALLOWED'
 }
 
 cleanup() {
@@ -89,6 +89,8 @@ candidate_checks() {
 	for file in "${PHP_FILES[@]}"; do docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$file" >/dev/null || die "CANDIDATE_LINT_FAILED_${file//\//_}"; done
 	grep -q "Shipping Center / مركز الشحن" "$CANDIDATE_ROOT/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php" || die 'SHIPPING_CENTER_ASSERTION_FAILED'
 	grep -q "Customer Center / مركز العملاء" "$CANDIDATE_ROOT/custom/chinaplanetcustomercenter/board.php" || die 'CUSTOMER_CENTER_ASSERTION_FAILED'
+	grep -q "function cpcc_board_customer_document_count" "$CANDIDATE_ROOT/custom/chinaplanetcustomercenter/board.php" || die 'AUTHENTICATED_PORTAL_HELPER_MISSING'
+	! grep -q 'cpcc_portal_customer_document_count($db' "$CANDIDATE_ROOT/custom/chinaplanetcustomercenter/board.php" || die 'UNDEPLOYED_PORTAL_HELPER_DEPENDENCY'
 }
 
 compare_files() {

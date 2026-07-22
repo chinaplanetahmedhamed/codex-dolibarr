@@ -6,10 +6,10 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_production_m033_centers.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-production-m033-centers.sudoers"
-readonly HELPER_SHA='bd12a9bccc17d934642f53d6dbbce7d9710ece719d0cc9327f68e644b3514356'
-readonly SUDOERS_SHA='399dcaadf589614e72fa22123561f06ae459d28cc52505d2a1ab0b341d847ca4'
-readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m033-centers-deploy-v3'
-readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m033-centers-v3'
+readonly HELPER_SHA='c3ecd47031d54b68c37736a40bbe6e150e8e85fc6121bcb43c202cbacad16893'
+readonly SUDOERS_SHA='aea301ca03f37954928c35a542b14f6c8426fbce033c70d7748bf04a08b6e653'
+readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m033-centers-deploy-v4'
+readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m033-centers-v4'
 
 die() { echo "M033_PRODUCTION_HELPER_INSTALL=FAIL REASON=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
