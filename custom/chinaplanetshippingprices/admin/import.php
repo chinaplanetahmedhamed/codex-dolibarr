@@ -27,12 +27,36 @@ if ($isPost && $action === 'upload') {
             'ignore_below' => GETPOST('ignore_below', 'alphanohtml'), 'currency' => GETPOST('currency', 'alpha'),
             'stored_file' => 'imports/'.$storedName,
         ));
-        setEventMessages(count($ids).' import batch(es) prepared for review.', null, 'mesgs');
+        $results = $importer->getLastImportResults();
+        $duplicates = array_filter($results, function ($result) { return !empty($result['duplicate']); });
+        if (count($results) === 1 && count($duplicates) === 1) {
+            $state = $results[0]['publication'];
+            if (!empty($state['is_current'])) {
+                setEventMessages('This exact workbook and import settings were already published and are currently active. No duplicate draft was created. / هذا الملف بنفس الإعدادات منشور وحالي بالفعل؛ لم تُنشأ مسودة مكررة.', null, 'warnings');
+            } elseif (!empty($state['is_published'])) {
+                setEventMessages('This exact workbook and import settings already exist as published history. No duplicate draft was created. / هذا الملف بنفس الإعدادات موجود كسجل منشور سابق؛ لم تُنشأ مسودة مكررة.', null, 'warnings');
+            } else {
+                setEventMessages('This exact workbook and import settings already exist as a draft. The existing draft was reopened. / توجد مسودة سابقة لنفس الملف والإعدادات وتم فتحها بدلاً من إنشاء نسخة مكررة.', null, 'warnings');
+            }
+        } else {
+            setEventMessages((count($results) - count($duplicates)).' new import batch(es) prepared for review'.(count($duplicates) ? '; '.count($duplicates).' duplicate(s) reused.' : '.').' / تم تجهيز الدفعات الجديدة للمراجعة.', null, 'mesgs');
+        }
         if (count($ids) === 1) { header('Location: batch.php?id='.(int) $ids[0]); exit; }
     } catch (Throwable $e) { setEventMessages($e->getMessage(), null, 'errors'); }
 }
-if ($action === 'publish') {
-    try { $importer->publishBatch(GETPOSTINT('id')); setEventMessages('The selected batch is now published.', null, 'mesgs'); }
+if ($isPost && ($action === 'publish' || $action === 'activate_current')) {
+    $batchId = GETPOSTINT('id');
+    try {
+        $state = $importer->publishBatch($batchId, $action === 'activate_current');
+        if (!empty($state['is_current'])) {
+            $message = 'Published and current: '.(int) $state['current_rates'].' active price(s), '.(int) $state['searchable_rates'].' available in customer search. / تم النشر والتفعيل.';
+            setEventMessages($message, null, 'mesgs');
+            if ((int) $state['searchable_rates'] === 0) setEventMessages('No prices from this batch are available in customer search. Review mappings, public visibility and the minimum-price threshold. / لا توجد أسعار من هذه الدفعة متاحة في بحث العميل؛ راجع الربط والظهور وحد السعر الأدنى.', null, 'warnings');
+        } else {
+            setEventMessages('Published as history only. A newer relevant batch remains current. / نُشرت الدفعة كسجل تاريخي فقط لأن هناك دفعة أحدث ما زالت حالية.', null, 'warnings');
+        }
+        header('Location: batch.php?id='.$batchId); exit;
+    }
     catch (Throwable $e) { setEventMessages($e->getMessage(), null, 'errors'); }
 }
 
@@ -55,14 +79,17 @@ print '</div><div class="chinaplanetsp-rule-actions"><button class="button butto
 print '<script>(function(){var s=document.getElementById("sp-agent"),n=document.getElementById("sp-new-agent");if(!s||!n)return;function x(){n.hidden=s.value!=="__new__";n.required=!n.hidden;}s.addEventListener("change",x);x();})();</script>';
 
 print '<section class="chinaplanetsp-rule-list chinaplanetsp-import-history" id="batches"><div class="chinaplanetsp-list-head"><h2><span class="fas fa-history"></span> Import batches / سجل ملفات الأسعار</h2><small>Latest 100 batches / آخر 100 دفعة</small></div>';
-$sql = "SELECT b.*,u.login FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch b LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=b.fk_user_creat WHERE b.entity=".(int)$conf->entity." ORDER BY b.rowid DESC LIMIT 100";
+$sql = "SELECT b.*,u.login,COALESCE(rs.current_rates,0) current_rates FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch b LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=b.fk_user_creat LEFT JOIN (SELECT fk_batch,entity,SUM(CASE WHEN status=1 AND is_current=1 THEN 1 ELSE 0 END) current_rates FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate GROUP BY fk_batch,entity) rs ON rs.fk_batch=b.rowid AND rs.entity=b.entity WHERE b.entity=".(int)$conf->entity." ORDER BY b.rowid DESC LIMIT 100";
 $res = $db->query($sql);
 print '<div class="div-table-responsive"><table class="noborder centpercent"><tr class="liste_titre"><th>Reference / المرجع</th><th>Date & sheet / التاريخ والقائمة</th><th>Agent / الوكيل</th><th class="right">Accepted / مقبول</th><th class="right">Ignored / مستبعد</th><th class="right">Warnings / تحذيرات</th><th>Status / الحالة</th><th>Action / الإجراء</th></tr>';
 if ($res) while ($b = $db->fetch_object($res)) {
-    $report = json_decode((string)$b->report_json, true); $status = (int)$b->status === 2 ? '<span class="badge badge-status4">Published / منشور</span>' : '<span class="badge badge-status1">Draft / مسودة</span>';
+    $report = json_decode((string)$b->report_json, true);
+    if ((int)$b->status !== 2) $status = '<span class="badge badge-status1">Draft / مسودة</span>';
+    elseif ((int)$b->current_rates > 0) $status = '<span class="badge badge-status4">Published &amp; current / منشور وحالي</span>';
+    else $status = '<span class="badge badge-status6">Published history / سجل منشور</span>';
     print '<tr><td>'.dol_escape_htmltag($b->ref).'</td><td>'.dol_escape_htmltag($b->effective_date.' — '.$b->source_sheet).'</td><td>'.dol_escape_htmltag($b->source_name).'</td><td class="right">'.(int)$b->accepted_rows.'</td><td class="right">'.(int)$b->ignored_rows.'</td><td class="right">'.(int)$b->warning_count.'</td><td>'.$status.'</td><td class="right">';
     print '<div class="chinaplanetsp-row-actions"><a class="button smallpaddingimp" href="batch.php?id='.(int)$b->rowid.'">Review / مراجعة</a> ';
-    if ((int)$b->status !== 2) print '<a class="button button-save smallpaddingimp" href="?action=publish&token='.newToken().'&id='.(int)$b->rowid.'">Publish / نشر</a>';
+    if ((int)$b->status !== 2) print '<form method="post" action="import.php" onsubmit="return confirm(\'Publish this batch and update current prices?\')"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="publish"><input type="hidden" name="id" value="'.(int)$b->rowid.'"><button class="button button-save smallpaddingimp" type="submit">Publish / نشر</button></form>';
     print '</div>';
     print '</td></tr>';
 }

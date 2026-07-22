@@ -6,6 +6,7 @@ class ShippingPriceImporter
     private $entity;
     private $user;
     private $countryMap;
+    private $lastImportResults = array();
 
     public function __construct($db, $user, $entity = null)
     {
@@ -18,6 +19,7 @@ class ShippingPriceImporter
 
     public function importFile($path, $originalName, array $options)
     {
+        $this->lastImportResults = array();
         require_once DOL_DOCUMENT_ROOT.'/includes/phpoffice/phpspreadsheet/src/autoloader.php';
         require_once DOL_DOCUMENT_ROOT.'/includes/Psr/autoloader.php';
 
@@ -59,10 +61,15 @@ class ShippingPriceImporter
             $duplicate = $this->findDuplicate($hash, $sheet->getTitle(), $sourceName, $ignoreBelow, $currency, $mode, $replacementScope);
             if ($duplicate > 0) {
                 $batchIds[] = $duplicate;
+                $this->lastImportResults[] = array(
+                    'batch_id' => $duplicate,
+                    'duplicate' => true,
+                    'publication' => $this->getBatchPublicationState($duplicate),
+                );
                 continue;
             }
             $parsed = $this->parseSheet($sheet, $meta, $ignoreBelow, $currency);
-            $batchIds[] = $this->storeBatch($parsed, array(
+            $batchId = $this->storeBatch($parsed, array(
                 'source_name' => $sourceName,
                 'original_name' => $originalName,
                 'stored_file' => $storedFile,
@@ -72,19 +79,79 @@ class ShippingPriceImporter
                 'ignore_below' => $ignoreBelow,
                 'currency' => $currency,
             ));
+            $batchIds[] = $batchId;
+            $this->lastImportResults[] = array(
+                'batch_id' => $batchId,
+                'duplicate' => false,
+                'publication' => $this->getBatchPublicationState($batchId),
+            );
         }
         $book->disconnectWorksheets();
         return $batchIds;
     }
 
-    public function publishBatch($batchId)
+    public function getLastImportResults()
+    {
+        return $this->lastImportResults;
+    }
+
+    public function getBatchPublicationState($batchId)
+    {
+        $batchId = (int) $batchId;
+        $threshold = max(0, (float) ($GLOBALS['conf']->global->CHINAPLANETSP_IGNORE_BELOW ?? 1000));
+        $sql = "SELECT b.rowid,b.status,b.source_name,b.effective_date,b.replacement_scope,b.accepted_rows,";
+        $sql .= " COALESCE(rs.total_rates,0) total_rates,COALESCE(rs.published_rates,0) published_rates,";
+        $sql .= " COALESCE(rs.current_rates,0) current_rates,COALESCE(rs.searchable_rates,0) searchable_rates";
+        $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch b";
+        $sql .= " LEFT JOIN (SELECT fk_batch,entity,COUNT(rowid) total_rates,";
+        $sql .= " SUM(CASE WHEN status=1 THEN 1 ELSE 0 END) published_rates,";
+        $sql .= " SUM(CASE WHEN status=1 AND is_current=1 THEN 1 ELSE 0 END) current_rates,";
+        $sql .= " SUM(CASE WHEN status=1 AND is_current=1 AND public_visible=1 AND cost_price>=".price2num($threshold)." THEN 1 ELSE 0 END) searchable_rates";
+        $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate GROUP BY fk_batch,entity) rs ON rs.fk_batch=b.rowid AND rs.entity=b.entity";
+        $sql .= " WHERE b.rowid=".$batchId." AND b.entity=".$this->entity;
+        $res = $this->db->query($sql);
+        $row = $res ? $this->db->fetch_object($res) : null;
+        if (!$row) throw new RuntimeException('Import batch not found.');
+
+        $scope = $row->replacement_scope === 'all'
+            ? "b.source_name<>'Manual entry'"
+            : "(b.source_name='".$this->db->escape($row->source_name)."' OR b.replacement_scope='all')";
+        $latestSql = "SELECT rowid,effective_date FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch b WHERE b.entity=".$this->entity;
+        $latestSql .= " AND b.status=2 AND ".$scope." ORDER BY b.effective_date DESC,b.rowid DESC LIMIT 1";
+        $latestRes = $this->db->query($latestSql);
+        $latest = $latestRes ? $this->db->fetch_object($latestRes) : null;
+        $isLatest = !$latest || (int) $latest->rowid === $batchId;
+        $isPublished = (int) $row->status === 2;
+        $isCurrent = $isPublished && (int) $row->current_rates > 0;
+
+        return array(
+            'batch_id' => $batchId,
+            'status' => (int) $row->status,
+            'is_published' => $isPublished,
+            'is_current' => $isCurrent,
+            'is_latest_relevant' => $isLatest,
+            'can_reactivate' => $isPublished && !$isCurrent && $isLatest && (int) $row->accepted_rows > 0,
+            'total_rates' => (int) $row->total_rates,
+            'published_rates' => (int) $row->published_rates,
+            'current_rates' => (int) $row->current_rates,
+            'searchable_rates' => (int) $row->searchable_rates,
+        );
+    }
+
+    public function publishBatch($batchId, $forceCurrent = false)
     {
         $batchId = (int) $batchId;
         $sql = "SELECT * FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch WHERE rowid=".$batchId." AND entity=".$this->entity;
         $res = $this->db->query($sql);
         $batch = $res ? $this->db->fetch_object($res) : null;
         if (!$batch) throw new RuntimeException('Import batch not found.');
-        if ((int) $batch->status === 2) return true;
+        if ((int) $batch->status === 2 && !$forceCurrent) return $this->getBatchPublicationState($batchId);
+        if ((int) $batch->status === 2 && $forceCurrent) {
+            $state = $this->getBatchPublicationState($batchId);
+            if (empty($state['can_reactivate'])) {
+                throw new RuntimeException('This published batch cannot be reactivated because it is already current or a newer relevant batch exists.');
+            }
+        }
 
         $this->db->begin();
         $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET status=1,is_current=0 WHERE fk_batch=".$batchId." AND entity=".$this->entity;
@@ -93,7 +160,7 @@ class ShippingPriceImporter
         $sql = "SELECT MAX(b.effective_date) latest_date FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch b";
         $sql .= " WHERE b.entity=".$this->entity." AND b.status=2 AND b.source_name='".$this->db->escape($batch->source_name)."'";
         $res = $this->db->query($sql); $latest = $res ? $this->db->fetch_object($res) : null;
-        $makeCurrent = !$latest || empty($latest->latest_date) || $batch->effective_date >= $latest->latest_date;
+        $makeCurrent = $forceCurrent || !$latest || empty($latest->latest_date) || $batch->effective_date >= $latest->latest_date;
         if ($makeCurrent) {
             $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate r INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch";
             $sql .= " SET r.is_current=0 WHERE r.entity=".$this->entity." AND b.source_name<>'Manual entry'";
@@ -104,7 +171,7 @@ class ShippingPriceImporter
         $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_batch SET status=2,fk_user_modif=".(int) $this->user->id." WHERE rowid=".$batchId." AND entity=".$this->entity;
         if (!$this->db->query($sql)) return $this->rollbackError();
         $this->db->commit();
-        return true;
+        return $this->getBatchPublicationState($batchId);
     }
 
     private function inspectSheet($sheet)
