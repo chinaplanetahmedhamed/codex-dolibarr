@@ -2,6 +2,7 @@
 /** Authenticated route rendering for M037 canonical staging. */
 
 if (PHP_SAPI !== 'cli') { fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CLI_ONLY\n"); exit(1); }
+const M037_AUTH_POSITIVE_ROUTE_COUNT = 14;
 
 $routes = array(
     'admin' => array(
@@ -22,12 +23,40 @@ $routes = array(
         'logistics_list' => '/custom/chinaplanetlogistics/list.php',
         'shipping_prices' => '/custom/chinaplanetshippingprices/index.php',
     ),
+    'external_denied' => array(
+        'admin_dashboard' => '/custom/chinaplanetcustomercenter/admin_dashboard.php',
+    ),
 );
+$routeAnchors = array(
+    'admin' => array(
+        'admin_dashboard' => 'id="cpad-customize"',
+        'financial_portfolio' => 'class="cpad-finance-portfolio-theme"',
+        'operations' => 'class="cpad-context-form"',
+        'logistics_index' => 'id="tracking-overview"',
+        'shipping_orders' => 'SHIPPING BOOKING OPERATIONS',
+        'shipping_sop' => 'CONTROLLED OPERATIONS LIBRARY',
+    ),
+    'external' => array(
+        'board' => 'CHINAPLANET CUSTOMER CENTER',
+        'documents' => 'cpcc-documents-page',
+        'operation_reports' => 'class="cpcc-eyebrow">REPORTS',
+        'projects' => 'cpcc-projects-page',
+        'orders' => 'cpcc-orders-page',
+        'balance' => 'FINANCIAL STATEMENT',
+        'logistics_list' => 'cpcc-shipments-page',
+        'shipping_prices' => 'class="cpsb"',
+    ),
+);
+if (count($routes['admin']) + count($routes['external']) !== M037_AUTH_POSITIVE_ROUTE_COUNT
+    || count($routeAnchors['admin']) + count($routeAnchors['external']) !== M037_AUTH_POSITIVE_ROUTE_COUNT) {
+    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=ROUTE_CONTRACT_INVALID\n");
+    exit(1);
+}
 
-$isRenderChild = $argc === 5 && $argv[1] === '--render';
+$isRenderChild = $argc === 4 && $argv[1] === '--render';
 $role = $isRenderChild ? $argv[2] : ($argv[1] ?? '');
 $routeKey = strtolower(trim($isRenderChild ? $argv[3] : ($argv[2] ?? '')));
-if ((!$isRenderChild && $argc !== 3) || !in_array($role, array('admin', 'external'), true)) {
+if ((!$isRenderChild && $argc !== 3) || !in_array($role, array('admin', 'external', 'external_denied'), true)) {
     fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=COMMAND_NOT_ALLOWED\n");
     exit(1);
 }
@@ -60,10 +89,11 @@ $_POST = array();
 $_REQUEST = array();
 
 if ($isRenderChild) {
-    $childToken = (string) getenv('M037_AUTH_CHILD_TOKEN');
-    $childLogin = (string) getenv('M037_AUTH_CHILD_LOGIN');
-    $childEntity = (int) getenv('M037_AUTH_CHILD_ENTITY');
-    if (strlen($childToken) < 32 || !hash_equals($childToken, (string) $argv[4]) || strlen($childLogin) < 1 || $childEntity < 1) {
+    $contextJson = file_get_contents('php://stdin', false, null, 0, 4097);
+    $childContext = is_string($contextJson) && strlen($contextJson) <= 4096 ? json_decode($contextJson, true) : null;
+    $childLogin = is_array($childContext) && isset($childContext['login']) ? (string) $childContext['login'] : '';
+    $childEntity = is_array($childContext) && isset($childContext['entity']) ? (int) $childContext['entity'] : 0;
+    if (!is_array($childContext) || count($childContext) !== 2 || strlen($childLogin) < 1 || strlen($childLogin) > 255 || $childEntity < 1) {
         fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_CONTEXT_INVALID\n");
         exit(1);
     }
@@ -87,14 +117,21 @@ if ($isRenderChild) {
     $failure = '';
     $GLOBALS['m037_route_completed'] = false;
     ob_start();
-    register_shutdown_function(function () use ($routeKey) {
+    register_shutdown_function(function () use ($role, $routeKey) {
         if (!empty($GLOBALS['m037_route_completed'])) return;
         $body = ob_get_level() > 0 ? (string) ob_get_contents() : '';
         if (ob_get_level() > 0) ob_end_clean();
         $lastError = error_get_last();
         if ($lastError && in_array((int) $lastError['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
             $reason = 'FATAL_ERROR';
+        } elseif ($role === 'external_denied' && strpos($body, 'class="error"') !== false && strpos($body, 'Administrator access required') !== false) {
+            echo "M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED\n";
+            return;
         } elseif (http_response_code() === 403) {
+            if ($role === 'external_denied') {
+                echo "M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED\n";
+                return;
+            }
             $reason = 'ACCESS_DENIED';
         } elseif (in_array(http_response_code(), array(301, 302, 303, 307, 308), true)) {
             $reason = 'UNEXPECTED_REDIRECT';
@@ -113,6 +150,9 @@ if ($isRenderChild) {
         elseif (stripos($body, 'Not Found') !== false) $failure = 'NOT_FOUND';
         elseif (stripos($body, 'Fatal error') !== false) $failure = 'FATAL_ERROR';
         elseif (stripos($body, 'Administrator access required') !== false) $failure = 'ACCESS_DENIED';
+        elseif (in_array(http_response_code(), array(301, 302, 303, 307, 308), true)) $failure = 'UNEXPECTED_REDIRECT';
+        elseif (trim($body) === '') $failure = 'EMPTY_RESPONSE';
+        elseif ($role !== 'external_denied' && strpos($body, $routeAnchors[$role][$routeKey]) === false) $failure = 'ROUTE_ANCHOR_MISSING';
     } catch (Throwable $exception) {
         if (ob_get_level() > 0) ob_end_clean();
         $failure = 'ROUTE_EXCEPTION';
@@ -122,8 +162,10 @@ if ($isRenderChild) {
         $failure = 'USER_NOT_AUTHENTICATED';
     } elseif ($failure === '' && $role === 'admin' && (empty($user->admin) || !empty($user->socid))) {
         $failure = 'ADMIN_SCOPE_INVALID';
-    } elseif ($failure === '' && $role === 'external' && (!empty($user->admin) || empty($user->socid))) {
+    } elseif ($failure === '' && $role !== 'admin' && (!empty($user->admin) || empty($user->socid))) {
         $failure = 'EXTERNAL_SCOPE_INVALID';
+    } elseif ($failure === '' && $role === 'external_denied') {
+        $failure = 'ADMIN_ROUTE_RENDERED';
     }
 
     if ($failure !== '') {
@@ -158,7 +200,7 @@ $routeUser = null;
 while ($res && ($row = $db->fetch_object($res))) {
     $candidate = new User($db);
     if ($candidate->fetch((int) $row->rowid) <= 0 || $candidate->getrights('', 1) < 0) continue;
-    if ($role === 'external'
+    if ($role !== 'admin'
         && (!$candidate->hasRight('chinaplanetcustomercenter', 'read')
             || !$candidate->hasRight('chinaplanetlogistics', 'read')
             || !$candidate->hasRight('chinaplanetshippingprices', 'read')
@@ -171,21 +213,17 @@ if (!$routeUser) {
     exit(1);
 }
 if (($role === 'admin' && (empty($routeUser->admin) || !empty($routeUser->socid)))
-    || ($role === 'external' && (!empty($routeUser->admin) || empty($routeUser->socid)))) {
+    || ($role !== 'admin' && (!empty($routeUser->admin) || empty($routeUser->socid)))) {
     fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=ROLE_SCOPE_INVALID\n");
     exit(1);
 }
-$childToken = bin2hex(random_bytes(24));
 $environment = array_merge($_ENV, array(
     'M037_DOL_DOCUMENT_ROOT' => $documentRoot,
-    'M037_AUTH_CHILD_TOKEN' => $childToken,
-    'M037_AUTH_CHILD_LOGIN' => (string) $routeUser->login,
-    'M037_AUTH_CHILD_ENTITY' => (string) (int) $conf->entity,
 ));
 $pipes = array();
 $process = proc_open(
-    array(PHP_BINARY, __FILE__, '--render', $role, $routeKey, $childToken),
-    array(0 => array('file', '/dev/null', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')),
+    array(PHP_BINARY, __FILE__, '--render', $role, $routeKey),
+    array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')),
     $pipes,
     null,
     $environment
@@ -194,12 +232,23 @@ if (!is_resource($process)) {
     fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_START_FAILED\n");
     exit(1);
 }
+$contextJson = json_encode(array('login' => (string) $routeUser->login, 'entity' => (int) $conf->entity));
+if (!is_string($contextJson) || strlen($contextJson) > 4096 || fwrite($pipes[0], $contextJson) !== strlen($contextJson)) {
+    fclose($pipes[0]);
+    proc_terminate($process);
+    proc_close($process);
+    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_CONTEXT_WRITE_FAILED\n");
+    exit(1);
+}
+fclose($pipes[0]);
 $stdout = stream_get_contents($pipes[1]);
 $stderr = stream_get_contents($pipes[2]);
 fclose($pipes[1]);
 fclose($pipes[2]);
 $exitCode = proc_close($process);
-$expected = "M037_AUTH_ROUTE_".strtoupper($role)."_".strtoupper($routeKey)."=PASS";
+$expected = $role === 'external_denied'
+    ? 'M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED'
+    : "M037_AUTH_ROUTE_".strtoupper($role)."_".strtoupper($routeKey)."=PASS";
 if ($exitCode !== 0 || trim($stdout) !== $expected) {
     if (preg_match('/M037_AUTH_ROUTE=FAIL REASON=[A-Za-z0-9_]+/', $stderr, $match)) {
         $safeReason = $match[0];
