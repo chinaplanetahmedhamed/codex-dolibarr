@@ -6,7 +6,8 @@
 - Preserved exact entity, customer, booking-ownership, and shipment-ownership filters while treating malformed legacy JSON as an active order instead of zeroing the complete result.
 - Kept bucket-specific searches complete by applying their limit after PHP classification; unfiltered searches remain database-limited.
 - Verified the correction transactionally against the real local MariaDB runtime with the expected `7 / 4 / 1 / 1 / 1` lifecycle result and clean rollback.
-- Local correction only; no `backup-erp` or production access occurred. A new pinned artifact and separate exact deployment approval are required before another live attempt.
+- Built the allowlisted correction artifact `m037-full-806df74.tar.gz` with SHA-256 `c0e5741f45018302983d6449a2e2392571162fbcd636e1484148f4dc932906e5` and pinned both restricted release helpers locally.
+- Local correction only; no `backup-erp` or production access occurred. Separate exact deployment approval is required before another live attempt.
 
 ## 2026-07-24 — M037-C03 production-data-safe shipping runtime
 

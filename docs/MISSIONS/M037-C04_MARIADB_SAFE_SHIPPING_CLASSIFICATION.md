@@ -37,6 +37,11 @@ Correct the rolled-back M037 production failure by removing lifecycle classifica
 
 - `custom/chinaplanetoperations/class/OperationsService.class.php`
 - `deploy/tests/test_m036_shipping_orders_source.php`
+- `deploy/tests/test_m037_backup_erp_full_release.php`
+- `deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh`
+- `deploy/tools/chinaplanetos_production_m037_full_release.sh`
+- `deploy/tools/install_backup_erp_m037_full_release_helper.sh`
+- `deploy/tools/install_production_m037_full_release_helper.sh`
 - `docs/CHANGELOG.md`
 - `mobile/chinaplanet-customer-app/docs/PORTAL_PARITY.md`
 - `docs/REPORTS/M037-C04_COMPLETION_REPORT.md`

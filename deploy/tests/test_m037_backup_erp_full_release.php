@@ -32,8 +32,8 @@ foreach (array_merge($runtimeManifest, $supportManifest) as $relative) {
 }
 
 foreach (array(
-    "readonly RUNTIME_COMMIT='04bf7780a0165afe8938f640bff7434214944905'",
-    "readonly ARTIFACT_SHA='6a55707932d683e33cd2ad96c085be7fefa432ee17a34a4d7fed3d38366f4f99'",
+    "readonly RUNTIME_COMMIT='806df74a0f90ecf8d10c4627707c36d313001a82'",
+    "readonly ARTIFACT_SHA='c0e5741f45018302983d6449a2e2392571162fbcd636e1484148f4dc932906e5'",
     "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'",
     "readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'",
     "readonly TARGET_MAILPIT_CONTAINER='erp-staging-mailpit-1'",
@@ -159,24 +159,24 @@ foreach ($allowedCommands as $command) {
     m037Assert(substr_count($sudoers, $line) === 1, 'sudoers missing exact '.$command.' command');
 }
 m037Assert(count(array_filter(explode("\n", trim($sudoers)))) === count($allowedCommands), 'sudoers contains an unexpected command');
-m037Assert(strpos($installer, "readonly HELPER_SHA='bb9bf731da6f2d7d109ccf608d6fa0b0314f5654e9f668df015b35f2750d624a'") !== false, 'installer helper checksum is not pinned');
-m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='67830e74d40af72800319dbc119904a9ed38c20ae1fcc4d2715df1fb461779a4'") !== false, 'installer previous helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly HELPER_SHA='83119faf9ea6b72ca5420ee859ae5b8d66f59b7d2674050146e1ae840cc4e85f'") !== false, 'installer helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='bb9bf731da6f2d7d109ccf608d6fa0b0314f5654e9f668df015b35f2750d624a'") !== false, 'installer previous helper checksum is not pinned');
 m037Assert(strpos($installer, "readonly SUDOERS_SHA='815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1'") !== false, 'installer sudoers checksum is not pinned');
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === 'bb9bf731da6f2d7d109ccf608d6fa0b0314f5654e9f668df015b35f2750d624a', 'pinned helper checksum does not match helper bytes');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '83119faf9ea6b72ca5420ee859ae5b8d66f59b7d2674050146e1ae840cc4e85f', 'pinned helper checksum does not match helper bytes');
 m037Assert(hash_file('sha256', $root.'/deploy/config/codex-deploy-backup-erp-m037-full-release.sudoers') === '815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1', 'pinned sudoers checksum does not match sudoers bytes');
 m037Assert(strpos($installer, 'private_root=$(mktemp -d /root/m037-helper-install.') !== false, 'installer does not use a root-owned immutable input copy');
 m037Assert(strpos($installer, 'install -o root -g root -m 0600 "$SOURCE_HELPER" "$private_helper"') !== false, 'installer helper input is not copied once before validation');
 m037Assert(strpos($installer, "PRODUCTION_ACCESSED=NO") !== false, 'installer production boundary is not explicit');
 
 foreach (array(
-    "readonly RUNTIME_COMMIT='04bf7780a0165afe8938f640bff7434214944905'",
-    "readonly ARTIFACT_SHA='6a55707932d683e33cd2ad96c085be7fefa432ee17a34a4d7fed3d38366f4f99'",
+    "readonly RUNTIME_COMMIT='806df74a0f90ecf8d10c4627707c36d313001a82'",
+    "readonly ARTIFACT_SHA='c0e5741f45018302983d6449a2e2392571162fbcd636e1484148f4dc932906e5'",
     'M037_PRODUCTION_RUNTIME_FAIL=',
     'M037_PRODUCTION_AUTO_FULL_BACKUP_ROLLBACK=PASS',
 ) as $needle) m037Assert(strpos($productionHelper, $needle) !== false, 'production helper contract missing '.$needle);
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_production_m037_full_release.sh') === '0bdec24f6e48feb86adbf4d12fe570209ce62fd02445a085b9d69be1e7ed6539', 'pinned production helper checksum does not match helper bytes');
-m037Assert(strpos($productionInstaller, "readonly HELPER_SHA='0bdec24f6e48feb86adbf4d12fe570209ce62fd02445a085b9d69be1e7ed6539'") !== false, 'production installer helper checksum is not pinned');
-m037Assert(strpos($productionInstaller, "readonly PREVIOUS_HELPER_SHA='29dfc8b01444f6c5946f66595e3786bdefa0cd881b1e676d7eb259c4bc2449fc'") !== false, 'production installer previous helper checksum is not pinned');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_production_m037_full_release.sh') === '13f7e2462d68449a53f593f841f8afd4141432450907e984ab7475fa0161d65f', 'pinned production helper checksum does not match helper bytes');
+m037Assert(strpos($productionInstaller, "readonly HELPER_SHA='13f7e2462d68449a53f593f841f8afd4141432450907e984ab7475fa0161d65f'") !== false, 'production installer helper checksum is not pinned');
+m037Assert(strpos($productionInstaller, "readonly PREVIOUS_HELPER_SHA='0bdec24f6e48feb86adbf4d12fe570209ce62fd02445a085b9d69be1e7ed6539'") !== false, 'production installer previous helper checksum is not pinned');
 m037Assert(strpos($productionInstaller, '[[ "$existing_helper_sha" == "$HELPER_SHA" || "$existing_helper_sha" == "$PREVIOUS_HELPER_SHA" ]]') !== false, 'production installer does not constrain helper migration');
 m037Assert(strpos($productionInstaller, 'DEPLOY_EXECUTED=NO PRODUCTION_ACCESSED=NO') !== false, 'production installer boundary is not explicit');
 

@@ -4,11 +4,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='04bf7780a0165afe8938f640bff7434214944905'
-readonly SHORT_COMMIT='04bf778'
+readonly RUNTIME_COMMIT='806df74a0f90ecf8d10c4627707c36d313001a82'
+readonly SHORT_COMMIT='806df74'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='6a55707932d683e33cd2ad96c085be7fefa432ee17a34a4d7fed3d38366f4f99'
+readonly ARTIFACT_SHA='c0e5741f45018302983d6449a2e2392571162fbcd636e1484148f4dc932906e5'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
