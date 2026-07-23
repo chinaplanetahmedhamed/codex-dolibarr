@@ -8,7 +8,7 @@ readonly RUNTIME_COMMIT='b4fc34ac5d5f7beb78aec297d9c4afad45b416e7'
 readonly SHORT_COMMIT='b4fc34a'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='52b77b4d31714112b9550634da8342d1aced52e1de364721fb5bee1759e720f7'
+readonly ARTIFACT_SHA='5f6bc33af781ac20898d78e25e9dc011a3dd2451fa061c52e8697202bf6d39f1'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
@@ -166,15 +166,29 @@ validate_artifact() {
 	ARTIFACT_COPY=$(mktemp /root/m037-artifact.XXXXXX)
 	install -o root -g root -m 0600 "$ARTIFACT" "$ARTIFACT_COPY"
 	[[ $(sha256 "$ARTIFACT_COPY") == "$ARTIFACT_SHA" ]] || die 'ARTIFACT_HASH_MISMATCH'
-	local listing expected actual
-	listing=$(mktemp); expected=$(mktemp); actual=$(mktemp)
-	tar -tzf "$ARTIFACT_COPY" >"$listing" || die 'ARTIFACT_TAR_INVALID'
+	local listing expected actual tar_stderr
+	listing=$(mktemp); expected=$(mktemp); actual=$(mktemp); tar_stderr=$(mktemp)
+	if ! tar -tzf "$ARTIFACT_COPY" >"$listing" 2>"$tar_stderr"; then
+		rm -f "$listing" "$expected" "$actual" "$tar_stderr"
+		die 'ARTIFACT_TAR_INVALID'
+	fi
+	if [[ -s "$tar_stderr" ]]; then
+		rm -f "$listing" "$expected" "$actual" "$tar_stderr"
+		die 'ARTIFACT_TAR_METADATA_UNSUPPORTED'
+	fi
 	[[ -z $(tar -tvzf "$ARTIFACT_COPY" | awk 'substr($1,1,1)!="-" {print; exit}') ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
 	[[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
 	[[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
 	[[ -z $(grep -E '(^|/)(\.env|conf\.php|\.DS_Store|[^/]*\.(pem|key|p12|dump|log|bak|tmp))$' "$listing" || true) ]] || die 'ARTIFACT_FORBIDDEN_FILE'
 	CANDIDATE_ROOT=$(mktemp -d /root/m037-candidate.XXXXXX)
-	tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT"
+	if ! tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT" 2>"$tar_stderr"; then
+		rm -f "$listing" "$expected" "$actual" "$tar_stderr"
+		die 'ARTIFACT_EXTRACT_FAILED'
+	fi
+	if [[ -s "$tar_stderr" ]]; then
+		rm -f "$listing" "$expected" "$actual" "$tar_stderr"
+		die 'ARTIFACT_EXTRACT_METADATA_UNSUPPORTED'
+	fi
 	[[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) ]] || die 'ARTIFACT_SYMLINK_FORBIDDEN'
 	[[ -z $(find "$CANDIDATE_ROOT" ! -type d ! -type f -print -quit) ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
 	validate_manifest "$RUNTIME_MANIFEST" "$RUNTIME_MANIFEST_SHA" '^custom/(chinaplanetcustomercenter|chinaplanetlogistics|chinaplanetoperations|chinaplanetshippingprices|cpkanban)/'
@@ -188,7 +202,7 @@ validate_artifact() {
 	for file in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do
 		[[ -f "$CANDIDATE_ROOT/$file" && ! -L "$CANDIDATE_ROOT/$file" ]] || die "ARTIFACT_FILE_INVALID_${file//\//_}"
 	done
-	rm -f "$listing" "$expected" "$actual"
+	rm -f "$listing" "$expected" "$actual" "$tar_stderr"
 }
 
 candidate_checks() {

@@ -7,6 +7,7 @@
 - Restricted diagnostic output to fixed reason codes, aggregate counts, exit status, output byte count, and SHA-256; raw HTML, usernames, SQL, credentials, and customer data remain hidden.
 - Kept the existing fixed staging sudo command surface and made no application, database, permission, module, container, port, proxy, document, customer-portal, or mobile change.
 - M037 remains `CORRECTION_REQUIRED`; M037-C01 authorizes preflight diagnosis only and does not authorize another apply or any production action.
+- Rebuilt the frozen 71-file artifact as metadata-free `ustar` after Linux rejected macOS provenance xattrs, and made the helper fail explicitly on any tar metadata warning.
 
 ## 2026-07-23 — M036 Shipping Orders admin integration
 
