@@ -29,8 +29,8 @@ foreach (array_merge($runtimeManifest, $supportManifest) as $relative) {
 }
 
 foreach (array(
-    "readonly RUNTIME_COMMIT='8ba5735890d65a49b61d1b3526bb9092ec7d8825'",
-    "readonly ARTIFACT_SHA='ec40cd770af1a72c42f34dc1fa26701bc263279732d89d8985051069fccd9e2a'",
+    "readonly RUNTIME_COMMIT='e2091fe899766a05a4af263d41205460b6991653'",
+    "readonly ARTIFACT_SHA='cf2bf2c29b33d91d143bf192797b84303470543473061bbc6ba7887d187a76c5'",
     "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'",
     "readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'",
     "readonly TARGET_MAILPIT_CONTAINER='erp-staging-mailpit-1'",
@@ -47,6 +47,11 @@ foreach (array(
     'verify_schema_prestate',
     'restore_database_backup',
     'authenticated_route_checks',
+    "save_state 'APPLY_IN_PROGRESS'",
+    "save_state 'APPLY_FAILED_ROLLBACK_FAILED'",
+    'M037_STAGING_AUTO_FULL_BACKUP_ROLLBACK=PASS',
+    'ADMIN_COOKIE_FILE=$(mktemp /root/m037-cookie.',
+    'destroy_authenticated_sessions',
     'ROLLBACK_FAILED_DEPLOYED_STATE_REAPPLIED',
     'automatic_rollback',
     'M037_STAGING_AUTO_ROLLBACK_VERIFY=PASS',
@@ -65,11 +70,13 @@ foreach (array(
     'test_customer_portal_scope_integration.php',
     'test_unified_admin_shell.php',
 ) as $needle) m037Assert(strpos($helper, $needle) !== false, 'staging guard missing '.$needle);
+m037Assert(strpos($helper, '--cookie "$admin_cookie"') === false && strpos($helper, '--cookie "$external_cookie"') === false, 'authenticated cookie is exposed in curl process arguments');
+m037Assert(strpos($helper, '-e M037_AUTH_COOKIE=') === false, 'authenticated cookie is exposed in docker process arguments');
 
 foreach (array('vision_erp','vision_db','vision-os_','erp.visiontrading.biz','production-m') as $forbidden) {
     m037Assert(stripos($helper, $forbidden) === false, 'production identifier leaked into staging helper');
 }
-m037Assert(strpos($helper, "grep -E '^STATE_(RELEASE|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|ABSENT_LIST|ABSENT_LIST_SHA|DB_BACKUP|DB_BACKUP_SHA|SCHEMA_PRESTATE_SHA|DEPLOYED_AT)='") !== false, 'status output is not a strict non-secret allowlist');
+m037Assert(strpos($helper, "grep -E '^STATE_(RELEASE|STATUS|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|ABSENT_LIST|ABSENT_LIST_SHA|DB_BACKUP|DB_BACKUP_SHA|SCHEMA_PRESTATE_SHA|DEPLOYED_AT)='") !== false, 'status output is not a strict non-secret allowlist');
 
 $allowedCommands = array('compare','preflight','apply','verify','rollback','status');
 foreach ($allowedCommands as $command) {
@@ -77,9 +84,9 @@ foreach ($allowedCommands as $command) {
     m037Assert(substr_count($sudoers, $line) === 1, 'sudoers missing exact '.$command.' command');
 }
 m037Assert(count(array_filter(explode("\n", trim($sudoers)))) === count($allowedCommands), 'sudoers contains an unexpected command');
-m037Assert(strpos($installer, "readonly HELPER_SHA='1e74e2e1a8d4d083d30b8d705d0728ac8e91e02f0e17162fa5216fffe06e943e'") !== false, 'installer helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly HELPER_SHA='4252b7e3c344da37d57c86edeeda7e9ab064f087df9b4503546b38be7b380e4c'") !== false, 'installer helper checksum is not pinned');
 m037Assert(strpos($installer, "readonly SUDOERS_SHA='815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1'") !== false, 'installer sudoers checksum is not pinned');
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '1e74e2e1a8d4d083d30b8d705d0728ac8e91e02f0e17162fa5216fffe06e943e', 'pinned helper checksum does not match helper bytes');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '4252b7e3c344da37d57c86edeeda7e9ab064f087df9b4503546b38be7b380e4c', 'pinned helper checksum does not match helper bytes');
 m037Assert(hash_file('sha256', $root.'/deploy/config/codex-deploy-backup-erp-m037-full-release.sudoers') === '815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1', 'pinned sudoers checksum does not match sudoers bytes');
 m037Assert(strpos($installer, 'private_root=$(mktemp -d /root/m037-helper-install.') !== false, 'installer does not use a root-owned immutable input copy');
 m037Assert(strpos($installer, 'install -o root -g root -m 0600 "$SOURCE_HELPER" "$private_helper"') !== false, 'installer helper input is not copied once before validation');

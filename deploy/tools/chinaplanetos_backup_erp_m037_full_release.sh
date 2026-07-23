@@ -4,11 +4,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='8ba5735890d65a49b61d1b3526bb9092ec7d8825'
-readonly SHORT_COMMIT='8ba5735'
+readonly RUNTIME_COMMIT='e2091fe899766a05a4af263d41205460b6991653'
+readonly SHORT_COMMIT='e2091fe'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='ec40cd770af1a72c42f34dc1fa26701bc263279732d89d8985051069fccd9e2a'
+readonly ARTIFACT_SHA='cf2bf2c29b33d91d143bf192797b84303470543473061bbc6ba7887d187a76c5'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
@@ -79,6 +79,8 @@ DB_BACKUP=''
 DB_BACKUP_SHA=''
 SCHEMA_PRESTATE_B64=''
 SCHEMA_PRESTATE_SHA=''
+ADMIN_COOKIE_FILE=''
+EXTERNAL_COOKIE_FILE=''
 
 die() { echo "M037_STAGING_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
@@ -91,9 +93,27 @@ require_root() {
 }
 
 cleanup() {
+	destroy_authenticated_sessions
 	if [[ -n "$CANDIDATE_REMOTE" ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true; fi
 	if [[ -n "$CANDIDATE_ROOT" && "$CANDIDATE_ROOT" == /root/m037-candidate.* && -d "$CANDIDATE_ROOT" ]]; then rm -rf "$CANDIDATE_ROOT"; fi
 	if [[ -n "$ARTIFACT_COPY" && "$ARTIFACT_COPY" == /root/m037-artifact.* && -f "$ARTIFACT_COPY" ]]; then rm -f "$ARTIFACT_COPY"; fi
+}
+
+destroy_session_cookie_file() {
+	local cookie_file=$1 cookie
+	[[ -n "$cookie_file" && "$cookie_file" == /root/m037-cookie.* && -f "$cookie_file" ]] || return 0
+	cookie=$(awk 'NF==7 {print $6"="$7; exit}' "$cookie_file")
+	if [[ -n "$cookie" && -n "$CANDIDATE_REMOTE" ]]; then
+		printf '%s' "$cookie" | docker exec -i -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" destroy >/dev/null 2>&1 || true
+	fi
+	rm -f "$cookie_file"
+}
+
+destroy_authenticated_sessions() {
+	destroy_session_cookie_file "$ADMIN_COOKIE_FILE"
+	destroy_session_cookie_file "$EXTERNAL_COOKIE_FILE"
+	ADMIN_COOKIE_FILE=''
+	EXTERNAL_COOKIE_FILE=''
 }
 
 check_environment() {
@@ -333,13 +353,23 @@ route_checks() {
 }
 
 authenticated_route_checks() {
-	local admin_output external_output admin_cookie external_cookie route status rc=0
+	local admin_output external_output admin_cookie external_cookie cookie_name cookie_value route status rc=0
 	if ! admin_output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" admin); then return 1; fi
-	if ! external_output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external); then return 1; fi
 	[[ "$admin_output" =~ ^M037_AUTH_COOKIE=([^[:space:]]+)\ SOCID=0$ ]] || return 1
 	admin_cookie="${BASH_REMATCH[1]}"
+	cookie_name="${admin_cookie%%=*}"; cookie_value="${admin_cookie#*=}"
+	ADMIN_COOKIE_FILE=$(mktemp /root/m037-cookie.XXXXXX)
+	printf '127.0.0.1\tFALSE\t/\tFALSE\t0\t%s\t%s\n' "$cookie_name" "$cookie_value" >"$ADMIN_COOKIE_FILE"
+	chmod 0600 "$ADMIN_COOKIE_FILE"
+	unset admin_output admin_cookie cookie_name cookie_value
+	if ! external_output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external); then return 1; fi
 	[[ "$external_output" =~ ^M037_AUTH_COOKIE=([^[:space:]]+)\ SOCID=([1-9][0-9]*)$ ]] || return 1
 	external_cookie="${BASH_REMATCH[1]}"
+	cookie_name="${external_cookie%%=*}"; cookie_value="${external_cookie#*=}"
+	EXTERNAL_COOKIE_FILE=$(mktemp /root/m037-cookie.XXXXXX)
+	printf '127.0.0.1\tFALSE\t/\tFALSE\t0\t%s\t%s\n' "$cookie_name" "$cookie_value" >"$EXTERNAL_COOKIE_FILE"
+	chmod 0600 "$EXTERNAL_COOKIE_FILE"
+	unset external_output external_cookie cookie_name cookie_value
 	local -a admin_routes=(
 		'/custom/chinaplanetcustomercenter/admin_dashboard.php'
 		'/custom/chinaplanetcustomercenter/admin/financial_portfolio.php'
@@ -359,17 +389,16 @@ authenticated_route_checks() {
 		'/custom/chinaplanetshippingprices/index.php'
 	)
 	for route in "${admin_routes[@]}"; do
-		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$admin_cookie" "${TARGET_HTTP}${route}") || { rc=1; continue; }
+		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$ADMIN_COOKIE_FILE" "${TARGET_HTTP}${route}") || { rc=1; continue; }
 		[[ "$status" == '200' ]] || rc=1
 	done
 	for route in "${customer_routes[@]}"; do
-		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$external_cookie" "${TARGET_HTTP}${route}") || { rc=1; continue; }
+		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$EXTERNAL_COOKIE_FILE" "${TARGET_HTTP}${route}") || { rc=1; continue; }
 		[[ "$status" == '200' ]] || rc=1
 	done
-	status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$external_cookie" "${TARGET_HTTP}/custom/chinaplanetcustomercenter/admin_dashboard.php") || rc=1
+	status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$EXTERNAL_COOKIE_FILE" "${TARGET_HTTP}/custom/chinaplanetcustomercenter/admin_dashboard.php") || rc=1
 	[[ "$status" =~ ^(302|401|403)$ ]] || rc=1
-	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html -e M037_AUTH_COOKIE="$admin_cookie" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" destroy >/dev/null || rc=1
-	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html -e M037_AUTH_COOKIE="$external_cookie" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" destroy >/dev/null || rc=1
+	destroy_authenticated_sessions
 	return "$rc"
 }
 
@@ -397,8 +426,10 @@ rollback_checks() {
 }
 
 save_state() {
+	local state_status=$1
 	cat >"$STATE_FILE" <<EOF
 STATE_RELEASE=$RELEASE
+STATE_STATUS=$state_status
 STATE_RUNTIME_COMMIT=$RUNTIME_COMMIT
 STATE_ARTIFACT_SHA=$ARTIFACT_SHA
 STATE_CODE_BACKUP=$CODE_BACKUP
@@ -419,6 +450,7 @@ load_state() {
 	# shellcheck disable=SC1090
 	source "$STATE_FILE"
 	[[ "$STATE_RELEASE" == "$RELEASE" && "$STATE_RUNTIME_COMMIT" == "$RUNTIME_COMMIT" && "$STATE_ARTIFACT_SHA" == "$ARTIFACT_SHA" ]] || die 'STATE_MISMATCH'
+	[[ "$STATE_STATUS" =~ ^(APPLY_IN_PROGRESS|DEPLOYED|APPLY_FAILED_ROLLED_BACK|APPLY_FAILED_ROLLBACK_FAILED)$ ]] || die 'STATE_STATUS_INVALID'
 	CODE_BACKUP=$STATE_CODE_BACKUP; CODE_BACKUP_SHA=$STATE_CODE_BACKUP_SHA
 	ABSENT_LIST=$STATE_ABSENT_LIST; ABSENT_LIST_SHA=$STATE_ABSENT_LIST_SHA
 	DB_BACKUP=$STATE_DB_BACKUP; DB_BACKUP_SHA=$STATE_DB_BACKUP_SHA
@@ -436,6 +468,24 @@ automatic_rollback() {
 	if [[ $db_rc -eq 0 ]]; then echo 'M037_STAGING_AUTO_DB_ROLLBACK=PASS' >&2; else echo 'M037_STAGING_AUTO_DB_ROLLBACK=FAIL' >&2; fi
 	if [[ $code_rc -eq 0 ]]; then echo 'M037_STAGING_AUTO_CODE_ROLLBACK=PASS' >&2; else echo 'M037_STAGING_AUTO_CODE_ROLLBACK=FAIL' >&2; fi
 	if [[ $verify_rc -eq 0 ]]; then echo 'M037_STAGING_AUTO_ROLLBACK_VERIFY=PASS' >&2; else echo 'M037_STAGING_AUTO_ROLLBACK_VERIFY=FAIL' >&2; fi
+	if [[ $verify_rc -eq 0 ]]; then
+		save_state 'APPLY_FAILED_ROLLED_BACK'
+		set -e
+		return 0
+	fi
+	restore_database_backup "$DB_BACKUP" "$DB_BACKUP_SHA"
+	local fallback_db_rc=$?
+	restore_code_backup
+	local fallback_code_rc=$?
+	local fallback_verify_rc=1
+	if [[ $fallback_db_rc -eq 0 && $fallback_code_rc -eq 0 ]]; then rollback_checks; fallback_verify_rc=$?; fi
+	if [[ $fallback_verify_rc -eq 0 ]]; then
+		echo 'M037_STAGING_AUTO_FULL_BACKUP_ROLLBACK=PASS' >&2
+		save_state 'APPLY_FAILED_ROLLED_BACK'
+	else
+		echo 'M037_STAGING_AUTO_FULL_BACKUP_ROLLBACK=FAIL' >&2
+		save_state 'APPLY_FAILED_ROLLBACK_FAILED'
+	fi
 	set -e
 }
 
@@ -452,6 +502,7 @@ command_preflight() {
 command_apply() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
 	validate_artifact; candidate_checks; capture_schema_prestate; create_code_backup; create_database_backup
+	save_state 'APPLY_IN_PROGRESS'
 	local mutated=0
 	trap 'rc=$?; if [[ $mutated -eq 1 ]]; then automatic_rollback; fi; exit $rc' ERR
 	mutated=1
@@ -460,7 +511,7 @@ command_apply() {
 	runtime_checks
 	mutated=0
 	trap - ERR
-	save_state
+	save_state 'DEPLOYED'
 	echo "M037_STAGING_APPLY=PASS RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA SCHEMA_PRESTATE_SHA=$SCHEMA_PRESTATE_SHA"
 }
 
@@ -473,6 +524,7 @@ command_verify() {
 command_rollback() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
 	validate_artifact; candidate_checks; load_state
+	[[ "$STATE_STATUS" == 'DEPLOYED' || "$STATE_STATUS" == 'APPLY_FAILED_ROLLBACK_FAILED' ]] || die 'STATE_NOT_ROLLBACK_ELIGIBLE'
 	local stamp reapply_code reapply_code_sha reapply_db reapply_db_sha file rel
 	stamp=$(date -u '+%Y%m%dT%H%M%SZ')
 	reapply_code="${BACKUP_ROOT}/m037-reapply-${SHORT_COMMIT}-${stamp}.tar.gz"
@@ -508,7 +560,7 @@ command_rollback() {
 
 command_status() {
 	if [[ -f "$STATE_FILE" ]]; then
-		grep -E '^STATE_(RELEASE|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|ABSENT_LIST|ABSENT_LIST_SHA|DB_BACKUP|DB_BACKUP_SHA|SCHEMA_PRESTATE_SHA|DEPLOYED_AT)=' "$STATE_FILE"
+		grep -E '^STATE_(RELEASE|STATUS|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|ABSENT_LIST|ABSENT_LIST_SHA|DB_BACKUP|DB_BACKUP_SHA|SCHEMA_PRESTATE_SHA|DEPLOYED_AT)=' "$STATE_FILE"
 	else
 		echo 'M037_STAGING_STATUS=NOT_DEPLOYED'
 	fi
