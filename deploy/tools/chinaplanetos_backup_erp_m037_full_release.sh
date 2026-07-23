@@ -28,6 +28,7 @@ readonly STATE_FILE="${STATE_ROOT}/m037.state"
 readonly LOCK_FILE="${STATE_ROOT}/m037.lock"
 readonly SCHEMA='deploy/migrations/m035_customer_shipping_booking_schema.php'
 readonly MIN_FREE_KB=1048576
+readonly MAX_ROUTE_BODY_BYTES=1048576
 
 readonly -a STATIC_TESTS=(
 	'deploy/tests/test_admin_accessibility.php'
@@ -79,6 +80,7 @@ DB_BACKUP=''
 DB_BACKUP_SHA=''
 SCHEMA_PRESTATE_B64=''
 SCHEMA_PRESTATE_SHA=''
+ROUTE_BODY=''
 
 die() { echo "M037_STAGING_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
@@ -94,6 +96,7 @@ cleanup() {
 	if [[ -n "$CANDIDATE_REMOTE" ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true; fi
 	if [[ -n "$CANDIDATE_ROOT" && "$CANDIDATE_ROOT" == /root/m037-candidate.* && -d "$CANDIDATE_ROOT" ]]; then rm -rf "$CANDIDATE_ROOT"; fi
 	if [[ -n "$ARTIFACT_COPY" && "$ARTIFACT_COPY" == /root/m037-artifact.* && -f "$ARTIFACT_COPY" ]]; then rm -f "$ARTIFACT_COPY"; fi
+	if [[ -n "$ROUTE_BODY" && "$ROUTE_BODY" == /root/m037-route.* && -f "$ROUTE_BODY" ]]; then rm -f "$ROUTE_BODY"; fi
 }
 
 check_environment() {
@@ -331,10 +334,20 @@ compare_files() {
 }
 
 route_checks() {
-	local route status
+	local route status curl_rc
+	ROUTE_BODY=$(mktemp /root/m037-route.XXXXXX)
 	for route in "${ROUTES[@]}"; do
-		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}${route}") || {
+		curl_rc=0
+		status=$(curl -sS -o "$ROUTE_BODY" -w '%{http_code}' --max-time 15 --max-filesize "$MAX_ROUTE_BODY_BYTES" "${TARGET_HTTP}${route}") || curl_rc=$?
+		if [[ $curl_rc -eq 63 ]]; then
+			echo "M037_STAGING_RUNTIME_FAIL=ROUTE_BODY_TOO_LARGE ROUTE=$route" >&2
+			return 1
+		elif [[ $curl_rc -ne 0 ]]; then
 			echo "M037_STAGING_RUNTIME_FAIL=ROUTE_CONNECTION ROUTE=$route" >&2
+			return 1
+		fi
+		[[ $(stat -c '%s' "$ROUTE_BODY") -le $MAX_ROUTE_BODY_BYTES ]] || {
+			echo "M037_STAGING_RUNTIME_FAIL=ROUTE_BODY_TOO_LARGE ROUTE=$route" >&2
 			return 1
 		}
 		if [[ "$route" == '/' ]]; then
@@ -343,12 +356,21 @@ route_checks() {
 				return 1
 			}
 		else
-			[[ "$status" =~ ^(302|401|403)$ ]] || {
+			if [[ "$status" == '200' ]]; then
+				grep -Fq 'id="login"' "$ROUTE_BODY" &&
+					grep -Fq 'name="username"' "$ROUTE_BODY" &&
+					grep -Fq 'name="password"' "$ROUTE_BODY" || {
+					echo "M037_STAGING_RUNTIME_FAIL=ANONYMOUS_ROUTE_CONTENT ROUTE=$route HTTP=$status" >&2
+					return 1
+				}
+			elif [[ ! "$status" =~ ^(302|401|403)$ ]]; then
 				echo "M037_STAGING_RUNTIME_FAIL=ROUTE_STATUS ROUTE=$route HTTP=$status" >&2
 				return 1
-			}
+			fi
 		fi
 	done
+	rm -f "$ROUTE_BODY"
+	ROUTE_BODY=''
 }
 
 authenticated_route_checks() {
