@@ -19,6 +19,7 @@ $_SERVER['SERVER_NAME'] = '127.0.0.1';
 $_SERVER['SERVER_PORT'] = '80';
 if ($argv[1] === 'destroy') {
     $cookie = getenv('M037_AUTH_COOKIE');
+    if (!$cookie) $cookie = trim((string)stream_get_contents(STDIN));
     if (!$cookie || strpos($cookie, '=') === false) { fwrite(STDERR, "M037_SESSION=FAIL REASON=DESTROY_COOKIE_INVALID\n"); exit(1); }
     list($cookieName, $cookieValue) = explode('=', $cookie, 2);
     if (!preg_match('/^DOLSESSID_[A-Za-z0-9_]+$/', $cookieName) || !preg_match('/^[A-Za-z0-9,-]+$/', $cookieValue)) { fwrite(STDERR, "M037_SESSION=FAIL REASON=DESTROY_COOKIE_INVALID\n"); exit(1); }
