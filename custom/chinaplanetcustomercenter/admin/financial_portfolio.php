@@ -145,7 +145,10 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
 ?>
 
 <div class="cpad-finance-portfolio-theme">
-<p class="opacitymedium">عرض إجمالي أرقام التمويل لجميع العملاء / all-customer finance roll-up and late-payment visibility</p>
+<div class="cpad-finance-lead">
+  <p class="opacitymedium">عرض إجمالي أرقام التمويل لجميع العملاء / all-customer finance roll-up and late-payment visibility</p>
+  <a class="cpad-primary-action" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php', 1); ?>"><span class="fas fa-wallet" aria-hidden="true"></span><b>Finance Allocation Center</b><small>مركز تخصيص الأموال والتسويات الاستثنائية</small></a>
+</div>
 
 <form method="get" class="cpad-context-form">
   <div class="cpad-context-fields">

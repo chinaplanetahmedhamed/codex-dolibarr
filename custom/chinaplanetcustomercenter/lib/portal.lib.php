@@ -56,6 +56,14 @@ function cpcc_portal_scoped_url($path, $isExternal, $socid, $parameters = array(
     return !empty($parameters) ? $url.'?'.http_build_query($parameters) : $url;
 }
 
+/** Return a customer-portal asset URL with a content-based cache key. */
+function cpcc_portal_asset($path)
+{
+    $absolutePath = DOL_DOCUMENT_ROOT.$path;
+    $version = is_file($absolutePath) ? substr(sha1_file($absolutePath), 0, 12) : 'missing';
+    return dol_buildpath($path, 1).'?v='.$version;
+}
+
 function cpcc_portal_navigation($user, $active = '')
 {
     if (empty($user->id) || empty($user->socid) || !empty($user->admin)) return;
@@ -64,7 +72,7 @@ function cpcc_portal_navigation($user, $active = '')
         'dashboard' => 'home',
         'projects' => 'projects',
         'shipments' => 'shipments',
-        'shippingprices' => 'shipments',
+        'shippingprices' => 'shippingprices',
         'invoices' => 'account',
         'balance' => 'account',
         'funding' => 'account',
@@ -80,13 +88,14 @@ function cpcc_portal_navigation($user, $active = '')
         'home' => array('الرئيسية', 'Home', 'fa-home', '/chinaplanetcustomercenter/board.php'),
         'projects' => array('مشاريعي', 'My Projects', 'fa-folder-open', '/chinaplanetcustomercenter/projects.php'),
         'shipments' => array('الشحنات', 'Shipments', 'fa-ship', '/chinaplanetlogistics/list.php'),
-        'account' => array('الحساب', 'Account', 'fa-wallet', '/chinaplanetcustomercenter/balance.php'),
+        'shippingprices' => array('أسعار الشحن', 'Shipping Prices', 'fa-search-dollar', '/chinaplanetshippingprices/index.php'),
+        'account' => array('الحساب المالي', 'Financial Account', 'fa-wallet', '/chinaplanetcustomercenter/balance.php'),
         'documents' => array('المستندات', 'Documents', 'fa-file-alt', '/chinaplanetcustomercenter/documents.php'),
         'requests' => array('الطلبات والدعم', 'Orders & Support', 'fa-headset', '/chinaplanetcustomercenter/orders.php'),
     );
 
     $homeUrl = dol_buildpath('/chinaplanetcustomercenter/board.php', 1);
-    print '<link rel="stylesheet" href="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/css/portal.css', 1).'?v=20260719m009c02').'">';
+    print '<link rel="stylesheet" href="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/portal.css')).'">';
     print '<header class="cpcc-portal-shell" dir="rtl">';
     print '<a class="cpcc-portal-brand" href="'.dol_escape_htmltag($homeUrl).'" aria-label="الرئيسية / Customer Home"><span class="cpcc-portal-brand-mark" aria-hidden="true">V</span><span><strong>Vision Customer Center</strong><small>مركز العميل</small></span></a>';
     print '<button type="button" class="cpcc-portal-menu-toggle" aria-expanded="false" aria-controls="cpcc-portal-menu"><span class="fas fa-bars" aria-hidden="true"></span><span>القائمة / Menu</span></button>';
@@ -107,7 +116,7 @@ function cpcc_portal_navigation($user, $active = '')
     print '<button type="submit" value="cancel" data-cpcc-logout-cancel>إلغاء / Cancel</button>';
     print '<button type="button" class="cpcc-logout-confirm" data-cpcc-logout-confirm>تسجيل الخروج / Logout</button>';
     print '</div></form></dialog>';
-    print '<script src="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/js/portal.js', 1).'?v=20260719m009c02').'" defer></script>';
+    print '<script src="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/js/portal.js')).'" defer></script>';
     print '<script src="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/js/logout-confirm.js', 1)).'" defer></script>';
 }
 
@@ -190,6 +199,39 @@ function cpcc_portal_shipment_doc_roots($shipid, $shipref = '')
     $legacy = cpcc_portal_shipment_doc_legacy_root($shipref);
     if (!empty($legacy) && $legacy !== $primary) $roots[] = $legacy;
     return $roots;
+}
+
+/** Count every active document published to one customer. */
+function cpcc_portal_customer_document_count($db, $user, $requestedSocid = 0)
+{
+    global $conf;
+
+    $scope = cpcc_portal_user_scope($user);
+    $isExternal = !empty($scope['is_external']);
+    $socid = $isExternal ? (int) $scope['socid'] : (int) $requestedSocid;
+    $entity = !empty($conf->entity) ? (int) $conf->entity : 0;
+    if ($entity <= 0 || $socid <= 0) return 0;
+
+    $total = 0;
+    if (cpcc_portal_gallery_schema_ready($db)) {
+        $sql = "SELECT COUNT(*) AS nb";
+        $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
+        $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s";
+        $sql .= " ON s.rowid=p.fk_shipment AND s.entity=p.entity AND s.fk_soc=p.fk_soc";
+        $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid;
+        $sql .= " AND p.status=1 AND p.customer_visible=1";
+        $resql = $db->query($sql);
+        if ($resql && ($obj = $db->fetch_object($resql))) $total += (int) $obj->nb;
+    }
+
+    if (function_exists('cpcc_export_schema_ready') && cpcc_export_schema_ready($db)) {
+        $sql = "SELECT COUNT(*) AS nb FROM ".MAIN_DB_PREFIX."cpcc_export_document";
+        $sql .= " WHERE entity=".$entity." AND fk_soc=".$socid;
+        $sql .= " AND status=1 AND customer_visible=1";
+        $resql = $db->query($sql);
+        if ($resql && ($obj = $db->fetch_object($resql))) $total += (int) $obj->nb;
+    }
+    return $total;
 }
 
 /**
@@ -521,7 +563,9 @@ function cpcc_portal_shipment_event_insert($db, $shipment, $user, $eventType, $s
 function cpcc_portal_shipment_collaboration_events($db, $shipment, $publicationId = 0)
 {
     if (!cpcc_portal_collaboration_schema_ready($db)) return array();
-    $sql = "SELECT rowid,fk_public_document,event_type,status_code,note_public,actor_type,event_at FROM ".MAIN_DB_PREFIX."cpl_shipment_customer_event WHERE entity=".(int)$shipment->entity." AND fk_shipment=".(int)$shipment->id." AND fk_soc=".(int)$shipment->fk_soc." AND customer_visible=1";
+    $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) ($shipment->rowid ?? 0);
+    if ($shipmentId <= 0) return array();
+    $sql = "SELECT rowid,fk_public_document,event_type,status_code,note_public,actor_type,event_at FROM ".MAIN_DB_PREFIX."cpl_shipment_customer_event WHERE entity=".(int)$shipment->entity." AND fk_shipment=".$shipmentId." AND fk_soc=".(int)$shipment->fk_soc." AND customer_visible=1";
     if ((int)$publicationId > 0) $sql .= " AND fk_public_document=".(int)$publicationId;
     $sql .= " ORDER BY event_at,rowid";
     $result = $db->query($sql); $rows = array();

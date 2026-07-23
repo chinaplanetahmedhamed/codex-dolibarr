@@ -17,9 +17,10 @@ class ShippingPriceService
         $out = array('pol' => array(), 'countries' => array(), 'pod' => array(), 'pod_by_country' => array(), 'lines' => array(), 'containers' => array());
         $sql = "SELECT DISTINCT r.pol,r.destination_country,r.pod,r.shipping_line,r.container_type,c.label country_label";
         $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+        $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity";
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."c_country c ON c.code=r.destination_country";
         $sql .= " WHERE r.entity=".$this->entity." AND r.status=1 AND r.is_current=1 AND r.cost_price>=".price2num($this->ignoreBelow());
-        if ($publicOnly) $sql .= " AND r.public_visible=1";
+        if ($publicOnly) $sql .= $this->customerEligibilitySql('r', 'b');
         $sql .= " ORDER BY r.destination_country,r.pod,r.shipping_line,r.container_type";
         $res = $this->db->query($sql);
         if (!$res) return $out;
@@ -48,8 +49,8 @@ class ShippingPriceService
         $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
         $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity AND b.status=2";
         $sql .= " WHERE r.entity=".$this->entity." AND r.status=1 AND r.is_current=1 AND r.cost_price>=".price2num($this->ignoreBelow());
-        $sql .= $this->enabledRateSql('r');
-        if (!$includeCost) $sql .= " AND r.public_visible=1";
+        if ($includeCost) $sql .= $this->enabledRateSql('r');
+        else $sql .= $this->customerEligibilitySql('r', 'b');
         foreach (array('pol', 'pod', 'shipping_line', 'container_type', 'service_type') as $field) {
             if ($filters[$field] !== '') $sql .= " AND r.".$field."='".$this->db->escape($filters[$field])."'";
         }
@@ -62,9 +63,27 @@ class ShippingPriceService
         $results = array();
         while ($row = $this->db->fetch_object($res)) {
             $result = $this->priceRate($row, $filters, $rules, $includeCost);
-            $results[] = $result;
+            if ($result !== null) $results[] = $result;
         }
         return array('filters' => $filters, 'results' => $results, 'error' => '');
+    }
+
+    /** Re-fetch and re-price one exact customer-bookable rate at submit time. */
+    public function getCustomerRateById($rateId, array $filters)
+    {
+        $filters = $this->normalizeFilters($filters);
+        $sql = "SELECT r.*,b.effective_date FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+        $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity";
+        $sql .= " WHERE r.entity=".$this->entity." AND r.rowid=".(int) $rateId;
+        $sql .= " AND r.status=1 AND r.is_current=1 AND r.cost_price>=".price2num($this->ignoreBelow());
+        $sql .= $this->customerEligibilitySql('r', 'b');
+        foreach (array('pol', 'pod', 'shipping_line', 'container_type', 'service_type') as $field) {
+            if ($filters[$field] !== '') $sql .= " AND r.".$field."='".$this->db->escape($filters[$field])."'";
+        }
+        if ($filters['country_code'] !== '') $sql .= " AND r.destination_country='".$this->db->escape($filters['country_code'])."'";
+        $res = $this->db->query($sql);
+        $row = $res ? $this->db->fetch_object($res) : null;
+        return $row ? $this->priceRate($row, $filters, $this->loadActiveRules(), false) : null;
     }
 
     public function getRate($rateId)
@@ -189,6 +208,25 @@ class ShippingPriceService
         return max(0, (float) ($GLOBALS['conf']->global->CHINAPLANETSP_IGNORE_BELOW ?? 1000));
     }
 
+    private function legacyValidityDays()
+    {
+        return max(1, min(90, (int) ($GLOBALS['conf']->global->CHINAPLANETSP_LEGACY_VALIDITY_DAYS ?? 30)));
+    }
+
+    /** The same customer eligibility predicate is used by options, search, selection and submit-time revalidation. */
+    private function customerEligibilitySql($rateAlias, $batchAlias)
+    {
+        $today = date('Y-m-d');
+        $containers = "'20GP','40GP','40HQ'";
+        return " AND ".$batchAlias.".status=2".
+            " AND ".$rateAlias.".public_visible=1".
+            " AND ".$rateAlias.".status=1 AND ".$rateAlias.".is_current=1".
+            " AND ".$rateAlias.".container_type IN (".$containers.")".
+            " AND ".$rateAlias.".valid_from<='".$this->db->escape($today)."'".
+            " AND COALESCE(".$rateAlias.".valid_to,DATE_ADD(".$batchAlias.".effective_date,INTERVAL ".$this->legacyValidityDays()." DAY))>='".$this->db->escape($today)."'".
+            $this->enabledRateSql($rateAlias);
+    }
+
     /** Exclude temporarily blocked commercial scopes from live inquiry only. History deliberately does not use this clause. */
     private function enabledRateSql($rateAlias)
     {
@@ -223,8 +261,14 @@ class ShippingPriceService
         $components = array();
         $exclusive = array();
         $matchedTypes = array();
+        $customerPricingError = false;
         foreach ($rules as $rule) {
             if (!$this->ruleMatches($rule, $row, $filters)) continue;
+            if ($rule->calc_type !== 'percent' && strcasecmp((string) $rule->currency_code, (string) $row->currency_code) !== 0) {
+                if (!$includeCost) return null;
+                $customerPricingError = true;
+                continue;
+            }
             $componentKey = $rule->component_type;
             if (empty($rule->stackable) && isset($exclusive[$componentKey])) continue;
             if ($rule->calc_type === 'override') {
@@ -234,13 +278,16 @@ class ShippingPriceService
                 $amount = $rule->calc_type === 'percent' ? $running * ((float) $rule->amount / 100) : (float) $rule->amount;
                 $running += $amount;
             }
-            $components[] = array(
-                'rule_id' => (int) $rule->rowid,
+            $publicLabel = trim((string) $rule->public_label);
+            if (!$includeCost && $publicLabel === '') return null;
+            $component = array(
                 'type' => $rule->component_type,
-                'label' => $rule->public_label !== '' ? $rule->public_label : $rule->label,
+                'label' => $includeCost && $publicLabel === '' ? $rule->label : $publicLabel,
                 'amount' => round($amount, 2),
                 'currency' => $row->currency_code,
             );
+            if ($includeCost) $component['rule_id'] = (int) $rule->rowid;
+            $components[] = $component;
             $matchedTypes[$rule->component_type] = true;
             if (empty($rule->stackable)) $exclusive[$componentKey] = true;
         }
@@ -257,17 +304,18 @@ class ShippingPriceService
         }
         if ($row->service_type === 'unknown') $warnings[] = 'Direct/transit service was not identified in the source file.';
 
+        $validTo = !empty($row->valid_to) ? $row->valid_to : date('Y-m-d', strtotime($row->effective_date.' +'.$this->legacyValidityDays().' days'));
+        $included = array('Ocean freight for the selected route and equipment');
+        foreach ($components as $component) $included[] = $component['label'];
+        $excluded = array('Origin and destination local charges unless explicitly listed', 'Customs duties, taxes and services not explicitly listed');
         $result = array(
             'rate_id' => (int) $row->rowid,
-            'batch_ref' => $row->batch_ref,
-            'effective_date' => $row->effective_date,
             'pol' => $row->pol,
             'country_code' => $row->destination_country,
             'pod' => $row->pod,
             'shipping_line' => $row->shipping_line,
             'trade_lane' => in_array($row->region_label, array('Red Sea','Middle East','North Africa','Mediterranean'), true) ? $row->region_label : '',
             'service_type' => $row->service_type,
-            'route_detail' => $row->route_detail,
             'container_type' => $row->container_type,
             'incoterm' => $filters['incoterm'],
             'cargo_type' => $filters['cargo_type'],
@@ -276,11 +324,20 @@ class ShippingPriceService
             'components' => $components,
             'additions_total' => round($running - $base, 2),
             'final_price' => round($running, 2),
+            'price_basis' => 'per_container',
+            'valid_from' => $row->valid_from,
+            'valid_to' => $validTo,
+            'included' => array_values(array_unique($included)),
+            'excluded' => $excluded,
             'notes' => $row->public_notes,
             'warnings' => $warnings,
             'needs_manual_review' => $needsReview,
         );
         if ($includeCost) {
+            $result['batch_ref'] = $row->batch_ref;
+            $result['effective_date'] = $row->effective_date;
+            $result['route_detail'] = $row->route_detail;
+            $result['customer_pricing_error'] = $customerPricingError;
             $result['supplier_cost'] = round((float) $row->cost_price, 2);
             $result['base_margin'] = round($base - (float) $row->cost_price, 2);
             $result['internal_notes'] = $row->internal_notes;
@@ -288,6 +345,8 @@ class ShippingPriceService
             $result['source_sheet'] = $row->source_sheet;
             $result['source_row'] = (int) $row->source_row;
         }
+        $fingerprintFields = array_intersect_key($result, array_flip(array('pol','country_code','pod','shipping_line','trade_lane','service_type','container_type','incoterm','cargo_type','currency','base_sale_price','components','additions_total','final_price','price_basis','valid_from','valid_to','included','excluded','notes','warnings','needs_manual_review')));
+        $result['fingerprint'] = hash('sha256', json_encode($fingerprintFields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         return $result;
     }
 

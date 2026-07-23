@@ -11,6 +11,18 @@ function chinaplanetsp_require_internal($user, $right)
     if (empty($user->id) || !empty($user->socid) || (!$user->hasRight('chinaplanetshippingprices', $right) && empty($user->admin))) accessforbidden();
 }
 
+function chinaplanetsp_can_customer_book($user)
+{
+    return !empty($user->id) && !empty($user->socid) && (int) $user->socid > 0
+        && $user->hasRight('chinaplanetshippingprices', 'read')
+        && $user->hasRight('chinaplanetshippingprices', 'booking_submit');
+}
+
+function chinaplanetsp_require_customer_booking($user)
+{
+    if (!chinaplanetsp_can_customer_book($user)) accessforbidden();
+}
+
 function chinaplanetsp_can_sop($user, $right = 'sopread')
 {
     return !empty($user->id) && empty($user->socid) && (!empty($user->admin) || $user->hasRight('chinaplanetshippingprices', $right));

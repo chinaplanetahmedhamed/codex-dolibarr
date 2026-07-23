@@ -1,0 +1,89 @@
+# ChinaPlanetOS Change Log
+
+## 2026-07-23 — M036 Shipping Orders admin integration
+
+- Added an internal `Shipping Orders / طلبات الشحن` register backed by existing Operations booking rows, with entity/customer scoping, accepted-price evidence, carrier SO/booking state, linked shipment, and explicit lifecycle filters.
+- Added the same Total Current, Active, Confirmed/SO Received, Closed, and Cancelled counts to the main admin dashboard and added a permission-gated launcher in Shipping Center.
+- Added an internal selected-customer Shipping Orders card and recent list in Customer Center without changing the external customer portal contract.
+- Kept shipping bookings separate from native Sales Orders and made no accounting, schema, permission-grant, or module-state change.
+- Verified source contracts, transactional runtime buckets and isolation, filtered KPI/list reconciliation, external-user denial, dashboard customization save/reload/reset, responsive layouts from 1440px through 320px, and real Chrome 200% zoom locally.
+- Used deterministic local browser fixtures for all lifecycle and ownership-warning states, then removed them and verified zero remaining fixture rows.
+- Local only; no Git push, `backup-erp`, staging, or production deployment performed.
+- Corrected the sparse local runtime package after acceptance by syncing only missing, already-versioned Customer Center and Logistics files without deletion or overwrite. The top Customer Center entry now redirects to `board.php`, and Documents, Reports, SOP Library, Operations, Financial Center, and New Shipment resolve through `/custom/...` and render instead of returning 404.
+
+## 2026-07-22 — M034 shipping price publication-state correction
+
+- Made exact duplicate workbook uploads explain whether the reused batch is a draft, the current published list, or published history instead of claiming a new draft was prepared.
+- Added authoritative stored, published, current, and customer-search price counts to import review.
+- Replaced state-changing GET publication links with CSRF-protected POST actions.
+- Added a guarded repair action for the latest published batch only when it has accepted prices but no current rates.
+- Local only; no Git push, `backup-erp`, or production deployment performed.
+
+## 2026-07-22 — M033 Shipping Center and Customer Center
+
+- Consolidated the three internal shipping navigation entries into one bilingual Shipping Center with direct launch cards for tracking, shipment management, and shipping prices.
+- Renamed the internal customer-preview destination to Customer Center and added an entity-scoped all-customer operational overview when no customer is selected.
+- Added customer, active-order, active-shipment, attention-shipment, and per-currency finance summaries without mixing currencies.
+- Preserved the selected-customer view and the external customer portal contract unchanged.
+- Verified the affected admin pages on desktop and at 390px, with no horizontal overflow or PHP warnings.
+- Local only; no Git push, `backup-erp`, or production deployment performed.
+
+## 2026-07-22 — M032 admin Reports scope correction
+
+- Replaced the internal Reports page's false access-denied response when no customer was selected with a customer selector and a safe guidance state.
+- Kept external customer access locked to the authenticated third party and prevented report queries until a valid customer scope exists.
+- Local only; no database, permission, Git, staging, or production change.
+
+## 2026-07-22 — M032 admin and customer UX correction
+
+- Clarified admin navigation for customer preview, documents, reports, SOP, and the Financial Center.
+- Replaced the implicit `LIVE` claim with a configured environment label and a separate generated timestamp.
+- Limited New Shipment prominence to shipping-related pages and improved shared admin touch targets and responsive navigation.
+- Clarified Financial Account and Profile access in the customer portal.
+- Rebuilt shipment filters and result containment with fluid responsive layouts verified at desktop, 390px, and 430px.
+- Preserved customer/entity ownership and all accounting behavior; mobile implementation remains pending.
+- Local only; no Git push or ERP deployment performed. Authenticated admin visual acceptance remains pending.
+
+## 2026-07-22 — Cross-surface parity instruction
+
+- Added a permanent requirement to assess related changes across Admin ERP, Customer Portal, and Mobile App.
+- Required real-data and design verification, including desktop and 390px phone checks for affected web pages.
+- Added the canonical mobile parity log at `mobile/chinaplanet-customer-app/docs/PORTAL_PARITY.md`.
+- Recorded the current M030/M031 mobile parity backlog so future mobile work can align terminology, documents, reports, finance, project milestones, and design without exposing admin-only data.
+- Documentation only; no application code, Git push, or ERP deployment performed.
+
+## 2026-07-22 — M031 phone document-card correction
+
+- Corrected the external Documents page where a fixed-width download action squeezed long filenames into a one-character-wide column on phones.
+- Kept the file icon and information in a readable row and moved document actions to a full-width row below on narrow screens.
+- Updated the mobile parity notes so the future native Documents screen follows the same readable filename and touch-target behavior.
+- Local only; no Git push or ERP deployment performed.
+
+## 2026-07-22 — M031 fluid documents layout correction
+
+- Replaced the customer Documents table's fixed multi-column behavior with a fluid shipment-card grid driven by available container width.
+- Shipment metadata and file groups now reflow automatically across desktop, tablet, and phone layouts; long filenames keep a readable content width and actions move below file information.
+- Kept the administration table unchanged and made no Dolibarr core changes.
+- Local only; no Git push or ERP deployment performed.
+
+## 2026-07-21 — M031 local correction
+
+- Made the dashboard Documents card total the customer's published commercial documents and shipment publications.
+- Added customer-visible commercial documents to the main Documents page while preserving strict entity and customer scope.
+- Replaced the compressed commercial-document text block with a responsive, readable document-card grid.
+- Simplified each document card to the requested name, type, and related-shipment fields only.
+- Applied the same compact card presentation and generic Documents title to the external customer portal while keeping management controls admin-only.
+- Fixed customer Documents-page warnings when shipment records provide `rowid` instead of `id`.
+- Temporarily hid the legacy Commercial Documents block from the external customer portal without deleting its data or admin view.
+- Improved the external Documents search, file cards, and action controls for phone-width layouts.
+- Local only; no Git push or ERP deployment performed.
+
+## 2026-07-21 — M030 local correction
+
+- Generalized customer-facing invoice and report terminology.
+- Routed the customer Documents card to scoped shipment publications.
+- Generalized project invoice, document, and completion milestones.
+- Hid the legacy Export Documents feature from navigation without deleting it.
+- Made Financial Center the main Finance landing and promoted the allocation action inside it.
+- Restored the shared admin layout on Reports list/detail and every linked Shipping SOP management page.
+- Local only; no Git push or ERP deployment performed.

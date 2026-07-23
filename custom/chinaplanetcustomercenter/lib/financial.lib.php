@@ -78,8 +78,46 @@ function cpcc_financial_type_label($type)
         'fx_in' => 'Currency conversion in / تحويل وارد',
         'adjustment' => 'Adjustment / تسوية',
         'native_payment' => 'Vision System customer payment / دفعة مسجلة',
+        'native_deposit_receipt' => 'Customer deposit received / إيداع عميل مستلم',
+        'native_invoice_receipt' => 'Customer invoice payment received / دفعة فاتورة مستلمة',
+        'native_invoice_allocation' => 'Payment allocated to invoice / تخصيص دفعة للفاتورة',
+        'native_credit_allocation' => 'Customer credit allocated to invoice / تخصيص رصيد العميل للفاتورة',
     );
     return isset($labels[$type]) ? $labels[$type] : $type;
+}
+
+/** Effective payment statuses depend on whether Dolibarr payment validation is enabled. */
+function cpcc_financial_payment_status_sql($alias = 'p')
+{
+    $alias = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $alias);
+    if ($alias === '') $alias = 'p';
+    $validationEnabled = function_exists('getDolGlobalInt') ? (int) getDolGlobalInt('BILL_ADD_PAYMENT_VALIDATION') : 0;
+    return $validationEnabled ? $alias.'.statut=1' : $alias.'.statut IN (0,1)';
+}
+
+/** Normalize the customer-facing gross, funded and remaining invoice amounts. */
+function cpcc_financial_invoice_amounts($netTotal, $directPaid, $appliedCredit)
+{
+    $gross = max(0.0, (float) $netTotal + max(0.0, (float) $appliedCredit));
+    $funded = max(0.0, (float) $directPaid) + max(0.0, (float) $appliedCredit);
+    return array(
+        'total' => $gross,
+        'paid' => min($gross, $funded),
+        'remaining' => max(0.0, $gross - $funded),
+        'direct_paid' => max(0.0, (float) $directPaid),
+        'applied_credit' => max(0.0, (float) $appliedCredit),
+    );
+}
+
+/** SQL aggregate for credits/down payments consumed by a target invoice. */
+function cpcc_financial_applied_credit_sql()
+{
+    return "SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture,"
+        ." SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount"
+        ." FROM ".MAIN_DB_PREFIX."societe_remise_except r"
+        ." LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line"
+        ." WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL"
+        ." GROUP BY COALESCE(r.fk_facture,fd.fk_facture)";
 }
 
 function cpcc_financial_empty_summary()
@@ -185,8 +223,8 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
     $sql .= " COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi,";
     $sql .= " p.ref project_ref,p.title project_title";
     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
-    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
-    $sql .= " LEFT JOIN (SELECT r.fk_facture,SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM ".MAIN_DB_PREFIX."societe_remise_except r WHERE r.fk_facture IS NOT NULL GROUP BY r.fk_facture) discount ON discount.fk_facture=f.rowid";
+    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
+    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
     $sql .= " WHERE f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5)";
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
@@ -200,10 +238,11 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
     while ($obj = $db->fetch_object($resql)) {
         $hasMulticurrency = trim((string) $obj->multicurrency_code) !== '';
         $currency = cpcc_financial_currency($hasMulticurrency ? $obj->multicurrency_code : $currencyFallback, $currencyFallback);
-        $total = $hasMulticurrency ? (float) $obj->multicurrency_total_ttc : (float) $obj->total_ttc;
-        $paid = $hasMulticurrency ? (float) $obj->paid_multi : (float) $obj->paid_base;
-        $discount = $hasMulticurrency ? (float) $obj->discount_multi : (float) $obj->discount_base;
-        $remaining = max(0.0, $total - $paid - $discount);
+        $netTotal = $hasMulticurrency ? (float) $obj->multicurrency_total_ttc : (float) $obj->total_ttc;
+        $directPaid = $hasMulticurrency ? (float) $obj->paid_multi : (float) $obj->paid_base;
+        $appliedCredit = $hasMulticurrency ? (float) $obj->discount_multi : (float) $obj->discount_base;
+        $amounts = cpcc_financial_invoice_amounts($netTotal, $directPaid, $appliedCredit);
+        $remaining = $amounts['remaining'];
         if ($remaining <= 0.005) continue;
         $rows[] = array(
             'id' => (int) $obj->rowid,
@@ -213,8 +252,10 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
             'project_id' => (int) $obj->fk_projet,
             'project_ref' => (string) $obj->project_ref,
             'project_title' => (string) $obj->project_title,
-            'total' => $total,
-            'paid' => max(0.0, $paid + $discount),
+            'total' => $amounts['total'],
+            'paid' => $amounts['paid'],
+            'direct_paid' => $amounts['direct_paid'],
+            'applied_credit' => $amounts['applied_credit'],
             'remaining' => $remaining,
             'currency' => $currency,
         );
@@ -249,8 +290,8 @@ function cpcc_financial_customer_invoices($db, $socid, $currencyFallback, $proje
     $sql = "SELECT f.rowid,f.ref,f.ref_client,f.datef,f.date_lim_reglement,f.fk_projet,f.fk_statut,f.paye,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc,";
     $sql .= " COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi,COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi,p.ref project_ref,p.title project_title";
     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
-    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
-    $sql .= " LEFT JOIN (SELECT r.fk_facture,SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM ".MAIN_DB_PREFIX."societe_remise_except r WHERE r.fk_facture IS NOT NULL GROUP BY r.fk_facture) discount ON discount.fk_facture=f.rowid";
+    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
+    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
     $sql .= " WHERE f.entity=".(int)$GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND f.type IN (0,1,5)";
     if ((int)$projectid>0) $sql .= " AND f.fk_projet=".(int)$projectid;
@@ -258,8 +299,8 @@ function cpcc_financial_customer_invoices($db, $socid, $currencyFallback, $proje
     $resql=$db->query($sql);if(!$resql)return $rows;
     while($obj=$db->fetch_object($resql)){
         $multi=trim((string)$obj->multicurrency_code)!=='';$currency=cpcc_financial_currency($multi?$obj->multicurrency_code:$currencyFallback,$currencyFallback);
-        $total=$multi?(float)$obj->multicurrency_total_ttc:(float)$obj->total_ttc;$paid=$multi?(float)$obj->paid_multi:(float)$obj->paid_base;$discount=$multi?(float)$obj->discount_multi:(float)$obj->discount_base;$paid=max(0.0,$paid+$discount);$remaining=max(0.0,$total-$paid);
-        $rows[]=array('id'=>(int)$obj->rowid,'ref'=>(string)$obj->ref,'ref_client'=>(string)$obj->ref_client,'date'=>(string)$obj->datef,'due_date'=>(string)$obj->date_lim_reglement,'project_id'=>(int)$obj->fk_projet,'project_ref'=>(string)$obj->project_ref,'project_title'=>(string)$obj->project_title,'total'=>$total,'paid'=>$paid,'remaining'=>$remaining,'currency'=>$currency,'status'=>$obj->paye?'paid':($remaining<$total&&$paid>0?'partial':'open'));
+        $netTotal=$multi?(float)$obj->multicurrency_total_ttc:(float)$obj->total_ttc;$directPaid=$multi?(float)$obj->paid_multi:(float)$obj->paid_base;$appliedCredit=$multi?(float)$obj->discount_multi:(float)$obj->discount_base;$amounts=cpcc_financial_invoice_amounts($netTotal,$directPaid,$appliedCredit);
+        $rows[]=array('id'=>(int)$obj->rowid,'ref'=>(string)$obj->ref,'ref_client'=>(string)$obj->ref_client,'date'=>(string)$obj->datef,'due_date'=>(string)$obj->date_lim_reglement,'project_id'=>(int)$obj->fk_projet,'project_ref'=>(string)$obj->project_ref,'project_title'=>(string)$obj->project_title,'total'=>$amounts['total'],'paid'=>$amounts['paid'],'direct_paid'=>$amounts['direct_paid'],'applied_credit'=>$amounts['applied_credit'],'remaining'=>$amounts['remaining'],'currency'=>$currency,'status'=>($obj->paye||$amounts['remaining']<=0.005)?'paid':($amounts['paid']>0?'partial':'open'));
     }
     return $rows;
 }
@@ -270,32 +311,35 @@ function cpcc_financial_native_receipts($db, $socid, $currencyFallback, $asOf = 
     $socid = (int) $socid;
     if ($socid <= 0) return $rows;
 
-    $sql = "SELECT p.rowid, p.datep, p.ref, p.num_paiement, f.fk_projet,";
+    $sql = "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.type invoice_type,f.fk_projet,";
     $sql .= " COALESCE(NULLIF(pf.multicurrency_code,''), NULLIF(f.multicurrency_code,''), '".$db->escape($currencyFallback)."') currency_code,";
     $sql .= " SUM(CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''), NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END) amount";
     $sql .= " FROM ".MAIN_DB_PREFIX."paiement p";
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid";
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
-    $sql .= " WHERE f.fk_soc=".$socid." AND f.fk_statut>0 AND p.statut=1";
+    $sql .= " WHERE p.entity=".(int) $GLOBALS['conf']->entity." AND f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND ".cpcc_financial_payment_status_sql('p');
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
         $sql .= " AND p.datep<='".$db->escape($asOf)."'";
     }
     if (cpcc_financial_schema_ready($db)) {
         $sql .= " AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_financial_entry ce WHERE ce.entity=p.entity AND ce.fk_soc=f.fk_soc AND ce.source_type='payment' AND ce.source_id=p.rowid AND ce.status=1)";
     }
-    $sql .= " GROUP BY p.rowid,p.datep,p.ref,p.num_paiement,f.fk_projet,currency_code ORDER BY p.datep,p.rowid";
+    $sql .= " GROUP BY p.rowid,p.datep,p.ref,p.num_paiement,f.rowid,f.ref,f.type,f.fk_projet,currency_code ORDER BY p.datep,p.rowid,f.rowid";
     $resql = $db->query($sql);
     if (!$resql) return $rows;
     while ($obj = $db->fetch_object($resql)) {
+        $isDeposit = (int) $obj->invoice_type === 3;
+        $type = $isDeposit ? 'native_deposit_receipt' : 'native_invoice_receipt';
+        $reference = trim((string) $obj->num_paiement) !== '' ? $obj->num_paiement : $obj->payment_ref;
         $rows[] = array(
-            'id' => 'payment-'.(int) $obj->rowid,
+            'id' => 'payment-'.(int) $obj->payment_id.'-invoice-'.(int) $obj->invoice_id,
             'date' => (string) $obj->datep,
-            'type' => 'native_payment',
+            'type' => $type,
             'direction' => 'C',
-            'description' => cpcc_financial_type_label('native_payment'),
+            'description' => cpcc_financial_type_label($type).' · '.(string) $obj->invoice_ref,
             'amount' => (float) $obj->amount,
             'currency' => cpcc_financial_currency($obj->currency_code, $currencyFallback),
-            'reference' => !empty($obj->num_paiement) ? $obj->num_paiement : $obj->ref,
+            'reference' => $reference,
             'bank' => '',
             'project_id' => (int) $obj->fk_projet,
             'charge_id' => 0,
@@ -304,6 +348,115 @@ function cpcc_financial_native_receipts($db, $socid, $currencyFallback, $asOf = 
             'exchange_rate' => null,
             'transfer_group' => '',
             'proof_ecm_id' => 0,
+        );
+    }
+    return $rows;
+}
+
+/** Core allocations: consumed down-payment/credit rows and immediate standard-invoice allocations. */
+function cpcc_financial_native_allocations($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
+{
+    $rows = array();
+    $socid = (int) $socid;
+    if ($socid <= 0) return $rows;
+
+    $sql = "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code,";
+    $sql .= " target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref";
+    $sql .= " FROM ".MAIN_DB_PREFIX."societe_remise_except r";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture)";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facture source ON source.rowid=r.fk_facture_source";
+    $sql .= " WHERE r.entity=".(int) $GLOBALS['conf']->entity." AND r.fk_soc=".$socid;
+    $sql .= " AND target.entity=".(int) $GLOBALS['conf']->entity." AND target.fk_soc=".$socid." AND target.fk_statut>0";
+    if ((int) $projectid > 0) $sql .= " AND target.fk_projet=".(int) $projectid;
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) $sql .= " AND target.datef<='".$db->escape($asOf)."'";
+    $sql .= " ORDER BY target.datef,r.rowid";
+    $resql = $db->query($sql);
+    if ($resql) {
+        while ($obj = $db->fetch_object($resql)) {
+            $multi = trim((string) $obj->multicurrency_code) !== '';
+            $amount = $multi ? (float) $obj->multicurrency_amount_ttc : (float) $obj->amount_ttc;
+            if ($amount <= 0.005) continue;
+            $source = trim((string) $obj->source_ref);
+            $rows[] = array(
+                'id' => 'credit-allocation-'.(int) $obj->rowid,
+                'date' => !empty($obj->datec) ? (string) $obj->datec : (string) $obj->datef,
+                'type' => 'native_credit_allocation',
+                'direction' => 'D',
+                'description' => cpcc_financial_type_label('native_credit_allocation').' · '.(string) $obj->invoice_ref.($source !== '' ? ' ← '.$source : ''),
+                'amount' => $amount,
+                'currency' => cpcc_financial_currency($multi ? $obj->multicurrency_code : $currencyFallback, $currencyFallback),
+                'reference' => (string) $obj->invoice_ref,
+                'bank' => '',
+                'project_id' => (int) $obj->fk_projet,
+                'charge_id' => 0,
+                'allocated_amount' => $amount,
+                'allocated_currency' => cpcc_financial_currency($multi ? $obj->multicurrency_code : $currencyFallback, $currencyFallback),
+                'exchange_rate' => null,
+                'transfer_group' => '',
+                'proof_ecm_id' => 0,
+            );
+        }
+    }
+
+    $sql = "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet,";
+    $sql .= " COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'".$db->escape($currencyFallback)."') currency_code,";
+    $sql .= " CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount";
+    $sql .= " FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
+    $sql .= " WHERE p.entity=".(int) $GLOBALS['conf']->entity." AND f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND f.type IN (0,1,5) AND ".cpcc_financial_payment_status_sql('p');
+    if ((int) $projectid > 0) $sql .= " AND f.fk_projet=".(int) $projectid;
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) $sql .= " AND p.datep<='".$db->escape($asOf)."'";
+    $sql .= " ORDER BY p.datep,p.rowid,f.rowid";
+    $resql = $db->query($sql);
+    if ($resql) {
+        while ($obj = $db->fetch_object($resql)) {
+            $amount = (float) $obj->amount;
+            if ($amount <= 0.005) continue;
+            $rows[] = array(
+                'id' => 'payment-allocation-'.(int) $obj->payment_id.'-invoice-'.(int) $obj->invoice_id,
+                'date' => (string) $obj->datep,
+                'type' => 'native_invoice_allocation',
+                'direction' => 'D',
+                'description' => cpcc_financial_type_label('native_invoice_allocation').' · '.(string) $obj->invoice_ref,
+                'amount' => $amount,
+                'currency' => cpcc_financial_currency($obj->currency_code, $currencyFallback),
+                'reference' => trim((string) $obj->num_paiement) !== '' ? $obj->num_paiement : $obj->payment_ref,
+                'bank' => '',
+                'project_id' => (int) $obj->fk_projet,
+                'charge_id' => 0,
+                'allocated_amount' => $amount,
+                'allocated_currency' => cpcc_financial_currency($obj->currency_code, $currencyFallback),
+                'exchange_rate' => null,
+                'transfer_group' => '',
+                'proof_ecm_id' => 0,
+            );
+        }
+    }
+    return $rows;
+}
+
+/** Detailed credits/down payments consumed by one final invoice. */
+function cpcc_financial_applied_credits($db, $socid, $invoiceid, $currencyFallback)
+{
+    $rows = array();
+    $sql = "SELECT r.rowid,r.fk_facture_line,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code,source.rowid source_id,source.ref source_ref";
+    $sql .= " FROM ".MAIN_DB_PREFIX."societe_remise_except r";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facture source ON source.rowid=r.fk_facture_source";
+    $sql .= " WHERE r.entity=".(int) $GLOBALS['conf']->entity." AND r.fk_soc=".(int) $socid;
+    $sql .= " AND COALESCE(r.fk_facture,fd.fk_facture)=".(int) $invoiceid." ORDER BY r.rowid";
+    $resql = $db->query($sql);
+    if (!$resql) return $rows;
+    while ($obj = $db->fetch_object($resql)) {
+        $multi = trim((string) $obj->multicurrency_code) !== '';
+        $rows[] = array(
+            'id' => (int) $obj->rowid,
+            'line_id' => (int) $obj->fk_facture_line,
+            'source_invoice_id' => (int) $obj->source_id,
+            'source_invoice_ref' => (string) $obj->source_ref,
+            'amount' => $multi ? (float) $obj->multicurrency_amount_ttc : (float) $obj->amount_ttc,
+            'currency' => cpcc_financial_currency($multi ? $obj->multicurrency_code : $currencyFallback, $currencyFallback),
         );
     }
     return $rows;
@@ -349,6 +502,7 @@ function cpcc_financial_statement($db, $socid, $currencyFallback, $projectid = 0
 {
     $rows = cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projectid, $asOf);
     if ($projectid <= 0) $rows = array_merge($rows, cpcc_financial_native_receipts($db, $socid, $currencyFallback, $asOf));
+    $rows = array_merge($rows, cpcc_financial_native_allocations($db, $socid, $currencyFallback, $projectid, $asOf));
     usort($rows, function ($a, $b) {
         $cmp = strcmp($a['date'], $b['date']);
         return $cmp !== 0 ? $cmp : strcmp($a['id'], $b['id']);

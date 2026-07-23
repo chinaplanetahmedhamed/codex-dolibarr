@@ -52,7 +52,7 @@ accessibilityAssert(strpos($css, 'display:flow-root') !== false, 'legacy floatin
 accessibilityAssert(strpos($css, ':focus-visible') !== false, 'keyboard focus indicator is defined');
 accessibilityAssert(strpos($css, 'prefers-reduced-motion:reduce') !== false, 'reduced-motion preference is supported');
 accessibilityAssert(strpos($css, 'Semantic contrast contract') !== false, 'dark-surface heading colors are centrally scoped');
-accessibilityAssert(strpos($css, ':is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero)') !== false, 'dark-surface rules do not affect headings on white panels');
+accessibilityAssert(strpos($css, ':is(.cpcc-hero,.cpcc-page-head,.cpl-detail-hero,.cpl-command-hero)') !== false, 'dark-surface rules do not affect headings on white panels');
 
 $finance = file_get_contents(dirname(__DIR__, 2).'/custom/chinaplanetcustomercenter/admin/financial.php');
 accessibilityAssert(substr_count($finance, 'aria-label=') >= 20, 'financial form controls expose accessible names');

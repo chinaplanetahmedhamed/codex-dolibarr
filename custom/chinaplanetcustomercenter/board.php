@@ -7,42 +7,9 @@ require_once __DIR__.'/lib/export.lib.php';
 require_once __DIR__.'/lib/financial.lib.php';
 require_once __DIR__.'/lib/operation_reports.lib.php';
 require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
+require_once __DIR__.'/../chinaplanetoperations/lib/main.lib.php';
+require_once __DIR__.'/../chinaplanetoperations/class/OperationsService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
-
-if (!function_exists('cpcc_board_customer_document_count')) {
-    /** Count active documents published to one customer without relying on newer portal-library helpers. */
-    function cpcc_board_customer_document_count($db, $user, $requestedSocid = 0)
-    {
-        global $conf;
-
-        $scope = cpcc_portal_user_scope($user);
-        $socid = !empty($scope['is_external']) ? (int) $scope['socid'] : (int) $requestedSocid;
-        $entity = !empty($conf->entity) ? (int) $conf->entity : 0;
-        if ($entity <= 0 || $socid <= 0) return 0;
-
-        $total = 0;
-        if (cpcc_portal_gallery_schema_ready($db)) {
-            $sql = "SELECT COUNT(*) AS nb";
-            $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
-            $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s";
-            $sql .= " ON s.rowid=p.fk_shipment AND s.entity=p.entity AND s.fk_soc=p.fk_soc";
-            $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid;
-            $sql .= " AND p.status=1 AND p.customer_visible=1";
-            $resql = $db->query($sql);
-            if ($resql && ($obj = $db->fetch_object($resql))) $total += (int) $obj->nb;
-        }
-
-        if (function_exists('cpcc_export_schema_ready') && cpcc_export_schema_ready($db)) {
-            $sql = "SELECT COUNT(*) AS nb FROM ".MAIN_DB_PREFIX."cpcc_export_document";
-            $sql .= " WHERE entity=".$entity." AND fk_soc=".$socid;
-            $sql .= " AND status=1 AND customer_visible=1";
-            $resql = $db->query($sql);
-            if ($resql && ($obj = $db->fetch_object($resql))) $total += (int) $obj->nb;
-        }
-
-        return $total;
-    }
-}
 
 cpcc_portal_require_access($user);
 $scope = cpcc_portal_user_scope($user);
@@ -99,6 +66,10 @@ $projectsTotal = 0;
 $invoiceTotal = 0;
 $documentTotal = 0;
 $operationReportTotal = 0;
+$canViewShippingOrders = !$is_external && cpo_can($user, 'read');
+$shippingOrderStats = array('total_current'=>0,'active'=>0,'confirmed'=>0,'closed'=>0,'cancelled'=>0);
+$shippingOrderLabels = array('active'=>'نشط / Active','confirmed'=>'مؤكد / تم استلام SO / Confirmed','closed'=>'مغلق / Closed','cancelled'=>'ملغي / Cancelled');
+$recentShippingOrders = array();
 if ($socid > 0) {
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")");
     if ($resql && ($obj=$db->fetch_object($resql))) $shipActive=(int)$obj->nb;
@@ -114,10 +85,15 @@ if ($socid > 0) {
     if ($resql && ($obj=$db->fetch_object($resql))) $projectsTotal=(int)$obj->nb;
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."facture WHERE entity IN (".getEntity('invoice').") AND fk_soc=".$socid." AND fk_statut>0");
     if ($resql && ($obj=$db->fetch_object($resql))) $invoiceTotal=(int)$obj->nb;
-	$documentTotal = cpcc_board_customer_document_count($db, $user, $socid);
+	$documentTotal = cpcc_portal_customer_document_count($db, $user, $socid);
     if (cpcc_operation_reports_schema_ready($db)) {
         $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND status=1 AND customer_visible=1");
         if ($resql && ($obj=$db->fetch_object($resql))) $operationReportTotal=(int)$obj->nb;
+    }
+    if ($canViewShippingOrders) {
+        $shippingOperations = new OperationsService($db);
+        $shippingOrderStats = $shippingOperations->shippingOrderStats($socid, true);
+        $recentShippingOrders = $shippingOperations->searchShippingOrders(array('socid'=>$socid, 'customer_projection'=>true, 'limit'=>5));
     }
 }
 
@@ -172,7 +148,17 @@ else cpcc_admin_shell_open('portal', 'Customer Center / مركز العملاء'
       <a href="<?php echo dol_escape_htmltag($invoicesUrl); ?>" class="cpcc-card"><span>الفواتير / Invoices</span><strong><?php echo $invoiceTotal; ?></strong><small>Approved customer invoices</small></a>
       <a href="<?php echo dol_escape_htmltag($documentsUrl); ?>" class="cpcc-card"><span>المستندات / Documents</span><strong><?php echo $documentTotal; ?></strong><small>Published customer documents</small></a>
       <a href="<?php echo dol_escape_htmltag(cpcc_portal_scoped_url('/chinaplanetcustomercenter/operation_reports.php',$is_external,$socid)); ?>" class="cpcc-card"><span>التقارير / Reports</span><strong><?php echo $operationReportTotal; ?></strong><small>Approved customer reports</small></a>
+      <?php if ($canViewShippingOrders) { ?><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1).'?'.http_build_query(array('socid'=>$socid)); ?>" class="cpcc-card shipping-orders"><span>طلبات الشحن / Shipping Orders</span><strong><?php echo (int) $shippingOrderStats['total_current']; ?> <em>الحالي</em></strong><small><?php echo (int) $shippingOrderStats['active']; ?> Active · <?php echo (int) $shippingOrderStats['confirmed']; ?> Confirmed · <?php echo (int) $shippingOrderStats['closed']; ?> Closed · <?php echo (int) $shippingOrderStats['cancelled']; ?> Cancelled</small></a><?php } ?>
     </section>
+
+    <?php if ($canViewShippingOrders) { ?>
+    <section class="cpcc-section-head"><div><h2>طلبات الشحن / Shipping Orders</h2><p>أحدث طلبات الحجز الخاصة بهذا العميل؛ منفصلة عن طلبات البيع والشحنات الفعلية.</p></div><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1).'?'.http_build_query(array('socid'=>$socid)); ?>">عرض كل طلبات الشحن ←</a></section>
+    <?php if (empty($recentShippingOrders)) { ?><div class="cpcc-empty">لا توجد طلبات شحن لهذا العميل / No shipping orders for this customer.</div><?php } else { ?><div class="cpcc-shipping-orders" role="list">
+      <?php foreach ($recentShippingOrders as $shippingOrder) { $route=trim(($shippingOrder['route']['pol']??'').' → '.($shippingOrder['route']['pod']??''), ' →'); ?>
+      <article role="listitem"><div><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/view.php?id='.(int)$shippingOrder['operation_id'],1); ?>"><bdi dir="ltr"><?php echo dol_escape_htmltag($shippingOrder['reference']); ?></bdi></a><small dir="auto"><?php echo dol_escape_htmltag($shippingOrder['next_action'] ?: '—'); ?></small></div><dl><div><dt>الحالة / Status</dt><dd><?php echo dol_escape_htmltag($shippingOrderLabels[$shippingOrder['lifecycle_bucket']] ?? $shippingOrder['lifecycle_bucket']); ?></dd></div><div><dt>المسار / Route</dt><dd><bdi dir="ltr"><?php echo dol_escape_htmltag($route ?: 'Not captured'); ?></bdi></dd></div><div><dt>المعدات / Equipment</dt><dd><bdi dir="ltr"><?php echo dol_escape_htmltag($shippingOrder['equipment'] ? $shippingOrder['equipment'].' × '.(int)$shippingOrder['quantity'] : 'Not captured'); ?></bdi></dd></div><div><dt>السعر المقبول / Accepted</dt><dd><bdi dir="ltr"><?php echo $shippingOrder['accepted_total'] !== null ? dol_escape_htmltag(number_format((float)$shippingOrder['accepted_total'],2).' '.$shippingOrder['currency']) : 'Not captured'; ?></bdi></dd></div></dl></article>
+      <?php } ?>
+    </div><?php } ?>
+    <?php } ?>
 
     <section class="cpcc-section-head"><div><h2>الحساب حسب العملة</h2><p>لا يتم جمع العملات المختلفة دون تحويل مسجل.</p></div><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/balance.php',1).($internalQuery!==''?'?socid='.$socid:''); ?>">فتح كشف الحساب ←</a></section>
     <?php if (empty($summary)) { ?><div class="cpcc-empty">لا توجد حركات مالية مسجلة لهذا العميل حتى الآن.</div><?php } ?>

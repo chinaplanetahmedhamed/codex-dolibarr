@@ -8,6 +8,7 @@ require_once __DIR__.'/lib/chinaplanetlogistics.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/lib/main.lib.php';
 
 $langs->loadLangs(array("companies", "orders", "sendings", "projects", "other"));
 
@@ -94,6 +95,7 @@ if (!$is_external) {
     print '<a href="#tracking-overview"><span class="fas fa-map-marked-alt" aria-hidden="true"></span><div><b>Tracking Dashboard / لوحة التتبع</b><small>مواعيد الوصول والوقت الحر والتنبيهات</small></div></a>';
     print '<a href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).'"><span class="fas fa-list" aria-hidden="true"></span><div><b>Shipments / الشحنات</b><small>البحث وفتح وإدارة سجلات الشحن</small></div></a>';
     print '<a href="'.dol_buildpath('/chinaplanetshippingprices/index.php',1).'"><span class="fas fa-search-dollar" aria-hidden="true"></span><div><b>Shipping Prices / أسعار الشحن</b><small>البحث في الأسعار والمسارات والخدمات</small></div></a>';
+    if (cpo_can($user, 'read')) print '<a href="'.dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1).'"><span class="fas fa-clipboard-list" aria-hidden="true"></span><div><b>Shipping Orders / طلبات الشحن</b><small>طلبات الحجز، تأكيد الناقل، وربط الشحنات</small></div></a>';
     print '</section>';
 }
 

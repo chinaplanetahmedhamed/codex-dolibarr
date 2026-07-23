@@ -3,6 +3,7 @@
 
 require_once __DIR__.'/mobile_api.lib.php';
 require_once __DIR__.'/portal.lib.php';
+require_once __DIR__.'/financial.lib.php';
 
 function cpcc_mobile_envelope($data, $meta = null)
 {
@@ -335,19 +336,20 @@ function cpcc_mobile_shipment_requirements($db, $context, $shipmentId)
 function cpcc_mobile_transaction_rows($db, $context)
 {
 	$rows = array();
-	if (cpcc_mobile_table_exists($db, 'cpcc_financial_entry')) {
-		$sql = "SELECT rowid,entry_date AS occurred_at,direction,description,amount,currency_code,reference,fk_project,tms FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".(int) $context['entity']." AND fk_soc=".(int) $context['socid']." AND status=1 AND customer_visible=1";
-		$result = $db->query($sql);
-		while ($result && ($row = $db->fetch_object($result))) { $row->logical_id = ((int) $row->rowid * 2); $rows[] = $row; }
-	}
 	$baseCurrency = cpcc_mobile_base_currency();
-	$sql = "SELECT p.rowid,p.datep AS occurred_at,'C' AS direction,COALESCE(NULLIF(p.ref,''),'Customer payment') AS description,SUM(CASE WHEN COALESCE(f.multicurrency_code,'')<>'' THEN pf.multicurrency_amount ELSE pf.amount END) AS amount,COALESCE(NULLIF(f.multicurrency_code,''),'".$db->escape($baseCurrency)."') AS currency_code,p.ref AS reference,CASE WHEN COUNT(DISTINCT COALESCE(f.fk_projet,0))=1 THEN MIN(f.fk_projet) ELSE NULL END AS fk_project,p.tms";
-	$sql .= " FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
-	$sql .= " WHERE f.entity=".(int) $context['entity']." AND f.fk_soc=".(int) $context['socid']." AND f.fk_statut>0";
-	if (cpcc_mobile_table_exists($db, 'cpcc_financial_entry')) $sql .= " AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_financial_entry ce WHERE ce.entity=f.entity AND ce.fk_soc=f.fk_soc AND ce.source_type='payment' AND ce.source_id=p.rowid AND ce.status=1)";
-	$sql .= " GROUP BY p.rowid,p.datep,p.ref,f.multicurrency_code,p.tms";
-	$result = $db->query($sql);
-	while ($result && ($row = $db->fetch_object($result))) { $row->logical_id = ((int) $row->rowid * 2) + 1; $rows[] = $row; }
+	foreach (cpcc_financial_statement($db, (int) $context['socid'], $baseCurrency) as $item) {
+		$logicalId = 0;
+		if (preg_match('/^entry-(\d+)$/', $item['id'], $m)) $logicalId = ((int) $m[1] * 4);
+		elseif (preg_match('/^credit-allocation-(\d+)$/', $item['id'], $m)) $logicalId = ((int) $m[1] * 4) + 2;
+		elseif (preg_match('/^payment-(\d+)-invoice-(\d+)$/', $item['id'], $m)) $logicalId = ((((int) $m[1] * 1000000) + (int) $m[2]) * 4) + 1;
+		elseif (preg_match('/^payment-allocation-(\d+)-invoice-(\d+)$/', $item['id'], $m)) $logicalId = ((((int) $m[1] * 1000000) + (int) $m[2]) * 4) + 3;
+		if ($logicalId <= 0) continue;
+		$row = new stdClass();
+		$row->logical_id = $logicalId; $row->occurred_at = $item['date']; $row->direction = $item['direction'];
+		$row->description = $item['description']; $row->amount = $item['amount']; $row->currency_code = $item['currency'];
+		$row->reference = $item['reference']; $row->fk_project = $item['project_id']; $row->tms = $item['date'];
+		$rows[] = $row;
+	}
 	usort($rows, function ($a, $b) { $cmp = strcmp((string) $b->occurred_at, (string) $a->occurred_at); return $cmp !== 0 ? $cmp : ((int) $b->logical_id <=> (int) $a->logical_id); });
 	return $rows;
 }
@@ -400,11 +402,12 @@ function cpcc_mobile_balances($db, $context)
 
 function cpcc_mobile_invoice_rows($db, $context)
 {
-	$sql = "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.fk_statut,f.paye,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc,f.tms,COALESCE(pay.amount,0) AS paid_base,COALESCE(pay.multicurrency_amount,0) AS paid_multi";
-	$sql .= " FROM ".MAIN_DB_PREFIX."facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
+	$sql = "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.fk_statut,f.paye,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc,f.tms,COALESCE(pay.amount,0) AS paid_base,COALESCE(pay.multicurrency_amount,0) AS paid_multi,COALESCE(discount.amount,0) AS discount_base,COALESCE(discount.multicurrency_amount,0) AS discount_multi";
+	$sql .= " FROM ".MAIN_DB_PREFIX."facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
+	$sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
 	$sql .= " WHERE f.entity=".(int) $context['entity']." AND f.fk_soc=".(int) $context['socid']." AND f.fk_statut>0 AND f.type IN (0,1,5) ORDER BY f.datef DESC,f.rowid DESC";
 	$rows = cpcc_mobile_rows($db, cpcc_mobile_query_or_throw($db, $sql));
-	foreach ($rows as $row) { $multi = trim((string) $row->multicurrency_code) !== ''; $row->display_currency = $multi ? cpcc_mobile_currency($row->multicurrency_code) : cpcc_mobile_base_currency(); $row->display_total = $multi ? (float) $row->multicurrency_total_ttc : (float) $row->total_ttc; $row->display_paid = $multi ? (float) $row->paid_multi : (float) $row->paid_base; $row->display_remaining = max(0, $row->display_total - $row->display_paid); }
+	foreach ($rows as $row) { $multi = trim((string) $row->multicurrency_code) !== ''; $row->display_currency = $multi ? cpcc_mobile_currency($row->multicurrency_code) : cpcc_mobile_base_currency(); $amounts=cpcc_financial_invoice_amounts($multi?(float)$row->multicurrency_total_ttc:(float)$row->total_ttc,$multi?(float)$row->paid_multi:(float)$row->paid_base,$multi?(float)$row->discount_multi:(float)$row->discount_base); $row->display_total=$amounts['total'];$row->display_paid=$amounts['paid'];$row->display_remaining=$amounts['remaining']; }
 	return $rows;
 }
 

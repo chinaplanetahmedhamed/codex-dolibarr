@@ -1,0 +1,22 @@
+CREATE TABLE llx_chinaplanetsp_booking (
+  rowid bigint AUTO_INCREMENT PRIMARY KEY,
+  entity integer NOT NULL DEFAULT 1,
+  fk_soc integer NOT NULL,
+  fk_rate bigint NOT NULL,
+  fk_operation bigint NOT NULL,
+  idempotency_key varchar(64) NOT NULL,
+  request_hash char(64) NOT NULL,
+  rate_fingerprint char(64) NOT NULL,
+  input_json mediumtext NOT NULL,
+  snapshot_json mediumtext NOT NULL,
+  terms_hash char(64) NOT NULL,
+  status varchar(32) NOT NULL DEFAULT 'received',
+  fk_user_creat integer NOT NULL,
+  date_acceptance datetime NOT NULL,
+  date_creation datetime NOT NULL,
+  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_chinaplanetsp_booking_key (entity, fk_soc, idempotency_key),
+  UNIQUE KEY uk_chinaplanetsp_booking_operation (entity, fk_operation),
+  KEY idx_chinaplanetsp_booking_customer (entity, fk_soc, date_creation),
+  KEY idx_chinaplanetsp_booking_rate (entity, fk_rate)
+) ENGINE=innodb;

@@ -2,6 +2,13 @@
 .cpcc-statement-button{display:inline-flex;align-items:center;gap:8px;padding:.58rem .95rem;border-radius:8px;background:#0d5d7d;color:#fff!important;text-decoration:none;font-size:12px;font-weight:700}
 .cpcc-statement-button:hover,.cpcc-statement-button:focus{background:#08749a;outline:3px solid #83e8ff;outline-offset:2px}
 .cpcc-statement-row{margin:.55rem 0 0}
+.cpad-finance-lead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 16px}
+.cpad-finance-lead>p{margin:0}
+.cpad-primary-action{display:inline-grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;min-width:300px;padding:15px 20px;border:1px solid rgba(255,216,74,.72);border-radius:10px;background:linear-gradient(135deg,#f2c84b,#d99a17);color:#102d49!important;text-decoration:none;box-shadow:0 10px 24px rgba(0,0,0,.28);transition:transform .18s ease,box-shadow .18s ease}
+.cpad-primary-action .fas{grid-row:1/3;font-size:27px}
+.cpad-primary-action b{font-size:16px;line-height:1.25;color:#102d49!important}
+.cpad-primary-action small{font-size:12px;color:#324c5d!important}
+.cpad-primary-action:hover,.cpad-primary-action:focus{transform:translateY(-2px);box-shadow:0 14px 28px rgba(0,0,0,.34);outline:3px solid #83e8ff;outline-offset:2px}
 
 .cpad-finance-portfolio-theme{color:#eaf8ff;font-size:14px;line-height:1.45}
 .cpad-finance-portfolio-theme .cpad-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
@@ -34,6 +41,8 @@
 .cpad-finance-portfolio-theme .cpad-footnote{color:#9fc6de!important}
 
 @media (max-width: 768px){
+  .cpad-finance-lead{display:grid;grid-template-columns:1fr}
+  .cpad-primary-action{min-width:0;width:100%;box-sizing:border-box}
   .cpcc-statement-button{font-size:14px;min-height:40px;padding:.72rem 1rem}
   .cpcc-statement-row{margin-top:.7rem}
   .cpad-finance-portfolio-theme{font-size:16px;line-height:1.4}

@@ -64,13 +64,11 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         }
     } elseif ($action==='addentry') {
         $amount=price2num(GETPOST('amount','alphanohtml')); $currency=cpcc_financial_currency(GETPOST('currency','alpha'),''); $type=GETPOST('entry_type','alpha');
-        $creditTypes=array('customer_receipt','opening_balance'); $direction=in_array($type,$creditTypes,true)?'C':'D';
-        $sourceType=''; $sourceId=0; $paymentId=GETPOSTINT('dolibarr_payment_id');
-        if($type==='invoice_allocation'){
-            $paymentSql="SELECT p.rowid FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture WHERE p.rowid=".$paymentId." AND p.entity=".(int)$conf->entity." AND p.statut=1 AND f.fk_soc=".$socid." LIMIT 1";
-            $paymentRes=$paymentId>0?$db->query($paymentSql):false;
-            if(!$paymentRes||$db->num_rows($paymentRes)===0){setEventMessages('A valid Vision System payment for this customer is required.',null,'errors');$amount=0;}
-            else{$sourceType='payment';$sourceId=$paymentId;}
+        $creditTypes=array('opening_balance'); $direction=in_array($type,$creditTypes,true)?'C':'D';
+        $sourceType=''; $sourceId=0;
+        if(in_array($type,array('customer_receipt','invoice_allocation'),true)){
+            setEventMessages('Customer receipts and invoice allocations are read automatically from Dolibarr. Do not enter them manually.',null,'errors');
+            $amount=0;
         }
         $chargeid=GETPOSTINT('chargeid'); $allocated=null; $allocatedCurrency='';
         if($chargeid>0){
@@ -100,14 +98,13 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 }
 
 llxHeader('', 'Customer Finance / حسابات العملاء', '', '', 0, 0, array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/js/admin_financial.js')), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('financial', 'Financial Entries / الحركات المالية', 'إيداعات العملاء والمصروفات والالتزامات وتحويل العملات المسجل', 'fa-wallet', array('socid'=>$selectedSocid,'projectid'=>$selectedProjectid));
-print '<p class="opacitymedium">سجّل أموال العميل والمصروفات المعتمدة والالتزامات وتحويلات العملات الصريحة. لا تجمع عملات مختلفة دون زوج تحويل مسجل. / Record customer funds, approved spending, commitments and explicit FX conversions.</p>';
-print '<p class="cpcc-statement-row"><a class="cpcc-statement-button" href="'.dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1).'"><span class="fas fa-chart-pie"></span> المركز المالي</a></p>';
+cpcc_admin_shell_open('financial', 'Finance Allocation Center / مركز تخصيص الأموال', 'تخصيص الرصيد والاستثناءات التشغيلية مع بقاء Dolibarr المصدر المحاسبي', 'fa-wallet', array('socid'=>$selectedSocid,'projectid'=>$selectedProjectid));
+print '<div class="info">دفعات العملاء والدفعات المقدمة واستهلاكها تُقرأ تلقائياً من Dolibarr. استخدم هذه الصفحة فقط للأرصدة الافتتاحية، والتسويات، والمصروفات التشغيلية، وتحويل العملة، والالتزامات التي لا ينشئها Dolibarr تلقائياً. / Customer receipts, down payments and their consumption are imported automatically from Dolibarr.</div>';
+print '<p class="cpcc-statement-row"><a class="cpcc-statement-button" href="'.dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1).'"><span class="fas fa-chart-pie"></span> العودة إلى المركز المالي / Back to Financial Center</a></p>';
 $customerOptions=array();$res=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");if($res)while($o=$db->fetch_object($res))$customerOptions[(int)$o->rowid]=$o->nom;
 $projectOptions=array();if($selectedSocid>0){$res=$db->query("SELECT rowid,ref,title FROM ".MAIN_DB_PREFIX."projet WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid." ORDER BY ref DESC");if($res)while($o=$db->fetch_object($res))$projectOptions[(int)$o->rowid]=$o->ref.' — '.$o->title;}
 $chargeOptions=array();if($selectedSocid>0&&cpcc_financial_schema_ready($db)){$sql="SELECT rowid,label,reference,currency_code,amount FROM ".MAIN_DB_PREFIX."cpcc_project_charge WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid." AND status=1".($selectedProjectid>0?" AND fk_project=".$selectedProjectid:'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$chargeOptions[(int)$o->rowid]=$o->label.' — '.cpcc_portal_money($o->amount).' '.$o->currency_code.' — '.$o->reference;}
 $invoiceOptions=array();if($selectedSocid>0){$sql="SELECT rowid,ref,multicurrency_code,multicurrency_total_ttc,total_ttc FROM ".MAIN_DB_PREFIX."facture WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid.($selectedProjectid>0?" AND (fk_projet IS NULL OR fk_projet=".$selectedProjectid.")":'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$invoiceOptions[(int)$o->rowid]=$o->ref.' — '.cpcc_portal_money(!empty($o->multicurrency_code)?$o->multicurrency_total_ttc:$o->total_ttc).' '.cpcc_financial_currency($o->multicurrency_code,!empty($conf->currency)?$conf->currency:'USD');}
-$paymentOptions=array();if($selectedSocid>0){$sql="SELECT DISTINCT p.rowid,p.datep,p.num_paiement FROM ".MAIN_DB_PREFIX."paiement p JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture WHERE p.entity=".(int)$conf->entity." AND p.statut=1 AND f.fk_soc=".$selectedSocid." ORDER BY p.rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$paymentOptions[(int)$o->rowid]=dol_print_date($o->datep,'day').' — '.($o->num_paiement?:'Payment #'.$o->rowid);}
 $today=date('Y-m-d');
 ?>
 <form method="get" class="cpad-context-form"><div class="cpad-context-fields">
@@ -118,14 +115,13 @@ $today=date('Y-m-d');
 <?php if($selectedSocid<=0){ ?><div class="info">اختر العميل أولاً حتى تُسجل الحركات على الحساب الصحيح.</div><?php } ?>
 <div class="fichecenter"><div class="fichehalfleft"><div class="underbanner clearboth"></div>
 <form method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="addentry"><input type="hidden" name="socid" value="<?php echo $selectedSocid; ?>"><input type="hidden" name="projectid" value="<?php echo $selectedProjectid; ?>">
-<table class="border centpercent"><tr><td colspan="2"><b>إيداع أو مصروف / Receipt or expense</b></td></tr>
+<table class="border centpercent"><tr><td colspan="2"><b>تسوية أو مصروف استثنائي / Manual exception or expense</b></td></tr>
 <tr><td>العميل / المشروع / Customer / Project</td><td><b><?php echo dol_escape_htmltag(isset($customerOptions[$selectedSocid])?$customerOptions[$selectedSocid]:'—'); ?></b><br><span class="opacitymedium"><?php echo dol_escape_htmltag(isset($projectOptions[$selectedProjectid])?$projectOptions[$selectedProjectid]:'General customer wallet'); ?></span></td></tr>
 <tr><td>التاريخ / Date</td><td><input required type="date" name="date" aria-label="Receipt date" value="<?php echo $today; ?>"></td></tr>
-<tr><td>النوع / Type</td><td><select id="cpcc-entry-type" name="entry_type" aria-label="Financial entry type"><?php foreach(array('customer_receipt','opening_balance','supplier_payment','shipping','commission','cargox','dhl','inspection','service','invoice_allocation','other','adjustment') as $type) print '<option value="'.$type.'">'.dol_escape_htmltag(cpcc_financial_type_label($type)).'</option>'; ?></select></td></tr>
+<tr><td>النوع / Type</td><td><select id="cpcc-entry-type" name="entry_type" aria-label="Financial entry type"><?php foreach(array('opening_balance','supplier_payment','shipping','commission','cargox','dhl','inspection','service','other','adjustment') as $type) print '<option value="'.$type.'">'.dol_escape_htmltag(cpcc_financial_type_label($type)).'</option>'; ?></select></td></tr>
 <tr><td>الاتجاه / Direction</td><td><output id="cpcc-direction-output" class="cpcc-direction">دائن / Credit (+)</output> <span class="opacitymedium">يُحدد تلقائياً حسب نوع الحركة / Automatically determined by entry type</span></td></tr>
 <tr><td>الوصف / Description</td><td><input required class="minwidth300" name="description" aria-label="Receipt or expense description"></td></tr><tr><td>المبلغ / العملة / Amount / Currency</td><td><input required name="amount" inputmode="decimal" aria-label="Receipt or expense amount"> <input required size="4" maxlength="3" name="currency" aria-label="Receipt or expense currency" placeholder="USD"></td></tr>
 <tr><td>الالتزام / المخصص / Commitment / Allocated</td><td><?php echo Form::selectarray('chargeid',$chargeOptions,0,'بدون تخصيص / Not allocated',0,0,'aria-label="Project commitment"',0,0,0,'','minwidth300',1); ?> <input name="allocated_amount" inputmode="decimal" aria-label="Amount allocated to commitment" placeholder="المبلغ بعملة الالتزام"></td></tr>
-<tr><td>دفعة فاتورة Vision System / Invoice payment</td><td><?php echo Form::selectarray('dolibarr_payment_id',$paymentOptions,0,'غير مرتبط / Not linked',0,0,'aria-label="Vision System invoice payment"',0,0,0,'','minwidth300',1); ?> <span class="opacitymedium">اختره فقط عند سداد الفاتورة من رصيد العميل المحتفظ به.</span></td></tr>
 <tr><td>المرجع / البنك / Reference / Bank</td><td><input name="reference" aria-label="Payment reference"> <input name="bank_label" aria-label="Bank label"></td></tr><tr><td>ظاهر للعميل / Customer visible</td><td><input type="checkbox" name="customer_visible" value="1" aria-label="Visible to customer" checked></td></tr>
 <tr><td></td><td><button class="button button-save" type="submit">حفظ الحركة</button></td></tr></table></form>
 </div><div class="fichehalfright"><div class="underbanner clearboth"></div>

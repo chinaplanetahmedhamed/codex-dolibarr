@@ -30,9 +30,10 @@ if (!$tableCheck || $db->num_rows($tableCheck) === 0) {
 
 $dashboardKey = 'admin_operations';
 $allowedWidgets = array(
-    'kpi_customers','kpi_orders','kpi_revenue','kpi_shipments',
-    'shipment_control','currency_mix','workflow','monthly_revenue',
-    'live_shipments','top_customers','operations_snapshot','quick_access',
+    'kpi_customers','kpi_orders','kpi_projects','kpi_shipments','kpi_alerts','kpi_tasks',
+    'attention_center','shipping_orders','customer_finance','workflow','shipment_control',
+    'monthly_revenue','live_shipments','recent_orders','recent_finance','top_customers',
+    'documents_center','shipping_prices','quick_access',
 );
 $allowedSizes = array('small','medium','large','full');
 $action = GETPOST('action', 'aZ09');

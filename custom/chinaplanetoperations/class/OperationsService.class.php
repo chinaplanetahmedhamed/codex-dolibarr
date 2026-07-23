@@ -27,6 +27,17 @@ class OperationsService
         return array('todo'=>0,'in_progress'=>50,'waiting'=>50,'review'=>85,'done'=>100,'cancelled'=>0);
     }
 
+    public static function shippingOrderBuckets()
+    {
+        return array('all','active','confirmed','closed','cancelled');
+    }
+
+    public static function normalizeShippingOrderBucket($bucket)
+    {
+        $bucket = strtolower(trim((string) $bucket));
+        return in_array($bucket, self::shippingOrderBuckets(), true) ? $bucket : 'all';
+    }
+
     public static function serviceFields($type)
     {
         $common = array('customer_contact','contact_channel','contact_links','customer_requirements');
@@ -68,10 +79,10 @@ class OperationsService
         return isset($options[$field])?$options[$field]:array();
     }
 
-    public function create(array $data, $userId)
+    public function create(array $data, $userId, $manageTransaction = true)
     {
         $type = in_array($data['service_type'], self::serviceTypes(), true) ? $data['service_type'] : 'general';
-        $this->db->begin();
+        if ($manageTransaction) $this->db->begin();
         $this->validateShipmentLink($data);
         $ref = $this->nextRef($type);
         $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpo_operation(entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_shipment,fk_user_assign,priority,stage,progress,waiting_on,next_action,date_deadline,note_private,note_public,customer_visible,status,fk_user_creat,date_creation) VALUES(".
@@ -81,8 +92,21 @@ class OperationsService
         $this->saveSection($id, 'service', isset($data['service_data']) ? $data['service_data'] : array(), $userId, false);
         $this->log($id, 0, 'created', 'Operation created', 'internal', $userId, false);
         $this->createDefaultTasks($id, $type, $data, $userId);
-        $this->db->commit();
+        if ($manageTransaction) $this->db->commit();
         return $id;
+    }
+
+    /** Store a section exactly once. Used for immutable accepted commercial evidence. */
+    public function addImmutableSection($id, $code, array $data, $userId)
+    {
+        if (!preg_match('/^[a-z0-9_]{1,48}$/', (string) $code)) throw new RuntimeException('Invalid operation section.');
+        $res = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".$this->entity." AND fk_operation=".(int) $id." AND section_code=".$this->q($code)." FOR UPDATE");
+        if (!$res) $this->fail();
+        if ($this->db->num_rows($res) > 0) throw new RuntimeException('Immutable operation section already exists.');
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpo_operation_data(entity,fk_operation,section_code,data_json,fk_user_modif) VALUES(".$this->entity.",".(int) $id.",".$this->q($code).",".$this->q($json).",".(int) $userId.")";
+        if (!$this->db->query($sql)) $this->fail();
+        return true;
     }
 
     public function update($id, array $data, $userId)
@@ -92,6 +116,12 @@ class OperationsService
         if (!$operation) { $this->db->rollback(); throw new RuntimeException('Operation not found'); }
         $lock = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_operation WHERE rowid=".(int)$id." AND entity=".$this->entity." FOR UPDATE");
         if (!$lock || $this->db->num_rows($lock) !== 1) $this->fail();
+        $currentShipment = !empty($operation['fk_shipment']) ? (int) $operation['fk_shipment'] : 0;
+        $requestedShipment = !empty($data['fk_shipment']) ? (int) $data['fk_shipment'] : 0;
+        if ($currentShipment > 0 && $requestedShipment !== $currentShipment) {
+            $this->db->rollback();
+            throw new RuntimeException('A linked shipment cannot be removed or replaced.');
+        }
         $this->validateShipmentLink($data);
         $stage = isset(self::stages()[$data['stage']]) ? $data['stage'] : $operation['stage'];
         $progress = self::stages()[$stage];
@@ -110,6 +140,7 @@ class OperationsService
         if (!$obj) return null;
         $row = get_object_vars($obj);
         $row['service_data'] = $this->getSection($id, 'service');
+        $row['customer_rate'] = $this->getSection($id, 'customer_rate');
         return $row;
     }
 
@@ -122,6 +153,77 @@ class OperationsService
         if (!empty($filters['q'])) { $q='%'.$filters['q'].'%'; $where[]='(o.ref LIKE '.$this->q($q).' OR o.title LIKE '.$this->q($q).' OR s.nom LIKE '.$this->q($q).' OR o.next_action LIKE '.$this->q($q).')'; }
         $sql = "SELECT o.*,s.nom customer_name,u.login owner_login FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=o.fk_user_assign WHERE ".implode(' AND ',$where)." ORDER BY FIELD(o.priority,'urgent','high','normal','low'),o.date_deadline IS NULL,o.date_deadline,o.tms DESC LIMIT 500";
         return $this->rows($sql);
+    }
+
+    /**
+     * Return the internal Shipping Orders register through a strict allowlisted
+     * projection. Raw booking/service JSON is decoded server-side and is never
+     * returned to callers.
+     */
+    public function searchShippingOrders(array $filters = array())
+    {
+        $bucket = self::normalizeShippingOrderBucket(isset($filters['bucket']) ? $filters['bucket'] : 'all');
+        $socid = !empty($filters['socid']) ? (int) $filters['socid'] : 0;
+        $limit = isset($filters['limit']) ? max(1, min(500, (int) $filters['limit'])) : 500;
+        $customerProjection = !empty($filters['customer_projection']);
+        $bucketSql = $this->shippingOrderBucketSql('o', 'd');
+        $where = array(
+            'o.entity='.$this->entity,
+            'o.status=1',
+            "o.service_type='shipping_booking'",
+        );
+        if ($socid > 0) $where[] = 'o.fk_soc='.$socid;
+        if ($bucket !== 'all') $where[] = $bucketSql.'='.$this->q($bucket);
+        if ($customerProjection) $where[] = '(b.rowid IS NULL OR b.fk_soc=o.fk_soc)';
+        if (!empty($filters['q'])) {
+            $q = '%'.trim((string) $filters['q']).'%';
+            $where[] = '(o.ref LIKE '.$this->q($q).' OR s.nom LIKE '.$this->q($q).' OR o.next_action LIKE '.$this->q($q).' OR l.ref LIKE '.$this->q($q).' OR l.container_no LIKE '.$this->q($q).')';
+        }
+
+        $sql = "SELECT o.rowid,o.ref,o.fk_soc,o.stage,o.next_action,o.date_creation,o.fk_shipment,";
+        $sql .= " s.nom customer_name,l.ref shipment_ref,l.container_no shipment_container,";
+        $sql .= " b.rowid booking_id,b.fk_soc booking_socid,b.date_acceptance,b.snapshot_json,";
+        $sql .= " d.data_json service_json,".$bucketSql." lifecycle_bucket";
+        $sql .= " FROM ".MAIN_DB_PREFIX."cpo_operation o";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetsp_booking b ON b.entity=o.entity AND b.fk_operation=o.rowid";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation_data d ON d.entity=o.entity AND d.fk_operation=o.rowid AND d.section_code='service'";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=o.fk_shipment AND l.entity=o.entity AND l.fk_soc=o.fk_soc";
+        $sql .= " WHERE ".implode(' AND ', $where)." ORDER BY o.date_creation DESC,o.rowid DESC LIMIT ".$limit;
+
+        $rows = array();
+        $res = $this->db->query($sql);
+        if (!$res) return $rows;
+        while ($row = $this->db->fetch_object($res)) $rows[] = $this->projectShippingOrder($row);
+        return $rows;
+    }
+
+    /** Shared exhaustive counts used by the register and every admin dashboard. */
+    public function shippingOrderStats($socid = 0, $customerProjection = false, $query = '')
+    {
+        $stats = array('total_current'=>0,'active'=>0,'confirmed'=>0,'closed'=>0,'cancelled'=>0);
+        $bucketSql = $this->shippingOrderBucketSql('o', 'd');
+        $where = array('o.entity='.$this->entity, 'o.status=1', "o.service_type='shipping_booking'");
+        if ((int) $socid > 0) $where[] = 'o.fk_soc='.(int) $socid;
+        if ($customerProjection) $where[] = '(b.rowid IS NULL OR b.fk_soc=o.fk_soc)';
+        if (trim((string) $query) !== '') {
+            $q = '%'.trim((string) $query).'%';
+            $where[] = '(o.ref LIKE '.$this->q($q).' OR s.nom LIKE '.$this->q($q).' OR o.next_action LIKE '.$this->q($q).' OR l.ref LIKE '.$this->q($q).' OR l.container_no LIKE '.$this->q($q).')';
+        }
+        $sql = "SELECT COUNT(DISTINCT o.rowid) total_current";
+        foreach (array('active','confirmed','closed','cancelled') as $bucket) {
+            $sql .= ",COUNT(DISTINCT CASE WHEN ".$bucketSql."=".$this->q($bucket)." THEN o.rowid END) ".$bucket;
+        }
+        $sql .= " FROM ".MAIN_DB_PREFIX."cpo_operation o";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetsp_booking b ON b.entity=o.entity AND b.fk_operation=o.rowid";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation_data d ON d.entity=o.entity AND d.fk_operation=o.rowid AND d.section_code='service'";
+        $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=o.fk_shipment AND l.entity=o.entity AND l.fk_soc=o.fk_soc";
+        $sql .= " WHERE ".implode(' AND ', $where);
+        $res = $this->db->query($sql);
+        $row = $res ? $this->db->fetch_object($res) : null;
+        if ($row) foreach (array_keys($stats) as $key) $stats[$key] = (int) $row->{$key};
+        return $stats;
     }
 
     public function stats()
@@ -191,6 +293,60 @@ class OperationsService
         );
         $items=isset($templates[$type])?$templates[$type]:array('Review requirements','Execute work','Supervisor review','Publish result');
         foreach($items as $title)$this->createTask(array('fk_operation'=>$operationId,'title'=>$title,'description'=>'','fk_user_assign'=>$data['fk_user_assign']??0,'priority'=>$data['priority']??'normal','status'=>'todo','date_deadline'=>'','private_note'=>''),$userId);
+    }
+
+    private function shippingOrderBucketSql($operationAlias, $dataAlias)
+    {
+        $stage = $operationAlias.'.stage';
+        $json = $dataAlias.'.data_json';
+        $bookingStatus = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$json.",'$.booking_status')),''))";
+        $shippingOrder = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$json.",'$.shipping_order_no')),''))";
+        $carrierBooking = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$json.",'$.carrier_booking_no')),''))";
+        return "CASE WHEN ".$stage."='cancelled' THEN 'cancelled' WHEN ".$stage."='completed' THEN 'closed' WHEN ".$stage."='published' AND ".$bookingStatus." IN ('accepted','confirmed') AND (".$shippingOrder."<>'' OR ".$carrierBooking."<>'') THEN 'confirmed' ELSE 'active' END";
+    }
+
+    private function projectShippingOrder($row)
+    {
+        $operationSocid = (int) $row->fk_soc;
+        $bookingId = !empty($row->booking_id) ? (int) $row->booking_id : 0;
+        $bookingSocid = !empty($row->booking_socid) ? (int) $row->booking_socid : 0;
+        $ownershipMismatch = $bookingId > 0 && $bookingSocid !== $operationSocid;
+        $shipmentMismatch = !empty($row->fk_shipment) && empty($row->shipment_ref) && empty($row->shipment_container);
+        $service = json_decode((string) $row->service_json, true);
+        if (!is_array($service)) $service = array();
+        $snapshot = array();
+        if ($bookingId > 0 && !$ownershipMismatch) {
+            $decoded = json_decode((string) $row->snapshot_json, true);
+            if (is_array($decoded)) $snapshot = $decoded;
+        }
+        $route = isset($snapshot['route']) && is_array($snapshot['route']) ? $snapshot['route'] : array();
+        $hasAcceptedEvidence = $bookingId > 0 && !$ownershipMismatch && !empty($snapshot);
+
+        return array(
+            'operation_id'=>(int) $row->rowid,
+            'reference'=>(string) $row->ref,
+            'customer_id'=>$operationSocid,
+            'customer_name'=>(string) $row->customer_name,
+            'source'=>$bookingId > 0 ? 'customer_direct' : 'manual_legacy',
+            'integrity_exception'=>$ownershipMismatch,
+            'shipment_integrity_exception'=>$shipmentMismatch,
+            'route'=>array('pol'=>(string) ($route['pol'] ?? ''), 'pod'=>(string) ($route['pod'] ?? '')),
+            'equipment'=>$hasAcceptedEvidence ? (string) ($snapshot['equipment'] ?? '') : '',
+            'quantity'=>$hasAcceptedEvidence ? (int) ($snapshot['quantity'] ?? 0) : 0,
+            'accepted_total'=>$hasAcceptedEvidence && isset($snapshot['total']) ? (float) $snapshot['total'] : null,
+            'currency'=>$hasAcceptedEvidence ? (string) ($snapshot['currency'] ?? '') : '',
+            'accepted_at'=>$hasAcceptedEvidence ? (string) $row->date_acceptance : '',
+            'booking_status'=>(string) ($service['booking_status'] ?? ''),
+            'shipping_order_no'=>(string) ($service['shipping_order_no'] ?? ''),
+            'carrier_booking_no'=>(string) ($service['carrier_booking_no'] ?? ''),
+            'stage'=>(string) $row->stage,
+            'lifecycle_bucket'=>(string) $row->lifecycle_bucket,
+            'confirmation_incomplete'=>$row->stage === 'published' && $row->lifecycle_bucket !== 'confirmed',
+            'created_at'=>(string) $row->date_creation,
+            'next_action'=>(string) $row->next_action,
+            'shipment_id'=>(int) $row->fk_shipment,
+            'shipment_reference'=>(string) ($row->shipment_ref ?: $row->shipment_container),
+        );
     }
 
     private function saveSection($id,$code,array $data,$userId,$log=true){$json=json_encode($data,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$sql="INSERT INTO ".MAIN_DB_PREFIX."cpo_operation_data(entity,fk_operation,section_code,data_json,fk_user_modif) VALUES(".$this->entity.",".(int)$id.",".$this->q($code).",".$this->q($json).",".(int)$userId.") ON DUPLICATE KEY UPDATE data_json=VALUES(data_json),fk_user_modif=VALUES(fk_user_modif)";if(!$this->db->query($sql))$this->fail();}

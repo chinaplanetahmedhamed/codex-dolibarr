@@ -4,6 +4,7 @@ require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once __DIR__.'/lib/financial.lib.php';
 require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
+require_once __DIR__.'/../chinaplanetoperations/class/OperationsService.class.php';
 
 if (empty($user->id) || empty($user->admin) || !empty($user->socid)) {
     accessforbidden('Administrator access required.');
@@ -71,6 +72,7 @@ $cardsActive = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFI
 $exportDocuments = cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_export_document') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."cpcc_export_document WHERE entity=".$entity." AND status=1") : 0;
 $publishedRates = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_rate') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$entity." AND status=1 AND is_current=1") : 0;
 $shippingInquiries = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_inquiry') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_inquiry WHERE entity=".$entity." AND status=1") : 0;
+$shippingOrderStats = (new OperationsService($db))->shippingOrderStats();
 $shipmentsWithoutExportDocs = 0;
 if (cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_export_document')) {
     $shipmentsWithoutExportDocs = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l WHERE l.entity=".$entity." AND l.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_export_document d WHERE d.entity=l.entity AND d.fk_shipment=l.rowid AND d.status=1)");
@@ -148,6 +150,7 @@ $widgetLabels = array(
     'top_customers'=>'Top Customers / أهم العملاء',
     'documents_center'=>'Documents Center / مركز المستندات',
     'shipping_prices'=>'Shipping Prices / أسعار الشحن',
+    'shipping_orders'=>'Shipping Orders / طلبات الشحن',
     'quick_access'=>'Quick Access / الوصول السريع',
 );
 $savedLayout = array();
@@ -201,12 +204,24 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     </div>
   </section>
 
+  <section class="cpad-panel cpad-shipping-orders" data-cpad-widget="shipping_orders" data-default-size="full">
+    <div class="cpad-title"><span>Shipping Orders / طلبات الشحن</span><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1); ?>">Open register / فتح السجل →</a></div>
+    <p class="cpad-shipping-orders-note">Customer booking operations — separate from Dolibarr Sales Orders and linked shipments. / عمليات حجز العميل منفصلة عن طلبات البيع والشحنات المرتبطة.</p>
+    <div class="cpad-shipping-order-metrics">
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=all',1); ?>"><b><?php echo (int)$shippingOrderStats['total_current']; ?></b><span>Total Current / الإجمالي الحالي</span></a>
+      <a class="active" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=active',1); ?>"><b><?php echo (int)$shippingOrderStats['active']; ?></b><span>Active / نشط</span></a>
+      <a class="confirmed" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=confirmed',1); ?>"><b><?php echo (int)$shippingOrderStats['confirmed']; ?></b><span>Confirmed / SO Received<br>مؤكد / تم استلام SO</span></a>
+      <a class="closed" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=closed',1); ?>"><b><?php echo (int)$shippingOrderStats['closed']; ?></b><span>Closed / مغلق</span></a>
+      <a class="cancelled" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=cancelled',1); ?>"><b><?php echo (int)$shippingOrderStats['cancelled']; ?></b><span>Cancelled / ملغي</span></a>
+    </div>
+  </section>
+
   <section class="cpad-panel" data-cpad-widget="customer_finance" data-default-size="full">
     <div class="cpad-title"><span>Customer Funds by Currency / أموال العملاء حسب العملة</span><small>لا يتم جمع العملات المختلفة معاً</small></div>
     <?php if (empty($financialByCurrency)) { ?><div class="cpad-empty">No customer financial movements yet / لا توجد حركات مالية للعملاء.</div><?php } else { ?>
     <div class="cpad-finance-grid">
       <?php foreach ($financialByCurrency as $code=>$totals) { ?>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>" class="cpad-finance-card">
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1); ?>" class="cpad-finance-card">
         <div><span><?php echo dol_escape_htmltag($code); ?></span><small>Customer wallet / محفظة العملاء</small></div>
         <dl><div><dt>Received / مستلم</dt><dd><?php echo number_format($totals['received'],2); ?></dd></div><div><dt>Spent / مصروف</dt><dd><?php echo number_format($totals['spent'],2); ?></dd></div><div><dt>Available / متاح</dt><dd class="<?php echo $totals['available'] < 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['available'],2); ?></dd></div><div><dt>Required / مطلوب</dt><dd class="<?php echo $totals['required_funding'] > 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['required_funding'],2); ?></dd></div></dl>
       </a>
@@ -274,7 +289,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <div class="cpad-title"><span>Recent Financial Activity / أحدث الحركات المالية</span></div>
     <?php if (empty($recentFinance)) { ?><div class="cpad-empty">No recent custom financial entries / لا توجد حركات مالية حديثة.</div><?php } else { ?>
     <div class="cpad-activity-list"><?php foreach ($recentFinance as $entry) { ?>
-      <a href="<?php echo ($entry->fk_soc > 0) ? dol_buildpath('/chinaplanetcustomercenter/balance.php',1).'?socid='.(int)$entry->fk_soc : dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>"><span class="cpad-activity-icon <?php echo $entry->direction==='C'?'credit':'debit'; ?> fas <?php echo $entry->direction==='C'?'fa-arrow-down':'fa-arrow-up'; ?>"></span><span><b><?php echo dol_escape_htmltag($entry->customer ?: '—'); ?></b><small><?php echo dol_escape_htmltag($entry->description); ?></small></span><strong><?php echo $entry->direction==='C'?'+':'−'; ?> <?php echo dol_escape_htmltag(number_format($entry->amount,2).' '.$entry->currency_code); ?></strong><time><?php echo dol_escape_htmltag(substr($entry->entry_date,0,10)); ?></time></a>
+      <a href="<?php echo ($entry->fk_soc > 0) ? dol_buildpath('/chinaplanetcustomercenter/balance.php',1).'?socid='.(int)$entry->fk_soc : dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1); ?>"><span class="cpad-activity-icon <?php echo $entry->direction==='C'?'credit':'debit'; ?> fas <?php echo $entry->direction==='C'?'fa-arrow-down':'fa-arrow-up'; ?>"></span><span><b><?php echo dol_escape_htmltag($entry->customer ?: '—'); ?></b><small><?php echo dol_escape_htmltag($entry->description); ?></small></span><strong><?php echo $entry->direction==='C'?'+':'−'; ?> <?php echo dol_escape_htmltag(number_format($entry->amount,2).' '.$entry->currency_code); ?></strong><time><?php echo dol_escape_htmltag(substr($entry->entry_date,0,10)); ?></time></a>
     <?php } ?></div><?php } ?>
   </section>
 

@@ -78,13 +78,11 @@ print '<span class="cpcc-eyebrow">SHIPMENT TRACKING</span>';
 print '<h1>الشحنات / Shipments</h1>';
 print '<p>تابع حالة الشحنة ومواعيد الوصول والوقت الحر من مكان واحد. / Track shipment status, arrival dates, and free time in one place.</p>';
 print '</div></header>';
-print '<form method="GET" action="'.$_SERVER["PHP_SELF"].'">';
-print '<div class="div-table-responsive">';
-print '<table class="tagtable liste">';
-print '<tr class="liste_titre_filter">';
-print '<td class="liste_titre"><input type="text" class="flat maxwidth100" name="search_container" value="'.dol_escape_htmltag($search_container).'" placeholder="الحاوية / Container"></td>';
-print '<td class="liste_titre"><input type="text" class="flat maxwidth100" name="search_bl" value="'.dol_escape_htmltag($search_bl).'" placeholder="البوليصة / BL"></td>';
-print '<td class="liste_titre">'.Form::selectarray('status', array(
+print '<form class="cpl-shipment-filter-form" method="GET" action="'.$_SERVER["PHP_SELF"].'">';
+print '<div class="cpl-filter-grid" aria-label="Shipment filters / فلاتر الشحنات">';
+print '<label><span>الحاوية / Container</span><input type="text" class="flat" name="search_container" value="'.dol_escape_htmltag($search_container).'" placeholder="رقم الحاوية / Container number"></label>';
+print '<label><span>البوليصة / BL</span><input type="text" class="flat" name="search_bl" value="'.dol_escape_htmltag($search_bl).'" placeholder="رقم البوليصة / BL number"></label>';
+print '<label><span>الحالة / Status</span>'.Form::selectarray('status', array(
     '' => 'All statuses / كل الحالات',
     'active' => 'Active / نشطة',
     'intransit' => 'In transit / في الطريق',
@@ -92,12 +90,12 @@ print '<td class="liste_titre">'.Form::selectarray('status', array(
     'arrived' => 'Arrived / وصلت',
     'critical' => 'Critical / حرجة',
     'missingdocs' => 'Missing export docs / بدون مستندات تصدير',
-), $statusFilter, 0, 0, 0, '', 0, 0, 0, '', '', 1);
-print '</td>';
-if (!$is_external) print '<td class="liste_titre">'.Form::selectarray('socid',$customerOptions,$socid,'كل العملاء / All customers',0,0,'aria-label="Customer filter / فلتر العميل"',0,0,0,'','minwidth200',1).'</td>';
-print '<td class="liste_titre" colspan="4"></td>';
-print '<td class="liste_titre center"><input type="submit" class="button small" value="بحث / Search"></td>';
-print '</tr>';
+), $statusFilter, 0, 0, 0, '', 0, 0, 0, '', '', 1).'</label>';
+if (!$is_external) print '<label><span>العميل / Customer</span>'.Form::selectarray('socid',$customerOptions,$socid,'كل العملاء / All customers',0,0,'aria-label="Customer filter / فلتر العميل"',0,0,0,'','',1).'</label>';
+print '<button type="submit" class="button cpl-filter-submit"><span class="fas fa-search" aria-hidden="true"></span> بحث / Search</button>';
+print '</div>';
+print '<div class="div-table-responsive cpl-shipment-list-wrap" tabindex="0" aria-label="Shipment results / نتائج الشحنات">';
+print '<table class="tagtable liste cpl-shipment-list">';
 
 print '<tr class="liste_titre">';
 print '<th>الحاوية / Container</th>';

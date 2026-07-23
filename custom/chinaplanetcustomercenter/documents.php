@@ -8,6 +8,7 @@ require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once __DIR__.'/lib/portal.lib.php';
+require_once __DIR__.'/lib/export.lib.php';
 require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
 $langs->loadLangs(array('chinaplanetcustomercenter@chinaplanetcustomercenter', 'chinaplanetlogistics@chinaplanetlogistics'));
@@ -31,6 +32,7 @@ $candelete = (!$is_external && ($user->admin || $user->hasRight('chinaplanetcust
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
 $form = new Form($db);
 $customer_options = array();
+$commercial_documents = (!$is_external && $socid > 0) ? cpcc_export_documents($db, $socid, 0, 0, true) : array();
 if (!$is_external) {
     $res_customers=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");
     if($res_customers) while($customer=$db->fetch_object($res_customers)) $customer_options[(int)$customer->rowid]=$customer->nom;
@@ -98,20 +100,41 @@ if ($action === 'rename' || $action === 'deletefile') {
     }
 }
 
-$pageCss = array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'));
+$pageCss = array(
+    cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'),
+    cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/export.css'),
+    cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/documents.css'),
+);
 if (!$is_external) $pageCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
-llxHeader('', $is_external ? $langs->trans('CPLShipmentFilesPageTitle') : 'Documents / المستندات', '', '', 0, 0, array(), $pageCss);
+llxHeader('', 'Documents / المستندات', '', '', 0, 0, array(), $pageCss);
 if ($is_external) cpcc_portal_navigation($user, 'documents');
-else cpcc_admin_shell_open('documents', 'Shipment Documents / مستندات الشحن', 'رفع وإدارة ملفات الشحنات ومستندات العملاء', 'fa-folder-open', array('socid'=>$socid));
+else cpcc_admin_shell_open('documents', 'Documents / المستندات', 'إدارة المستندات التجارية وملفات الشحن المنشورة للعملاء', 'fa-folder-open', array('socid'=>$socid));
 
 print '<main class="cpcc-dashboard cpcc-documents-page" dir="rtl">';
 print '<header class="cpcc-page-head"><div>';
-print '<span class="cpcc-eyebrow">'.dol_escape_htmltag($is_external ? $langs->trans('CPLShipmentFilesPageEyebrow') : 'SHIPMENT DOCUMENTS').'</span>';
-print '<h1>'.dol_escape_htmltag($is_external ? $langs->trans('CPLShipmentFilesPageTitle') : 'المستندات / Documents').'</h1>';
-print '<p>'.dol_escape_htmltag($is_external ? $langs->trans('CPLShipmentFilesPageIntro') : 'اعرض مستندات الشحن المسموح بها ونزّلها بأمان من مكان واحد. / View and securely download approved shipment documents in one place.').'</p>';
+print '<span class="cpcc-eyebrow">CUSTOMER DOCUMENTS</span>';
+print '<h1>المستندات / Documents</h1>';
+print '<p>'.($is_external ? 'مستندات وملفات الشحن المنشورة للعميل في مكان واحد. / Published shipment documents and gallery files in one place.' : 'المستندات التجارية وملفات الشحن المنشورة للعميل في مكان واحد. / Published commercial and shipment documents in one place.').'</p>';
 print '</div></header>';
+if (!$is_external && $socid > 0) {
+    print '<section class="cpcc-commercial-documents"><div class="cpcc-section-head"><div><h2>المستندات التجارية / Commercial Documents</h2><p>Commercial invoices, packing lists, and other approved customer documents.</p></div><div class="cpcc-document-count"><span>Published</span><strong>'.count($commercial_documents).'</strong></div></div>';
+    if (empty($commercial_documents)) {
+        print '<div class="cpcc-empty">لا توجد مستندات تجارية منشورة لهذا العميل. / No published commercial documents.</div>';
+    } else {
+        print '<div class="cpcc-document-grid">';
+        foreach ($commercial_documents as $commercial_document) {
+            $commercial_url = cpcc_portal_scoped_url('/chinaplanetcustomercenter/export_document.php', $is_external, $socid, array('id'=>(int) $commercial_document->rowid));
+            print '<a class="cpcc-document-card" href="'.dol_escape_htmltag($commercial_url).'">';
+            print '<strong>'.dol_escape_htmltag($commercial_document->ref).'</strong>';
+            print '<span class="cpcc-document-type"><i class="fas fa-file-alt" aria-hidden="true"></i>'.dol_escape_htmltag(cpcc_export_type_label($commercial_document->document_type)).'</span>';
+            print '<small><i class="fas fa-ship" aria-hidden="true"></i>'.dol_escape_htmltag($commercial_document->shipment_ref ?: 'غير مرتبط بشحنة / No related shipment').'</small>';
+            print '</a>';
+        }
+        print '</div>';
+    }
+    print '</section>';
+}
 print '<div class="div-table-responsive-no-min">';
-if (!$is_external) print '<div class="info"><strong>Commercial documents / مستندات التصدير:</strong> الفواتير التجارية وقوائم التعبئة موجودة في صفحة مستقلة. <a class="button button-small" href="'.dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php', 1).($socid > 0 ? '?socid='.(int) $socid : '').'">Open commercial documents</a></div>';
 
 if ($is_external && $socid <= 0) {
     print '<div class="warning">No linked customer account was found for this portal user.</div>';
@@ -125,7 +148,7 @@ if ($is_external && $socid <= 0) {
          . " ORDER BY t.date_eta DESC, t.rowid DESC";
     $resql = $db->query($sql);
 
-    print '<form method="GET" class="fright" style="margin-bottom:10px">';
+    print '<form method="GET" class="fright cpcc-documents-search">';
     if (!$is_external) print Form::selectarray('socid',$customer_options,$socid,'كل العملاء / All customers',0,0,'aria-label="Customer / العميل"',0,0,0,'','minwidth250',1).' ';
     print '<input type="text" name="search" class="flat" placeholder="الشحنة / الحاوية / البوليصة" aria-label="Shipment, container or BL / الشحنة أو الحاوية أو البوليصة" value="'.dol_escape_htmltag($search).'"> ';
     print '<input type="submit" class="button" value="بحث / Search">';

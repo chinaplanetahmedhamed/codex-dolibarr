@@ -19,9 +19,12 @@ $rows = $service->search($filters, $includeNonActive, 200);
 $categories = $service->getCategories($includeNonActive);
 $stats = $service->getStats();
 $statusLabels = array('-1'=>'Deleted','0'=>'Draft','1'=>'Active','9'=>'Archived');
-$morecss = array(cpcc_admin_shell_asset('/custom/chinaplanetshippingprices/css/shippingprices.css'));
+$morecss = array(
+    cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),
+    cpcc_admin_shell_asset('/custom/chinaplanetshippingprices/css/shippingprices.css'),
+);
 llxHeader('', 'Internal SOP Library', '', '', 0, 0, array(), $morecss);
-cpcc_admin_shell_open('shippingprices', 'Internal Operations SOP / إجراءات التشغيل الداخلية', 'Find the correct procedure before handling an inquiry or order', 'fa-route');
+cpcc_admin_shell_open('sop', 'Internal Operations SOP / إجراءات التشغيل الداخلية', 'Find the correct procedure before handling an inquiry or order', 'fa-route');
 print '<main class="chinaplanetsp-sop-page"><section class="chinaplanetsp-admin-hero"><div><span>CONTROLLED OPERATIONS LIBRARY</span><h1>Shipping SOP Center / مركز إجراءات الشحن</h1><p>Search by route, service, cargo or required country document.</p></div><div class="chinaplanetsp-sop-hero-buttons">';
 if ($canWrite) print '<a class="button" href="edit.php"><span class="fas fa-plus"></span> New SOP</a>';
 print '<a class="button" href="../index.php"><span class="fas fa-search-dollar"></span> Price inquiry</a></div></section>';

@@ -35,8 +35,8 @@ m033_assert(strpos($board, 'if (!$is_external && $socid <= 0)') !== false, 'all-
 m033_assert(strpos($board, 'entity=".$entity') !== false, 'customer overview queries are entity scoped');
 m033_assert(strpos($board, 'Finance by currency') !== false && strpos($board, 'Original currency only') !== false, 'customer center keeps finance separated by original currency');
 m033_assert(strpos($board, 'if ($is_external) cpcc_portal_navigation') !== false, 'external customer portal navigation remains unchanged');
-m033_assert(strpos($board, "function cpcc_board_customer_document_count") !== false, 'customer document count is self-contained in the deployed board');
-m033_assert(strpos($board, 'cpcc_portal_customer_document_count($db') === false, 'deployed board does not depend on an undeployed portal-library helper');
+m033_assert(strpos($board, 'cpcc_portal_customer_document_count($db, $user, $socid)') !== false, 'customer center reuses the shared role-aware document counter');
+m033_assert(strpos($board, "function cpcc_board_customer_document_count") === false, 'customer center does not retain a duplicate document counter');
 
 $css = m033_source('custom/chinaplanetcustomercenter/css/admin_dashboard.css');
 m033_assert(strpos($css, '.cpcc-admin-overview-grid') !== false, 'customer center overview has shared admin styling');

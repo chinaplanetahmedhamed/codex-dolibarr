@@ -1,4 +1,6 @@
 <?php
+$m035PostedAction = isset($_POST['action']) ? (string) $_POST['action'] : '';
+if ($m035PostedAction === 'directbook') $checkToken = 1;
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/class/ShippingPriceService.class.php';
@@ -8,7 +10,7 @@ chinaplanetsp_require_read($user);
 $langs->load('chinaplanetshippingprices@chinaplanetshippingprices');
 $isExternal=!empty($user->socid)&&empty($user->admin);
 $morecss=array(cpcc_admin_shell_asset('/custom/chinaplanetshippingprices/css/shippingprices.css'));
-if($isExternal)$morecss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css');
+if($isExternal){$morecss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css');$morecss[]=cpcc_admin_shell_asset('/custom/chinaplanetshippingprices/css/customer_booking.css');}
 else $morecss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
 $service=new ShippingPriceService($db);
 $canReadSop=chinaplanetsp_can_sop($user,'sopread');
@@ -18,6 +20,7 @@ $includeCost=empty($user->socid)&&($user->hasRight('chinaplanetshippingprices','
 $documents=array();if(isset($_REQUEST['documents'])&&is_array($_REQUEST['documents']))foreach($_REQUEST['documents'] as $d)if(preg_match('/^[a-z0-9_-]{1,32}$/i',$d))$documents[]=strtolower($d);
 $filters=array('pol'=>GETPOST('pol','alphanohtml'),'country_code'=>GETPOST('country_code','alpha'),'pod'=>GETPOST('pod','alphanohtml'),'shipping_line'=>GETPOST('shipping_line','alphanohtml'),'container_type'=>GETPOST('container_type','alphanohtml'),'service_type'=>GETPOST('service_type','alpha'),'incoterm'=>GETPOST('incoterm','alpha')?:'FOB','cargo_type'=>GETPOST('cargo_type','alpha')?:'normal','documents'=>$documents);
 if(!empty($user->socid)&&$filters['country_code']===''){$res=$db->query("SELECT c.code FROM ".MAIN_DB_PREFIX."societe s LEFT JOIN ".MAIN_DB_PREFIX."c_country c ON c.rowid=s.fk_pays WHERE s.rowid=".(int)$user->socid);$o=$res?$db->fetch_object($res):null;if($o)$filters['country_code']=$o->code;}
+if($isExternal){require __DIR__.'/customer_booking.php';return;}
 $searched=GETPOSTINT('search')===1;$payload=$searched?$service->search($filters,$includeCost):array('results'=>array(),'error'=>'');
 if(GETPOST('action','aZ09')==='saveinquiry'&&GETPOSTINT('rate_id')>0){$payload=$service->search($filters,$includeCost);foreach($payload['results'] as $priced)if($priced['rate_id']===GETPOSTINT('rate_id')){$saved=$service->saveInquiry($user,(int)$user->socid,$filters,$priced,'dolibarr');if($saved)setEventMessages('Inquiry saved: '.$saved['ref'],null,'mesgs');break;}}
 $options=$service->getFilterOptions(!$includeCost);

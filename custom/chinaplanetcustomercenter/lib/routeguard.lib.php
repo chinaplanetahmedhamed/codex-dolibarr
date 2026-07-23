@@ -11,7 +11,8 @@ function cpcc_external_route_decision($user, $script)
     $script = (string) $script;
     if (preg_match('#/user/(logout|passwordforgotten)\.php$#', $script)) return null;
     if (preg_match('#/user/card\.php$#', $script)) return 'profile';
-    if (preg_match('#/index\.php$#', $script)) return 'home';
+    // Only Dolibarr's root index is the portal-home alias. Module index pages must remain reachable.
+    if (preg_match('#^/?index\.php$#', $script)) return 'home';
     if (preg_match('#/core/tools\.php$#', $script) || preg_match('#/admin/#', $script) || preg_match('#/user/#', $script)) return 'home';
 
     return null;

@@ -49,9 +49,9 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
         array('key'=>'funded','label'=>'تم استلام تمويل العميل','en'=>'Customer funds received','done'=>$funded,'rule'=>'حركة استلام أو رصيد افتتاحي مرتبطة بالمشروع / Project-linked receipt or opening balance'),
         array('key'=>'deposit','label'=>'تم دفع عربون المورد','en'=>'Supplier deposit paid','done'=>$supplierPaidAny,'rule'=>'أي مبلغ مخصص لالتزام مورد / Any amount allocated to a supplier commitment'),
         array('key'=>'supplier_paid','label'=>'اكتمل دفع المورد','en'=>'Supplier fully paid','done'=>$supplierFullyPaid,'rule'=>'كل التزامات الموردين بلا رصيد متبقٍ / All supplier commitments have zero remaining'),
-        array('key'=>'service_invoice','label'=>'صدرت فاتورة خدمات Vision','en'=>'Vision service invoice issued','done'=>$invoiceCount>0,'rule'=>'فاتورة عميل معتمدة مرتبطة بالمشروع / Validated customer invoice linked to project'),
+        array('key'=>'service_invoice','label'=>'صدرت الفاتورة','en'=>'Invoice issued','done'=>$invoiceCount>0,'rule'=>'فاتورة عميل معتمدة مرتبطة بالمشروع / Validated customer invoice linked to project'),
         array('key'=>'shipment','label'=>'تم إنشاء الشحنة','en'=>'Shipment created','done'=>$shipmentCount>0,'rule'=>'وجود شحنة مرتبطة بالعميل والمشروع / Shipment linked to customer and project'),
-        array('key'=>'documents','label'=>'اكتملت مستندات التصدير','en'=>'Export documents complete','done'=>$documentsComplete,'rule'=>'فاتورة تجارية وقائمة تعبئة ظاهرتان للعميل / Customer-visible Commercial Invoice and Packing List'),
-        array('key'=>'closed','label'=>'أُغلقت العملية','en'=>'Operation closed','done'=>$orderConfirmed&&$funded&&$supplierFullyPaid&&$invoiceCount>0&&$invoiceOpen===0&&$shipmentCount>0&&$shipmentClosed===$shipmentCount&&$documentsComplete,'rule'=>'اكتمال كل المتطلبات وإغلاق كل الشحنات وسداد الفواتير / All requirements complete'),
+        array('key'=>'documents','label'=>'اكتملت المستندات','en'=>'Documents complete','done'=>$documentsComplete,'rule'=>'فاتورة تجارية وقائمة تعبئة ظاهرتان للعميل / Customer-visible Commercial Invoice and Packing List'),
+        array('key'=>'closed','label'=>'تمت العملية','en'=>'Operation finished','done'=>$orderConfirmed&&$funded&&$supplierFullyPaid&&$invoiceCount>0&&$invoiceOpen===0&&$shipmentCount>0&&$shipmentClosed===$shipmentCount&&$documentsComplete,'rule'=>'اكتمال كل المتطلبات وإغلاق كل الشحنات وسداد الفواتير / All requirements complete'),
     );
 }

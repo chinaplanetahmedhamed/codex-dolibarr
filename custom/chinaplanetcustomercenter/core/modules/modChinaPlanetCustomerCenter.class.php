@@ -87,7 +87,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             'titre' => 'Customer Finance',
             'mainmenu' => 'chinaplanetcustomercenter',
             'leftmenu' => 'customer_finance',
-            'url' => '/custom/chinaplanetcustomercenter/admin/financial.php',
+            'url' => '/custom/chinaplanetcustomercenter/admin/financial_portfolio.php',
             'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
             'position' => 95,
             'enabled' => '$conf->chinaplanetcustomercenter->enabled && empty($user->socid)',
@@ -104,7 +104,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             'url' => '/custom/chinaplanetcustomercenter/admin/export_document.php',
             'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
             'position' => 97,
-            'enabled' => '$conf->chinaplanetcustomercenter->enabled && empty($user->socid)',
+            'enabled' => '0',
             'perms' => '$user->hasRight("chinaplanetcustomercenter","write") || !empty($user->admin)',
             'user' => 0,
         );

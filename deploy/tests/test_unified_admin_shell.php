@@ -11,9 +11,14 @@ function shellAssert($condition, $message)
 }
 
 $helper = file_get_contents($root.'/chinaplanetcustomercenter/lib/admin_shell.lib.php');
-foreach (array('dashboard','portal','tracking','shipments','documents','export','operations','financial') as $key) {
+foreach (array('dashboard','portal','shipping','documents','reports','sop','operations','financial') as $key) {
     shellAssert(strpos($helper, "'".$key."'=>array(") !== false, 'shared navigation contains '.$key);
 }
+foreach (array('tracking','shippingprices','shipments') as $legacyShippingKey) {
+    shellAssert(strpos($helper, "'".$legacyShippingKey."'=>array(") === false, 'shared navigation hides legacy shipping item '.$legacyShippingKey);
+}
+shellAssert(strpos($helper, "'tracking'=>'shipping'") !== false, 'legacy shipping page keys resolve to the Shipping Center');
+shellAssert(strpos($helper, "'export'=>array(") === false, 'legacy Export Documents navigation stays hidden');
 shellAssert(strpos($helper, "'/chinaplanetlogistics/card.php'") !== false, 'shared navigation contains new shipment action');
 shellAssert(strpos($helper, 'class="cpad-nav-toggle"') !== false, 'shared navigation has an accessible mobile menu button');
 shellAssert(strpos($helper, 'aria-expanded="false"') !== false, 'mobile menu exposes its collapsed state');
@@ -22,8 +27,9 @@ shellAssert(strpos($helper, 'aria-current="page"') !== false, 'shared navigation
 
 $pages = array(
     'chinaplanetcustomercenter/board.php'=>"cpcc_admin_shell_open('portal'",
-    'chinaplanetlogistics/index.php'=>"cpcc_admin_shell_open('tracking'",
+    'chinaplanetlogistics/index.php'=>"cpcc_admin_shell_open('shipping'",
     'chinaplanetlogistics/list.php'=>"cpcc_admin_shell_open('shipments'",
+    'chinaplanetoperations/operations/shipping_orders.php'=>"cpcc_admin_shell_open('shipping'",
     'chinaplanetcustomercenter/documents.php'=>"cpcc_admin_shell_open('documents'",
     'chinaplanetcustomercenter/balance.php'=>"cpcc_admin_shell_open('portal'",
     'chinaplanetcustomercenter/funding.php'=>"cpcc_admin_shell_open('portal'",
