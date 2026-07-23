@@ -41,5 +41,6 @@ try {
     $assert(strpos($page,'<h3 dir="ltr">')!==false&&strpos($page,'<strong dir="ltr">')!==false&&strpos($page,'<span dir="ltr">')!==false,'rate route or currency direction isolation absent');
     $assert(strpos($migration,"'snapshot'")!==false&&strpos($migration,"'rollback'")!==false,'schema pre-state rollback commands absent');
     $assert(strpos($migration,'M035_SCHEMA_PRESTATE_B64')!==false&&strpos($migration,'DROP TABLE IF EXISTS')!==false,'schema rollback does not restore the captured pre-state');
+    $assert(strpos($migration,'ROLLBACK_TABLE_NOT_EMPTY')!==false,'schema rollback can destroy non-empty staging booking data');
     echo "M035_SOURCE=PASS projection=ALLOWLIST authority=SESSION atomic=YES responsive=320-1920 accessibility=PASS\n";
 } catch(Throwable$e) { fwrite(STDERR,"M035_SOURCE=FAIL REASON=".$e->getMessage()."\n"); exit(1); }

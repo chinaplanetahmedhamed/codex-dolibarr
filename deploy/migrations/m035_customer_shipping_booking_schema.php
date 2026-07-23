@@ -61,6 +61,14 @@ if ($argv[1] === 'rollback') {
         fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_PRESTATE_INVALID\n");
         exit(1);
     }
+    if (empty($snapshot['table_exists']) && $exists()) {
+        $res = $db->query("SELECT COUNT(*) total FROM `".$table."`");
+        $obj = $res ? $db->fetch_object($res) : null;
+        if (!$obj || (int)$obj->total !== 0) {
+            fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_TABLE_NOT_EMPTY\n");
+            exit(1);
+        }
+    }
     $rightColumns = array('id','entity','libelle','module','module_origin','module_position','family','family_position','perms','subperms','type','bydefault','enabled');
     $quote = function ($value) use ($db) { return $value === null ? 'NULL' : "'".$db->escape((string)$value)."'"; };
     $db->begin();
