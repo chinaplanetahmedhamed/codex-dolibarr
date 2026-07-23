@@ -2,7 +2,7 @@
 /** Additive local/staging-safe M035 accepted-price booking schema migration. */
 
 if (PHP_SAPI !== 'cli') { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=CLI_ONLY\n"); exit(1); }
-if ($argc !== 2 || !in_array($argv[1], array('check','apply','snapshot','verify-prestate','rollback'), true)) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=COMMAND_NOT_ALLOWED\n"); exit(1); }
+if ($argc !== 2 || !in_array($argv[1], array('check','apply','snapshot','verify-prestate','finalize-full-db-restore','rollback'), true)) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=COMMAND_NOT_ALLOWED\n"); exit(1); }
 
 define('NOLOGIN', 1);
 define('NOREQUIREMENU', 1);
@@ -60,6 +60,22 @@ if ($argv[1] === 'snapshot') {
     $json = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if ($json === false) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=SNAPSHOT_ENCODING_FAILED\n"); exit(1); }
     echo "M035_SCHEMA_SNAPSHOT=".base64_encode($json)."\n";
+    exit(0);
+}
+
+if ($argv[1] === 'finalize-full-db-restore') {
+    $snapshot = $readSnapshot();
+    if ($snapshot === null) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=FULL_DB_RESTORE_PRESTATE_INVALID\n");
+        exit(1);
+    }
+    // A database dump cannot drop a table that did not exist when the dump was created.
+    // This exact, snapshot-authorized cleanup is only called after the full pre-apply DB dump is restored.
+    if (empty($snapshot['table_exists']) && $exists() && !$db->query("DROP TABLE `".$table."`")) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=FULL_DB_RESTORE_TABLE_DROP_FAILED\n");
+        exit(1);
+    }
+    echo "M035_SCHEMA_FULL_DB_RESTORE_FINALIZE=PASS\n";
     exit(0);
 }
 
