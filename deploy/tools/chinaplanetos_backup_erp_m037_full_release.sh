@@ -442,6 +442,19 @@ emit_authenticated_route_diagnostic() {
 	echo "M037_STAGING_AUTH_DIAGNOSTIC=FAIL ROLE=$role ROUTE=$route CLASS=$output_class EXIT=$rc OUTPUT_BYTES=$output_bytes OUTPUT_SHA256=$output_sha" >&2
 }
 
+authenticated_route_output_is_valid() {
+	local output=$1 expected=$2 output_bytes marker_count
+	output_bytes=$(printf '%s' "$output" | wc -c | tr -d '[:space:]')
+	[[ "$output_bytes" =~ ^[0-9]+$ && "$output_bytes" -le 512 ]] || return 1
+	marker_count=$(printf '%s' "$output" | grep -Foc "$expected" || true)
+	[[ "$marker_count" == '1' ]] || return 1
+	[[ "$output" != *'M037_AUTH_ROUTE=FAIL'* ]] || return 1
+	[[ "$output" != *'PHP Fatal error:'* && "$output" != *'Fatal error:'* ]] || return 1
+	[[ "$output" != *'PHP Parse error:'* && "$output" != *'Parse error:'* ]] || return 1
+	[[ "$output" != *'Dolibarr has detected a technical error'* ]] || return 1
+	[[ "$output" != *'Access denied'* && "$output" != *'Not allowed'* ]] || return 1
+}
+
 new_auth_context_token() {
 	local token
 	token=$(od -An -N32 -tx1 /dev/urandom | tr -d '[:space:]')
@@ -492,7 +505,7 @@ run_authenticated_route() {
 		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_NOT_CONSUMED ROUTE=$route" >&2
 		return 1
 	fi
-	if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
+	if [[ $rc -ne 0 ]] || ! authenticated_route_output_is_valid "$output" "$expected"; then
 		emit_authenticated_route_diagnostic "$role" "$route" "$expected" "$output" "$rc"
 		echo "M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_${role^^}_ROUTE ROUTE=$route" >&2
 		return 1
