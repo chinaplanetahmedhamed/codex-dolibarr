@@ -4,11 +4,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='477feaf2287a1297bc8ae68449984db385c1f743'
-readonly SHORT_COMMIT='477feaf'
+readonly RUNTIME_COMMIT='824fa129ff3f4445ba2c469728fef8245957f05e'
+readonly SHORT_COMMIT='824fa12'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='897d7fd688d303867c32da4f288b3b715cc392dc70421877555796ee80de05c2'
+readonly ARTIFACT_SHA='32037f6a0a6a1b7e8cc579f6eba25d4569e66f6e27e28b0d4b87c31bc375c30e'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
@@ -227,6 +227,11 @@ restore_database_backup() {
 	' <"$backup"
 }
 
+finalize_full_database_restore() {
+	[[ -n "$SCHEMA_PRESTATE_B64" && $(value_sha256 "$SCHEMA_PRESTATE_B64") == "$SCHEMA_PRESTATE_SHA" ]] || return 1
+	docker exec -e M035_SCHEMA_PRESTATE_B64="$SCHEMA_PRESTATE_B64" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SCHEMA" finalize-full-db-restore >/dev/null
+}
+
 create_code_backup() {
 	local stamp file rel target
 	stamp=$(date -u '+%Y%m%dT%H%M%SZ')
@@ -410,6 +415,7 @@ automatic_rollback() {
 	fi
 	restore_database_backup "$DB_BACKUP" "$DB_BACKUP_SHA"
 	local fallback_db_rc=$?
+	if [[ $fallback_db_rc -eq 0 ]]; then finalize_full_database_restore; fallback_db_rc=$?; fi
 	restore_code_backup
 	local fallback_code_rc=$?
 	local fallback_verify_rc=1
@@ -480,6 +486,7 @@ command_rollback() {
 	if [[ $rollback_ok -ne 1 ]]; then
 		local original_restore_ok=1
 		restore_database_backup "$original_db_backup" "$original_db_sha" || original_restore_ok=0
+		if [[ $original_restore_ok -eq 1 ]]; then finalize_full_database_restore || original_restore_ok=0; fi
 		restore_code_backup || original_restore_ok=0
 		if [[ $original_restore_ok -eq 1 ]]; then rollback_checks || original_restore_ok=0; fi
 		if [[ $original_restore_ok -eq 1 ]]; then

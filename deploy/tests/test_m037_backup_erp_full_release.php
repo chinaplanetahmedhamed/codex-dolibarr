@@ -29,8 +29,8 @@ foreach (array_merge($runtimeManifest, $supportManifest) as $relative) {
 }
 
 foreach (array(
-    "readonly RUNTIME_COMMIT='477feaf2287a1297bc8ae68449984db385c1f743'",
-    "readonly ARTIFACT_SHA='897d7fd688d303867c32da4f288b3b715cc392dc70421877555796ee80de05c2'",
+    "readonly RUNTIME_COMMIT='824fa129ff3f4445ba2c469728fef8245957f05e'",
+    "readonly ARTIFACT_SHA='32037f6a0a6a1b7e8cc579f6eba25d4569e66f6e27e28b0d4b87c31bc375c30e'",
     "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'",
     "readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'",
     "readonly TARGET_MAILPIT_CONTAINER='erp-staging-mailpit-1'",
@@ -46,6 +46,7 @@ foreach (array(
     'capture_schema_prestate',
     'verify_schema_prestate',
     'restore_database_backup',
+    'finalize_full_database_restore',
     'authenticated_route_checks',
     "save_state 'APPLY_IN_PROGRESS'",
     "save_state 'APPLY_FAILED_ROLLBACK_FAILED'",
@@ -83,9 +84,9 @@ foreach ($allowedCommands as $command) {
     m037Assert(substr_count($sudoers, $line) === 1, 'sudoers missing exact '.$command.' command');
 }
 m037Assert(count(array_filter(explode("\n", trim($sudoers)))) === count($allowedCommands), 'sudoers contains an unexpected command');
-m037Assert(strpos($installer, "readonly HELPER_SHA='d7ac70364dcdf5a8e702d86d8c448653459c57239230ffb53b4c963c466938b6'") !== false, 'installer helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly HELPER_SHA='b87c646320620a4779e39b99273cbb5bdf147d5f54f3a7434ed3568a157e9e55'") !== false, 'installer helper checksum is not pinned');
 m037Assert(strpos($installer, "readonly SUDOERS_SHA='815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1'") !== false, 'installer sudoers checksum is not pinned');
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === 'd7ac70364dcdf5a8e702d86d8c448653459c57239230ffb53b4c963c466938b6', 'pinned helper checksum does not match helper bytes');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === 'b87c646320620a4779e39b99273cbb5bdf147d5f54f3a7434ed3568a157e9e55', 'pinned helper checksum does not match helper bytes');
 m037Assert(hash_file('sha256', $root.'/deploy/config/codex-deploy-backup-erp-m037-full-release.sudoers') === '815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1', 'pinned sudoers checksum does not match sudoers bytes');
 m037Assert(strpos($installer, 'private_root=$(mktemp -d /root/m037-helper-install.') !== false, 'installer does not use a root-owned immutable input copy');
 m037Assert(strpos($installer, 'install -o root -g root -m 0600 "$SOURCE_HELPER" "$private_helper"') !== false, 'installer helper input is not copied once before validation');
