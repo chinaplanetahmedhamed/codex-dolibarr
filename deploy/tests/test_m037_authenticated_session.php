@@ -53,10 +53,13 @@ if (count($routes['admin']) + count($routes['external']) !== M037_AUTH_POSITIVE_
     exit(1);
 }
 
-$isRenderChild = $argc === 4 && $argv[1] === '--render';
-$role = $isRenderChild ? $argv[2] : ($argv[1] ?? '');
-$routeKey = strtolower(trim($isRenderChild ? $argv[3] : ($argv[2] ?? '')));
-if ((!$isRenderChild && $argc !== 3) || !in_array($role, array('admin', 'external', 'external_denied'), true)) {
+$mode = $argv[1] ?? '';
+$isIssue = $argc === 5 && $mode === '--issue';
+$isRender = $argc === 5 && $mode === '--render';
+$role = ($isIssue || $isRender) ? $argv[2] : '';
+$routeKey = strtolower(trim(($isIssue || $isRender) ? $argv[3] : ''));
+$contextToken = ($isIssue || $isRender) ? strtolower(trim($argv[4])) : '';
+if ((!$isIssue && !$isRender) || !in_array($role, array('admin', 'external', 'external_denied'), true)) {
     fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=COMMAND_NOT_ALLOWED\n");
     exit(1);
 }
@@ -74,6 +77,28 @@ if (!is_file($documentRoot.'/main.inc.php')) {
     exit(1);
 }
 
+function m037ContextPath($token)
+{
+    $contextDir = getenv('M037_AUTH_CONTEXT_DIR');
+    if (!is_string($contextDir)
+        || !preg_match('#^/(?:private/)?tmp/m037-auth-context-[A-Za-z0-9]{1,32}$#D', $contextDir)
+        || !preg_match('/^[a-f0-9]{64}$/D', $token)
+        || !function_exists('posix_geteuid')) {
+        fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CONTEXT_CONTRACT_INVALID\n");
+        exit(1);
+    }
+    $dirStat = @lstat($contextDir);
+    if (!is_array($dirStat)
+        || ($dirStat['mode'] & 0170000) !== 0040000
+        || ($dirStat['mode'] & 0777) !== 0700
+        || (int) $dirStat['uid'] !== (int) posix_geteuid()
+        || realpath($contextDir) !== $contextDir) {
+        fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CONTEXT_DIRECTORY_INVALID\n");
+        exit(1);
+    }
+    return $contextDir.'/'.$token.'.json';
+}
+
 $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 $_SERVER['SERVER_NAME'] = '127.0.0.1';
 $_SERVER['SERVER_PORT'] = '80';
@@ -88,9 +113,40 @@ $_GET = array();
 $_POST = array();
 $_REQUEST = array();
 
-if ($isRenderChild) {
-    $contextJson = file_get_contents('php://stdin', false, null, 0, 4097);
-    $childContext = is_string($contextJson) && strlen($contextJson) <= 4096 ? json_decode($contextJson, true) : null;
+if ($isRender) {
+    $contextPath = m037ContextPath($contextToken);
+    $contextStat = @lstat($contextPath);
+    if (!is_array($contextStat)
+        || ($contextStat['mode'] & 0170000) !== 0100000
+        || ($contextStat['mode'] & 0777) !== 0600
+        || (int) $contextStat['uid'] !== (int) posix_geteuid()
+        || $contextStat['size'] < 1
+        || $contextStat['size'] > 4096
+        || realpath($contextPath) !== $contextPath) {
+        fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_CONTEXT_FILE_INVALID\n");
+        exit(1);
+    }
+    $contextHandle = @fopen($contextPath, 'rb');
+    if (!is_resource($contextHandle) || !flock($contextHandle, LOCK_EX)) {
+        if (is_resource($contextHandle)) fclose($contextHandle);
+        fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_CONTEXT_OPEN_FAILED\n");
+        exit(1);
+    }
+    $openStat = fstat($contextHandle);
+    $contextJson = stream_get_contents($contextHandle, 4097);
+    $contextConsumed = is_array($openStat)
+        && (int) $openStat['dev'] === (int) $contextStat['dev']
+        && (int) $openStat['ino'] === (int) $contextStat['ino']
+        && is_string($contextJson)
+        && strlen($contextJson) <= 4096
+        && @unlink($contextPath);
+    flock($contextHandle, LOCK_UN);
+    fclose($contextHandle);
+    if (!$contextConsumed) {
+        fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_CONTEXT_CONSUME_FAILED\n");
+        exit(1);
+    }
+    $childContext = json_decode($contextJson, true);
     $childLogin = is_array($childContext) && isset($childContext['login']) ? (string) $childContext['login'] : '';
     $childEntity = is_array($childContext) && isset($childContext['entity']) ? (int) $childContext['entity'] : 0;
     if (!is_array($childContext) || count($childContext) !== 2 || strlen($childLogin) < 1 || strlen($childLogin) > 255 || $childEntity < 1) {
@@ -288,57 +344,32 @@ if (($role === 'admin' && (empty($routeUser->admin) || !empty($routeUser->socid)
     fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=ROLE_SCOPE_INVALID\n");
     exit(1);
 }
-$environment = array_merge($_ENV, array(
-    'M037_DOL_DOCUMENT_ROOT' => $documentRoot,
-));
-$pipes = array();
-$process = proc_open(
-    array(PHP_BINARY, __FILE__, '--render', $role, $routeKey),
-    array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')),
-    $pipes,
-    null,
-    $environment
-);
-if (!is_resource($process)) {
-    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_START_FAILED\n");
-    exit(1);
-}
+$contextPath = m037ContextPath($contextToken);
 $contextJson = json_encode(array('login' => (string) $routeUser->login, 'entity' => (int) $conf->entity));
-if (!is_string($contextJson) || strlen($contextJson) > 4096 || fwrite($pipes[0], $contextJson) !== strlen($contextJson)) {
-    fclose($pipes[0]);
-    proc_terminate($process);
-    proc_close($process);
-    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CHILD_CONTEXT_WRITE_FAILED\n");
+if (!is_string($contextJson) || strlen($contextJson) < 1 || strlen($contextJson) > 4096) {
+    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CONTEXT_ENCODING_FAILED\n");
     exit(1);
 }
-fclose($pipes[0]);
-$stdout = stream_get_contents($pipes[1]);
-$stderr = stream_get_contents($pipes[2]);
-fclose($pipes[1]);
-fclose($pipes[2]);
-$exitCode = proc_close($process);
-$expected = $role === 'external_denied'
-    ? 'M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED'
-    : "M037_AUTH_ROUTE_".strtoupper($role)."_".strtoupper($routeKey)."=PASS";
-if ($exitCode !== 0 || trim($stdout) !== $expected) {
-    if (preg_match('/M037_AUTH_ROUTE=FAIL REASON=[A-Za-z0-9_]+/', $stderr, $match)) {
-        $safeReason = $match[0];
-    } elseif (strpos($stdout, 'id="login"') !== false && strpos($stdout, 'name="username"') !== false && strpos($stdout, 'name="password"') !== false) {
-        $safeReason = 'M037_AUTH_ROUTE=FAIL REASON=CHILD_LOGIN_PAGE';
-    } elseif (stripos($stdout, 'Access forbidden') !== false || stripos($stdout, 'Administrator access required') !== false) {
-        $safeReason = 'M037_AUTH_ROUTE=FAIL REASON=CHILD_ACCESS_DENIED';
-    } elseif (stripos($stdout, 'Not Found') !== false) {
-        $safeReason = 'M037_AUTH_ROUTE=FAIL REASON=CHILD_NOT_FOUND';
-    } elseif (stripos($stdout, 'Fatal error') !== false) {
-        $safeReason = 'M037_AUTH_ROUTE=FAIL REASON=CHILD_FATAL_ERROR';
-    } elseif (preg_match('/PHP (Fatal error|Parse error|Warning):/', $stderr)) {
-        $safeReason = 'M037_AUTH_ROUTE=FAIL REASON=CHILD_PHP_RUNTIME_ERROR';
-    } elseif (strpos($stdout, $expected) !== false) {
-        $safeReason = 'M037_AUTH_ROUTE=FAIL REASON=CHILD_OUTPUT_CONTAMINATED';
-    } else {
-        $safeReason = 'M037_AUTH_ROUTE=FAIL REASON=CHILD_RENDER_FAILED EXIT='.(int) $exitCode.' STDOUT_BYTES='.strlen($stdout).' STDERR_BYTES='.strlen($stderr);
-    }
-    fwrite(STDERR, $safeReason."\n");
+$contextHandle = @fopen($contextPath, 'x+b');
+if (!is_resource($contextHandle) || !@chmod($contextPath, 0600) || !flock($contextHandle, LOCK_EX)) {
+    if (is_resource($contextHandle)) fclose($contextHandle);
+    @unlink($contextPath);
+    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CONTEXT_CREATE_FAILED\n");
     exit(1);
 }
-echo $expected."\n";
+$written = fwrite($contextHandle, $contextJson);
+$issued = $written === strlen($contextJson) && fflush($contextHandle);
+flock($contextHandle, LOCK_UN);
+fclose($contextHandle);
+$issuedStat = @lstat($contextPath);
+if (!$issued
+    || !is_array($issuedStat)
+    || ($issuedStat['mode'] & 0170000) !== 0100000
+    || ($issuedStat['mode'] & 0777) !== 0600
+    || (int) $issuedStat['uid'] !== (int) posix_geteuid()
+    || (int) $issuedStat['size'] !== strlen($contextJson)) {
+    @unlink($contextPath);
+    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=CONTEXT_WRITE_FAILED\n");
+    exit(1);
+}
+echo "M037_AUTH_CONTEXT_ISSUED=PASS\n";

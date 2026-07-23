@@ -8,7 +8,7 @@ readonly RUNTIME_COMMIT='b4fc34ac5d5f7beb78aec297d9c4afad45b416e7'
 readonly SHORT_COMMIT='b4fc34a'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='5f6bc33af781ac20898d78e25e9dc011a3dd2451fa061c52e8697202bf6d39f1'
+readonly ARTIFACT_SHA='c9c2d21d84b5c60c606f7b9ddad043b7463dbee719bf1750817487221da6b008'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
@@ -99,6 +99,7 @@ DB_BACKUP_SHA=''
 SCHEMA_PRESTATE_B64=''
 SCHEMA_PRESTATE_SHA=''
 ROUTE_BODY=''
+AUTH_CONTEXT_DIR=''
 
 die() { echo "M037_STAGING_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
@@ -111,6 +112,7 @@ require_root() {
 }
 
 cleanup() {
+	if [[ -n "$AUTH_CONTEXT_DIR" && "$AUTH_CONTEXT_DIR" == /tmp/m037-auth-context-* ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$AUTH_CONTEXT_DIR" >/dev/null 2>&1 || true; fi
 	if [[ -n "$CANDIDATE_REMOTE" ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true; fi
 	if [[ -n "$CANDIDATE_ROOT" && "$CANDIDATE_ROOT" == /root/m037-candidate.* && -d "$CANDIDATE_ROOT" ]]; then rm -rf "$CANDIDATE_ROOT"; fi
 	if [[ -n "$ARTIFACT_COPY" && "$ARTIFACT_COPY" == /root/m037-artifact.* && -f "$ARTIFACT_COPY" ]]; then rm -f "$ARTIFACT_COPY"; fi
@@ -207,12 +209,17 @@ validate_artifact() {
 
 candidate_checks() {
 	CANDIDATE_REMOTE="/tmp/m037-staging-candidate-$$"
+	AUTH_CONTEXT_DIR="/tmp/m037-auth-context-$$"
 	docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE"
+	docker exec "$TARGET_CONTAINER" rm -rf "$AUTH_CONTEXT_DIR"
 	docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE"
 	docker exec "$TARGET_CONTAINER" cp -a /var/www/html/custom "$CANDIDATE_REMOTE/custom"
 	docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
 	docker exec "$TARGET_CONTAINER" chmod 0755 "$CANDIDATE_REMOTE" "$CANDIDATE_REMOTE/deploy" "$CANDIDATE_REMOTE/deploy/tests"
 	docker exec "$TARGET_CONTAINER" chmod 0644 "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php"
+	docker exec "$TARGET_CONTAINER" mkdir -m 0700 "$AUTH_CONTEXT_DIR"
+	docker exec "$TARGET_CONTAINER" chown www-data:www-data "$AUTH_CONTEXT_DIR"
+	[[ $(docker exec "$TARGET_CONTAINER" stat -c '%U:%G %a' "$AUTH_CONTEXT_DIR") == 'www-data:www-data 700' ]] || die 'AUTH_CONTEXT_DIRECTORY_INVALID'
 	local file
 	for file in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do
 		if [[ "$file" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$file" >/dev/null || die "CANDIDATE_LINT_FAILED_${file//\//_}"; fi
@@ -435,39 +442,83 @@ emit_authenticated_route_diagnostic() {
 	echo "M037_STAGING_AUTH_DIAGNOSTIC=FAIL ROLE=$role ROUTE=$route CLASS=$output_class EXIT=$rc OUTPUT_BYTES=$output_bytes OUTPUT_SHA256=$output_sha" >&2
 }
 
+new_auth_context_token() {
+	local token
+	token=$(od -An -N32 -tx1 /dev/urandom | tr -d '[:space:]')
+	[[ "$token" =~ ^[a-f0-9]{64}$ ]] || return 1
+	printf '%s' "$token"
+}
+
+run_authenticated_route() {
+	local role=$1 route=$2 expected=$3 token context_file output rc=0 metadata
+	[[ "$AUTH_CONTEXT_DIR" == /tmp/m037-auth-context-* ]] || {
+		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_DIRECTORY_ABSENT ROUTE=$route" >&2
+		return 1
+	}
+	token=$(new_auth_context_token) || {
+		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_TOKEN_GENERATION ROUTE=$route" >&2
+		return 1
+	}
+	context_file="$AUTH_CONTEXT_DIR/$token.json"
+	output=$(docker exec -u www-data \
+		-e M037_DOL_DOCUMENT_ROOT=/var/www/html \
+		-e M037_AUTH_CONTEXT_DIR="$AUTH_CONTEXT_DIR" \
+		"$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" \
+		--issue "$role" "$route" "$token" 2>&1) || rc=$?
+	if [[ $rc -ne 0 || "$output" != 'M037_AUTH_CONTEXT_ISSUED=PASS' ]]; then
+		emit_authenticated_route_diagnostic "$role" "$route" 'M037_AUTH_CONTEXT_ISSUED=PASS' "$output" "$rc"
+		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_ISSUE ROUTE=$route" >&2
+		return 1
+	fi
+	metadata=$(docker exec "$TARGET_CONTAINER" stat -c '%U:%G %a %s' "$context_file" 2>/dev/null) || {
+		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_FILE_ABSENT ROUTE=$route" >&2
+		return 1
+	}
+	[[ "$metadata" =~ ^www-data:www-data\ 600\ ([1-9][0-9]{0,3})$ ]] || {
+		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_FILE_METADATA ROUTE=$route" >&2
+		return 1
+	}
+	(( BASH_REMATCH[1] <= 4096 )) || {
+		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_FILE_SIZE ROUTE=$route" >&2
+		return 1
+	}
+	rc=0
+	output=$(docker exec -u www-data \
+		-e M037_DOL_DOCUMENT_ROOT=/var/www/html \
+		-e M037_AUTH_CONTEXT_DIR="$AUTH_CONTEXT_DIR" \
+		"$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" \
+		--render "$role" "$route" "$token" 2>&1) || rc=$?
+	if docker exec "$TARGET_CONTAINER" test -e "$context_file"; then
+		echo "M037_STAGING_RUNTIME_FAIL=AUTH_CONTEXT_NOT_CONSUMED ROUTE=$route" >&2
+		return 1
+	fi
+	if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
+		emit_authenticated_route_diagnostic "$role" "$route" "$expected" "$output" "$rc"
+		echo "M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_${role^^}_ROUTE ROUTE=$route" >&2
+		return 1
+	fi
+}
+
 authenticated_route_checks() {
-	local role route expected output rc
+	local role route expected
 	for role in admin external; do
 		local -n selected_routes="AUTH_${role^^}_ROUTES"
 		for route in "${selected_routes[@]}"; do
-			rc=0
-			output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" "$role" "$route" 2>&1) || rc=$?
 			expected="M037_AUTH_ROUTE_${role^^}_${route^^}=PASS"
-			if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
-				emit_authenticated_route_diagnostic "$role" "$route" "$expected" "$output" "$rc"
-				echo "M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_${role^^}_ROUTE ROUTE=$route" >&2
-				return 1
-			fi
+			run_authenticated_route "$role" "$route" "$expected" || return 1
 		done
 	done
-	rc=0
-	output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external_denied admin_dashboard 2>&1) || rc=$?
 	expected='M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED'
-	if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
-		emit_authenticated_route_diagnostic 'external_denied' 'admin_dashboard' "$expected" "$output" "$rc"
+	if ! run_authenticated_route 'external_denied' 'admin_dashboard' "$expected"; then
 		echo 'M037_STAGING_RUNTIME_FAIL=EXTERNAL_ADMIN_ROUTE_NOT_DENIED ROUTE=admin_dashboard' >&2
 		return 1
 	fi
 }
 
 current_runtime_admin_route_diagnostic() {
-	local role='admin' route='admin_dashboard' expected output rc=0
+	local role='admin' route='admin_dashboard' expected
 	expected='M037_AUTH_ROUTE_ADMIN_ADMIN_DASHBOARD=PASS'
-	output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" "$role" "$route" 2>&1) || rc=$?
-	if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
-		emit_authenticated_route_diagnostic "$role" "$route" "$expected" "$output" "$rc"
-		return 1
-	fi
+	run_authenticated_route "$role" "$route" "$expected" || return 1
 	echo 'M037_STAGING_DIAGNOSTIC_ADMIN_CURRENT_RUNTIME=PASS'
 }
 

@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-07-24 — M037-C02 proc-open-free authenticated route harness
+
+- Replaced the staging-only authenticated-route test's disabled `proc_open()` launcher with two fixed helper-controlled `--issue` and `--render` invocations.
+- Added an opaque one-time context handoff in a `www-data`-owned `0700` directory using an exclusively created `0600` file that is deleted before route rendering.
+- Kept login, entity, route output, SQL, credentials, and customer data out of argv, environment, and helper output; only fixed result classes and aggregate hashes may be emitted.
+- Preserved the exact 52-file M037 application runtime payload, six-command staging sudo surface, customer/entity checks, and external-customer admin denial.
+- Authorized scope ends after canonical `backup-erp` compare/preflight. No `apply` or production action is included.
+
 ## 2026-07-24 — M037-C01 authenticated admin route diagnostic
 
 - Added safe parent-bootstrap and child-render failure classification to the M037 authenticated route test.
