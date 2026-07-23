@@ -15,7 +15,7 @@ global $db, $conf;
 function m035Fail($message) { throw new RuntimeException($message); }
 function m035Count($db, $table) { $res=$db->query("SELECT COUNT(*) total FROM ".MAIN_DB_PREFIX.$table); $o=$res?$db->fetch_object($res):null; return $o?(int)$o->total:-1; }
 
-$createdOperation = 0; $createdBooking = 0;
+$createdOperation = 0; $createdBooking = 0; $cleanupErrors = array();
 try {
     $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."user WHERE entity=".(int)$conf->entity." AND fk_soc IS NOT NULL AND fk_soc>0 AND statut=1 ORDER BY rowid LIMIT 1");
     $u = $res ? $db->fetch_object($res) : null;
@@ -54,11 +54,29 @@ try {
     fwrite(STDERR,"M035_BOOKING=FAIL REASON=".$e->getMessage()."\n"); $exit=1;
 } finally {
     if ($createdOperation>0 && getenv('M035_KEEP_FIXTURE') !== '1') {
-        $db->query("DELETE FROM ".MAIN_DB_PREFIX."cpo_activity WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation);
-        $db->query("DELETE FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation);
-        $db->query("DELETE FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation);
-        if ($createdBooking>0) $db->query("DELETE FROM ".MAIN_DB_PREFIX."chinaplanetsp_booking WHERE entity=".(int)$conf->entity." AND rowid=".$createdBooking." AND fk_operation=".$createdOperation);
-        $db->query("DELETE FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND rowid=".$createdOperation." AND title LIKE 'Customer FCL booking:%'");
+        $deletes = array(
+            'activity'=>"DELETE FROM ".MAIN_DB_PREFIX."cpo_activity WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation,
+            'task'=>"DELETE FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation,
+            'operation_data'=>"DELETE FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation,
+        );
+        if ($createdBooking>0) $deletes['booking']="DELETE FROM ".MAIN_DB_PREFIX."chinaplanetsp_booking WHERE entity=".(int)$conf->entity." AND rowid=".$createdBooking." AND fk_operation=".$createdOperation;
+        $deletes['operation']="DELETE FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND rowid=".$createdOperation." AND title LIKE 'Customer FCL booking:%'";
+        foreach ($deletes as $name=>$sql) if (!$db->query($sql)) $cleanupErrors[]='DELETE_'.$name;
+        $residualChecks = array(
+            'activity'=>"SELECT COUNT(*) total FROM ".MAIN_DB_PREFIX."cpo_activity WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation,
+            'task'=>"SELECT COUNT(*) total FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation,
+            'operation_data'=>"SELECT COUNT(*) total FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation,
+            'booking'=>"SELECT COUNT(*) total FROM ".MAIN_DB_PREFIX."chinaplanetsp_booking WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation,
+            'operation'=>"SELECT COUNT(*) total FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND rowid=".$createdOperation,
+        );
+        foreach ($residualChecks as $name=>$sql) {
+            $res=$db->query($sql); $row=$res?$db->fetch_object($res):null;
+            if (!$row || (int)$row->total !== 0) $cleanupErrors[]='RESIDUAL_'.$name;
+        }
     }
+}
+if (!empty($cleanupErrors)) {
+    fwrite(STDERR, "M035_BOOKING=FAIL REASON=CLEANUP_".implode('_', $cleanupErrors)."\n");
+    $exit=1;
 }
 exit(isset($exit)?$exit:0);

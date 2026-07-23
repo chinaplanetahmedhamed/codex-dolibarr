@@ -2,7 +2,7 @@
 /** Additive local/staging-safe M035 accepted-price booking schema migration. */
 
 if (PHP_SAPI !== 'cli') { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=CLI_ONLY\n"); exit(1); }
-if ($argc !== 2 || !in_array($argv[1], array('check','apply','snapshot','rollback'), true)) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=COMMAND_NOT_ALLOWED\n"); exit(1); }
+if ($argc !== 2 || !in_array($argv[1], array('check','apply','snapshot','verify-prestate','rollback'), true)) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=COMMAND_NOT_ALLOWED\n"); exit(1); }
 
 define('NOLOGIN', 1);
 define('NOREQUIREMENU', 1);
@@ -25,6 +25,16 @@ $pattern = str_replace(array('\\','_','%'), array('\\\\','\\_','\\%'), $table);
 $exists = function () use ($db, $pattern) {
     $res = $db->query("SHOW TABLES LIKE '".$db->escape($pattern)."'");
     return $res && $db->num_rows($res) === 1;
+};
+
+$readSnapshot = function () use ($conf) {
+    $encoded = getenv('M035_SCHEMA_PRESTATE_B64');
+    $decoded = $encoded ? base64_decode($encoded, true) : false;
+    $snapshot = $decoded !== false ? json_decode($decoded, true) : null;
+    if (!is_array($snapshot) || (int)($snapshot['version'] ?? 0) !== 1 || (int)($snapshot['entity'] ?? 0) !== (int)$conf->entity || !array_key_exists('table_exists', $snapshot) || !array_key_exists('right', $snapshot) || !isset($snapshot['user_rights']) || !is_array($snapshot['user_rights'])) {
+        return null;
+    }
+    return $snapshot;
 };
 
 if ($argv[1] === 'snapshot') {
@@ -53,11 +63,45 @@ if ($argv[1] === 'snapshot') {
     exit(0);
 }
 
+if ($argv[1] === 'verify-prestate') {
+    $snapshot = $readSnapshot();
+    if ($snapshot === null) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=VERIFY_PRESTATE_INVALID\n");
+        exit(1);
+    }
+    if ((bool)$snapshot['table_exists'] !== $exists()) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=VERIFY_PRESTATE_TABLE_MISMATCH\n");
+        exit(1);
+    }
+    $rightColumns = array('id','entity','libelle','module','module_origin','module_position','family','family_position','perms','subperms','type','bydefault','enabled');
+    $actualRight = null;
+    $res = $db->query("SELECT ".implode(',', $rightColumns)." FROM ".MAIN_DB_PREFIX."rights_def WHERE entity=".(int)$conf->entity." AND id=500411");
+    if (!$res) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=VERIFY_PRESTATE_PERMISSION_QUERY_FAILED\n"); exit(1); }
+    if ($obj = $db->fetch_object($res)) {
+        $actualRight = array();
+        foreach ($rightColumns as $column) $actualRight[$column] = $obj->{$column};
+    }
+    if ($actualRight != $snapshot['right']) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=VERIFY_PRESTATE_PERMISSION_MISMATCH\n");
+        exit(1);
+    }
+    $actualUsers = array();
+    $res = $db->query("SELECT fk_user FROM ".MAIN_DB_PREFIX."user_rights WHERE fk_id=500411 ORDER BY fk_user");
+    if (!$res) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=VERIFY_PRESTATE_GRANT_QUERY_FAILED\n"); exit(1); }
+    while ($obj = $db->fetch_object($res)) $actualUsers[] = (int)$obj->fk_user;
+    $expectedUsers = array_map('intval', $snapshot['user_rights']);
+    sort($expectedUsers, SORT_NUMERIC);
+    if ($actualUsers !== $expectedUsers) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=VERIFY_PRESTATE_GRANT_MISMATCH\n");
+        exit(1);
+    }
+    echo "M035_SCHEMA_PRESTATE=PASS\n";
+    exit(0);
+}
+
 if ($argv[1] === 'rollback') {
-    $encoded = getenv('M035_SCHEMA_PRESTATE_B64');
-    $decoded = $encoded ? base64_decode($encoded, true) : false;
-    $snapshot = $decoded !== false ? json_decode($decoded, true) : null;
-    if (!is_array($snapshot) || (int)($snapshot['version'] ?? 0) !== 1 || (int)($snapshot['entity'] ?? 0) !== (int)$conf->entity || !array_key_exists('table_exists', $snapshot) || !array_key_exists('right', $snapshot) || !isset($snapshot['user_rights']) || !is_array($snapshot['user_rights'])) {
+    $snapshot = $readSnapshot();
+    if ($snapshot === null) {
         fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_PRESTATE_INVALID\n");
         exit(1);
     }

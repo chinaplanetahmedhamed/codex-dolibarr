@@ -1,5 +1,6 @@
 deploy/migrations/m035_customer_shipping_booking_schema.php
 deploy/tests/test_admin_accessibility.php
+deploy/tests/test_customer_portal_scope_integration.php
 deploy/tests/test_m028_current_source_release.php
 deploy/tests/test_m029_core_customer_funds.php
 deploy/tests/test_m030_generic_labels_navigation.php
@@ -12,3 +13,4 @@ deploy/tests/test_m035_customer_shipping_booking.php
 deploy/tests/test_m035_customer_shipping_booking_source.php
 deploy/tests/test_m036_shipping_orders_runtime.php
 deploy/tests/test_m036_shipping_orders_source.php
+deploy/tests/test_unified_admin_shell.php
