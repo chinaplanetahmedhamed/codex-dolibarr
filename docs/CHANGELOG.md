@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-07-24 — M037-C04 MariaDB-safe shipping classification
+
+- Removed shipping lifecycle classification from MariaDB JSON expressions and now decodes the allowlisted service payload in PHP.
+- Preserved exact entity, customer, booking-ownership, and shipment-ownership filters while treating malformed legacy JSON as an active order instead of zeroing the complete result.
+- Kept bucket-specific searches complete by applying their limit after PHP classification; unfiltered searches remain database-limited.
+- Verified the correction transactionally against the real local MariaDB runtime with the expected `7 / 4 / 1 / 1 / 1` lifecycle result and clean rollback.
+- Local correction only; no `backup-erp` or production access occurred. A new pinned artifact and separate exact deployment approval are required before another live attempt.
+
 ## 2026-07-24 — M037-C03 production-data-safe shipping runtime
 
 - Made shipping lifecycle JSON reads tolerate malformed or empty legacy values by validating the stored JSON before extraction and falling back to an empty object.

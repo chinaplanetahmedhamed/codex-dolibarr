@@ -31,11 +31,12 @@ try {
         'l.rowid=o.fk_shipment AND l.entity=o.entity AND l.fk_soc=o.fk_soc',
         's.rowid=o.fk_soc AND s.entity=o.entity',
         '(b.rowid IS NULL OR b.fk_soc=o.fk_soc)',
-        'COUNT(DISTINCT o.rowid)',
     ) as $needle) $assert(strpos($service, $needle) !== false, 'scoped query contract absent '.$needle);
-    $assert(strpos($service, "\$stage.\"='published'") !== false, 'published confirmation stage missing');
-    $assert(strpos($service, "JSON_VALID(COALESCE(") !== false && strpos($service, ",'{}')") !== false, 'legacy malformed JSON is not safely normalized before bucket extraction');
-    $assert(strpos($service, "IN ('accepted','confirmed')") !== false, 'explicit booking confirmation state missing');
+    $assert(strpos($service, 'private function shippingOrderBucket($stage, array $service)') !== false, 'PHP lifecycle classifier absent');
+    $assert(strpos($service, "\$stage === 'published'") !== false, 'published confirmation stage missing');
+    $assert(strpos($service, 'json_decode((string) $row->service_json, true)') !== false, 'server-side JSON decode absent');
+    $assert(strpos($service, 'JSON_EXTRACT') === false && strpos($service, 'JSON_VALID') === false, 'lifecycle classification still depends on database JSON parsing');
+    $assert(strpos($service, "array('accepted', 'confirmed')") !== false, 'explicit booking confirmation state missing');
     $assert(strpos($service, "shipping_order_no") !== false && strpos($service, "carrier_booking_no") !== false, 'Carrier SO/booking evidence missing');
     $assert(strpos($service, "'confirmation_incomplete'") !== false, 'incomplete confirmation warning missing');
     $assert(strpos($service, "'integrity_exception'") !== false, 'ownership integrity projection missing');

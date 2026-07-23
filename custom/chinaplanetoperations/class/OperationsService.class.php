@@ -166,14 +166,12 @@ class OperationsService
         $socid = !empty($filters['socid']) ? (int) $filters['socid'] : 0;
         $limit = isset($filters['limit']) ? max(1, min(500, (int) $filters['limit'])) : 500;
         $customerProjection = !empty($filters['customer_projection']);
-        $bucketSql = $this->shippingOrderBucketSql('o', 'd');
         $where = array(
             'o.entity='.$this->entity,
             'o.status=1',
             "o.service_type='shipping_booking'",
         );
         if ($socid > 0) $where[] = 'o.fk_soc='.$socid;
-        if ($bucket !== 'all') $where[] = $bucketSql.'='.$this->q($bucket);
         if ($customerProjection) $where[] = '(b.rowid IS NULL OR b.fk_soc=o.fk_soc)';
         if (!empty($filters['q'])) {
             $q = '%'.trim((string) $filters['q']).'%';
@@ -183,18 +181,23 @@ class OperationsService
         $sql = "SELECT o.rowid,o.ref,o.fk_soc,o.stage,o.next_action,o.date_creation,o.fk_shipment,";
         $sql .= " s.nom customer_name,l.ref shipment_ref,l.container_no shipment_container,";
         $sql .= " b.rowid booking_id,b.fk_soc booking_socid,b.date_acceptance,b.snapshot_json,";
-        $sql .= " d.data_json service_json,".$bucketSql." lifecycle_bucket";
+        $sql .= " d.data_json service_json";
         $sql .= " FROM ".MAIN_DB_PREFIX."cpo_operation o";
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity";
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetsp_booking b ON b.entity=o.entity AND b.fk_operation=o.rowid";
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation_data d ON d.entity=o.entity AND d.fk_operation=o.rowid AND d.section_code='service'";
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=o.fk_shipment AND l.entity=o.entity AND l.fk_soc=o.fk_soc";
-        $sql .= " WHERE ".implode(' AND ', $where)." ORDER BY o.date_creation DESC,o.rowid DESC LIMIT ".$limit;
+        $sql .= " WHERE ".implode(' AND ', $where)." ORDER BY o.date_creation DESC,o.rowid DESC";
+        if ($bucket === 'all') $sql .= " LIMIT ".$limit;
 
         $rows = array();
         $res = $this->db->query($sql);
         if (!$res) return $rows;
-        while ($row = $this->db->fetch_object($res)) $rows[] = $this->projectShippingOrder($row);
+        while ($row = $this->db->fetch_object($res)) {
+            $projected = $this->projectShippingOrder($row);
+            if ($bucket === 'all' || $projected['lifecycle_bucket'] === $bucket) $rows[] = $projected;
+            if (count($rows) >= $limit) break;
+        }
         return $rows;
     }
 
@@ -202,7 +205,6 @@ class OperationsService
     public function shippingOrderStats($socid = 0, $customerProjection = false, $query = '')
     {
         $stats = array('total_current'=>0,'active'=>0,'confirmed'=>0,'closed'=>0,'cancelled'=>0);
-        $bucketSql = $this->shippingOrderBucketSql('o', 'd');
         $where = array('o.entity='.$this->entity, 'o.status=1', "o.service_type='shipping_booking'");
         if ((int) $socid > 0) $where[] = 'o.fk_soc='.(int) $socid;
         if ($customerProjection) $where[] = '(b.rowid IS NULL OR b.fk_soc=o.fk_soc)';
@@ -210,10 +212,7 @@ class OperationsService
             $q = '%'.trim((string) $query).'%';
             $where[] = '(o.ref LIKE '.$this->q($q).' OR s.nom LIKE '.$this->q($q).' OR o.next_action LIKE '.$this->q($q).' OR l.ref LIKE '.$this->q($q).' OR l.container_no LIKE '.$this->q($q).')';
         }
-        $sql = "SELECT COUNT(DISTINCT o.rowid) total_current";
-        foreach (array('active','confirmed','closed','cancelled') as $bucket) {
-            $sql .= ",COUNT(DISTINCT CASE WHEN ".$bucketSql."=".$this->q($bucket)." THEN o.rowid END) ".$bucket;
-        }
+        $sql = "SELECT o.rowid,o.stage,d.data_json service_json";
         $sql .= " FROM ".MAIN_DB_PREFIX."cpo_operation o";
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity";
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetsp_booking b ON b.entity=o.entity AND b.fk_operation=o.rowid";
@@ -221,8 +220,18 @@ class OperationsService
         $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=o.fk_shipment AND l.entity=o.entity AND l.fk_soc=o.fk_soc";
         $sql .= " WHERE ".implode(' AND ', $where);
         $res = $this->db->query($sql);
-        $row = $res ? $this->db->fetch_object($res) : null;
-        if ($row) foreach (array_keys($stats) as $key) $stats[$key] = (int) $row->{$key};
+        if (!$res) return $stats;
+        $seen = array();
+        while ($row = $this->db->fetch_object($res)) {
+            $operationId = (int) $row->rowid;
+            if (isset($seen[$operationId])) continue;
+            $seen[$operationId] = true;
+            $service = json_decode((string) $row->service_json, true);
+            if (!is_array($service)) $service = array();
+            $bucket = $this->shippingOrderBucket((string) $row->stage, $service);
+            $stats['total_current']++;
+            $stats[$bucket]++;
+        }
         return $stats;
     }
 
@@ -295,15 +304,17 @@ class OperationsService
         foreach($items as $title)$this->createTask(array('fk_operation'=>$operationId,'title'=>$title,'description'=>'','fk_user_assign'=>$data['fk_user_assign']??0,'priority'=>$data['priority']??'normal','status'=>'todo','date_deadline'=>'','private_note'=>''),$userId);
     }
 
-    private function shippingOrderBucketSql($operationAlias, $dataAlias)
+    private function shippingOrderBucket($stage, array $service)
     {
-        $stage = $operationAlias.'.stage';
-        $json = $dataAlias.'.data_json';
-        $safeJson = "IF(JSON_VALID(COALESCE(".$json.",'')),".$json.",'{}')";
-        $bookingStatus = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$safeJson.",'$.booking_status')),''))";
-        $shippingOrder = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$safeJson.",'$.shipping_order_no')),''))";
-        $carrierBooking = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$safeJson.",'$.carrier_booking_no')),''))";
-        return "CASE WHEN ".$stage."='cancelled' THEN 'cancelled' WHEN ".$stage."='completed' THEN 'closed' WHEN ".$stage."='published' AND ".$bookingStatus." IN ('accepted','confirmed') AND (".$shippingOrder."<>'' OR ".$carrierBooking."<>'') THEN 'confirmed' ELSE 'active' END";
+        if ($stage === 'cancelled') return 'cancelled';
+        if ($stage === 'completed') return 'closed';
+        $bookingStatus = strtolower(trim((string) ($service['booking_status'] ?? '')));
+        $shippingOrder = trim((string) ($service['shipping_order_no'] ?? ''));
+        $carrierBooking = trim((string) ($service['carrier_booking_no'] ?? ''));
+        if ($stage === 'published' && in_array($bookingStatus, array('accepted', 'confirmed'), true) && ($shippingOrder !== '' || $carrierBooking !== '')) {
+            return 'confirmed';
+        }
+        return 'active';
     }
 
     private function projectShippingOrder($row)
@@ -315,6 +326,7 @@ class OperationsService
         $shipmentMismatch = !empty($row->fk_shipment) && empty($row->shipment_ref) && empty($row->shipment_container);
         $service = json_decode((string) $row->service_json, true);
         if (!is_array($service)) $service = array();
+        $lifecycleBucket = $this->shippingOrderBucket((string) $row->stage, $service);
         $snapshot = array();
         if ($bookingId > 0 && !$ownershipMismatch) {
             $decoded = json_decode((string) $row->snapshot_json, true);
@@ -341,8 +353,8 @@ class OperationsService
             'shipping_order_no'=>(string) ($service['shipping_order_no'] ?? ''),
             'carrier_booking_no'=>(string) ($service['carrier_booking_no'] ?? ''),
             'stage'=>(string) $row->stage,
-            'lifecycle_bucket'=>(string) $row->lifecycle_bucket,
-            'confirmation_incomplete'=>$row->stage === 'published' && $row->lifecycle_bucket !== 'confirmed',
+            'lifecycle_bucket'=>$lifecycleBucket,
+            'confirmation_incomplete'=>$row->stage === 'published' && $lifecycleBucket !== 'confirmed',
             'created_at'=>(string) $row->date_creation,
             'next_action'=>(string) $row->next_action,
             'shipment_id'=>(int) $row->fk_shipment,
