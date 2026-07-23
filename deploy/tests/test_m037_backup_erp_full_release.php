@@ -30,8 +30,8 @@ foreach (array_merge($runtimeManifest, $supportManifest) as $relative) {
 }
 
 foreach (array(
-    "readonly RUNTIME_COMMIT='7800b804c43e9e1acabf93e34ad98e6d1e1dd0a9'",
-    "readonly ARTIFACT_SHA='8dded4750f01d696589446894ef726908862b7bc612a44d933a088e56379b180'",
+    "readonly RUNTIME_COMMIT='58b3ca35273bc05e61b5c2abf7afe48c29ec1fa1'",
+    "readonly ARTIFACT_SHA='c0be577c1247c30d54e19b87eaf412da98ded4c8a5d650b6081d9fc822493b7f'",
     "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'",
     "readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'",
     "readonly TARGET_MAILPIT_CONTAINER='erp-staging-mailpit-1'",
@@ -93,6 +93,9 @@ foreach (array(
     'const M037_AUTH_POSITIVE_ROUTE_COUNT = 14;',
     "'external_denied' => array(",
     "'admin_dashboard' => '/custom/chinaplanetcustomercenter/admin_dashboard.php'",
+    "u.entity IN (\".getEntity('user').\")",
+    'COALESCE(u.fk_soc,0)=0',
+    'COALESCE(u.fk_soc,0)>0',
     "file_get_contents('php://stdin'",
     "'UNEXPECTED_REDIRECT'",
     "'EMPTY_RESPONSE'",
@@ -100,6 +103,7 @@ foreach (array(
     'M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED',
 ) as $needle) m037Assert(strpos($authenticatedRouteTest, $needle) !== false, 'authenticated route contract missing '.$needle);
 m037Assert(strpos($authenticatedRouteTest, 'M037_AUTH_CHILD_LOGIN') === false && strpos($authenticatedRouteTest, 'M037_AUTH_CHILD_TOKEN') === false, 'authenticated child identity leaks through argv or environment');
+m037Assert(strpos($authenticatedRouteTest, '" WHERE u.entity=".(int) $conf->entity') === false, 'authenticated user lookup bypasses Dolibarr user entity sharing');
 
 foreach (array('vision_erp','vision_db','vision-os_','erp.visiontrading.biz','production-m') as $forbidden) {
     m037Assert(stripos($helper, $forbidden) === false, 'production identifier leaked into staging helper');
@@ -112,10 +116,10 @@ foreach ($allowedCommands as $command) {
     m037Assert(substr_count($sudoers, $line) === 1, 'sudoers missing exact '.$command.' command');
 }
 m037Assert(count(array_filter(explode("\n", trim($sudoers)))) === count($allowedCommands), 'sudoers contains an unexpected command');
-m037Assert(strpos($installer, "readonly HELPER_SHA='6a881ff8bbc60992063aa5dca11eb86048ea722638740a839010f04cc383097f'") !== false, 'installer helper checksum is not pinned');
-m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='1fa59408b776210e7eeec03d87c8b9651066d819b000bfdd8443fbc5b947bc3d'") !== false, 'installer previous helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly HELPER_SHA='aa09f1db34a4e8f0a12c569e7615cc22ef0b3aa0e0f1a39eba9cf2298e48f074'") !== false, 'installer helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='6a881ff8bbc60992063aa5dca11eb86048ea722638740a839010f04cc383097f'") !== false, 'installer previous helper checksum is not pinned');
 m037Assert(strpos($installer, "readonly SUDOERS_SHA='815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1'") !== false, 'installer sudoers checksum is not pinned');
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '6a881ff8bbc60992063aa5dca11eb86048ea722638740a839010f04cc383097f', 'pinned helper checksum does not match helper bytes');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === 'aa09f1db34a4e8f0a12c569e7615cc22ef0b3aa0e0f1a39eba9cf2298e48f074', 'pinned helper checksum does not match helper bytes');
 m037Assert(hash_file('sha256', $root.'/deploy/config/codex-deploy-backup-erp-m037-full-release.sudoers') === '815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1', 'pinned sudoers checksum does not match sudoers bytes');
 m037Assert(strpos($installer, 'private_root=$(mktemp -d /root/m037-helper-install.') !== false, 'installer does not use a root-owned immutable input copy');
 m037Assert(strpos($installer, 'install -o root -g root -m 0600 "$SOURCE_HELPER" "$private_helper"') !== false, 'installer helper input is not copied once before validation');
