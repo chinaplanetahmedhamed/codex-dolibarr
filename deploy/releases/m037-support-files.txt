@@ -13,4 +13,5 @@ deploy/tests/test_m035_customer_shipping_booking.php
 deploy/tests/test_m035_customer_shipping_booking_source.php
 deploy/tests/test_m036_shipping_orders_runtime.php
 deploy/tests/test_m036_shipping_orders_source.php
+deploy/tests/test_m037_authenticated_session.php
 deploy/tests/test_unified_admin_shell.php
