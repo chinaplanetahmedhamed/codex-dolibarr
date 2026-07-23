@@ -17,7 +17,7 @@ function m037Assert($condition, $message)
 
 m037Assert(is_string($helper) && is_string($sudoers) && is_string($installer), 'release helper, sudoers, or installer is unreadable');
 m037Assert(count($runtimeManifest) === 52, 'runtime allowlist count is not 52');
-m037Assert(count($supportManifest) === 16, 'support allowlist count is not 16');
+m037Assert(count($supportManifest) === 17, 'support allowlist count is not 17');
 $sortedRuntime = $runtimeManifest;
 $sortedSupport = $supportManifest;
 sort($sortedRuntime, SORT_STRING);
@@ -29,8 +29,8 @@ foreach (array_merge($runtimeManifest, $supportManifest) as $relative) {
 }
 
 foreach (array(
-    "readonly RUNTIME_COMMIT='3205638c6f231fbea8e56c6647eba90d1c804c21'",
-    "readonly ARTIFACT_SHA='e24a862978dcf89f1bf8cf5a4d4a85de6727e7abc3904cd0b92df05572730ad5'",
+    "readonly RUNTIME_COMMIT='8ba5735890d65a49b61d1b3526bb9092ec7d8825'",
+    "readonly ARTIFACT_SHA='ec40cd770af1a72c42f34dc1fa26701bc263279732d89d8985051069fccd9e2a'",
     "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'",
     "readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'",
     "readonly TARGET_MAILPIT_CONTAINER='erp-staging-mailpit-1'",
@@ -45,6 +45,8 @@ foreach (array(
     'ARTIFACT_COPY=$(mktemp /root/m037-artifact.',
     'capture_schema_prestate',
     'verify_schema_prestate',
+    'restore_database_backup',
+    'authenticated_route_checks',
     'ROLLBACK_FAILED_DEPLOYED_STATE_REAPPLIED',
     'automatic_rollback',
     'M037_STAGING_AUTO_ROLLBACK_VERIFY=PASS',
@@ -75,12 +77,12 @@ foreach ($allowedCommands as $command) {
     m037Assert(substr_count($sudoers, $line) === 1, 'sudoers missing exact '.$command.' command');
 }
 m037Assert(count(array_filter(explode("\n", trim($sudoers)))) === count($allowedCommands), 'sudoers contains an unexpected command');
-m037Assert(strpos($installer, "readonly HELPER_SHA='1c8fc46e55a0803e2476c3317108d3cf0d86144f9005ef58d848aad0aede7561'") !== false, 'installer helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly HELPER_SHA='1e74e2e1a8d4d083d30b8d705d0728ac8e91e02f0e17162fa5216fffe06e943e'") !== false, 'installer helper checksum is not pinned');
 m037Assert(strpos($installer, "readonly SUDOERS_SHA='815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1'") !== false, 'installer sudoers checksum is not pinned');
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '1c8fc46e55a0803e2476c3317108d3cf0d86144f9005ef58d848aad0aede7561', 'pinned helper checksum does not match helper bytes');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '1e74e2e1a8d4d083d30b8d705d0728ac8e91e02f0e17162fa5216fffe06e943e', 'pinned helper checksum does not match helper bytes');
 m037Assert(hash_file('sha256', $root.'/deploy/config/codex-deploy-backup-erp-m037-full-release.sudoers') === '815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1', 'pinned sudoers checksum does not match sudoers bytes');
 m037Assert(strpos($installer, 'private_root=$(mktemp -d /root/m037-helper-install.') !== false, 'installer does not use a root-owned immutable input copy');
 m037Assert(strpos($installer, 'install -o root -g root -m 0600 "$SOURCE_HELPER" "$private_helper"') !== false, 'installer helper input is not copied once before validation');
 m037Assert(strpos($installer, "PRODUCTION_ACCESSED=NO") !== false, 'installer production boundary is not explicit');
 
-echo "M037_RELEASE_TEST=PASS RUNTIME_FILES=52 SUPPORT_FILES=16 COMMANDS=6 PRODUCTION=FORBIDDEN".PHP_EOL;
+echo "M037_RELEASE_TEST=PASS RUNTIME_FILES=52 SUPPORT_FILES=17 COMMANDS=6 PRODUCTION=FORBIDDEN".PHP_EOL;

@@ -4,15 +4,15 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='3205638c6f231fbea8e56c6647eba90d1c804c21'
-readonly SHORT_COMMIT='3205638'
+readonly RUNTIME_COMMIT='8ba5735890d65a49b61d1b3526bb9092ec7d8825'
+readonly SHORT_COMMIT='8ba5735'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='e24a862978dcf89f1bf8cf5a4d4a85de6727e7abc3904cd0b92df05572730ad5'
+readonly ARTIFACT_SHA='ec40cd770af1a72c42f34dc1fa26701bc263279732d89d8985051069fccd9e2a'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
-readonly SUPPORT_MANIFEST_SHA='ae6db8da9660ef73bd71df273573487388411f08ee74da71183474875fd67700'
+readonly SUPPORT_MANIFEST_SHA='69a19adb5d57c87b241ced78a9d3e128779a89de71e151d019a1b12cdcd79077'
 
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'
@@ -31,7 +31,6 @@ readonly MIN_FREE_KB=1048576
 
 readonly -a STATIC_TESTS=(
 	'deploy/tests/test_admin_accessibility.php'
-	'deploy/tests/test_customer_portal_scope_integration.php'
 	'deploy/tests/test_m028_current_source_release.php'
 	'deploy/tests/test_m029_core_customer_funds.php'
 	'deploy/tests/test_m030_generic_labels_navigation.php'
@@ -53,7 +52,7 @@ readonly -a ROUTES=(
 	'/custom/chinaplanetcustomercenter/admin_dashboard.php'
 	'/custom/chinaplanetcustomercenter/board.php'
 	'/custom/chinaplanetcustomercenter/documents.php'
-	'/custom/chinaplanetcustomercenter/reports.php'
+	'/custom/chinaplanetcustomercenter/operation_reports.php'
 	'/custom/chinaplanetcustomercenter/projects.php'
 	'/custom/chinaplanetcustomercenter/orders.php'
 	'/custom/chinaplanetcustomercenter/balance.php'
@@ -63,7 +62,7 @@ readonly -a ROUTES=(
 	'/custom/chinaplanetlogistics/list.php'
 	'/custom/chinaplanetlogistics/reports.php'
 	'/custom/chinaplanetoperations/operations/shipping_orders.php'
-	'/custom/chinaplanetoperations/operations/sop/index.php'
+	'/custom/chinaplanetshippingprices/sop/index.php'
 	'/custom/chinaplanetshippingprices/index.php'
 )
 
@@ -180,10 +179,14 @@ candidate_checks() {
 }
 
 schema_state() {
-	local rc=0
-	if docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SCHEMA" check >/dev/null 2>&1; then echo 'PRESENT'; return 0; else rc=$?; fi
-	[[ $rc -eq 2 ]] || die 'SCHEMA_CHECK_FAILED'
-	echo 'ABSENT'
+	local rc=0 output
+	set +e
+	output=$(docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SCHEMA" check 2>&1)
+	rc=$?
+	set -e
+	if [[ $rc -eq 0 && "$output" == 'M035_SCHEMA_CHECK=PASS' ]]; then echo 'PRESENT'; return 0; fi
+	if [[ $rc -eq 2 && "$output" == 'M035_SCHEMA_CHECK=ABSENT' ]]; then echo 'ABSENT'; return 0; fi
+	die 'SCHEMA_CHECK_DRIFT_OR_FAILURE'
 }
 
 capture_schema_prestate() {
@@ -207,6 +210,21 @@ create_database_backup() {
 	[[ -s "$DB_BACKUP" ]] || die 'DATABASE_BACKUP_EMPTY'
 	chmod 0600 "$DB_BACKUP"
 	DB_BACKUP_SHA=$(sha256 "$DB_BACKUP")
+}
+
+restore_database_backup() {
+	local backup=$1 expected_sha=$2
+	[[ "$backup" == "$DB_BACKUP_ROOT/"*.sql && -f "$backup" && ! -L "$backup" ]] || return 1
+	[[ $(stat -c '%U:%G %a' "$backup") == 'root:root 600' ]] || return 1
+	[[ $(sha256 "$backup") == "$expected_sha" ]] || return 1
+	docker exec -i "$TARGET_DB_CONTAINER" sh -eu -c '
+		db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
+		user=${MARIADB_USER:-${MYSQL_USER:-root}}
+		pass=${MARIADB_PASSWORD:-${MYSQL_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}}
+		[ -n "$db" ] && [ -n "$pass" ]
+		if command -v mariadb >/dev/null 2>&1; then client=mariadb; else client=mysql; fi
+		MYSQL_PWD="$pass" exec "$client" -u "$user" "$db"
+	' <"$backup"
 }
 
 create_code_backup() {
@@ -314,6 +332,47 @@ route_checks() {
 	done
 }
 
+authenticated_route_checks() {
+	local admin_output external_output admin_cookie external_cookie route status rc=0
+	if ! admin_output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" admin); then return 1; fi
+	if ! external_output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external); then return 1; fi
+	[[ "$admin_output" =~ ^M037_AUTH_COOKIE=([^[:space:]]+)\ SOCID=0$ ]] || return 1
+	admin_cookie="${BASH_REMATCH[1]}"
+	[[ "$external_output" =~ ^M037_AUTH_COOKIE=([^[:space:]]+)\ SOCID=([1-9][0-9]*)$ ]] || return 1
+	external_cookie="${BASH_REMATCH[1]}"
+	local -a admin_routes=(
+		'/custom/chinaplanetcustomercenter/admin_dashboard.php'
+		'/custom/chinaplanetcustomercenter/admin/financial_portfolio.php'
+		'/custom/chinaplanetcustomercenter/admin/operations.php'
+		'/custom/chinaplanetlogistics/index.php'
+		'/custom/chinaplanetoperations/operations/shipping_orders.php'
+		'/custom/chinaplanetshippingprices/sop/index.php'
+	)
+	local -a customer_routes=(
+		'/custom/chinaplanetcustomercenter/board.php'
+		'/custom/chinaplanetcustomercenter/documents.php'
+		'/custom/chinaplanetcustomercenter/operation_reports.php'
+		'/custom/chinaplanetcustomercenter/projects.php'
+		'/custom/chinaplanetcustomercenter/orders.php'
+		'/custom/chinaplanetcustomercenter/balance.php'
+		'/custom/chinaplanetlogistics/list.php'
+		'/custom/chinaplanetshippingprices/index.php'
+	)
+	for route in "${admin_routes[@]}"; do
+		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$admin_cookie" "${TARGET_HTTP}${route}") || { rc=1; continue; }
+		[[ "$status" == '200' ]] || rc=1
+	done
+	for route in "${customer_routes[@]}"; do
+		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$external_cookie" "${TARGET_HTTP}${route}") || { rc=1; continue; }
+		[[ "$status" == '200' ]] || rc=1
+	done
+	status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$external_cookie" "${TARGET_HTTP}/custom/chinaplanetcustomercenter/admin_dashboard.php") || rc=1
+	[[ "$status" =~ ^(302|401|403)$ ]] || rc=1
+	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html -e M037_AUTH_COOKIE="$admin_cookie" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" destroy >/dev/null || rc=1
+	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html -e M037_AUTH_COOKIE="$external_cookie" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" destroy >/dev/null || rc=1
+	return "$rc"
+}
+
 runtime_checks() {
 	local file rel
 	for file in "${RUNTIME_FILES[@]}"; do
@@ -327,13 +386,14 @@ runtime_checks() {
 	docker exec -e M035_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[1]}" >/dev/null || return 1
 	docker exec -e M036_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[2]}" >/dev/null || return 1
 	docker exec -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_customer_portal_scope_integration.php" >/dev/null || return 1
-	route_checks
+	route_checks || return 1
+	authenticated_route_checks
 }
 
 rollback_checks() {
 	verify_code_backup_restored || return 1
 	verify_schema_prestate || return 1
-	route_checks
+	[[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]]
 }
 
 save_state() {
@@ -413,7 +473,7 @@ command_verify() {
 command_rollback() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
 	validate_artifact; candidate_checks; load_state
-	local stamp reapply_code reapply_code_sha reapply_db file rel
+	local stamp reapply_code reapply_code_sha reapply_db reapply_db_sha file rel
 	stamp=$(date -u '+%Y%m%dT%H%M%SZ')
 	reapply_code="${BACKUP_ROOT}/m037-reapply-${SHORT_COMMIT}-${stamp}.tar.gz"
 	local -a current=()
@@ -423,6 +483,7 @@ command_rollback() {
 	reapply_code_sha=$(sha256 "$reapply_code")
 	create_database_backup
 	reapply_db=$DB_BACKUP
+	reapply_db_sha=$DB_BACKUP_SHA
 	local rollback_ok=1
 	restore_code_backup || rollback_ok=0
 	rollback_database_changes || rollback_ok=0
@@ -438,11 +499,11 @@ command_rollback() {
 			install -o "$(stat -c '%u' "$reapply_root/$rel")" -g "$(stat -c '%g' "$reapply_root/$rel")" -m "$(stat -c '%a' "$reapply_root/$rel")" "$reapply_root/$rel" "$TARGET_ROOT/$rel"
 		done
 		rm -rf "$reapply_root"
-		apply_database_changes
+		restore_database_backup "$reapply_db" "$reapply_db_sha" || die 'ROLLBACK_FAILED_DB_REAPPLY_FAILED'
 		runtime_checks || die 'ROLLBACK_FAILED_REAPPLY_VERIFY_FAILED'
 		die 'ROLLBACK_FAILED_DEPLOYED_STATE_REAPPLIED'
 	fi
-	echo "M037_STAGING_ROLLBACK=PASS RESTORED=$CODE_BACKUP REAPPLY_CODE=$reapply_code REAPPLY_CODE_SHA=$reapply_code_sha REAPPLY_DB=$reapply_db REAPPLY_DB_SHA=$DB_BACKUP_SHA VERIFY=PASS"
+	echo "M037_STAGING_ROLLBACK=PASS RESTORED=$CODE_BACKUP REAPPLY_CODE=$reapply_code REAPPLY_CODE_SHA=$reapply_code_sha REAPPLY_DB=$reapply_db REAPPLY_DB_SHA=$reapply_db_sha VERIFY=PASS"
 }
 
 command_status() {
