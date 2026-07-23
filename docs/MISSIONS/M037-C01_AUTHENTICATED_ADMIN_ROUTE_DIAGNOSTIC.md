@@ -5,7 +5,7 @@
 - **Mission ID:** M037-C01
 - **Parent mission:** M037
 - **Type:** CORRECTION
-- **Status:** IN_PROGRESS
+- **Status:** COMPLETED
 - **Architect / implementation owner:** Agent 007
 - **Required reviewers:** Security, QA
 - **Target:** Canonical `backup-erp` staging only
@@ -120,3 +120,12 @@ No application or database rollback is required because the correction run is re
 ## Completion report
 
 Create `docs/REPORTS/M037-C01_COMPLETION_REPORT.md` with commit/artifact/helper hashes, local tests, reviewer results, installer evidence, exact staging preflight output, no-apply evidence, production non-access, result, and next correction if required.
+
+## Final result — 2026-07-24
+
+- The final read-only preflight reached the authenticated admin test and returned `CLASS=PHP_FATAL_ERROR`, exit `255`, output bytes `296`, output SHA-256 `2eecfcb9…`.
+- A local reproduction ran the same committed test with `proc_open` disabled at the same candidate-path shape. It returned exit `255`, the exact fatal signature `Call to undefined function proc_open()`, and `304` bytes; the eight-byte difference equals the `/private/tmp` versus `/tmp` path-prefix difference.
+- Root cause: the M037 authenticated-route test harness depends on `proc_open()`, which is unavailable in canonical staging PHP. The admin row, Dolibarr route, and application runtime were not reached by this failing check.
+- M037-C01 achieved its diagnostic objective and is complete. Parent M037 remains `CORRECTION_REQUIRED`.
+- Required follow-up: a separately approved M037-C02 must replace the `proc_open` child launcher with a one-time, opaque, file-backed context handoff executed by the fixed staging helper. Enabling `proc_open` globally is not recommended.
+- Final server evidence: `STATE_STATUS=APPLY_FAILED_ROLLED_BACK`, staging HTTP `200`, `APPLY_EXECUTED=NO`, and production not accessed.

@@ -157,3 +157,4 @@ Create `docs/REPORTS/M037_COMPLETION_REPORT.md` with branch/commits, artifact/ma
 - Its canonical staging preflight passed, but apply again failed at `AUTHENTICATED_ADMIN_ROUTE ROUTE=admin_dashboard`.
 - Automatic rollback passed for code, database/schema pre-state, verification, and staging HTTP health; recorded state is `APPLY_FAILED_ROLLED_BACK`.
 - M037 is therefore `CORRECTION_REQUIRED`. No further apply is authorized until M037-C01 produces an actionable read-only diagnosis and a separately reviewed correction.
+- M037-C01 completed on 2026-07-24 and identified the blocking failure as the test harness calling unavailable PHP function `proc_open()` in staging. The admin account and product route were not the cause. M037 remains `CORRECTION_REQUIRED`; the next step is an approved proc-open-free authenticated-route harness, not a whole-system update.
