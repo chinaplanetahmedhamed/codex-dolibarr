@@ -95,10 +95,10 @@ No application or database rollback is required because the correction run is re
 - Artifact: `m037-full-b4fc34a.tar.gz`
 - Artifact SHA-256: `5f6bc33af781ac20898d78e25e9dc011a3dd2451fa061c52e8697202bf6d39f1`
 - Artifact entries: `71` regular files (`52` runtime, `17` support, `2` manifests)
-- Helper SHA-256: `ab1377b9ad117227f6ac2e53e02fac540766d2558ac1eccf7f88811e1fd03e6b`
-- Installer SHA-256: `b36220c4c269ef127b364bbb6fb813cd19e27c40fa57a93e17d121e202f83740`
+- Helper SHA-256: `4d242b85cdc87df74ab62819df4f69e34f823a06f12c33706687a347c172fb16`
+- Installer SHA-256: `ac922de4b7068645d8297a0695e21019663bb6ab134d1d7f91b62bd00934cf8a`
 - Sudoers SHA-256: `815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1`
-- Currently installed helper accepted for rotation only: `7aa021c3940073f79c62b4f8ce341ac5077fef37cb76fe9618c44705b262b93f`
+- Currently installed helper accepted for rotation only: `ab1377b9ad117227f6ac2e53e02fac540766d2558ac1eccf7f88811e1fd03e6b`
 - Remaining gate: upload, checksum verification, root helper rotation, and canonical staging `preflight` only.
 
 ## Packaging correction — 2026-07-24
@@ -108,6 +108,14 @@ No application or database rollback is required because the correction run is re
 - No application, schema, permission, database, document, container, or production mutation occurred.
 - The same 71 committed files were rebuilt as metadata-free `ustar`; no runtime/source file changed.
 - The helper now rejects any tar listing or extraction warning before comparing the exact allowlist.
+
+## Candidate-access correction — 2026-07-24
+
+- The metadata-free artifact passed validation, and preflight advanced to the current-runtime admin diagnostic.
+- The diagnostic stopped with `CLASS=UNCLASSIFIED`, exit `1`, output bytes `111`, and SHA-256 `12eb352c…`; no raw output or identity was printed.
+- The evidence is consistent with PHP being unable to open the root-created temporary test script as `www-data`; application and database state were not involved or changed.
+- Only the temporary candidate root, `deploy`, and `deploy/tests` directories receive traverse permission, and only the authenticated test script receives read permission.
+- The helper also classifies unreadable script, permission, PHP fatal/parse/warning, and Dolibarr technical-error output without printing raw content.
 
 ## Completion report
 

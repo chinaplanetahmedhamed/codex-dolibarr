@@ -94,6 +94,11 @@ foreach (array(
     'test_customer_portal_scope_integration.php',
     'test_unified_admin_shell.php',
     'cp -a /var/www/html/custom "$CANDIDATE_REMOTE/custom"',
+    'chmod 0755 "$CANDIDATE_REMOTE" "$CANDIDATE_REMOTE/deploy" "$CANDIDATE_REMOTE/deploy/tests"',
+    'chmod 0644 "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php"',
+    "output_class='CHILD_SCRIPT_UNREADABLE'",
+    "output_class='PERMISSION_DENIED'",
+    "output_class='PHP_FATAL_ERROR'",
 ) as $needle) m037Assert(strpos($helper, $needle) !== false, 'staging guard missing '.$needle);
 m037Assert(strpos($helper, "/^\\\\//") === false && strpos($helper, "\\\\.env") === false, 'archive parser contains non-portable double escaping');
 m037Assert(strpos($helper, 'M037_AUTH_COOKIE') === false && strpos($helper, '--cookie') === false, 'authenticated cookie leaves the in-process route test');
@@ -133,10 +138,10 @@ foreach ($allowedCommands as $command) {
     m037Assert(substr_count($sudoers, $line) === 1, 'sudoers missing exact '.$command.' command');
 }
 m037Assert(count(array_filter(explode("\n", trim($sudoers)))) === count($allowedCommands), 'sudoers contains an unexpected command');
-m037Assert(strpos($installer, "readonly HELPER_SHA='ab1377b9ad117227f6ac2e53e02fac540766d2558ac1eccf7f88811e1fd03e6b'") !== false, 'installer helper checksum is not pinned');
-m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='7aa021c3940073f79c62b4f8ce341ac5077fef37cb76fe9618c44705b262b93f'") !== false, 'installer previous helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly HELPER_SHA='4d242b85cdc87df74ab62819df4f69e34f823a06f12c33706687a347c172fb16'") !== false, 'installer helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='ab1377b9ad117227f6ac2e53e02fac540766d2558ac1eccf7f88811e1fd03e6b'") !== false, 'installer previous helper checksum is not pinned');
 m037Assert(strpos($installer, "readonly SUDOERS_SHA='815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1'") !== false, 'installer sudoers checksum is not pinned');
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === 'ab1377b9ad117227f6ac2e53e02fac540766d2558ac1eccf7f88811e1fd03e6b', 'pinned helper checksum does not match helper bytes');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '4d242b85cdc87df74ab62819df4f69e34f823a06f12c33706687a347c172fb16', 'pinned helper checksum does not match helper bytes');
 m037Assert(hash_file('sha256', $root.'/deploy/config/codex-deploy-backup-erp-m037-full-release.sudoers') === '815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1', 'pinned sudoers checksum does not match sudoers bytes');
 m037Assert(strpos($installer, 'private_root=$(mktemp -d /root/m037-helper-install.') !== false, 'installer does not use a root-owned immutable input copy');
 m037Assert(strpos($installer, 'install -o root -g root -m 0600 "$SOURCE_HELPER" "$private_helper"') !== false, 'installer helper input is not copied once before validation');

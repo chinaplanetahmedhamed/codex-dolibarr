@@ -211,6 +211,8 @@ candidate_checks() {
 	docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE"
 	docker exec "$TARGET_CONTAINER" cp -a /var/www/html/custom "$CANDIDATE_REMOTE/custom"
 	docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
+	docker exec "$TARGET_CONTAINER" chmod 0755 "$CANDIDATE_REMOTE" "$CANDIDATE_REMOTE/deploy" "$CANDIDATE_REMOTE/deploy/tests"
+	docker exec "$TARGET_CONTAINER" chmod 0644 "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php"
 	local file
 	for file in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do
 		if [[ "$file" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$file" >/dev/null || die "CANDIDATE_LINT_FAILED_${file//\//_}"; fi
@@ -415,6 +417,18 @@ emit_authenticated_route_diagnostic() {
 		output_class='EMPTY'
 	elif [[ "$output" == *"$expected"* ]]; then
 		output_class='EXPECTED_MARKER_CONTAMINATED'
+	elif [[ "$output" == *'Could not open input file:'* ]]; then
+		output_class='CHILD_SCRIPT_UNREADABLE'
+	elif [[ "$output" == *'Permission denied'* ]]; then
+		output_class='PERMISSION_DENIED'
+	elif [[ "$output" == *'PHP Fatal error:'* || "$output" == *'Fatal error:'* ]]; then
+		output_class='PHP_FATAL_ERROR'
+	elif [[ "$output" == *'PHP Parse error:'* || "$output" == *'Parse error:'* ]]; then
+		output_class='PHP_PARSE_ERROR'
+	elif [[ "$output" == *'PHP Warning:'* || "$output" == *'Warning:'* ]]; then
+		output_class='PHP_WARNING'
+	elif [[ "$output" == *'Dolibarr has detected a technical error'* ]]; then
+		output_class='DOLIBARR_TECHNICAL_ERROR'
 	else
 		output_class='UNCLASSIFIED'
 	fi
