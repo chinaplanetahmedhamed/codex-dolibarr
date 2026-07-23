@@ -4,11 +4,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='e2091fe899766a05a4af263d41205460b6991653'
-readonly SHORT_COMMIT='e2091fe'
+readonly RUNTIME_COMMIT='477feaf2287a1297bc8ae68449984db385c1f743'
+readonly SHORT_COMMIT='477feaf'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='cf2bf2c29b33d91d143bf192797b84303470543473061bbc6ba7887d187a76c5'
+readonly ARTIFACT_SHA='897d7fd688d303867c32da4f288b3b715cc392dc70421877555796ee80de05c2'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
@@ -79,8 +79,6 @@ DB_BACKUP=''
 DB_BACKUP_SHA=''
 SCHEMA_PRESTATE_B64=''
 SCHEMA_PRESTATE_SHA=''
-ADMIN_COOKIE_FILE=''
-EXTERNAL_COOKIE_FILE=''
 
 die() { echo "M037_STAGING_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
@@ -93,27 +91,9 @@ require_root() {
 }
 
 cleanup() {
-	destroy_authenticated_sessions
 	if [[ -n "$CANDIDATE_REMOTE" ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true; fi
 	if [[ -n "$CANDIDATE_ROOT" && "$CANDIDATE_ROOT" == /root/m037-candidate.* && -d "$CANDIDATE_ROOT" ]]; then rm -rf "$CANDIDATE_ROOT"; fi
 	if [[ -n "$ARTIFACT_COPY" && "$ARTIFACT_COPY" == /root/m037-artifact.* && -f "$ARTIFACT_COPY" ]]; then rm -f "$ARTIFACT_COPY"; fi
-}
-
-destroy_session_cookie_file() {
-	local cookie_file=$1 cookie
-	[[ -n "$cookie_file" && "$cookie_file" == /root/m037-cookie.* && -f "$cookie_file" ]] || return 0
-	cookie=$(awk 'NF==7 {print $6"="$7; exit}' "$cookie_file")
-	if [[ -n "$cookie" && -n "$CANDIDATE_REMOTE" ]]; then
-		printf '%s' "$cookie" | docker exec -i -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" destroy >/dev/null 2>&1 || true
-	fi
-	rm -f "$cookie_file"
-}
-
-destroy_authenticated_sessions() {
-	destroy_session_cookie_file "$ADMIN_COOKIE_FILE"
-	destroy_session_cookie_file "$EXTERNAL_COOKIE_FILE"
-	ADMIN_COOKIE_FILE=''
-	EXTERNAL_COOKIE_FILE=''
 }
 
 check_environment() {
@@ -353,53 +333,8 @@ route_checks() {
 }
 
 authenticated_route_checks() {
-	local admin_output external_output admin_cookie external_cookie cookie_name cookie_value route status rc=0
-	if ! admin_output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" admin); then return 1; fi
-	[[ "$admin_output" =~ ^M037_AUTH_COOKIE=([^[:space:]]+)\ SOCID=0$ ]] || return 1
-	admin_cookie="${BASH_REMATCH[1]}"
-	cookie_name="${admin_cookie%%=*}"; cookie_value="${admin_cookie#*=}"
-	ADMIN_COOKIE_FILE=$(mktemp /root/m037-cookie.XXXXXX)
-	printf '127.0.0.1\tFALSE\t/\tFALSE\t0\t%s\t%s\n' "$cookie_name" "$cookie_value" >"$ADMIN_COOKIE_FILE"
-	chmod 0600 "$ADMIN_COOKIE_FILE"
-	unset admin_output admin_cookie cookie_name cookie_value
-	if ! external_output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external); then return 1; fi
-	[[ "$external_output" =~ ^M037_AUTH_COOKIE=([^[:space:]]+)\ SOCID=([1-9][0-9]*)$ ]] || return 1
-	external_cookie="${BASH_REMATCH[1]}"
-	cookie_name="${external_cookie%%=*}"; cookie_value="${external_cookie#*=}"
-	EXTERNAL_COOKIE_FILE=$(mktemp /root/m037-cookie.XXXXXX)
-	printf '127.0.0.1\tFALSE\t/\tFALSE\t0\t%s\t%s\n' "$cookie_name" "$cookie_value" >"$EXTERNAL_COOKIE_FILE"
-	chmod 0600 "$EXTERNAL_COOKIE_FILE"
-	unset external_output external_cookie cookie_name cookie_value
-	local -a admin_routes=(
-		'/custom/chinaplanetcustomercenter/admin_dashboard.php'
-		'/custom/chinaplanetcustomercenter/admin/financial_portfolio.php'
-		'/custom/chinaplanetcustomercenter/admin/operations.php'
-		'/custom/chinaplanetlogistics/index.php'
-		'/custom/chinaplanetoperations/operations/shipping_orders.php'
-		'/custom/chinaplanetshippingprices/sop/index.php'
-	)
-	local -a customer_routes=(
-		'/custom/chinaplanetcustomercenter/board.php'
-		'/custom/chinaplanetcustomercenter/documents.php'
-		'/custom/chinaplanetcustomercenter/operation_reports.php'
-		'/custom/chinaplanetcustomercenter/projects.php'
-		'/custom/chinaplanetcustomercenter/orders.php'
-		'/custom/chinaplanetcustomercenter/balance.php'
-		'/custom/chinaplanetlogistics/list.php'
-		'/custom/chinaplanetshippingprices/index.php'
-	)
-	for route in "${admin_routes[@]}"; do
-		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$ADMIN_COOKIE_FILE" "${TARGET_HTTP}${route}") || { rc=1; continue; }
-		[[ "$status" == '200' ]] || rc=1
-	done
-	for route in "${customer_routes[@]}"; do
-		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$EXTERNAL_COOKIE_FILE" "${TARGET_HTTP}${route}") || { rc=1; continue; }
-		[[ "$status" == '200' ]] || rc=1
-	done
-	status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --cookie "$EXTERNAL_COOKIE_FILE" "${TARGET_HTTP}/custom/chinaplanetcustomercenter/admin_dashboard.php") || rc=1
-	[[ "$status" =~ ^(302|401|403)$ ]] || rc=1
-	destroy_authenticated_sessions
-	return "$rc"
+	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" admin >/dev/null || return 1
+	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external >/dev/null
 }
 
 runtime_checks() {
@@ -450,7 +385,7 @@ load_state() {
 	# shellcheck disable=SC1090
 	source "$STATE_FILE"
 	[[ "$STATE_RELEASE" == "$RELEASE" && "$STATE_RUNTIME_COMMIT" == "$RUNTIME_COMMIT" && "$STATE_ARTIFACT_SHA" == "$ARTIFACT_SHA" ]] || die 'STATE_MISMATCH'
-	[[ "$STATE_STATUS" =~ ^(APPLY_IN_PROGRESS|DEPLOYED|APPLY_FAILED_ROLLED_BACK|APPLY_FAILED_ROLLBACK_FAILED)$ ]] || die 'STATE_STATUS_INVALID'
+	[[ "$STATE_STATUS" =~ ^(APPLY_IN_PROGRESS|DEPLOYED|APPLY_FAILED_ROLLED_BACK|APPLY_FAILED_ROLLBACK_FAILED|ROLLED_BACK)$ ]] || die 'STATE_STATUS_INVALID'
 	CODE_BACKUP=$STATE_CODE_BACKUP; CODE_BACKUP_SHA=$STATE_CODE_BACKUP_SHA
 	ABSENT_LIST=$STATE_ABSENT_LIST; ABSENT_LIST_SHA=$STATE_ABSENT_LIST_SHA
 	DB_BACKUP=$STATE_DB_BACKUP; DB_BACKUP_SHA=$STATE_DB_BACKUP_SHA
@@ -524,8 +459,10 @@ command_verify() {
 command_rollback() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
 	validate_artifact; candidate_checks; load_state
-	[[ "$STATE_STATUS" == 'DEPLOYED' || "$STATE_STATUS" == 'APPLY_FAILED_ROLLBACK_FAILED' ]] || die 'STATE_NOT_ROLLBACK_ELIGIBLE'
-	local stamp reapply_code reapply_code_sha reapply_db reapply_db_sha file rel
+	[[ "$STATE_STATUS" == 'DEPLOYED' || "$STATE_STATUS" == 'APPLY_IN_PROGRESS' || "$STATE_STATUS" == 'APPLY_FAILED_ROLLBACK_FAILED' ]] || die 'STATE_NOT_ROLLBACK_ELIGIBLE'
+	local stamp reapply_code reapply_code_sha reapply_db reapply_db_sha original_db_backup original_db_sha file rel
+	original_db_backup=$DB_BACKUP
+	original_db_sha=$DB_BACKUP_SHA
 	stamp=$(date -u '+%Y%m%dT%H%M%SZ')
 	reapply_code="${BACKUP_ROOT}/m037-reapply-${SHORT_COMMIT}-${stamp}.tar.gz"
 	local -a current=()
@@ -541,6 +478,21 @@ command_rollback() {
 	rollback_database_changes || rollback_ok=0
 	if [[ $rollback_ok -eq 1 ]]; then rollback_checks || rollback_ok=0; fi
 	if [[ $rollback_ok -ne 1 ]]; then
+		local original_restore_ok=1
+		restore_database_backup "$original_db_backup" "$original_db_sha" || original_restore_ok=0
+		restore_code_backup || original_restore_ok=0
+		if [[ $original_restore_ok -eq 1 ]]; then rollback_checks || original_restore_ok=0; fi
+		if [[ $original_restore_ok -eq 1 ]]; then
+			DB_BACKUP=$original_db_backup; DB_BACKUP_SHA=$original_db_sha
+			save_state 'ROLLED_BACK'
+			echo "M037_STAGING_ROLLBACK=PASS RESTORED=$CODE_BACKUP DB_RESTORED=$original_db_backup DB_RESTORED_SHA=$original_db_sha REAPPLY_CODE=$reapply_code REAPPLY_CODE_SHA=$reapply_code_sha REAPPLY_DB=$reapply_db REAPPLY_DB_SHA=$reapply_db_sha VERIFY=PASS FULL_DB_FALLBACK=YES"
+			return 0
+		fi
+		if [[ "$STATE_STATUS" != 'DEPLOYED' ]]; then
+			DB_BACKUP=$original_db_backup; DB_BACKUP_SHA=$original_db_sha
+			save_state 'APPLY_FAILED_ROLLBACK_FAILED'
+			die 'ROLLBACK_FAILED_PRESTATE_RECOVERY_RETAINED'
+		fi
 		local reapply_root
 		reapply_root=$(mktemp -d /root/m037-reapply.XXXXXX)
 		[[ $(sha256 "$reapply_code") == "$reapply_code_sha" ]] || die 'ROLLBACK_REAPPLY_BACKUP_HASH_FAILED'
@@ -555,6 +507,8 @@ command_rollback() {
 		runtime_checks || die 'ROLLBACK_FAILED_REAPPLY_VERIFY_FAILED'
 		die 'ROLLBACK_FAILED_DEPLOYED_STATE_REAPPLIED'
 	fi
+	DB_BACKUP=$original_db_backup; DB_BACKUP_SHA=$original_db_sha
+	save_state 'ROLLED_BACK'
 	echo "M037_STAGING_ROLLBACK=PASS RESTORED=$CODE_BACKUP REAPPLY_CODE=$reapply_code REAPPLY_CODE_SHA=$reapply_code_sha REAPPLY_DB=$reapply_db REAPPLY_DB_SHA=$reapply_db_sha VERIFY=PASS"
 }
 
