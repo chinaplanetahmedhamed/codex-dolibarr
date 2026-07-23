@@ -189,11 +189,11 @@ require_once $documentRoot.'/user/class/user.class.php';
 global $db, $conf, $user;
 
 $where = $role === 'admin'
-    ? "u.admin=1 AND u.fk_soc IS NULL"
-    : "u.admin=0 AND u.fk_soc IS NOT NULL AND u.fk_soc>0";
+    ? "u.admin=1 AND COALESCE(u.fk_soc,0)=0"
+    : "u.admin=0 AND COALESCE(u.fk_soc,0)>0";
 $res = $db->query(
     "SELECT u.rowid FROM ".MAIN_DB_PREFIX."user u".
-    " WHERE u.entity=".(int) $conf->entity." AND u.statut=1 AND ".$where.
+    " WHERE u.entity IN (".getEntity('user').") AND u.statut=1 AND ".$where.
     " ORDER BY u.rowid LIMIT 100"
 );
 $routeUser = null;
