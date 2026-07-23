@@ -30,8 +30,8 @@ foreach (array_merge($runtimeManifest, $supportManifest) as $relative) {
 }
 
 foreach (array(
-    "readonly RUNTIME_COMMIT='58b3ca35273bc05e61b5c2abf7afe48c29ec1fa1'",
-    "readonly ARTIFACT_SHA='c0be577c1247c30d54e19b87eaf412da98ded4c8a5d650b6081d9fc822493b7f'",
+    "readonly RUNTIME_COMMIT='b4fc34ac5d5f7beb78aec297d9c4afad45b416e7'",
+    "readonly ARTIFACT_SHA='52b77b4d31714112b9550634da8342d1aced52e1de364721fb5bee1759e720f7'",
     "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'",
     "readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'",
     "readonly TARGET_MAILPIT_CONTAINER='erp-staging-mailpit-1'",
@@ -49,6 +49,12 @@ foreach (array(
     'restore_database_backup',
     'finalize_full_database_restore',
     'authenticated_route_checks',
+    'emit_authenticated_route_diagnostic',
+    'current_runtime_admin_route_diagnostic',
+    'M037_STAGING_DIAGNOSTIC_ADMIN_CURRENT_RUNTIME=PASS',
+    'M037_STAGING_AUTH_DIAGNOSTIC=FAIL',
+    'OUTPUT_SHA256=',
+    "current_runtime_admin_route_diagnostic || die 'CURRENT_RUNTIME_ADMIN_DIAGNOSTIC_FAILED'",
     'AUTH_ADMIN_ROUTES',
     'AUTH_EXTERNAL_ROUTES',
     'M037_AUTH_ROUTE_',
@@ -89,6 +95,7 @@ foreach (array(
 ) as $needle) m037Assert(strpos($helper, $needle) !== false, 'staging guard missing '.$needle);
 m037Assert(strpos($helper, "/^\\\\//") === false && strpos($helper, "\\\\.env") === false, 'archive parser contains non-portable double escaping');
 m037Assert(strpos($helper, 'M037_AUTH_COOKIE') === false && strpos($helper, '--cookie') === false, 'authenticated cookie leaves the in-process route test');
+m037Assert(strpos($helper, 'echo "$output"') === false, 'authenticated diagnostic can print raw captured output');
 foreach (array(
     'const M037_AUTH_POSITIVE_ROUTE_COUNT = 14;',
     "'external_denied' => array(",
@@ -100,10 +107,18 @@ foreach (array(
     "'UNEXPECTED_REDIRECT'",
     "'EMPTY_RESPONSE'",
     "'ROUTE_ANCHOR_MISSING'",
+    "'PARENT_BOOTSTRAP_FATAL_ERROR'",
+    "'PARENT_BOOTSTRAP_DOLIBARR_ERROR'",
+    "'PARENT_BOOTSTRAP_EARLY_EXIT'",
+    "'PARENT_BOOTSTRAP_OUTPUT'",
+    'REASON=ROLE_QUERY_FAILED',
+    '" CANDIDATES=".$candidateCount',
+    '" OUTPUT_SHA256=".hash(\'sha256\', $body)',
     'M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED',
 ) as $needle) m037Assert(strpos($authenticatedRouteTest, $needle) !== false, 'authenticated route contract missing '.$needle);
 m037Assert(strpos($authenticatedRouteTest, 'M037_AUTH_CHILD_LOGIN') === false && strpos($authenticatedRouteTest, 'M037_AUTH_CHILD_TOKEN') === false, 'authenticated child identity leaks through argv or environment');
 m037Assert(strpos($authenticatedRouteTest, '" WHERE u.entity=".(int) $conf->entity') === false, 'authenticated user lookup bypasses Dolibarr user entity sharing');
+m037Assert(strpos($authenticatedRouteTest, 'fwrite(STDERR, $stdout)') === false && strpos($authenticatedRouteTest, 'fwrite(STDERR, $stderr)') === false, 'authenticated route test can print raw child output');
 
 foreach (array('vision_erp','vision_db','vision-os_','erp.visiontrading.biz','production-m') as $forbidden) {
     m037Assert(stripos($helper, $forbidden) === false, 'production identifier leaked into staging helper');
@@ -116,10 +131,10 @@ foreach ($allowedCommands as $command) {
     m037Assert(substr_count($sudoers, $line) === 1, 'sudoers missing exact '.$command.' command');
 }
 m037Assert(count(array_filter(explode("\n", trim($sudoers)))) === count($allowedCommands), 'sudoers contains an unexpected command');
-m037Assert(strpos($installer, "readonly HELPER_SHA='aa09f1db34a4e8f0a12c569e7615cc22ef0b3aa0e0f1a39eba9cf2298e48f074'") !== false, 'installer helper checksum is not pinned');
-m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='6a881ff8bbc60992063aa5dca11eb86048ea722638740a839010f04cc383097f'") !== false, 'installer previous helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly HELPER_SHA='7aa021c3940073f79c62b4f8ce341ac5077fef37cb76fe9618c44705b262b93f'") !== false, 'installer helper checksum is not pinned');
+m037Assert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='aa09f1db34a4e8f0a12c569e7615cc22ef0b3aa0e0f1a39eba9cf2298e48f074'") !== false, 'installer previous helper checksum is not pinned');
 m037Assert(strpos($installer, "readonly SUDOERS_SHA='815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1'") !== false, 'installer sudoers checksum is not pinned');
-m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === 'aa09f1db34a4e8f0a12c569e7615cc22ef0b3aa0e0f1a39eba9cf2298e48f074', 'pinned helper checksum does not match helper bytes');
+m037Assert(hash_file('sha256', $root.'/deploy/tools/chinaplanetos_backup_erp_m037_full_release.sh') === '7aa021c3940073f79c62b4f8ce341ac5077fef37cb76fe9618c44705b262b93f', 'pinned helper checksum does not match helper bytes');
 m037Assert(hash_file('sha256', $root.'/deploy/config/codex-deploy-backup-erp-m037-full-release.sudoers') === '815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1', 'pinned sudoers checksum does not match sudoers bytes');
 m037Assert(strpos($installer, 'private_root=$(mktemp -d /root/m037-helper-install.') !== false, 'installer does not use a root-owned immutable input copy');
 m037Assert(strpos($installer, 'install -o root -g root -m 0600 "$SOURCE_HELPER" "$private_helper"') !== false, 'installer helper input is not copied once before validation');

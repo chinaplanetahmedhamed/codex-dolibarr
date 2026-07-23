@@ -4,11 +4,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='58b3ca35273bc05e61b5c2abf7afe48c29ec1fa1'
-readonly SHORT_COMMIT='58b3ca3'
+readonly RUNTIME_COMMIT='b4fc34ac5d5f7beb78aec297d9c4afad45b416e7'
+readonly SHORT_COMMIT='b4fc34a'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='c0be577c1247c30d54e19b87eaf412da98ded4c8a5d650b6081d9fc822493b7f'
+readonly ARTIFACT_SHA='52b77b4d31714112b9550634da8342d1aced52e1de364721fb5bee1759e720f7'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
@@ -391,8 +391,24 @@ route_checks() {
 	ROUTE_BODY=''
 }
 
+emit_authenticated_route_diagnostic() {
+	local role=$1 route=$2 expected=$3 output=$4 rc=$5 detail output_class output_bytes output_sha
+	detail=$(printf '%s' "$output" | grep -Eo 'M037_AUTH_ROUTE=FAIL REASON=[A-Za-z0-9_]+([[:space:]][A-Z_]+=[A-Za-z0-9]+)*' | head -n 1 || true)
+	[[ -z "$detail" ]] || echo "$detail" >&2
+	output_bytes=$(printf '%s' "$output" | wc -c | tr -d '[:space:]')
+	output_sha=$(value_sha256 "$output")
+	if [[ -z "$output" ]]; then
+		output_class='EMPTY'
+	elif [[ "$output" == *"$expected"* ]]; then
+		output_class='EXPECTED_MARKER_CONTAMINATED'
+	else
+		output_class='UNCLASSIFIED'
+	fi
+	echo "M037_STAGING_AUTH_DIAGNOSTIC=FAIL ROLE=$role ROUTE=$route CLASS=$output_class EXIT=$rc OUTPUT_BYTES=$output_bytes OUTPUT_SHA256=$output_sha" >&2
+}
+
 authenticated_route_checks() {
-	local role route expected output rc detail
+	local role route expected output rc
 	for role in admin external; do
 		local -n selected_routes="AUTH_${role^^}_ROUTES"
 		for route in "${selected_routes[@]}"; do
@@ -400,8 +416,7 @@ authenticated_route_checks() {
 			output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" "$role" "$route" 2>&1) || rc=$?
 			expected="M037_AUTH_ROUTE_${role^^}_${route^^}=PASS"
 			if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
-				detail=$(printf '%s' "$output" | grep -Eo 'M037_AUTH_ROUTE=FAIL REASON=[A-Za-z0-9_]+' | head -n 1 || true)
-				[[ -z "$detail" ]] || echo "$detail" >&2
+				emit_authenticated_route_diagnostic "$role" "$route" "$expected" "$output" "$rc"
 				echo "M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_${role^^}_ROUTE ROUTE=$route" >&2
 				return 1
 			fi
@@ -411,11 +426,21 @@ authenticated_route_checks() {
 	output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external_denied admin_dashboard 2>&1) || rc=$?
 	expected='M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED'
 	if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
-		detail=$(printf '%s' "$output" | grep -Eo 'M037_AUTH_ROUTE=FAIL REASON=[A-Za-z0-9_]+' | head -n 1 || true)
-		[[ -z "$detail" ]] || echo "$detail" >&2
+		emit_authenticated_route_diagnostic 'external_denied' 'admin_dashboard' "$expected" "$output" "$rc"
 		echo 'M037_STAGING_RUNTIME_FAIL=EXTERNAL_ADMIN_ROUTE_NOT_DENIED ROUTE=admin_dashboard' >&2
 		return 1
 	fi
+}
+
+current_runtime_admin_route_diagnostic() {
+	local role='admin' route='admin_dashboard' expected output rc=0
+	expected='M037_AUTH_ROUTE_ADMIN_ADMIN_DASHBOARD=PASS'
+	output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" "$role" "$route" 2>&1) || rc=$?
+	if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
+		emit_authenticated_route_diagnostic "$role" "$route" "$expected" "$output" "$rc"
+		return 1
+	fi
+	echo 'M037_STAGING_DIAGNOSTIC_ADMIN_CURRENT_RUNTIME=PASS'
 }
 
 runtime_checks() {
@@ -536,13 +561,17 @@ command_compare() {
 }
 
 command_preflight() {
-	check_environment; validate_artifact; candidate_checks; capture_schema_prestate
+	check_environment; validate_artifact; candidate_checks
+	current_runtime_admin_route_diagnostic || die 'CURRENT_RUNTIME_ADMIN_DIAGNOSTIC_FAILED'
+	capture_schema_prestate
 	echo "M037_STAGING_PREFLIGHT=PASS RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA RUNTIME_FILES=${#RUNTIME_FILES[@]} SUPPORT_FILES=${#SUPPORT_FILES[@]} SCHEMA=$(schema_state) SCHEMA_PRESTATE_SHA=$SCHEMA_PRESTATE_SHA"
 }
 
 command_apply() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
-	validate_artifact; candidate_checks; capture_schema_prestate; create_code_backup; create_database_backup
+	validate_artifact; candidate_checks
+	current_runtime_admin_route_diagnostic || die 'CURRENT_RUNTIME_ADMIN_DIAGNOSTIC_FAILED'
+	capture_schema_prestate; create_code_backup; create_database_backup
 	save_state 'APPLY_IN_PROGRESS'
 	local mutated=0
 	trap 'rc=$?; if [[ $mutated -eq 1 ]]; then automatic_rollback; fi; exit $rc' ERR

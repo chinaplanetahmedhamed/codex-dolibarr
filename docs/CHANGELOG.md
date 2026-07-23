@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-07-24 — M037-C01 authenticated admin route diagnostic
+
+- Added safe parent-bootstrap and child-render failure classification to the M037 authenticated route test.
+- Added a read-only current-runtime `admin_dashboard` gate to canonical `backup-erp` preflight and before any future apply.
+- Restricted diagnostic output to fixed reason codes, aggregate counts, exit status, output byte count, and SHA-256; raw HTML, usernames, SQL, credentials, and customer data remain hidden.
+- Kept the existing fixed staging sudo command surface and made no application, database, permission, module, container, port, proxy, document, customer-portal, or mobile change.
+- M037 remains `CORRECTION_REQUIRED`; M037-C01 authorizes preflight diagnosis only and does not authorize another apply or any production action.
+
 ## 2026-07-23 — M036 Shipping Orders admin integration
 
 - Added an internal `Shipping Orders / طلبات الشحن` register backed by existing Operations booking rows, with entity/customer scoping, accepted-price evidence, carrier SO/booking state, linked shipment, and explicit lifecycle filters.
