@@ -1,5 +1,12 @@
 # ChinaPlanetOS Change Log
 
+## 2026-07-24 — M037-C03 production-data-safe shipping runtime
+
+- Made shipping lifecycle JSON reads tolerate malformed or empty legacy values by validating the stored JSON before extraction and falling back to an empty object.
+- Extended the transactional runtime acceptance with a malformed legacy record while preserving exact lifecycle totals, entity/customer isolation, and clean rollback.
+- Verified the correction against the real local MariaDB runtime with `legacy_json=SAFE` and the expected `7 / 4 / 1 / 1 / 1` lifecycle result.
+- Local correction only; no `backup-erp` or production access occurred. A newly pinned artifact and separate exact deployment approval are required.
+
 ## 2026-07-24 — M037-C02 proc-open-free authenticated route harness
 
 - Replaced the staging-only authenticated-route test's disabled `proc_open()` launcher with two fixed helper-controlled `--issue` and `--render` invocations.

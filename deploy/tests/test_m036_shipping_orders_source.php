@@ -34,6 +34,7 @@ try {
         'COUNT(DISTINCT o.rowid)',
     ) as $needle) $assert(strpos($service, $needle) !== false, 'scoped query contract absent '.$needle);
     $assert(strpos($service, "\$stage.\"='published'") !== false, 'published confirmation stage missing');
+    $assert(strpos($service, "JSON_VALID(COALESCE(") !== false && strpos($service, ",'{}')") !== false, 'legacy malformed JSON is not safely normalized before bucket extraction');
     $assert(strpos($service, "IN ('accepted','confirmed')") !== false, 'explicit booking confirmation state missing');
     $assert(strpos($service, "shipping_order_no") !== false && strpos($service, "carrier_booking_no") !== false, 'Carrier SO/booking evidence missing');
     $assert(strpos($service, "'confirmation_incomplete'") !== false, 'incomplete confirmation warning missing');

@@ -22,11 +22,20 @@ try {
     $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."user WHERE entity IN (0,".$entity.") AND statut=1 ORDER BY admin DESC,rowid LIMIT 1");
     $creator = $res ? $db->fetch_object($res) : null; if (!$creator) m036Fail('INTERNAL_USER_REQUIRED');
     $service = new OperationsService($db);
-    $before = $service->shippingOrderStats();
-    $customerBefore = $service->shippingOrderStats($socids[0], true);
     $token = 'M036-'.strtoupper(bin2hex(random_bytes(4)));
+    $legacyRef = 'M036-LEGACY-INVALID-'.strtoupper(bin2hex(random_bytes(4)));
     $now = $db->idate(dol_now());
     $db->begin(); $started = true;
+
+    $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpo_operation(entity,ref,service_type,title,fk_soc,priority,stage,progress,waiting_on,next_action,customer_visible,status,fk_user_creat,date_creation) VALUES(".$entity.",".m036Quote($db,$legacyRef).",'shipping_booking',".m036Quote($db,$legacyRef).",".$socids[0].",'normal','new',0,'internal','legacy invalid JSON',1,1,".(int)$creator->rowid.",".m036Quote($db,$now).")";
+    if (!$db->query($sql)) m036Fail('LEGACY_OPERATION_INSERT_'.$db->lasterror());
+    $legacyOperationId=(int)$db->last_insert_id(MAIN_DB_PREFIX.'cpo_operation');
+    if (!$db->query("INSERT INTO ".MAIN_DB_PREFIX."cpo_operation_data(entity,fk_operation,section_code,data_json,fk_user_modif) VALUES(".$entity.",".$legacyOperationId.",'service','{legacy-invalid-json',".(int)$creator->rowid.")")) m036Fail('LEGACY_INVALID_JSON_INSERT_'.$db->lasterror());
+    $before = $service->shippingOrderStats();
+    $customerBefore = $service->shippingOrderStats($socids[0], true);
+    if ((int)$before['total_current'] < 1 || (int)$customerBefore['total_current'] < 1) m036Fail('LEGACY_JSON_ZEROED_BASELINE');
+    $legacyRows = $service->searchShippingOrders(array('q'=>$legacyRef,'limit'=>5));
+    if (count($legacyRows)!==1 || $legacyRows[0]['lifecycle_bucket']!=='active') m036Fail('LEGACY_JSON_NOT_SAFELY_CLASSIFIED');
 
     $fixtures = array(
         array('suffix'=>'ACTIVE','stage'=>'new','socid'=>$socids[0],'service'=>array('booking_status'=>'under_review'),'booking'=>true),
@@ -98,7 +107,9 @@ try {
     $db->rollback(); $started=false;
     $post = $service->searchShippingOrders(array('q'=>$token,'limit'=>50));
     if (count($post)!==0) m036Fail('ROLLBACK_LEFT_FIXTURES');
-    echo "M036_RUNTIME=PASS total_delta=7 active=4 confirmed=1 closed=1 cancelled=1 ownership=ISOLATED foreign_entity=EXCLUDED rollback=CLEAN\n";
+    $legacyPost = $service->searchShippingOrders(array('q'=>$legacyRef,'limit'=>5));
+    if (count($legacyPost)!==0) m036Fail('ROLLBACK_LEFT_LEGACY_FIXTURE');
+    echo "M036_RUNTIME=PASS total_delta=7 active=4 confirmed=1 closed=1 cancelled=1 legacy_json=SAFE ownership=ISOLATED foreign_entity=EXCLUDED rollback=CLEAN\n";
 } catch (Throwable $e) {
     if ($started) $db->rollback();
     fwrite(STDERR, "M036_RUNTIME=FAIL REASON=".$e->getMessage()."\n");

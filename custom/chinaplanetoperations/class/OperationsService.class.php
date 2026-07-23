@@ -299,9 +299,10 @@ class OperationsService
     {
         $stage = $operationAlias.'.stage';
         $json = $dataAlias.'.data_json';
-        $bookingStatus = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$json.",'$.booking_status')),''))";
-        $shippingOrder = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$json.",'$.shipping_order_no')),''))";
-        $carrierBooking = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$json.",'$.carrier_booking_no')),''))";
+        $safeJson = "IF(JSON_VALID(COALESCE(".$json.",'')),".$json.",'{}')";
+        $bookingStatus = "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$safeJson.",'$.booking_status')),''))";
+        $shippingOrder = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$safeJson.",'$.shipping_order_no')),''))";
+        $carrierBooking = "TRIM(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(".$safeJson.",'$.carrier_booking_no')),''))";
         return "CASE WHEN ".$stage."='cancelled' THEN 'cancelled' WHEN ".$stage."='completed' THEN 'closed' WHEN ".$stage."='published' AND ".$bookingStatus." IN ('accepted','confirmed') AND (".$shippingOrder."<>'' OR ".$carrierBooking."<>'') THEN 'confirmed' ELSE 'active' END";
     }
 
