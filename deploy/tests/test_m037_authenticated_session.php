@@ -184,7 +184,62 @@ define('NOREQUIREHTML', 1);
 define('NOREQUIREAJAX', 1);
 define('NOCSRFCHECK', 1);
 
+$bootstrapBaseLevel = ob_get_level();
+$GLOBALS['m037_parent_bootstrap_completed'] = false;
+ob_start();
+register_shutdown_function(function () use ($bootstrapBaseLevel) {
+    if (!empty($GLOBALS['m037_parent_bootstrap_completed'])) return;
+    $body = '';
+    while (ob_get_level() > $bootstrapBaseLevel) {
+        $chunk = (string) ob_get_contents();
+        ob_end_clean();
+        $body = $chunk.$body;
+    }
+    $lastError = error_get_last();
+    if ($lastError && in_array((int) $lastError['type'], array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR), true)) {
+        $reason = 'PARENT_BOOTSTRAP_FATAL_ERROR';
+    } elseif (stripos($body, 'Dolibarr has detected a technical error') !== false) {
+        $reason = 'PARENT_BOOTSTRAP_DOLIBARR_ERROR';
+    } elseif (strpos($body, 'id="login"') !== false && strpos($body, 'name="username"') !== false && strpos($body, 'name="password"') !== false) {
+        $reason = 'PARENT_BOOTSTRAP_LOGIN_PAGE';
+    } else {
+        $reason = 'PARENT_BOOTSTRAP_EARLY_EXIT';
+    }
+    fwrite(
+        STDERR,
+        "M037_AUTH_ROUTE=FAIL REASON=".$reason.
+        " OUTPUT_BYTES=".strlen($body).
+        " OUTPUT_SHA256=".hash('sha256', $body)."\n"
+    );
+});
 require $documentRoot.'/main.inc.php';
+$bootstrapOutput = '';
+while (ob_get_level() > $bootstrapBaseLevel) {
+    $chunk = (string) ob_get_contents();
+    ob_end_clean();
+    $bootstrapOutput = $chunk.$bootstrapOutput;
+}
+$GLOBALS['m037_parent_bootstrap_completed'] = true;
+if (trim($bootstrapOutput) !== '') {
+    if (stripos($bootstrapOutput, 'Dolibarr has detected a technical error') !== false) {
+        $bootstrapReason = 'PARENT_BOOTSTRAP_DOLIBARR_ERROR';
+    } elseif (preg_match('/PHP (Fatal error|Parse error|Warning|Notice|Deprecated):/i', $bootstrapOutput)) {
+        $bootstrapReason = 'PARENT_BOOTSTRAP_PHP_OUTPUT';
+    } elseif (strpos($bootstrapOutput, 'id="login"') !== false
+        && strpos($bootstrapOutput, 'name="username"') !== false
+        && strpos($bootstrapOutput, 'name="password"') !== false) {
+        $bootstrapReason = 'PARENT_BOOTSTRAP_LOGIN_PAGE';
+    } else {
+        $bootstrapReason = 'PARENT_BOOTSTRAP_OUTPUT';
+    }
+    fwrite(
+        STDERR,
+        "M037_AUTH_ROUTE=FAIL REASON=".$bootstrapReason.
+        " OUTPUT_BYTES=".strlen($bootstrapOutput).
+        " OUTPUT_SHA256=".hash('sha256', $bootstrapOutput)."\n"
+    );
+    exit(1);
+}
 require_once $documentRoot.'/user/class/user.class.php';
 global $db, $conf, $user;
 
@@ -196,20 +251,36 @@ $res = $db->query(
     " WHERE u.entity IN (".getEntity('user').") AND u.statut=1 AND ".$where.
     " ORDER BY u.rowid LIMIT 100"
 );
+if (!$res) {
+    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=ROLE_QUERY_FAILED\n");
+    exit(1);
+}
 $routeUser = null;
-while ($res && ($row = $db->fetch_object($res))) {
+$candidateCount = 0;
+$loadableCount = 0;
+$rightsCount = 0;
+while ($row = $db->fetch_object($res)) {
+    $candidateCount++;
     $candidate = new User($db);
     if ($candidate->fetch((int) $row->rowid) <= 0 || $candidate->getrights('', 1) < 0) continue;
+    $loadableCount++;
     if ($role !== 'admin'
         && (!$candidate->hasRight('chinaplanetcustomercenter', 'read')
             || !$candidate->hasRight('chinaplanetlogistics', 'read')
             || !$candidate->hasRight('chinaplanetshippingprices', 'read')
             || !$candidate->hasRight('chinaplanetshippingprices', 'booking_submit'))) continue;
+    $rightsCount++;
     $routeUser = $candidate;
     break;
 }
 if (!$routeUser) {
-    fwrite(STDERR, "M037_AUTH_ROUTE=FAIL REASON=ROLE_USER_ABSENT\n");
+    fwrite(
+        STDERR,
+        "M037_AUTH_ROUTE=FAIL REASON=ROLE_USER_ABSENT".
+        " CANDIDATES=".$candidateCount.
+        " LOADABLE=".$loadableCount.
+        " RIGHTS_MATCH=".$rightsCount."\n"
+    );
     exit(1);
 }
 if (($role === 'admin' && (empty($routeUser->admin) || !empty($routeUser->socid)))

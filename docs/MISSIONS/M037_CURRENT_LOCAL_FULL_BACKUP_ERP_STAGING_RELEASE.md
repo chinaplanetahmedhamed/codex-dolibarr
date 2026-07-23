@@ -17,7 +17,7 @@ Ahmed explicitly changed the release scope from the M035/M036 subset to **all co
 
 - **Mission ID:** M037
 - **Type:** RELEASE_PREPARATION
-- **Status:** IN_PROGRESS
+- **Status:** CORRECTION_REQUIRED
 - **Architect owner:** Agent 007 — ChinaPlanetOS Central Architect & Operations Agent
 - **Implementation owner:** Agent 007 — Git Engineer and restricted staging operator
 - **Required reviewers:** Shipping Operations, Security, QA
@@ -149,3 +149,11 @@ Create `docs/REPORTS/M037_COMPLETION_REPORT.md` with branch/commits, artifact/ma
 - Installer SHA-256: `d221293502f9d61017855d049d50473ec1a71cda6fc2d5590f0214ac256221a5`.
 - All files are uploaded to the canonical private staging inbox with matching hashes.
 - The helper is not installed yet; `compare → preflight → apply → verify → status` has not run. Installation requires the fixed root-only installer and is the only remaining gate before restricted staging execution.
+
+## Correction gate — 2026-07-24
+
+- The original M037 apply failed at the authenticated admin route and rolled back successfully.
+- A user-scope correction was built at runtime commit `58b3ca35273bc05e61b5c2abf7afe48c29ec1fa1`, artifact SHA-256 `c0be577c1247c30d54e19b87eaf412da98ded4c8a5d650b6081d9fc822493b7f`, and helper SHA-256 `aa09f1db34a4e8f0a12c569e7615cc22ef0b3aa0e0f1a39eba9cf2298e48f074`.
+- Its canonical staging preflight passed, but apply again failed at `AUTHENTICATED_ADMIN_ROUTE ROUTE=admin_dashboard`.
+- Automatic rollback passed for code, database/schema pre-state, verification, and staging HTTP health; recorded state is `APPLY_FAILED_ROLLED_BACK`.
+- M037 is therefore `CORRECTION_REQUIRED`. No further apply is authorized until M037-C01 produces an actionable read-only diagnosis and a separately reviewed correction.
