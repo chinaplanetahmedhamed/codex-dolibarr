@@ -25,10 +25,22 @@ try {
     $customer->rights->chinaplanetshippingprices->read = 1;
     $customer->rights->chinaplanetshippingprices->booking_submit = 1;
 
-    $sql = "SELECT r.rowid,r.pol,r.destination_country,r.pod,r.shipping_line,r.container_type,r.service_type FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity AND b.status=2 WHERE r.entity=".(int)$conf->entity." AND r.status=1 AND r.is_current=1 AND r.public_visible=1 AND r.container_type IN ('20GP','40GP','40HQ') AND r.valid_from<=CURDATE() AND COALESCE(r.valid_to,DATE_ADD(b.effective_date,INTERVAL 30 DAY))>=CURDATE() ORDER BY r.sale_price LIMIT 1";
-    $res = $db->query($sql); $candidate = $res ? $db->fetch_object($res) : null; if (!$candidate) m035Fail('NO_BOOKABLE_RATE');
+    $prices = new ShippingPriceService($db);
+    $search = $prices->search(array('incoterm'=>'FOB','cargo_type'=>'normal','documents'=>array()), false, 250);
+    if (!empty($search['error'])) m035Fail('RATE_SEARCH_FAILED');
+    $rate = !empty($search['results']) ? reset($search['results']) : null;
+    if (!$rate) m035Fail('NO_BOOKABLE_RATE');
+    $candidate = (object) array(
+        'rowid'=>$rate['rate_id'],
+        'pol'=>$rate['pol'],
+        'destination_country'=>$rate['country_code'],
+        'pod'=>$rate['pod'],
+        'shipping_line'=>$rate['shipping_line'],
+        'container_type'=>$rate['container_type'],
+        'service_type'=>$rate['service_type'],
+    );
     $filters = array('pol'=>$candidate->pol,'country_code'=>$candidate->destination_country,'pod'=>$candidate->pod,'shipping_line'=>$candidate->shipping_line,'container_type'=>$candidate->container_type,'service_type'=>$candidate->service_type,'incoterm'=>'FOB','cargo_type'=>'normal','documents'=>array());
-    $prices = new ShippingPriceService($db); $rate = $prices->getCustomerRateById((int)$candidate->rowid, $filters); if (!$rate) m035Fail('SAFE_RATE_PROJECTION_EMPTY');
+    $rate = $prices->getCustomerRateById((int)$candidate->rowid, $filters); if (!$rate) m035Fail('SAFE_RATE_REVALIDATION_EMPTY');
     $forbidden = json_encode($rate); foreach (array('cost_price','supplier_cost','base_margin','source_sheet','source_row','batch_ref','rule_id','internal_notes','route_detail') as $needle) if (strpos($forbidden,$needle)!==false) m035Fail('RATE_LEAK_'.$needle);
 
     $before = array('propal'=>m035Count($db,'propal'),'commande'=>m035Count($db,'commande'),'facture'=>m035Count($db,'facture'),'paiement'=>m035Count($db,'paiement'));
