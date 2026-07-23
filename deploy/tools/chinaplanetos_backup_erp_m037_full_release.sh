@@ -333,35 +333,74 @@ compare_files() {
 route_checks() {
 	local route status
 	for route in "${ROUTES[@]}"; do
-		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}${route}") || return 1
+		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}${route}") || {
+			echo "M037_STAGING_RUNTIME_FAIL=ROUTE_CONNECTION ROUTE=$route" >&2
+			return 1
+		}
 		if [[ "$route" == '/' ]]; then
-			[[ "$status" =~ ^(200|302)$ ]] || return 1
+			[[ "$status" =~ ^(200|302)$ ]] || {
+				echo "M037_STAGING_RUNTIME_FAIL=ROUTE_STATUS ROUTE=$route HTTP=$status" >&2
+				return 1
+			}
 		else
-			[[ "$status" =~ ^(302|401|403)$ ]] || return 1
+			[[ "$status" =~ ^(302|401|403)$ ]] || {
+				echo "M037_STAGING_RUNTIME_FAIL=ROUTE_STATUS ROUTE=$route HTTP=$status" >&2
+				return 1
+			}
 		fi
 	done
 }
 
 authenticated_route_checks() {
-	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" admin >/dev/null || return 1
-	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external >/dev/null
+	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" admin >/dev/null || {
+		echo 'M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_ADMIN_ROUTES' >&2
+		return 1
+	}
+	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external >/dev/null || {
+		echo 'M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_EXTERNAL_ROUTES' >&2
+		return 1
+	}
 }
 
 runtime_checks() {
 	local file rel
 	for file in "${RUNTIME_FILES[@]}"; do
 		rel=${file#custom/}
-		[[ -f "$TARGET_ROOT/$rel" && ! -L "$TARGET_ROOT/$rel" ]] || return 1
-		[[ $(sha256 "$TARGET_ROOT/$rel") == $(sha256 "$CANDIDATE_ROOT/$file") ]] || return 1
-		if [[ "$file" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "/var/www/html/$file" >/dev/null || return 1; fi
+		[[ -f "$TARGET_ROOT/$rel" && ! -L "$TARGET_ROOT/$rel" ]] || {
+			echo "M037_STAGING_RUNTIME_FAIL=RUNTIME_FILE_INVALID FILE=$file" >&2
+			return 1
+		}
+		[[ $(sha256 "$TARGET_ROOT/$rel") == $(sha256 "$CANDIDATE_ROOT/$file") ]] || {
+			echo "M037_STAGING_RUNTIME_FAIL=RUNTIME_HASH_MISMATCH FILE=$file" >&2
+			return 1
+		}
+		if [[ "$file" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "/var/www/html/$file" >/dev/null || {
+			echo "M037_STAGING_RUNTIME_FAIL=RUNTIME_LINT FILE=$file" >&2
+			return 1
+		}; fi
 	done
-	[[ $(schema_state) == 'PRESENT' ]] || return 1
-	docker exec -e M034_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[0]}" >/dev/null || return 1
-	docker exec -e M035_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[1]}" >/dev/null || return 1
-	docker exec -e M036_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[2]}" >/dev/null || return 1
-	docker exec -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_customer_portal_scope_integration.php" >/dev/null || return 1
+	[[ $(schema_state) == 'PRESENT' ]] || {
+		echo 'M037_STAGING_RUNTIME_FAIL=SCHEMA_NOT_PRESENT' >&2
+		return 1
+	}
+	docker exec -e M034_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[0]}" >/dev/null || {
+		echo 'M037_STAGING_RUNTIME_FAIL=M034_PUBLICATION_RUNTIME' >&2
+		return 1
+	}
+	docker exec -e M035_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[1]}" >/dev/null || {
+		echo 'M037_STAGING_RUNTIME_FAIL=M035_BOOKING_RUNTIME' >&2
+		return 1
+	}
+	docker exec -e M036_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[2]}" >/dev/null || {
+		echo 'M037_STAGING_RUNTIME_FAIL=M036_SHIPPING_ORDERS_RUNTIME' >&2
+		return 1
+	}
+	docker exec -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_customer_portal_scope_integration.php" >/dev/null || {
+		echo 'M037_STAGING_RUNTIME_FAIL=CUSTOMER_PORTAL_SCOPE' >&2
+		return 1
+	}
 	route_checks || return 1
-	authenticated_route_checks
+	authenticated_route_checks || return 1
 }
 
 rollback_checks() {
