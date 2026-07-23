@@ -134,7 +134,7 @@ validate_manifest() {
 	local manifest=$1 expected_sha=$2 prefix_pattern=$3
 	[[ -f "$CANDIDATE_ROOT/$manifest" && ! -L "$CANDIDATE_ROOT/$manifest" ]] || die 'MANIFEST_INVALID'
 	[[ $(sha256 "$CANDIDATE_ROOT/$manifest") == "$expected_sha" ]] || die 'MANIFEST_HASH_MISMATCH'
-	[[ -z $(awk 'NF==0 || $0 ~ /^\\// || $0 ~ /(^|\\/)\\.\\.($|\\/)/ || $0 !~ /^[A-Za-z0-9_.\\/-]+$/ {print; exit}' "$CANDIDATE_ROOT/$manifest") ]] || die 'MANIFEST_ENTRY_INVALID'
+	[[ -z $(awk 'NF==0 || $0 ~ /^\// || $0 ~ /(^|\/)\.\.($|\/)/ || $0 !~ /^[A-Za-z0-9_./-]+$/ {print; exit}' "$CANDIDATE_ROOT/$manifest") ]] || die 'MANIFEST_ENTRY_INVALID'
 	[[ -z $(LC_ALL=C sort "$CANDIDATE_ROOT/$manifest" | uniq -d) ]] || die 'MANIFEST_DUPLICATE_ENTRY'
 	[[ -z $(awk -v pattern="$prefix_pattern" '$0 !~ pattern {print; exit}' "$CANDIDATE_ROOT/$manifest") ]] || die 'MANIFEST_SCOPE_INVALID'
 }
@@ -149,9 +149,9 @@ validate_artifact() {
 	listing=$(mktemp); expected=$(mktemp); actual=$(mktemp)
 	tar -tzf "$ARTIFACT_COPY" >"$listing" || die 'ARTIFACT_TAR_INVALID'
 	[[ -z $(tar -tvzf "$ARTIFACT_COPY" | awk 'substr($1,1,1)!="-" {print; exit}') ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
-	[[ -z $(awk '/^\\// || /(^|\\/)\\.\\.($|\\/)/ || /\\/$/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
+	[[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
 	[[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
-	[[ -z $(grep -E '(^|/)(\\.env|conf\\.php|\\.DS_Store|[^/]*\\.(pem|key|p12|dump|log|bak|tmp))$' "$listing" || true) ]] || die 'ARTIFACT_FORBIDDEN_FILE'
+	[[ -z $(grep -E '(^|/)(\.env|conf\.php|\.DS_Store|[^/]*\.(pem|key|p12|dump|log|bak|tmp))$' "$listing" || true) ]] || die 'ARTIFACT_FORBIDDEN_FILE'
 	CANDIDATE_ROOT=$(mktemp -d /root/m037-candidate.XXXXXX)
 	tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT"
 	[[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) ]] || die 'ARTIFACT_SYMLINK_FORBIDDEN'
@@ -173,6 +173,8 @@ validate_artifact() {
 candidate_checks() {
 	CANDIDATE_REMOTE="/tmp/m037-staging-candidate-$$"
 	docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE"
+	docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE"
+	docker exec "$TARGET_CONTAINER" cp -a /var/www/html/custom "$CANDIDATE_REMOTE/custom"
 	docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
 	local file
 	for file in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do
