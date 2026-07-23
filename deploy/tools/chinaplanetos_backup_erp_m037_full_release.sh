@@ -4,11 +4,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='ab1cda441d2f81be4f19974ab7065d30efdc5a2a'
-readonly SHORT_COMMIT='ab1cda4'
+readonly RUNTIME_COMMIT='7800b804c43e9e1acabf93e34ad98e6d1e1dd0a9'
+readonly SHORT_COMMIT='7800b80'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='20dfc0560e633fd9496bbd48eb58a8b257b132b0a402235e2ba288158b89829c'
+readonly ARTIFACT_SHA='8dded4750f01d696589446894ef726908862b7bc612a44d933a088e56379b180'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
@@ -65,6 +65,24 @@ readonly -a ROUTES=(
 	'/custom/chinaplanetoperations/operations/shipping_orders.php'
 	'/custom/chinaplanetshippingprices/sop/index.php'
 	'/custom/chinaplanetshippingprices/index.php'
+)
+readonly -a AUTH_ADMIN_ROUTES=(
+	'admin_dashboard'
+	'financial_portfolio'
+	'operations'
+	'logistics_index'
+	'shipping_orders'
+	'shipping_sop'
+)
+readonly -a AUTH_EXTERNAL_ROUTES=(
+	'board'
+	'documents'
+	'operation_reports'
+	'projects'
+	'orders'
+	'balance'
+	'logistics_list'
+	'shipping_prices'
 )
 
 RUNTIME_FILES=()
@@ -374,14 +392,30 @@ route_checks() {
 }
 
 authenticated_route_checks() {
-	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" admin >/dev/null || {
-		echo 'M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_ADMIN_ROUTES' >&2
+	local role route expected output rc detail
+	for role in admin external; do
+		local -n selected_routes="AUTH_${role^^}_ROUTES"
+		for route in "${selected_routes[@]}"; do
+			rc=0
+			output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" "$role" "$route" 2>&1) || rc=$?
+			expected="M037_AUTH_ROUTE_${role^^}_${route^^}=PASS"
+			if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
+				detail=$(printf '%s' "$output" | grep -Eo 'M037_AUTH_ROUTE=FAIL REASON=[A-Za-z0-9_]+' | head -n 1 || true)
+				[[ -z "$detail" ]] || echo "$detail" >&2
+				echo "M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_${role^^}_ROUTE ROUTE=$route" >&2
+				return 1
+			fi
+		done
+	done
+	rc=0
+	output=$(docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external_denied admin_dashboard 2>&1) || rc=$?
+	expected='M037_AUTH_ROUTE_EXTERNAL_ADMIN_DASHBOARD=DENIED'
+	if [[ $rc -ne 0 || "$output" != "$expected" ]]; then
+		detail=$(printf '%s' "$output" | grep -Eo 'M037_AUTH_ROUTE=FAIL REASON=[A-Za-z0-9_]+' | head -n 1 || true)
+		[[ -z "$detail" ]] || echo "$detail" >&2
+		echo 'M037_STAGING_RUNTIME_FAIL=EXTERNAL_ADMIN_ROUTE_NOT_DENIED ROUTE=admin_dashboard' >&2
 		return 1
-	}
-	docker exec -u www-data -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m037_authenticated_session.php" external >/dev/null || {
-		echo 'M037_STAGING_RUNTIME_FAIL=AUTHENTICATED_EXTERNAL_ROUTES' >&2
-		return 1
-	}
+	fi
 }
 
 runtime_checks() {
