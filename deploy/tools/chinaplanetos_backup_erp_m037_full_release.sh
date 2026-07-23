@@ -97,10 +97,13 @@ cleanup() {
 }
 
 check_environment() {
-	local target_mode
+	local target_mode target_owner service_owner
 	[[ "$TARGET_CONTAINER" == 'erp-staging-dolibarr-1' && "$TARGET_DB_CONTAINER" == 'erp-staging-mariadb-1' && "$TARGET_MAILPIT_CONTAINER" == 'erp-staging-mailpit-1' && "$TARGET_VOLUME" == 'erp-staging_erp-staging_custom' ]] || die 'STAGING_TARGET_CONSTANT_MISMATCH'
 	[[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" ]] || die 'STAGING_ROOT_INVALID'
-	[[ $(stat -c '%U:%G' "$TARGET_ROOT") == 'root:root' ]] || die 'STAGING_ROOT_OWNER_INVALID'
+	target_owner=$(stat -c '%u:%g' "$TARGET_ROOT")
+	service_owner=$(docker exec "$TARGET_CONTAINER" sh -c 'printf "%s:%s" "$(id -u www-data)" "$(id -g www-data)"')
+	[[ "$target_owner" == '0:0' || "$target_owner" == "$service_owner" ]] || die 'STAGING_ROOT_OWNER_INVALID'
+	[[ $(docker exec "$TARGET_CONTAINER" stat -c '%u:%g' /var/www/html/custom) == "$target_owner" ]] || die 'STAGING_ROOT_CONTAINER_OWNER_MISMATCH'
 	target_mode=$(stat -c '%a' "$TARGET_ROOT")
 	(( (8#$target_mode & 8#022) == 0 )) || die 'STAGING_ROOT_MODE_UNSAFE'
 	[[ $(docker inspect -f '{{.State.Running}}' "$TARGET_CONTAINER" 2>/dev/null) == 'true' ]] || die 'STAGING_CONTAINER_NOT_RUNNING'
