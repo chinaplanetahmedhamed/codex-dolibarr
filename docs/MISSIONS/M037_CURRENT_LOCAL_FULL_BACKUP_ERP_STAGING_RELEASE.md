@@ -17,7 +17,7 @@ Ahmed explicitly changed the release scope from the M035/M036 subset to **all co
 
 - **Mission ID:** M037
 - **Type:** RELEASE_PREPARATION
-- **Status:** APPROVED
+- **Status:** IN_PROGRESS
 - **Architect owner:** Agent 007 — ChinaPlanetOS Central Architect & Operations Agent
 - **Implementation owner:** Agent 007 — Git Engineer and restricted staging operator
 - **Required reviewers:** Shipping Operations, Security, QA
@@ -130,12 +130,22 @@ Prepare, deploy, and verify all completed current local ChinaPlanetOS changes on
 
 | Role | Reviewer/task | Result | Date | Evidence/conditions |
 |---|---|---|---|---|
-| Shipping Operations | M036 accepted review reused for unchanged workflow; M037 release review | PENDING | 2026-07-23 | Must confirm release does not alter shipping semantics |
-| Security | M037 release/helper review | PENDING | 2026-07-23 | Must confirm allowlist, schema pre-state, access and rollback |
-| QA | M037 staging acceptance | PENDING | 2026-07-23 | Must confirm artifact/tests/cleanup and runtime routes |
+| Shipping Operations | M036 accepted review reused for unchanged workflow; M037 release review | PASS | 2026-07-23 | FCL, accepted-price, ownership, idempotency, eligibility, accounting, canonical project and port guards unchanged |
+| Security | M037 release/helper review | PASS | 2026-07-23 | Exact allowlist, immutable input copies, authenticated in-process checks, schema/code/DB pre-state recovery and production boundary passed |
+| QA | M037 staging release-readiness review | PASS | 2026-07-23 | Artifact `824fa12` / `32037f6a…`, cleanup, routes, interrupted-apply recovery and rollback state machine passed; runtime acceptance still required |
 | Architect | Agent 007 | APPROVED | 2026-07-23 | Scope frozen to canonical backup-erp and M035/M036 dependency closure |
 | Ahmed | Ahmed Hamed | APPROVED | 2026-07-23 | `ok, do it` after staging-first gates and production prohibition |
 
 ## Completion report contract
 
 Create `docs/REPORTS/M037_COMPLETION_REPORT.md` with branch/commits, artifact/manifest/SHA, exact deployed files, DB/permission pre-state and outcome, helper/installer evidence, staging backups, tests, rollback, reviewers, and explicit production non-access.
+
+## Current release gate — 2026-07-23
+
+- Runtime artifact commit: `824fa129ff3f4445ba2c469728fef8245957f05e`.
+- Artifact: `m037-full-824fa12.tar.gz`.
+- Artifact SHA-256: `32037f6a0a6a1b7e8cc579f6eba25d4569e66f6e27e28b0d4b87c31bc375c30e`.
+- Restricted helper SHA-256: `b87c646320620a4779e39b99273cbb5bdf147d5f54f3a7434ed3568a157e9e55`.
+- Installer SHA-256: `d221293502f9d61017855d049d50473ec1a71cda6fc2d5590f0214ac256221a5`.
+- All files are uploaded to the canonical private staging inbox with matching hashes.
+- The helper is not installed yet; `compare → preflight → apply → verify → status` has not run. Installation requires the fixed root-only installer and is the only remaining gate before restricted staging execution.
