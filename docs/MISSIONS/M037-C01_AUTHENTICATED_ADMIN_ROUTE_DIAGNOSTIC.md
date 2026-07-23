@@ -83,15 +83,15 @@ No application or database rollback is required because the correction run is re
 
 | Role | Result | Date | Evidence |
 |---|---|---|---|
-| Security | PASS | 2026-07-24 | Safe aggregate diagnostics, metadata-warning fail-closed guards, stdin-only identity, pre-mutation gate, unchanged sudo surface, exact installer rotation, staging-only boundary |
-| QA | PASS | 2026-07-24 | 14 positive routes plus external denial, M029–M037 regressions, PHP/Bash/visudo, metadata-free 71-entry ustar artifact, exact hashes |
+| Security | PASS | 2026-07-24 | Safe aggregate diagnostics, least-privilege temporary candidate access, metadata-warning guards, stdin-only identity, pre-mutation gate, unchanged sudo surface |
+| QA | PASS | 2026-07-24 | 14 positive routes plus external denial, candidate access/classifier contract, M029–M037 regressions, metadata-free 71-entry artifact, exact hashes |
 | Architect | APPROVED | 2026-07-24 | Scope limited to read-only staging diagnosis |
 | Ahmed | APPROVED | 2026-07-24 | `ok do it` |
 
 ## Frozen release candidate
 
 - Runtime artifact commit: `b4fc34ac5d5f7beb78aec297d9c4afad45b416e7`
-- Release tooling commit: `0509240`
+- Release tooling commit: `aaf1e33`
 - Artifact: `m037-full-b4fc34a.tar.gz`
 - Artifact SHA-256: `5f6bc33af781ac20898d78e25e9dc011a3dd2451fa061c52e8697202bf6d39f1`
 - Artifact entries: `71` regular files (`52` runtime, `17` support, `2` manifests)
