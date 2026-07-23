@@ -2,7 +2,7 @@
 /** Additive local/staging-safe M035 accepted-price booking schema migration. */
 
 if (PHP_SAPI !== 'cli') { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=CLI_ONLY\n"); exit(1); }
-if ($argc !== 2 || !in_array($argv[1], array('check','apply'), true)) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=COMMAND_NOT_ALLOWED\n"); exit(1); }
+if ($argc !== 2 || !in_array($argv[1], array('check','apply','snapshot','rollback'), true)) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=COMMAND_NOT_ALLOWED\n"); exit(1); }
 
 define('NOLOGIN', 1);
 define('NOREQUIREMENU', 1);
@@ -18,7 +18,7 @@ $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 $_SERVER['SERVER_NAME'] = 'localhost';
 $_SERVER['SERVER_PORT'] = '80';
 require $documentRoot.'/master.inc.php';
-global $db;
+global $db, $conf;
 
 $table = MAIN_DB_PREFIX.'chinaplanetsp_booking';
 $pattern = str_replace(array('\\','_','%'), array('\\\\','\\_','\\%'), $table);
@@ -26,6 +26,75 @@ $exists = function () use ($db, $pattern) {
     $res = $db->query("SHOW TABLES LIKE '".$db->escape($pattern)."'");
     return $res && $db->num_rows($res) === 1;
 };
+
+if ($argv[1] === 'snapshot') {
+    $right = null;
+    $rightColumns = array('id','entity','libelle','module','module_origin','module_position','family','family_position','perms','subperms','type','bydefault','enabled');
+    $res = $db->query("SELECT ".implode(',', $rightColumns)." FROM ".MAIN_DB_PREFIX."rights_def WHERE entity=".(int)$conf->entity." AND id=500411");
+    if (!$res) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=SNAPSHOT_PERMISSION_QUERY_FAILED\n"); exit(1); }
+    if ($obj = $db->fetch_object($res)) {
+        $right = array();
+        foreach ($rightColumns as $column) $right[$column] = $obj->{$column};
+    }
+    $users = array();
+    $res = $db->query("SELECT fk_user FROM ".MAIN_DB_PREFIX."user_rights WHERE fk_id=500411 ORDER BY fk_user");
+    if (!$res) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=SNAPSHOT_GRANT_QUERY_FAILED\n"); exit(1); }
+    while ($obj = $db->fetch_object($res)) $users[] = (int)$obj->fk_user;
+    $snapshot = array(
+        'version'=>1,
+        'entity'=>(int)$conf->entity,
+        'table_exists'=>$exists(),
+        'right'=>$right,
+        'user_rights'=>$users,
+    );
+    $json = json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false) { fwrite(STDERR, "M035_SCHEMA=FAIL REASON=SNAPSHOT_ENCODING_FAILED\n"); exit(1); }
+    echo "M035_SCHEMA_SNAPSHOT=".base64_encode($json)."\n";
+    exit(0);
+}
+
+if ($argv[1] === 'rollback') {
+    $encoded = getenv('M035_SCHEMA_PRESTATE_B64');
+    $decoded = $encoded ? base64_decode($encoded, true) : false;
+    $snapshot = $decoded !== false ? json_decode($decoded, true) : null;
+    if (!is_array($snapshot) || (int)($snapshot['version'] ?? 0) !== 1 || (int)($snapshot['entity'] ?? 0) !== (int)$conf->entity || !array_key_exists('table_exists', $snapshot) || !array_key_exists('right', $snapshot) || !isset($snapshot['user_rights']) || !is_array($snapshot['user_rights'])) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_PRESTATE_INVALID\n");
+        exit(1);
+    }
+    $rightColumns = array('id','entity','libelle','module','module_origin','module_position','family','family_position','perms','subperms','type','bydefault','enabled');
+    $quote = function ($value) use ($db) { return $value === null ? 'NULL' : "'".$db->escape((string)$value)."'"; };
+    $db->begin();
+    if (!$db->query("DELETE FROM ".MAIN_DB_PREFIX."user_rights WHERE fk_id=500411")) {
+        $db->rollback(); fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_GRANT_DELETE_FAILED\n"); exit(1);
+    }
+    foreach ($snapshot['user_rights'] as $userId) {
+        $userId = (int)$userId;
+        if ($userId <= 0 || !$db->query("INSERT IGNORE INTO ".MAIN_DB_PREFIX."user_rights(fk_user,fk_id) VALUES(".$userId.",500411)")) {
+            $db->rollback(); fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_GRANT_RESTORE_FAILED\n"); exit(1);
+        }
+    }
+    if (!$db->query("DELETE FROM ".MAIN_DB_PREFIX."rights_def WHERE entity=".(int)$conf->entity." AND id=500411")) {
+        $db->rollback(); fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_PERMISSION_DELETE_FAILED\n"); exit(1);
+    }
+    if (is_array($snapshot['right'])) {
+        $values = array();
+        foreach ($rightColumns as $column) {
+            if (!array_key_exists($column, $snapshot['right'])) {
+                $db->rollback(); fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_PERMISSION_PRESTATE_INVALID\n"); exit(1);
+            }
+            $values[] = $quote($snapshot['right'][$column]);
+        }
+        if (!$db->query("INSERT INTO ".MAIN_DB_PREFIX."rights_def(".implode(',', $rightColumns).") VALUES(".implode(',', $values).")")) {
+            $db->rollback(); fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_PERMISSION_RESTORE_FAILED\n"); exit(1);
+        }
+    }
+    $db->commit();
+    if (empty($snapshot['table_exists']) && !$db->query("DROP TABLE IF EXISTS `".$table."`")) {
+        fwrite(STDERR, "M035_SCHEMA=FAIL REASON=ROLLBACK_TABLE_DROP_FAILED\n"); exit(1);
+    }
+    echo "M035_SCHEMA_ROLLBACK=PASS\n";
+    exit(0);
+}
 
 if ($argv[1] === 'check') {
     if (!$exists()) { fwrite(STDERR, "M035_SCHEMA_CHECK=ABSENT\n"); exit(2); }

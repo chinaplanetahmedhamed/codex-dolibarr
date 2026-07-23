@@ -13,6 +13,7 @@ try {
     $portalCss=$read('custom/chinaplanetcustomercenter/css/portal.css');
     $routeguard=$read('custom/chinaplanetcustomercenter/lib/routeguard.lib.php');
     $operations=$read('custom/chinaplanetoperations/class/OperationsService.class.php');
+    $migration=$read('deploy/migrations/m035_customer_shipping_booking_schema.php');
     foreach(array('supplier_cost','cost_price','base_margin','source_sheet','source_row','batch_ref','rule_id','internal_notes','note_private') as$forbidden)$assert(strpos($page,$forbidden)===false,'customer page leak token '.$forbidden);
     $assert(strpos($booking,"\$posted['fk_soc']")===false&&strpos($booking,"\$posted['entity']")===false,'client authority accepted');
     $assert(strpos($booking,"'source_channel'=>'customer_rate_booking'")!==false,'bounded operations channel absent');
@@ -38,5 +39,7 @@ try {
     $assert(strpos($page,'Notify Party (optional)')!==false&&strpos($page,'name="notify_party" maxlength="500" required')===false,'Notify Party is not optional');
     $assert(strpos($page,'id="cpsb-total" dir="ltr"')!==false,'price calculation direction isolation absent');
     $assert(strpos($page,'<h3 dir="ltr">')!==false&&strpos($page,'<strong dir="ltr">')!==false&&strpos($page,'<span dir="ltr">')!==false,'rate route or currency direction isolation absent');
+    $assert(strpos($migration,"'snapshot'")!==false&&strpos($migration,"'rollback'")!==false,'schema pre-state rollback commands absent');
+    $assert(strpos($migration,'M035_SCHEMA_PRESTATE_B64')!==false&&strpos($migration,'DROP TABLE IF EXISTS')!==false,'schema rollback does not restore the captured pre-state');
     echo "M035_SOURCE=PASS projection=ALLOWLIST authority=SESSION atomic=YES responsive=320-1920 accessibility=PASS\n";
 } catch(Throwable$e) { fwrite(STDERR,"M035_SOURCE=FAIL REASON=".$e->getMessage()."\n"); exit(1); }
