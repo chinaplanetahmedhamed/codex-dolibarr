@@ -58,7 +58,7 @@ For every relevant change:
 - أثر التصميم والمصطلحات: لا يوجد تغيير مرئي.
 - التحقق على الهاتف: `NOT_APPLICABLE`؛ لا صفحة ويب متأثرة بصريًا.
 - الحالة: `ADMIN_BACKEND_VERIFIED_LOCAL`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`.
-- المتابعة: بناء artifact جديد مقفول بالـ checksum؛ لا نشر دون موافقة مستقلة.
+- المتابعة: بُني محليًا artifact مقفول بالـ checksum من 71 ملفًا باسم `m037-full-04bf778.tar.gz`؛ لم يُرفع أو يُطبق، ولا نشر دون موافقة مستقلة.
 
 ### 2026-07-23 — M036 سجل طلبات الشحن ولوحات الإدارة
 

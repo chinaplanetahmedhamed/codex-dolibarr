@@ -60,5 +60,7 @@ Correct the M036 shipping-orders runtime acceptance failure exposed by real prod
 - PHP lint: `PASS`.
 - Focused source contract: `PASS`.
 - Transactional local runtime: `M036_RUNTIME=PASS total_delta=7 active=4 confirmed=1 closed=1 cancelled=1 legacy_json=SAFE ownership=ISOLATED foreign_entity=EXCLUDED rollback=CLEAN`.
+- Release contract: `M037_RELEASE_TEST=PASS RUNTIME_FILES=52 SUPPORT_FILES=17 COMMANDS=6 PRODUCTION=FORBIDDEN`.
+- Correction artifact: `m037-full-04bf778.tar.gz`, SHA-256 `6a55707932d683e33cd2ad96c085be7fefa432ee17a34a4d7fed3d38366f4f99`, exactly 71 allowlisted regular files.
 - No `backup-erp` or production access occurred during implementation or verification.
-- Release packaging and restricted-helper pins are recorded in the release commit that follows this runtime correction.
+- Restricted backup and production helper pins are prepared locally for a later, separately approved deployment.

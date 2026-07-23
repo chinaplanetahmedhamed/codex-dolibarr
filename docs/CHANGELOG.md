@@ -5,7 +5,8 @@
 - Made shipping lifecycle JSON reads tolerate malformed or empty legacy values by validating the stored JSON before extraction and falling back to an empty object.
 - Extended the transactional runtime acceptance with a malformed legacy record while preserving exact lifecycle totals, entity/customer isolation, and clean rollback.
 - Verified the correction against the real local MariaDB runtime with `legacy_json=SAFE` and the expected `7 / 4 / 1 / 1 / 1` lifecycle result.
-- Local correction only; no `backup-erp` or production access occurred. A newly pinned artifact and separate exact deployment approval are required.
+- Built the allowlisted 71-file correction artifact `m037-full-04bf778.tar.gz` with SHA-256 `6a55707932d683e33cd2ad96c085be7fefa432ee17a34a4d7fed3d38366f4f99`, and pinned restricted backup and production helpers without installing or running them.
+- Local correction and Git release preparation only; no `backup-erp` or production access occurred. Separate exact deployment approval is required.
 
 ## 2026-07-24 — M037-C02 proc-open-free authenticated route harness
 
