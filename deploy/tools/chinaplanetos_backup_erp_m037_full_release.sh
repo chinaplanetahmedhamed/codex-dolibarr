@@ -4,18 +4,20 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M037_FULL_CURRENT_LOCAL'
-readonly RUNTIME_COMMIT='8be3edb644c5da4b03a80da589dff466904b8e64'
-readonly SHORT_COMMIT='8be3edb'
+readonly RUNTIME_COMMIT='3205638c6f231fbea8e56c6647eba90d1c804c21'
+readonly SHORT_COMMIT='3205638'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m037-full-${SHORT_COMMIT}.tar.gz"
-readonly ARTIFACT_SHA='a60968c489b016e58e4543751d9942498d4dda467b3007ab22ee89ed00bfb80a'
+readonly ARTIFACT_SHA='e24a862978dcf89f1bf8cf5a4d4a85de6727e7abc3904cd0b92df05572730ad5'
 readonly RUNTIME_MANIFEST='deploy/releases/m037-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m037-support-files.txt'
 readonly RUNTIME_MANIFEST_SHA='f56c2924fa7490041700985523f628ea9dcd8fc7056c2a610960bb6ddf86f66a'
-readonly SUPPORT_MANIFEST_SHA='9412603d715ba7e111218f4c9b5ae56b2bd771f8c14de5b9124e16ce136df512'
+readonly SUPPORT_MANIFEST_SHA='ae6db8da9660ef73bd71df273573487388411f08ee74da71183474875fd67700'
 
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly TARGET_DB_CONTAINER='erp-staging-mariadb-1'
+readonly TARGET_MAILPIT_CONTAINER='erp-staging-mailpit-1'
+readonly TARGET_COMPOSE_PROJECT='erp-staging'
 readonly TARGET_VOLUME='erp-staging_erp-staging_custom'
 readonly TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
 readonly TARGET_HTTP='http://127.0.0.1:18088'
@@ -25,9 +27,11 @@ readonly STATE_ROOT='/var/lib/chinaplanetos-backup-erp-m037-deploy'
 readonly STATE_FILE="${STATE_ROOT}/m037.state"
 readonly LOCK_FILE="${STATE_ROOT}/m037.lock"
 readonly SCHEMA='deploy/migrations/m035_customer_shipping_booking_schema.php'
+readonly MIN_FREE_KB=1048576
 
 readonly -a STATIC_TESTS=(
 	'deploy/tests/test_admin_accessibility.php'
+	'deploy/tests/test_customer_portal_scope_integration.php'
 	'deploy/tests/test_m028_current_source_release.php'
 	'deploy/tests/test_m029_core_customer_funds.php'
 	'deploy/tests/test_m030_generic_labels_navigation.php'
@@ -37,6 +41,7 @@ readonly -a STATIC_TESTS=(
 	'deploy/tests/test_m034_shipping_price_publication_state.php'
 	'deploy/tests/test_m035_customer_shipping_booking_source.php'
 	'deploy/tests/test_m036_shipping_orders_source.php'
+	'deploy/tests/test_unified_admin_shell.php'
 )
 readonly -a RUNTIME_TESTS=(
 	'deploy/tests/test_m034_shipping_price_publication_runtime.php'
@@ -48,9 +53,17 @@ readonly -a ROUTES=(
 	'/custom/chinaplanetcustomercenter/admin_dashboard.php'
 	'/custom/chinaplanetcustomercenter/board.php'
 	'/custom/chinaplanetcustomercenter/documents.php'
+	'/custom/chinaplanetcustomercenter/reports.php'
+	'/custom/chinaplanetcustomercenter/projects.php'
+	'/custom/chinaplanetcustomercenter/orders.php'
+	'/custom/chinaplanetcustomercenter/balance.php'
 	'/custom/chinaplanetcustomercenter/admin/financial_portfolio.php'
+	'/custom/chinaplanetcustomercenter/admin/operations.php'
 	'/custom/chinaplanetlogistics/index.php'
+	'/custom/chinaplanetlogistics/list.php'
+	'/custom/chinaplanetlogistics/reports.php'
 	'/custom/chinaplanetoperations/operations/shipping_orders.php'
+	'/custom/chinaplanetoperations/operations/sop/index.php'
 	'/custom/chinaplanetshippingprices/index.php'
 )
 
@@ -58,6 +71,7 @@ RUNTIME_FILES=()
 SUPPORT_FILES=()
 CANDIDATE_ROOT=''
 CANDIDATE_REMOTE=''
+ARTIFACT_COPY=''
 CODE_BACKUP=''
 CODE_BACKUP_SHA=''
 ABSENT_LIST=''
@@ -79,14 +93,35 @@ require_root() {
 
 cleanup() {
 	if [[ -n "$CANDIDATE_REMOTE" ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true; fi
-	if [[ -n "$CANDIDATE_ROOT" && -d "$CANDIDATE_ROOT" ]]; then rm -rf "$CANDIDATE_ROOT"; fi
+	if [[ -n "$CANDIDATE_ROOT" && "$CANDIDATE_ROOT" == /root/m037-candidate.* && -d "$CANDIDATE_ROOT" ]]; then rm -rf "$CANDIDATE_ROOT"; fi
+	if [[ -n "$ARTIFACT_COPY" && "$ARTIFACT_COPY" == /root/m037-artifact.* && -f "$ARTIFACT_COPY" ]]; then rm -f "$ARTIFACT_COPY"; fi
 }
 
 check_environment() {
+	local target_mode
+	[[ "$TARGET_CONTAINER" == 'erp-staging-dolibarr-1' && "$TARGET_DB_CONTAINER" == 'erp-staging-mariadb-1' && "$TARGET_MAILPIT_CONTAINER" == 'erp-staging-mailpit-1' && "$TARGET_VOLUME" == 'erp-staging_erp-staging_custom' ]] || die 'STAGING_TARGET_CONSTANT_MISMATCH'
 	[[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" ]] || die 'STAGING_ROOT_INVALID'
+	[[ $(stat -c '%U:%G' "$TARGET_ROOT") == 'root:root' ]] || die 'STAGING_ROOT_OWNER_INVALID'
+	target_mode=$(stat -c '%a' "$TARGET_ROOT")
+	(( (8#$target_mode & 8#022) == 0 )) || die 'STAGING_ROOT_MODE_UNSAFE'
 	[[ $(docker inspect -f '{{.State.Running}}' "$TARGET_CONTAINER" 2>/dev/null) == 'true' ]] || die 'STAGING_CONTAINER_NOT_RUNNING'
+	[[ $(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "$TARGET_CONTAINER" 2>/dev/null) == "$TARGET_COMPOSE_PROJECT" ]] || die 'STAGING_COMPOSE_PROJECT_MISMATCH'
 	[[ $(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/www/html/custom"}}{{.Name}}|{{.RW}}{{end}}{{end}}' "$TARGET_CONTAINER") == "${TARGET_VOLUME}|true" ]] || die 'STAGING_CUSTOM_MOUNT_MISMATCH'
 	[[ $(docker inspect -f '{{.State.Running}}' "$TARGET_DB_CONTAINER" 2>/dev/null) == 'true' ]] || die 'STAGING_DB_NOT_RUNNING'
+	[[ $(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "$TARGET_DB_CONTAINER" 2>/dev/null) == "$TARGET_COMPOSE_PROJECT" ]] || die 'STAGING_DB_COMPOSE_PROJECT_MISMATCH'
+	[[ $(docker inspect -f '{{.State.Running}}' "$TARGET_MAILPIT_CONTAINER" 2>/dev/null) == 'true' ]] || die 'STAGING_MAILPIT_NOT_RUNNING'
+	[[ $(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "$TARGET_MAILPIT_CONTAINER" 2>/dev/null) == "$TARGET_COMPOSE_PROJECT" ]] || die 'STAGING_MAILPIT_COMPOSE_PROJECT_MISMATCH'
+	[[ $(docker port "$TARGET_CONTAINER" 80/tcp 2>/dev/null) == '127.0.0.1:18088' ]] || die 'STAGING_ERP_PORT_MISMATCH'
+	[[ $(docker port "$TARGET_MAILPIT_CONTAINER" 1025/tcp 2>/dev/null) == '127.0.0.1:11025' ]] || die 'STAGING_SMTP_PORT_MISMATCH'
+	[[ $(docker port "$TARGET_MAILPIT_CONTAINER" 8025/tcp 2>/dev/null) == '127.0.0.1:18025' ]] || die 'STAGING_MAILPIT_PORT_MISMATCH'
+	[[ -d "$INBOX" && ! -L "$INBOX" && $(stat -c '%U:%G %a' "$INBOX") == 'codex-deploy:codex-deploy 700' ]] || die 'STAGING_INBOX_METADATA_INVALID'
+	[[ $(df -Pk "$TARGET_ROOT" | awk 'NR==2 {print $4}') -ge $MIN_FREE_KB ]] || die 'STAGING_TARGET_DISK_LOW'
+	[[ $(df -Pk "$INBOX" | awk 'NR==2 {print $4}') -ge $MIN_FREE_KB ]] || die 'STAGING_INBOX_DISK_LOW'
+	for root in "$BACKUP_ROOT" "$DB_BACKUP_ROOT" "$STATE_ROOT"; do
+		if [[ -e "$root" || -L "$root" ]]; then
+			[[ -d "$root" && ! -L "$root" && $(stat -c '%U:%G %a' "$root") == 'root:root 700' ]] || die 'STAGING_STATE_METADATA_INVALID'
+		fi
+	done
 	docker exec "$TARGET_DB_CONTAINER" sh -c 'command -v mariadb-dump >/dev/null 2>&1 || command -v mysqldump >/dev/null 2>&1' || die 'DB_DUMP_TOOL_ABSENT'
 	[[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || die 'STAGING_HTTP_UNHEALTHY'
 }
@@ -105,15 +140,18 @@ validate_manifest() {
 validate_artifact() {
 	[[ -f "$ARTIFACT" && ! -L "$ARTIFACT" ]] || die 'ARTIFACT_ABSENT'
 	[[ $(stat -c '%U:%G' "$ARTIFACT") == 'codex-deploy:codex-deploy' ]] || die 'ARTIFACT_OWNER_INVALID'
-	[[ $(sha256 "$ARTIFACT") == "$ARTIFACT_SHA" ]] || die 'ARTIFACT_HASH_MISMATCH'
+	ARTIFACT_COPY=$(mktemp /root/m037-artifact.XXXXXX)
+	install -o root -g root -m 0600 "$ARTIFACT" "$ARTIFACT_COPY"
+	[[ $(sha256 "$ARTIFACT_COPY") == "$ARTIFACT_SHA" ]] || die 'ARTIFACT_HASH_MISMATCH'
 	local listing expected actual
 	listing=$(mktemp); expected=$(mktemp); actual=$(mktemp)
-	tar -tzf "$ARTIFACT" >"$listing" || die 'ARTIFACT_TAR_INVALID'
+	tar -tzf "$ARTIFACT_COPY" >"$listing" || die 'ARTIFACT_TAR_INVALID'
+	[[ -z $(tar -tvzf "$ARTIFACT_COPY" | awk 'substr($1,1,1)!="-" {print; exit}') ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
 	[[ -z $(awk '/^\\// || /(^|\\/)\\.\\.($|\\/)/ || /\\/$/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
 	[[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
 	[[ -z $(grep -E '(^|/)(\\.env|conf\\.php|\\.DS_Store|[^/]*\\.(pem|key|p12|dump|log|bak|tmp))$' "$listing" || true) ]] || die 'ARTIFACT_FORBIDDEN_FILE'
-	CANDIDATE_ROOT=$(mktemp -d)
-	tar -xzf "$ARTIFACT" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT"
+	CANDIDATE_ROOT=$(mktemp -d /root/m037-candidate.XXXXXX)
+	tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT"
 	[[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) ]] || die 'ARTIFACT_SYMLINK_FORBIDDEN'
 	[[ -z $(find "$CANDIDATE_ROOT" ! -type d ! -type f -print -quit) ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
 	validate_manifest "$RUNTIME_MANIFEST" "$RUNTIME_MANIFEST_SHA" '^custom/(chinaplanetcustomercenter|chinaplanetlogistics|chinaplanetoperations|chinaplanetshippingprices|cpkanban)/'
@@ -205,6 +243,24 @@ restore_code_backup() {
 	[[ $(tar -tzf "$CODE_BACKUP" | wc -l) -eq 0 ]] || tar -xzf "$CODE_BACKUP" --same-owner --same-permissions -C "$TARGET_ROOT"
 }
 
+verify_code_backup_restored() {
+	local restore_root file rel target restored
+	restore_root=$(mktemp -d /root/m037-restore-check.XXXXXX)
+	tar -xzf "$CODE_BACKUP" --same-owner --same-permissions -C "$restore_root" || { rm -rf "$restore_root"; return 1; }
+	for file in "${RUNTIME_FILES[@]}"; do
+		rel=${file#custom/}; target="$TARGET_ROOT/$rel"; restored="$restore_root/$rel"
+		if grep -Fxq "$rel" "$ABSENT_LIST"; then
+			[[ ! -e "$target" && ! -L "$target" ]] || { rm -rf "$restore_root"; return 1; }
+			continue
+		fi
+		[[ -f "$restored" && ! -L "$restored" && -f "$target" && ! -L "$target" ]] || { rm -rf "$restore_root"; return 1; }
+		[[ $(sha256 "$target") == $(sha256 "$restored") ]] || { rm -rf "$restore_root"; return 1; }
+		[[ $(stat -c '%u:%g:%a' "$target") == $(stat -c '%u:%g:%a' "$restored") ]] || { rm -rf "$restore_root"; return 1; }
+		if [[ "$target" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "/var/www/html/custom/$rel" >/dev/null || { rm -rf "$restore_root"; return 1; }; fi
+	done
+	rm -rf "$restore_root"
+}
+
 apply_files() {
 	local file rel src target parent uid gid mode tmp
 	for file in "${RUNTIME_FILES[@]}"; do
@@ -229,6 +285,11 @@ rollback_database_changes() {
 	docker exec -e M035_SCHEMA_PRESTATE_B64="$SCHEMA_PRESTATE_B64" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SCHEMA" rollback >/dev/null
 }
 
+verify_schema_prestate() {
+	[[ -n "$SCHEMA_PRESTATE_B64" && $(value_sha256 "$SCHEMA_PRESTATE_B64") == "$SCHEMA_PRESTATE_SHA" ]] || return 1
+	docker exec -e M035_SCHEMA_PRESTATE_B64="$SCHEMA_PRESTATE_B64" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SCHEMA" verify-prestate >/dev/null
+}
+
 compare_files() {
 	local file rel target release_hash target_hash state
 	for file in "${RUNTIME_FILES[@]}"; do
@@ -245,7 +306,11 @@ route_checks() {
 	local route status
 	for route in "${ROUTES[@]}"; do
 		status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}${route}") || return 1
-		[[ "$status" =~ ^(200|302|403)$ ]] || return 1
+		if [[ "$route" == '/' ]]; then
+			[[ "$status" =~ ^(200|302)$ ]] || return 1
+		else
+			[[ "$status" =~ ^(302|401|403)$ ]] || return 1
+		fi
 	done
 }
 
@@ -261,6 +326,13 @@ runtime_checks() {
 	docker exec -e M034_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[0]}" >/dev/null || return 1
 	docker exec -e M035_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[1]}" >/dev/null || return 1
 	docker exec -e M036_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/${RUNTIME_TESTS[2]}" >/dev/null || return 1
+	docker exec -e M037_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_customer_portal_scope_integration.php" >/dev/null || return 1
+	route_checks
+}
+
+rollback_checks() {
+	verify_code_backup_restored || return 1
+	verify_schema_prestate || return 1
 	route_checks
 }
 
@@ -299,8 +371,11 @@ automatic_rollback() {
 	local db_rc=$?
 	restore_code_backup
 	local code_rc=$?
+	local verify_rc=1
+	if [[ $db_rc -eq 0 && $code_rc -eq 0 ]]; then rollback_checks; verify_rc=$?; fi
 	if [[ $db_rc -eq 0 ]]; then echo 'M037_STAGING_AUTO_DB_ROLLBACK=PASS' >&2; else echo 'M037_STAGING_AUTO_DB_ROLLBACK=FAIL' >&2; fi
 	if [[ $code_rc -eq 0 ]]; then echo 'M037_STAGING_AUTO_CODE_ROLLBACK=PASS' >&2; else echo 'M037_STAGING_AUTO_CODE_ROLLBACK=FAIL' >&2; fi
+	if [[ $verify_rc -eq 0 ]]; then echo 'M037_STAGING_AUTO_ROLLBACK_VERIFY=PASS' >&2; else echo 'M037_STAGING_AUTO_ROLLBACK_VERIFY=FAIL' >&2; fi
 	set -e
 }
 
@@ -338,19 +413,36 @@ command_verify() {
 command_rollback() {
 	check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
 	validate_artifact; candidate_checks; load_state
-	local stamp reapply_code reapply_db file rel
+	local stamp reapply_code reapply_code_sha reapply_db file rel
 	stamp=$(date -u '+%Y%m%dT%H%M%SZ')
 	reapply_code="${BACKUP_ROOT}/m037-reapply-${SHORT_COMMIT}-${stamp}.tar.gz"
 	local -a current=()
 	for file in "${RUNTIME_FILES[@]}"; do rel=${file#custom/}; [[ -f "$TARGET_ROOT/$rel" ]] && current+=("$rel"); done
 	if [[ ${#current[@]} -gt 0 ]]; then tar -czf "$reapply_code" -C "$TARGET_ROOT" "${current[@]}"; else tar -czf "$reapply_code" --files-from /dev/null; fi
 	chmod 0600 "$reapply_code"
+	reapply_code_sha=$(sha256 "$reapply_code")
 	create_database_backup
 	reapply_db=$DB_BACKUP
-	restore_code_backup || die 'ROLLBACK_CODE_RESTORE_FAILED'
-	rollback_database_changes || die 'ROLLBACK_SCHEMA_RESTORE_FAILED'
-	[[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || die 'ROLLBACK_HTTP_FAILED'
-	echo "M037_STAGING_ROLLBACK=PASS RESTORED=$CODE_BACKUP REAPPLY_CODE=$reapply_code REAPPLY_CODE_SHA=$(sha256 "$reapply_code") REAPPLY_DB=$reapply_db REAPPLY_DB_SHA=$DB_BACKUP_SHA"
+	local rollback_ok=1
+	restore_code_backup || rollback_ok=0
+	rollback_database_changes || rollback_ok=0
+	if [[ $rollback_ok -eq 1 ]]; then rollback_checks || rollback_ok=0; fi
+	if [[ $rollback_ok -ne 1 ]]; then
+		local reapply_root
+		reapply_root=$(mktemp -d /root/m037-reapply.XXXXXX)
+		[[ $(sha256 "$reapply_code") == "$reapply_code_sha" ]] || die 'ROLLBACK_REAPPLY_BACKUP_HASH_FAILED'
+		tar -xzf "$reapply_code" --same-owner --same-permissions -C "$reapply_root" || die 'ROLLBACK_REAPPLY_EXTRACT_FAILED'
+		for file in "${RUNTIME_FILES[@]}"; do
+			rel=${file#custom/}
+			[[ -f "$reapply_root/$rel" && ! -L "$reapply_root/$rel" ]] || die 'ROLLBACK_REAPPLY_FILE_MISSING'
+			install -o "$(stat -c '%u' "$reapply_root/$rel")" -g "$(stat -c '%g' "$reapply_root/$rel")" -m "$(stat -c '%a' "$reapply_root/$rel")" "$reapply_root/$rel" "$TARGET_ROOT/$rel"
+		done
+		rm -rf "$reapply_root"
+		apply_database_changes
+		runtime_checks || die 'ROLLBACK_FAILED_REAPPLY_VERIFY_FAILED'
+		die 'ROLLBACK_FAILED_DEPLOYED_STATE_REAPPLIED'
+	fi
+	echo "M037_STAGING_ROLLBACK=PASS RESTORED=$CODE_BACKUP REAPPLY_CODE=$reapply_code REAPPLY_CODE_SHA=$reapply_code_sha REAPPLY_DB=$reapply_db REAPPLY_DB_SHA=$DB_BACKUP_SHA VERIFY=PASS"
 }
 
 command_status() {
