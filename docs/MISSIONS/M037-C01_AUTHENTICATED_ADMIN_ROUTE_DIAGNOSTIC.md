@@ -83,10 +83,23 @@ No application or database rollback is required because the correction run is re
 
 | Role | Result | Date | Evidence |
 |---|---|---|---|
-| Security | PENDING | — | Frozen helper/test revision required |
-| QA | PENDING | — | Local tests and exact artifact required |
+| Security | PASS | 2026-07-24 | Safe aggregate diagnostics, stdin-only identity, pre-mutation gate, unchanged sudo surface, exact installer rotation, staging-only boundary |
+| QA | PASS | 2026-07-24 | 14 positive routes plus external denial, M029–M037 regressions, PHP/Bash/visudo, 71-entry artifact, exact hashes |
 | Architect | APPROVED | 2026-07-24 | Scope limited to read-only staging diagnosis |
 | Ahmed | APPROVED | 2026-07-24 | `ok do it` |
+
+## Frozen release candidate
+
+- Runtime artifact commit: `b4fc34ac5d5f7beb78aec297d9c4afad45b416e7`
+- Release tooling commit: `ec04f64`
+- Artifact: `m037-full-b4fc34a.tar.gz`
+- Artifact SHA-256: `52b77b4d31714112b9550634da8342d1aced52e1de364721fb5bee1759e720f7`
+- Artifact entries: `71` regular files (`52` runtime, `17` support, `2` manifests)
+- Helper SHA-256: `7aa021c3940073f79c62b4f8ce341ac5077fef37cb76fe9618c44705b262b93f`
+- Installer SHA-256: `3c19d277081fe5a321692c6c47674866ea869347c993895de74ccb5db6fc1978`
+- Sudoers SHA-256: `815e0040fce5ebe2fa77f840a3811e3733db995c3bf4360c39fa105c4d4deab1`
+- Currently installed helper accepted for rotation only: `aa09f1db34a4e8f0a12c569e7615cc22ef0b3aa0e0f1a39eba9cf2298e48f074`
+- Remaining gate: upload, checksum verification, root helper rotation, and canonical staging `preflight` only.
 
 ## Completion report
 
