@@ -1,0 +1,9 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit staging-preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit staging-apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit staging-verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit staging-rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit production-preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit production-apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit production-verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit production-rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit status
