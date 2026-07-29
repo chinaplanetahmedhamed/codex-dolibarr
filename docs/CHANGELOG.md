@@ -1,5 +1,12 @@
 # ChinaPlanetOS Change Log
 
+## 2026-07-29 — M039 Shipment Files 200MB upload correction
+
+- Added a `200M` upload / `210M` POST override scoped to the ChinaPlanet Logistics module instead of raising Dolibarr's global upload setting.
+- Added an exact 200 MiB internal staff application allowance while preserving the existing lower customer upload cap and private-by-default publication behavior.
+- Added safe PHP upload-error messages and synthetic exact-boundary, one-byte-over, MIME, customer-cap, and security-regression tests.
+- Local source/tests only at this entry; canonical `backup-erp` and the exact approved production correction still require checksum-pinned apply/verify evidence.
+
 ## 2026-07-24 — M037-C04 MariaDB-safe shipping classification
 
 - Removed shipping lifecycle classification from MariaDB JSON expressions and now decodes the allowlisted service payload in PHP.

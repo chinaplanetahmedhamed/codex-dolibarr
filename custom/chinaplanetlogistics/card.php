@@ -217,7 +217,7 @@ if (GETPOST('sendit') && $id > 0 && $canwrite && $is_post) {
     // DOL_DATA_ROOT = /var/www/documents — dir_output not defined in module descriptor
     $upload_dir = cpcc_portal_shipment_doc_root($object->id);
     $upload = $_FILES['userfile'] ?? array();
-    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $upload['name'] ?? '', $upload['tmp_name'] ?? '', $upload['size'] ?? 0, $upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    $uploadres = cpcc_portal_store_uploaded_shipment_file($object->id, $upload_dir, $upload['name'] ?? '', $upload['tmp_name'] ?? '', $upload['size'] ?? 0, $upload['error'] ?? UPLOAD_ERR_NO_FILE, cpcc_portal_staff_upload_max_bytes());
     if (!empty($uploadres['ok'])) {
         setEventMessages('Document uploaded successfully.', null, 'mesgs');
     } else {

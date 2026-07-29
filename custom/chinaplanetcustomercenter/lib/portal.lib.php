@@ -300,6 +300,25 @@ function cpcc_portal_upload_max_bytes()
     return $configuredKb > 0 ? $configuredKb * 1000 : 10 * 1024 * 1024;
 }
 
+/** Exact staff allowance for the module-scoped shipment upload route. */
+function cpcc_portal_staff_upload_max_bytes()
+{
+    return 200 * 1024 * 1024;
+}
+
+/** Return a customer-safe explanation for PHP upload failures. */
+function cpcc_portal_upload_error_message($uploadError, $maxBytes = 0)
+{
+    $uploadError = (int) $uploadError;
+    if (in_array($uploadError, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        $limitMb = (int) $maxBytes > 0 ? (int) floor(((int) $maxBytes) / 1024 / 1024) : 0;
+        return $limitMb > 0 ? 'File exceeds the '.$limitMb.' MB upload limit.' : 'File exceeds the allowed upload size.';
+    }
+    if ($uploadError === UPLOAD_ERR_PARTIAL) return 'File upload was incomplete.';
+    if ($uploadError === UPLOAD_ERR_NO_FILE) return 'No file was uploaded.';
+    return 'Upload was rejected.';
+}
+
 function cpcc_portal_validate_shipment_filename($originalName)
 {
     $basename = basename(str_replace('\\', '/', trim((string) $originalName)));
@@ -342,13 +361,15 @@ function cpcc_portal_validate_shipment_upload($originalName, $tmpName, $size = 0
     return array('ok' => true, 'name' => $safeName, 'mime' => $mime, 'size' => $actualSize);
 }
 
-function cpcc_portal_store_uploaded_shipment_file($shipid, $upload_dir, $original_name, $tmp_name, $file_size = 0, $upload_error = UPLOAD_ERR_OK)
+function cpcc_portal_store_uploaded_shipment_file($shipid, $upload_dir, $original_name, $tmp_name, $file_size = 0, $upload_error = UPLOAD_ERR_OK, $maxBytes = 0)
 {
     $shipid = (int) $shipid;
     $expectedDir = cpcc_portal_shipment_doc_root($shipid);
-    if ($shipid <= 0 || $upload_error !== UPLOAD_ERR_OK || $upload_dir !== $expectedDir || !is_uploaded_file($tmp_name)) return array('ok' => false, 'error' => 'Upload was rejected.');
+    if ($shipid <= 0 || $upload_dir !== $expectedDir) return array('ok' => false, 'error' => 'Upload was rejected.');
+    if ((int) $upload_error !== UPLOAD_ERR_OK) return array('ok' => false, 'error' => cpcc_portal_upload_error_message($upload_error, $maxBytes));
+    if (!is_uploaded_file($tmp_name)) return array('ok' => false, 'error' => 'Upload was rejected.');
 
-    $validation = cpcc_portal_validate_shipment_upload($original_name, $tmp_name, $file_size);
+    $validation = cpcc_portal_validate_shipment_upload($original_name, $tmp_name, $file_size, $maxBytes);
     if (empty($validation['ok'])) return $validation;
 
     $moduleRoot = DOL_DATA_ROOT.'/chinaplanetlogistics';
