@@ -4,7 +4,7 @@
 
 - **Mission ID:** M039
 - **Type:** CORRECTION
-- **Status:** IN_PROGRESS
+- **Status:** CORRECTION_REQUIRED
 - **Architect and implementation owner:** Agent 007
 - **Required reviewers:** Shipping, Customer Portal, Security, QA, Architect
 - **Dependencies:** M008, M020-C03, M024
@@ -60,3 +60,10 @@ Allow authorized internal staff to upload shipment files up to 200 MiB without c
 | Security | PENDING | — | Upload and authorization regression |
 | QA | PENDING | — | Local, staging, and production evidence |
 
+## 2026-07-29 production acceptance result
+
+- Canonical `backup-erp` apply/verify passed, including a real synthetic `209715200`-byte HTTPS upload.
+- Production preflight passed, but the exact HTTPS upload received HTTP `413`.
+- The restricted helper automatically restored the hashed production backup; post-rollback preflight and ERP HTTP 200 passed, and no production deployment state was recorded.
+- Production is proxied by Cloudflare while `backup-erp` resolves directly to the VPS. Cloudflare is therefore the remaining request-body limit.
+- A correction scope must be approved for chunked application upload, a sufficient Cloudflare plan, or a DNS-only/direct upload path before production can meet the true 200 MiB requirement.
