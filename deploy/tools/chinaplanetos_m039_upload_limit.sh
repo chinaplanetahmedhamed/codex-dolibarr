@@ -204,7 +204,8 @@ EOF
 }
 
 load_state() {
-  local env=$1 file="$STATE_ROOT/$env.state"
+  local env=$1 file
+  file="$STATE_ROOT/$env.state"
   [[ -f "$file" && ! -L "$file" ]] || die 'STATE_ABSENT'
   source "$file"
   [[ "$STATE_RELEASE" == "$RELEASE" && "$STATE_COMMIT" == "$COMMIT" && "$STATE_ARTIFACT_SHA" == "$ARTIFACT_SHA" ]] || die 'STATE_MISMATCH'

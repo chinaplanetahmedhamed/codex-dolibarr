@@ -17,7 +17,8 @@ grep -Fq "require_staging_accepted" "$HELPER"
 grep -Fq "PRODUCTION_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'" "$HELPER"
 [[ $(grep -c '^codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-m039-upload-limit ' "$SUDOERS") -eq 9 ]]
 ! grep -Eq '(/bin/(ba)?sh|docker |rm |cp |mv |tar |curl |sudoedit|\*)$' "$SUDOERS"
-grep -Fq "readonly HELPER_SHA='6746e6ab1a9d91a737a15d5198b5ea403765c12f8ff372ff185c94d606abeba3'" "$INSTALLER"
+grep -Fq "readonly HELPER_SHA='4381f20c42abb539f24b8d66a24a464056b13fd867af92849b57c7ee3aef88d5'" "$INSTALLER"
+grep -Fq "readonly PREVIOUS_HELPER_SHA='6746e6ab1a9d91a737a15d5198b5ea403765c12f8ff372ff185c94d606abeba3'" "$INSTALLER"
 grep -Fq "readonly SUDOERS_SHA='b3cf47e21bc4fa18d8588c7f39290101d91c21c7f04785d5949b08a0673b0e13'" "$INSTALLER"
 grep -Fq 'APPLY_EXECUTED=NO' "$INSTALLER"
 echo 'M039 upload-limit helper static safety test passed'

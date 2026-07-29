@@ -8,7 +8,8 @@ readonly SUDOERS_SOURCE='/home/codex-deploy/staging-inbox/codex-deploy-m039-uplo
 readonly ARTIFACT_SOURCE='/home/codex-deploy/staging-inbox/m039-851c231.tar.gz'
 readonly HELPER_TARGET='/usr/local/sbin/chinaplanetos-m039-upload-limit'
 readonly SUDOERS_TARGET='/etc/sudoers.d/codex-deploy-m039-upload-limit'
-readonly HELPER_SHA='6746e6ab1a9d91a737a15d5198b5ea403765c12f8ff372ff185c94d606abeba3'
+readonly HELPER_SHA='4381f20c42abb539f24b8d66a24a464056b13fd867af92849b57c7ee3aef88d5'
+readonly PREVIOUS_HELPER_SHA='6746e6ab1a9d91a737a15d5198b5ea403765c12f8ff372ff185c94d606abeba3'
 readonly SUDOERS_SHA='b3cf47e21bc4fa18d8588c7f39290101d91c21c7f04785d5949b08a0673b0e13'
 readonly ARTIFACT_SHA='076280035b2116bdcccbcac42d76508bd9f03170fde16dff7ecf8b614b9e7809'
 readonly BACKUP_ROOT='/root/chinaplanetos-m039-upload-limit-backups'
@@ -32,7 +33,9 @@ bash -n "$HELPER_SOURCE" || die 'HELPER_SYNTAX_INVALID'
 visudo -cf "$SUDOERS_SOURCE" >/dev/null || die 'SUDOERS_SOURCE_INVALID'
 
 if [[ -e "$HELPER_TARGET" ]]; then
-  [[ -f "$HELPER_TARGET" && ! -L "$HELPER_TARGET" && $(sha256 "$HELPER_TARGET") == "$HELPER_SHA" ]] || die 'HELPER_TARGET_CONFLICT'
+  [[ -f "$HELPER_TARGET" && ! -L "$HELPER_TARGET" ]] || die 'HELPER_TARGET_CONFLICT'
+  current_helper_sha=$(sha256 "$HELPER_TARGET")
+  [[ "$current_helper_sha" == "$HELPER_SHA" || "$current_helper_sha" == "$PREVIOUS_HELPER_SHA" ]] || die 'HELPER_TARGET_CONFLICT'
 fi
 if [[ -e "$SUDOERS_TARGET" ]]; then
   [[ -f "$SUDOERS_TARGET" && ! -L "$SUDOERS_TARGET" && $(sha256 "$SUDOERS_TARGET") == "$SUDOERS_SHA" ]] || die 'SUDOERS_TARGET_CONFLICT'
