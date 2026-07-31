@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>China Planet Smart Document Center</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar no-print">
+    <div>
+      <h1>China Planet Smart Document Center</h1>
+      <p>نموذج تجريبي لإنشاء مستندات التجارة الخارجية</p>
+    </div>
+    <div class="toolbar">
+      <select id="languageSelect" aria-label="Language">
+        <option value="ar">العربية</option>
+        <option value="en">English</option>
+        <option value="zh">中文</option>
+      </select>
+      <select id="documentType" aria-label="Document type">
+        <option value="quotation">Quotation</option>
+        <option value="proforma">Proforma Invoice</option>
+        <option value="commercial">Commercial Invoice</option>
+        <option value="packing">Packing List</option>
+        <option value="contract">Sales Contract</option>
+      </select>
+      <button id="loadDemo" type="button">تحميل بيانات تجريبية</button>
+      <button id="printPdf" type="button" class="primary">طباعة / PDF</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="editor no-print">
+      <div class="panel">
+        <h2>بيانات المستند</h2>
+        <div class="grid two">
+          <label>رقم المستند<input id="docNumber" value="CP-2026-0001"></label>
+          <label>التاريخ<input id="issueDate" type="date"></label>
+          <label>العملة<select id="currency"><option>USD</option><option>RMB</option><option>EUR</option><option>EGP</option></select></label>
+          <label>Incoterm<select id="incoterm"><option>EXW</option><option>FOB</option><option>CIF</option><option>CFR</option></select></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>البائع والمشتري</h2>
+        <div class="grid two">
+          <label>اسم البائع<input id="sellerName" value="Guangzhou Vision Trading Limited"></label>
+          <label>اسم المشتري<input id="buyerName" value="Sample Customer LLC"></label>
+          <label>عنوان البائع<textarea id="sellerAddress">Guangzhou, China</textarea></label>
+          <label>عنوان المشتري<textarea id="buyerAddress">Cairo, Egypt</textarea></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title-row">
+          <h2>المنتجات</h2>
+          <button id="addLine" type="button">+ إضافة منتج</button>
+        </div>
+        <div id="lineEditor"></div>
+      </div>
+
+      <div class="panel">
+        <h2>الشحن والشروط</h2>
+        <div class="grid two">
+          <label>ميناء التحميل<input id="loadingPort" value="Guangzhou, China"></label>
+          <label>ميناء الوصول<input id="destinationPort" value="Alexandria, Egypt"></label>
+          <label>شروط الدفع<textarea id="paymentTerms">30% deposit, 70% before shipment.</textarea></label>
+          <label>ملاحظات<textarea id="notes">Prices are valid for 15 days.</textarea></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="preview-wrap">
+      <article id="documentPreview" class="document-sheet">
+        <div class="brand-row">
+          <div class="brand-mark">CP</div>
+          <div class="brand-text">
+            <strong>CHINA PLANET</strong>
+            <span>VISION TRADING</span>
+          </div>
+          <div class="doc-title-block">
+            <h2 id="previewTitle">QUOTATION</h2>
+            <div><span id="labelDocNo">Document No.</span>: <strong id="previewDocNumber"></strong></div>
+            <div><span id="labelDate">Date</span>: <strong id="previewDate"></strong></div>
+          </div>
+        </div>
+
+        <div class="party-grid">
+          <div><h3 id="labelSeller">Seller</h3><strong id="previewSeller"></strong><p id="previewSellerAddress"></p></div>
+          <div><h3 id="labelBuyer">Buyer</h3><strong id="previewBuyer"></strong><p id="previewBuyerAddress"></p></div>
+        </div>
+
+        <div class="meta-grid">
+          <div><span id="labelCurrency">Currency</span><strong id="previewCurrency"></strong></div>
+          <div><span>Incoterm</span><strong id="previewIncoterm"></strong></div>
+          <div><span id="labelLoadingPort">Loading Port</span><strong id="previewLoadingPort"></strong></div>
+          <div><span id="labelDestinationPort">Destination Port</span><strong id="previewDestinationPort"></strong></div>
+        </div>
+
+        <table class="items-table">
+          <thead><tr><th>#</th><th id="thImage">Image</th><th id="thDescription">Description</th><th id="thQty">Qty</th><th id="thUnitPrice">Unit Price</th><th id="thAmount">Amount</th></tr></thead>
+          <tbody id="previewLines"></tbody>
+        </table>
+
+        <div class="totals-box">
+          <div><span id="labelSubtotal">Subtotal</span><strong id="subtotalValue"></strong></div>
+          <div class="grand"><span id="labelGrandTotal">Grand Total</span><strong id="grandTotalValue"></strong></div>
+        </div>
+
+        <div class="terms-grid">
+          <div><h3 id="labelPaymentTerms">Payment Terms</h3><p id="previewPaymentTerms"></p></div>
+          <div><h3 id="labelNotes">Notes</h3><p id="previewNotes"></p></div>
+        </div>
+
+        <footer>
+          <div><span id="labelPreparedBy">Prepared by</span><br><strong>China Planet / Vision Trading</strong></div>
+          <div class="stamp">VISION<br>TRADING</div>
+        </footer>
+      </article>
+    </section>
+  </main>
+
+  <template id="lineTemplate">
+    <div class="line-card">
+      <button class="remove-line" type="button" title="Remove">×</button>
+      <div class="grid line-grid">
+        <label>الوصف<input class="line-description"></label>
+        <label>الكمية<input class="line-qty" type="number" min="0" step="0.01"></label>
+        <label>سعر الوحدة<input class="line-price" type="number" min="0" step="0.01"></label>
+        <label>صورة المنتج<input class="line-image" type="file" accept="image/*"></label>
+      </div>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
