@@ -6,6 +6,8 @@ $required = array(
     'custom/chinaplanetshippingprices/core/modules/modChinaPlanetShippingPrices.class.php',
     'custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php',
     'custom/chinaplanetshippingprices/class/ShippingPriceService.class.php',
+    'custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php',
+    'custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php',
     'custom/chinaplanetshippingprices/index.php',
     'custom/chinaplanetshippingprices/admin/import.php',
     'custom/chinaplanetshippingprices/admin/dashboard.php',
@@ -35,6 +37,7 @@ $importer = file_get_contents($root.'/custom/chinaplanetshippingprices/class/Shi
 if (strpos($importer, 'CHINAPLANETSP_DEFAULT_POL') === false || strpos($importer, "'中东'=>'Middle East'") === false || strpos($importer, "'HYUNDAI'=>'HMM'") === false) throw new RuntimeException('POL, trade-lane or shipping-line translation missing.');
 if (strpos($importer, "replacement_scope !== 'all'") === false || strpos($importer, "source_name<>'Manual entry'") === false) throw new RuntimeException('Agent/all publication replacement scope missing.');
 if (strpos($importer, "ignore_below=") === false || strpos($importer, "\$signature=") === false) throw new RuntimeException('Import-setting-aware duplicate boundary missing.');
+if (strpos($importer, "translation_status<>'approved'") === false || strpos($importer, "'public_notes' => \$translation['status'] === 'approved' ? \$translation['notes_en'] : ''") === false) throw new RuntimeException('M041 automatic translation/manual-fallback boundary missing.');
 $ports = file_get_contents($root.'/custom/chinaplanetshippingprices/admin/ports.php');
 if (strpos($ports, "\$action==='assign_pol'") === false || strpos($ports, "(pol='UNKNOWN' OR pol='' OR pol IS NULL)") === false) throw new RuntimeException('Unknown POL assignment control missing.');
 $disabled = file_get_contents($root.'/custom/chinaplanetshippingprices/admin/disabled.php');
@@ -56,4 +59,6 @@ $sopCategories = file_get_contents($root.'/custom/chinaplanetshippingprices/sop/
 if (strpos($sopEdit, "define('CSRFCHECK_WITH_TOKEN', 1)") === false || strpos($sopView, "define('CSRFCHECK_WITH_TOKEN', 1)") === false || strpos($sopCategories, "define('CSRFCHECK_WITH_TOKEN',1)") === false) throw new RuntimeException('SOP CSRF protection missing.');
 $api = file_get_contents($root.'/custom/chinaplanetshippingprices/api/class/api_chinaplanetshippingprices.class.php');
 if (strpos($api, '), false, 100)') === false) throw new RuntimeException('API must force customer-safe output.');
+$translator = file_get_contents($root.'/custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php');
+if (strpos($translator, 'CURLOPT_RESOLVE') === false || strpos($translator, 'MAX_RESPONSE_BYTES = 65536') === false) throw new RuntimeException('M041 translation SSRF/resource boundary missing.');
 print "OK shipping prices structure and privacy boundaries\n";

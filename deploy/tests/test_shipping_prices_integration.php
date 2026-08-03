@@ -27,6 +27,18 @@ $public = $service->search(array('pod'=>'SOKHNA','container_type'=>'20GP','incot
 spAssert(count($public['results']) > 0, 'SOKHNA public search returned no result.');
 spAssert(!array_key_exists('supplier_cost', $public['results'][0]), 'Public service leaked supplier cost.');
 foreach($public['results'] as $result)spAssert($result['pol']!=='UNKNOWN'&&$result['shipping_line']!=='UNKNOWN'&&!empty($result['country_code']),'Public service exposed an unmapped rate.');
+$projectionRate = $public['results'][0];
+$db->begin();
+$projectionUpdate = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET source_notes='M041 synthetic private source',notes_en='M041 synthetic private English',translation_status='failed',public_notes='M041_MUST_NOT_LEAK' WHERE entity=".(int)$conf->entity." AND rowid=".(int)$projectionRate['rate_id'];
+spAssert($db->query($projectionUpdate), 'Could not prepare failed-translation projection test.');
+$projectionSearch = $service->search(array('pol'=>$projectionRate['pol'],'country_code'=>$projectionRate['country_code'],'pod'=>$projectionRate['pod'],'shipping_line'=>$projectionRate['shipping_line'],'container_type'=>$projectionRate['container_type'],'service_type'=>$projectionRate['service_type'],'incoterm'=>'FOB','cargo_type'=>'normal'), false, 250);
+$projectionFound = null; foreach ($projectionSearch['results'] as $candidate) if ((int)$candidate['rate_id'] === (int)$projectionRate['rate_id']) $projectionFound = $candidate;
+spAssert($projectionFound !== null && $projectionFound['notes'] === '' && strpos(json_encode($projectionFound), 'M041_MUST_NOT_LEAK') === false, 'Failed M041 translation leaked through public DTO.');
+spAssert($db->query("UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET translation_status='approved',public_notes='M041 approved English note' WHERE entity=".(int)$conf->entity." AND rowid=".(int)$projectionRate['rate_id']), 'Could not prepare approved-translation projection test.');
+$approvedSearch = $service->search(array('pol'=>$projectionRate['pol'],'country_code'=>$projectionRate['country_code'],'pod'=>$projectionRate['pod'],'shipping_line'=>$projectionRate['shipping_line'],'container_type'=>$projectionRate['container_type'],'service_type'=>$projectionRate['service_type'],'incoterm'=>'FOB','cargo_type'=>'normal'), false, 250);
+$approvedFound = null; foreach ($approvedSearch['results'] as $candidate) if ((int)$candidate['rate_id'] === (int)$projectionRate['rate_id']) $approvedFound = $candidate;
+spAssert($approvedFound !== null && $approvedFound['notes'] === 'M041 approved English note', 'Approved M041 translation missing from public DTO.');
+$db->rollback();
 $historyBeforeBlock=$service->history($public['results'][0],18,true);
 $db->begin();
 $blockSql="INSERT INTO ".MAIN_DB_PREFIX."chinaplanetsp_block SET entity=".(int)$conf->entity.",label='TEST temporary country stop',country_code='EG',pod='SOKHNA',container_type='20GP',status=1,fk_user_creat=1,date_creation='".$db->idate(dol_now())."'";

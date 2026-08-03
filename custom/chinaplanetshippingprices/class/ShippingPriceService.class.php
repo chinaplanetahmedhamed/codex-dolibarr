@@ -308,6 +308,8 @@ class ShippingPriceService
         $included = array('Ocean freight for the selected route and equipment');
         foreach ($components as $component) $included[] = $component['label'];
         $excluded = array('Origin and destination local charges unless explicitly listed', 'Customs duties, taxes and services not explicitly listed');
+        $hasM041Provenance = property_exists($row, 'source_notes') && $row->source_notes !== null;
+        $publicNotes = (!$hasM041Provenance || (string) $row->translation_status === 'approved') ? $row->public_notes : '';
         $result = array(
             'rate_id' => (int) $row->rowid,
             'pol' => $row->pol,
@@ -329,24 +331,36 @@ class ShippingPriceService
             'valid_to' => $validTo,
             'included' => array_values(array_unique($included)),
             'excluded' => $excluded,
-            'notes' => $row->public_notes,
+            'notes' => $publicNotes,
             'warnings' => $warnings,
             'needs_manual_review' => $needsReview,
         );
-        if ($includeCost) {
-            $result['batch_ref'] = $row->batch_ref;
-            $result['effective_date'] = $row->effective_date;
-            $result['route_detail'] = $row->route_detail;
-            $result['customer_pricing_error'] = $customerPricingError;
-            $result['supplier_cost'] = round((float) $row->cost_price, 2);
-            $result['base_margin'] = round($base - (float) $row->cost_price, 2);
-            $result['internal_notes'] = $row->internal_notes;
-            $result['source'] = $row->source_name;
-            $result['source_sheet'] = $row->source_sheet;
-            $result['source_row'] = (int) $row->source_row;
-        }
+        if ($includeCost) $result = $this->addInternalProjection($result, $row, $base, $customerPricingError);
         $fingerprintFields = array_intersect_key($result, array_flip(array('pol','country_code','pod','shipping_line','trade_lane','service_type','container_type','incoterm','cargo_type','currency','base_sale_price','components','additions_total','final_price','price_basis','valid_from','valid_to','included','excluded','notes','warnings','needs_manual_review')));
         $result['fingerprint'] = hash('sha256', json_encode($fingerprintFields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return $result;
+    }
+
+    /** Explicit private projection. Customer web/API/booking callers never invoke this path. */
+    private function addInternalProjection(array $result, $row, $base, $customerPricingError)
+    {
+        $result['batch_ref'] = $row->batch_ref;
+        $result['effective_date'] = $row->effective_date;
+        $result['route_detail'] = $row->route_detail;
+        $result['customer_pricing_error'] = $customerPricingError;
+        $result['supplier_cost'] = round((float) $row->cost_price, 2);
+        $result['base_margin'] = round($base - (float) $row->cost_price, 2);
+        $result['internal_notes'] = $row->internal_notes;
+        $result['source_notes_raw'] = isset($row->source_notes_raw) ? $row->source_notes_raw : null;
+        $result['source_notes'] = isset($row->source_notes) ? $row->source_notes : null;
+        $result['translated_notes'] = isset($row->notes_en) ? $row->notes_en : null;
+        $result['translation_status'] = isset($row->translation_status) ? $row->translation_status : 'not_needed';
+        $result['translation_provider'] = isset($row->translation_provider) ? $row->translation_provider : null;
+        $result['translation_model'] = isset($row->translation_model) ? $row->translation_model : null;
+        $result['translation_error'] = isset($row->translation_error) ? $row->translation_error : null;
+        $result['source'] = $row->source_name;
+        $result['source_sheet'] = $row->source_sheet;
+        $result['source_row'] = (int) $row->source_row;
         return $result;
     }
 

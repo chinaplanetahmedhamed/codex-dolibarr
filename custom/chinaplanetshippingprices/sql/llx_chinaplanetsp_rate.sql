@@ -18,6 +18,16 @@ CREATE TABLE llx_chinaplanetsp_rate (
   currency_code char(3) NOT NULL DEFAULT 'USD',
   valid_from date NOT NULL,
   valid_to date NULL,
+  source_notes_raw mediumtext NULL,
+  source_notes mediumtext NULL,
+  notes_en mediumtext NULL,
+  translation_status varchar(16) NOT NULL DEFAULT 'not_needed',
+  translation_source_hash char(64) NULL,
+  translation_provider varchar(64) NULL,
+  translation_model varchar(128) NULL,
+  translation_error varchar(128) NULL,
+  fk_user_translation_review integer NULL,
+  date_translation_review datetime NULL,
   public_notes text NULL,
   internal_notes text NULL,
   public_visible smallint NOT NULL DEFAULT 1,
@@ -29,5 +39,6 @@ CREATE TABLE llx_chinaplanetsp_rate (
   KEY idx_chinaplanetsp_rate_batch (fk_batch),
   KEY idx_chinaplanetsp_rate_current (entity, is_current, status, destination_country, pod),
   KEY idx_chinaplanetsp_rate_route (entity, pol, pod, shipping_line, container_type, service_type),
-  KEY idx_chinaplanetsp_rate_history (entity, valid_from, pod, container_type)
+  KEY idx_chinaplanetsp_rate_history (entity, valid_from, pod, container_type),
+  KEY idx_chinaplanetsp_rate_translation (entity, fk_batch, translation_status)
 ) ENGINE=innodb;

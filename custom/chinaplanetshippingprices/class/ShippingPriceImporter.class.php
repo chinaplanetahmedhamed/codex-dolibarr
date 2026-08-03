@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/ShippingNoteTranslationService.class.php';
+
 class ShippingPriceImporter
 {
     private $db;
@@ -7,12 +9,18 @@ class ShippingPriceImporter
     private $user;
     private $countryMap;
     private $lastImportResults = array();
+    private $translator;
+    private $translationCache = array();
+    private $translationStartedAt = 0.0;
+    private $translationCalls = 0;
+    private $translationCircuitOpen = false;
 
-    public function __construct($db, $user, $entity = null)
+    public function __construct($db, $user, $entity = null, $translator = null)
     {
         $this->db = $db;
         $this->user = $user;
         $this->entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
+        $this->translator = $translator ?: new ShippingNoteTranslationService();
         $this->countryMap = $this->defaultCountryMap();
         $this->loadSavedCountryMap();
     }
@@ -20,6 +28,10 @@ class ShippingPriceImporter
     public function importFile($path, $originalName, array $options)
     {
         $this->lastImportResults = array();
+        $this->translationCache = array();
+        $this->translationStartedAt = microtime(true);
+        $this->translationCalls = 0;
+        $this->translationCircuitOpen = false;
         require_once DOL_DOCUMENT_ROOT.'/includes/phpoffice/phpspreadsheet/src/autoloader.php';
         require_once DOL_DOCUMENT_ROOT.'/includes/Psr/autoloader.php';
 
@@ -60,6 +72,7 @@ class ShippingPriceImporter
             $sheet = $item['sheet']; $meta = $item['meta'];
             $duplicate = $this->findDuplicate($hash, $sheet->getTitle(), $sourceName, $ignoreBelow, $currency, $mode, $replacementScope);
             if ($duplicate > 0) {
+                $this->initializeDuplicateDraftTranslations($duplicate);
                 $batchIds[] = $duplicate;
                 $this->lastImportResults[] = array(
                     'batch_id' => $duplicate,
@@ -141,19 +154,36 @@ class ShippingPriceImporter
     public function publishBatch($batchId, $forceCurrent = false)
     {
         $batchId = (int) $batchId;
-        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch WHERE rowid=".$batchId." AND entity=".$this->entity;
+        $this->db->begin();
+        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch WHERE rowid=".$batchId." AND entity=".$this->entity." FOR UPDATE";
         $res = $this->db->query($sql);
         $batch = $res ? $this->db->fetch_object($res) : null;
-        if (!$batch) throw new RuntimeException('Import batch not found.');
-        if ((int) $batch->status === 2 && !$forceCurrent) return $this->getBatchPublicationState($batchId);
+        if (!$batch) { $this->db->rollback(); throw new RuntimeException('Import batch not found.'); }
+        if ((int) $batch->status === 2 && !$forceCurrent) {
+            $this->db->commit();
+            return $this->getBatchPublicationState($batchId);
+        }
         if ((int) $batch->status === 2 && $forceCurrent) {
+            $this->db->commit();
             $state = $this->getBatchPublicationState($batchId);
             if (empty($state['can_reactivate'])) {
                 throw new RuntimeException('This published batch cannot be reactivated because it is already current or a newer relevant batch exists.');
             }
+            $this->db->begin();
+            $res = $this->db->query($sql);
+            $batch = $res ? $this->db->fetch_object($res) : null;
+            if (!$batch) return $this->rollbackError();
         }
 
-        $this->db->begin();
+        $translationSql = "SELECT COUNT(*) pending FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$this->entity." AND fk_batch=".$batchId;
+        $translationSql .= " AND source_notes IS NOT NULL AND source_notes<>'' AND translation_status<>'approved'";
+        $translationRes = $this->db->query($translationSql);
+        $translationRow = $translationRes ? $this->db->fetch_object($translationRes) : null;
+        if (!$translationRow) return $this->rollbackError();
+        if ((int) $translationRow->pending > 0) {
+            $this->db->rollback();
+            throw new RuntimeException('Approve every imported carrier/source note before publishing this batch.');
+        }
         $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET status=1,is_current=0 WHERE fk_batch=".$batchId." AND entity=".$this->entity;
         if (!$this->db->query($sql)) return $this->rollbackError();
 
@@ -230,8 +260,7 @@ class ShippingPriceImporter
             $country = $this->countryForPod($pod);
             if ($country === '') $warnings['country:'.$pod] = 'Unmapped destination country: '.$pod;
             if ($originData['line'] === 'UNKNOWN') $warnings['line:'.$origin] = 'Unmapped shipping line: '.$origin;
-            $notes = trim((string) $this->cellValue($sheet, $meta['notes_col'], $r));
-            $foundPrice = false;
+            $foundPrice = false; $acceptedPrices = array();
             foreach ($meta['price_cols'] as $col => $container) {
                 $cell = $sheet->getCellByColumnAndRow($col, $r);
                 $value = $cell->getValue();
@@ -247,17 +276,32 @@ class ShippingPriceImporter
                     continue;
                 }
                 $margin = $this->containerMargin($container);
+                $acceptedPrices[] = array('cell'=>$cell, 'container'=>$container, 'cost'=>$cost, 'sale'=>$cost + $margin);
+            }
+            if (!$foundPrice) $ignored[] = array('row' => $r, 'cell' => '', 'reason' => 'no_usable_price', 'value' => $pod);
+            if (!$acceptedPrices) continue;
+            $notesRaw = (string) $this->cellValue($sheet, $meta['notes_col'], $r);
+            $notes = ShippingNoteTranslationService::normalizeSource($notesRaw);
+            $translation = $this->translationForNote($notes);
+            foreach ($acceptedPrices as $acceptedPrice) {
                 $rows[] = array(
-                    'source_row' => $r, 'source_cell' => $cell->getCoordinate(), 'region' => $originData['region'],
+                    'source_row' => $r, 'source_cell' => $acceptedPrice['cell']->getCoordinate(), 'region' => $originData['region'],
                     'pol' => $originData['pol'], 'country' => $country, 'pod' => $pod, 'line' => $originData['line'],
-                    'service' => $this->serviceType($route), 'route' => $route, 'container' => $container,
-                    'cost' => $cost, 'sale' => $cost + $margin, 'currency' => $currency,
+                    'service' => $this->serviceType($route), 'route' => $route, 'container' => $acceptedPrice['container'],
+                    'cost' => $acceptedPrice['cost'], 'sale' => $acceptedPrice['sale'], 'currency' => $currency,
                     'public_visible' => ($country !== '' && $originData['pol'] !== 'UNKNOWN' && $originData['line'] !== 'UNKNOWN') ? 1 : 0,
-                    'public_notes' => !empty($GLOBALS['conf']->global->CHINAPLANETSP_PUBLIC_SOURCE_NOTES) ? $notes : '',
+                    'source_notes_raw' => $notesRaw,
+                    'source_notes' => $notes,
+                    'notes_en' => $translation['notes_en'],
+                    'translation_status' => $translation['status'],
+                    'translation_source_hash' => $translation['source_hash'],
+                    'translation_provider' => $translation['provider'],
+                    'translation_model' => $translation['model'],
+                    'translation_error' => $translation['error'],
+                    'public_notes' => $translation['status'] === 'approved' ? $translation['notes_en'] : '',
                     'internal_notes' => $notes,
                 );
             }
-            if (!$foundPrice) $ignored[] = array('row' => $r, 'cell' => '', 'reason' => 'no_usable_price', 'value' => $pod);
         }
         return array(
             'sheet' => $sheet->getTitle(), 'effective_date' => $meta['effective_date'], 'price_group' => $meta['price_group'],
@@ -280,12 +324,75 @@ class ShippingPriceImporter
         if (!$this->db->query($sql)) throw new RuntimeException($this->db->lasterror());
         $batchId = $this->db->last_insert_id(MAIN_DB_PREFIX.'chinaplanetsp_batch');
         foreach ($parsed['rows'] as $row) {
-            $sql = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetsp_rate(entity,fk_batch,source_sheet,source_row,source_cell,region_label,pol,destination_country,pod,shipping_line,service_type,route_detail,container_type,cost_price,sale_price,currency_code,valid_from,public_notes,internal_notes,public_visible,is_current,status,fk_user_creat,date_creation) VALUES(";
-            $sql .= $this->entity.",".$batchId.",'".$this->db->escape($parsed['sheet'])."',".(int) $row['source_row'].",'".$this->db->escape($row['source_cell'])."','".$this->db->escape($row['region'])."','".$this->db->escape($row['pol'])."',".($row['country'] !== '' ? "'".$this->db->escape($row['country'])."'" : 'NULL').",'".$this->db->escape($row['pod'])."','".$this->db->escape($row['line'])."','".$this->db->escape($row['service'])."','".$this->db->escape($row['route'])."','".$this->db->escape($row['container'])."',".price2num($row['cost']).",".price2num($row['sale']).",'".$this->db->escape($row['currency'])."','".$this->db->escape($parsed['effective_date'])."','".$this->db->escape($row['public_notes'])."','".$this->db->escape($row['internal_notes'])."',".(int)$row['public_visible'].",0,0,".(int) $this->user->id.",'".$this->db->idate(dol_now())."')";
+            $sql = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetsp_rate(entity,fk_batch,source_sheet,source_row,source_cell,region_label,pol,destination_country,pod,shipping_line,service_type,route_detail,container_type,cost_price,sale_price,currency_code,valid_from,source_notes_raw,source_notes,notes_en,translation_status,translation_source_hash,translation_provider,translation_model,translation_error,public_notes,internal_notes,public_visible,is_current,status,fk_user_creat,date_creation) VALUES(";
+            $sql .= $this->entity.",".$batchId.",'".$this->db->escape($parsed['sheet'])."',".(int) $row['source_row'].",'".$this->db->escape($row['source_cell'])."','".$this->db->escape($row['region'])."','".$this->db->escape($row['pol'])."',".($row['country'] !== '' ? "'".$this->db->escape($row['country'])."'" : 'NULL').",'".$this->db->escape($row['pod'])."','".$this->db->escape($row['line'])."','".$this->db->escape($row['service'])."','".$this->db->escape($row['route'])."','".$this->db->escape($row['container'])."',".price2num($row['cost']).",".price2num($row['sale']).",'".$this->db->escape($row['currency'])."','".$this->db->escape($parsed['effective_date'])."',".$this->nullable($row['source_notes_raw']).",".$this->nullable($row['source_notes']).",".$this->nullable($row['notes_en']).",'".$this->db->escape($row['translation_status'])."',".$this->nullable($row['translation_source_hash']).",".$this->nullable($row['translation_provider']).",".$this->nullable($row['translation_model']).",".$this->nullable($row['translation_error']).",".$this->nullable($row['public_notes']).",".$this->nullable($row['internal_notes']).",".(int)$row['public_visible'].",0,0,".(int) $this->user->id.",'".$this->db->idate(dol_now())."')";
             if (!$this->db->query($sql)) { $this->db->rollback(); throw new RuntimeException($this->db->lasterror()); }
         }
         $this->db->commit();
         return (int) $batchId;
+    }
+
+    private function translationForNote($notes)
+    {
+        $notes = ShippingNoteTranslationService::normalizeSource($notes);
+        $hash = $notes === '' ? '' : hash('sha256', $notes);
+        if (isset($this->translationCache[$hash])) return $this->translationCache[$hash];
+        if ($notes === '') {
+            return $this->translationCache[$hash] = array('status'=>'not_needed','notes_en'=>'','source_hash'=>'','provider'=>'','model'=>'','error'=>'','attempted'=>false);
+        }
+        if (ShippingNoteTranslationService::containsHan($notes)) {
+            $elapsed = microtime(true) - $this->translationStartedAt;
+            if ($this->translationCircuitOpen || $this->translationCalls >= 10 || $elapsed >= 19.75) {
+                return $this->translationCache[$hash] = array(
+                    'status'=>'pending','notes_en'=>'','source_hash'=>$hash,'provider'=>'','model'=>'',
+                    'error'=>$this->translationCircuitOpen ? 'provider_circuit_open' : 'translation_budget_exhausted','attempted'=>false,
+                );
+            }
+        }
+        $remainingSeconds = max(0.001, 20.0 - (microtime(true) - $this->translationStartedAt));
+        $result = $this->translator->translate($notes, $remainingSeconds);
+        if (!empty($result['attempted'])) $this->translationCalls++;
+        if (in_array($result['status'], array('pending','failed'), true) && ShippingNoteTranslationService::containsHan($notes)) {
+            $this->translationCircuitOpen = true;
+        }
+        if ((microtime(true) - $this->translationStartedAt) >= 20.0) $this->translationCircuitOpen = true;
+        return $this->translationCache[$hash] = $result;
+    }
+
+    /** Initialize a reused legacy draft without modifying published/history price data. */
+    private function initializeDuplicateDraftTranslations($batchId)
+    {
+        $batchId = (int) $batchId;
+        $sql = "SELECT status FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch WHERE rowid=".$batchId." AND entity=".$this->entity;
+        $res = $this->db->query($sql); $batch = $res ? $this->db->fetch_object($res) : null;
+        if (!$batch || (int) $batch->status !== 0) return;
+        $sql = "SELECT source_row,MIN(internal_notes) source_note FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate";
+        $sql .= " WHERE entity=".$this->entity." AND fk_batch=".$batchId." AND source_notes IS NULL AND internal_notes IS NOT NULL AND internal_notes<>''";
+        $sql .= " GROUP BY source_row ORDER BY source_row";
+        $res = $this->db->query($sql); $groups = array();
+        if ($res) while ($row = $this->db->fetch_object($res)) $groups[] = $row;
+        foreach ($groups as $group) {
+            $raw = (string) $group->source_note;
+            $normalized = ShippingNoteTranslationService::normalizeSource($raw);
+            if ($normalized === '') continue;
+            $translation = $this->translationForNote($normalized);
+            $this->db->begin();
+            $lockSql = "SELECT status FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch WHERE rowid=".$batchId." AND entity=".$this->entity." FOR UPDATE";
+            $lockRes = $this->db->query($lockSql); $locked = $lockRes ? $this->db->fetch_object($lockRes) : null;
+            if (!$locked || (int) $locked->status !== 0) { $this->db->rollback(); return; }
+            $update = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET source_notes_raw=".$this->nullable($raw).",source_notes=".$this->nullable($normalized).",notes_en=".$this->nullable($translation['notes_en']).",";
+            $update .= "translation_status='".$this->db->escape($translation['status'])."',translation_source_hash=".$this->nullable($translation['source_hash']).",translation_provider=".$this->nullable($translation['provider']).",";
+            $update .= "translation_model=".$this->nullable($translation['model']).",translation_error=".$this->nullable($translation['error']).",public_notes=".$this->nullable($translation['status'] === 'approved' ? $translation['notes_en'] : '')."";
+            $update .= " WHERE entity=".$this->entity." AND fk_batch=".$batchId." AND source_row=".(int) $group->source_row." AND source_notes IS NULL";
+            if (!$this->db->query($update)) return $this->rollbackError();
+            $this->db->commit();
+        }
+    }
+
+    private function nullable($value)
+    {
+        $value = (string) $value;
+        return $value === '' ? 'NULL' : "'".$this->db->escape($value)."'";
     }
 
     private function sheetEffectiveDate($sheet)

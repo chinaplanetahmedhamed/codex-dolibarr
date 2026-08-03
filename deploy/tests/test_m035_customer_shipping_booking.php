@@ -41,7 +41,7 @@ try {
     );
     $filters = array('pol'=>$candidate->pol,'country_code'=>$candidate->destination_country,'pod'=>$candidate->pod,'shipping_line'=>$candidate->shipping_line,'container_type'=>$candidate->container_type,'service_type'=>$candidate->service_type,'incoterm'=>'FOB','cargo_type'=>'normal','documents'=>array());
     $rate = $prices->getCustomerRateById((int)$candidate->rowid, $filters); if (!$rate) m035Fail('SAFE_RATE_REVALIDATION_EMPTY');
-    $forbidden = json_encode($rate); foreach (array('cost_price','supplier_cost','base_margin','source_sheet','source_row','batch_ref','rule_id','internal_notes','route_detail') as $needle) if (strpos($forbidden,$needle)!==false) m035Fail('RATE_LEAK_'.$needle);
+    $forbidden = json_encode($rate); foreach (array('cost_price','supplier_cost','base_margin','source_sheet','source_row','batch_ref','rule_id','internal_notes','route_detail','source_notes','source_notes_raw','notes_en','translation_status','translation_provider','translation_model','translation_error','fk_user_translation_review') as $needle) if (strpos($forbidden,$needle)!==false) m035Fail('RATE_LEAK_'.$needle);
 
     $before = array('propal'=>m035Count($db,'propal'),'commande'=>m035Count($db,'commande'),'facture'=>m035Count($db,'facture'),'paiement'=>m035Count($db,'paiement'));
     $key = 'm035test_'.bin2hex(random_bytes(12));
@@ -57,6 +57,7 @@ try {
     $res=$db->query("SELECT fk_operation,fk_soc,snapshot_json FROM ".MAIN_DB_PREFIX."chinaplanetsp_booking WHERE entity=".(int)$conf->entity." AND rowid=".$createdBooking);$row=$res?$db->fetch_object($res):null;if(!$row)m035Fail('BOOKING_ROW_MISSING');$createdOperation=(int)$row->fk_operation;
     if((int)$row->fk_soc!==(int)$customer->socid)m035Fail('SESSION_SOCID_NOT_AUTHORITATIVE');
     $snapshot=json_decode($row->snapshot_json,true);if((int)$snapshot['quantity']!==2||abs((float)$snapshot['total']-(2*(float)$snapshot['unit_price']))>.001)m035Fail('PRICE_ARITHMETIC_FAILED');
+    $snapshotJson=json_encode($snapshot);foreach(array('source_notes','source_notes_raw','notes_en','translation_status','translation_provider','translation_model','translation_error','supplier_cost','base_margin','internal_notes')as$needle)if(strpos($snapshotJson,$needle)!==false)m035Fail('SNAPSHOT_LEAK_'.$needle);
     $retry=$bookings->submit($customer,$posted);if(empty($retry['duplicate'])||$retry['reference']!==$created['reference'])m035Fail('IDEMPOTENCY_FAILED');
     $changed=$posted;$changed['cargo_description']='Different request';$conflict=false;try{$bookings->submit($customer,$changed);}catch(Throwable$e){$conflict=true;}if(!$conflict)m035Fail('IDEMPOTENCY_CONFLICT_MISSING');
     $res=$db->query("SELECT data_json FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".(int)$conf->entity." AND fk_operation=".$createdOperation." AND section_code='service'");$section=$res?$db->fetch_object($res):null;if(!$section||strpos($section->data_json,'MUST_NOT_PERSIST')!==false||strpos($section->data_json,'forwarder')!==false)m035Fail('UNSAFE_OPERATION_PAYLOAD');

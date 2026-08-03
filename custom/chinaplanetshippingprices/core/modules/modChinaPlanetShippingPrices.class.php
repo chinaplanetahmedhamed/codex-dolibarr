@@ -13,7 +13,7 @@ class modChinaPlanetShippingPrices extends DolibarrModules
         $this->family = 'products';
         $this->module_position = 99;
         $this->description = 'Versioned shipping rates, customer inquiry and internal operations SOP library';
-        $this->version = '1.2.0';
+        $this->version = '1.3.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'ship';
         $this->dirs = array('/chinaplanetshippingprices/imports');

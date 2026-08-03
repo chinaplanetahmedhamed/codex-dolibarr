@@ -17,7 +17,6 @@ if (GETPOST('action', 'aZ09') === 'save') {
         'CHINAPLANETSP_CURRENCY' => strtoupper(GETPOST('currency', 'alpha')),
         'CHINAPLANETSP_CUSTOMER_HISTORY' => GETPOSTINT('customer_history') ? 1 : 0,
         'CHINAPLANETSP_HISTORY_MONTHS' => max(1, min(60, GETPOSTINT('history_months'))),
-        'CHINAPLANETSP_PUBLIC_SOURCE_NOTES' => GETPOSTINT('public_source_notes') ? 1 : 0,
     );
     foreach ($values as $key => $value) dolibarr_set_const($db, $key, (string) $value, 'chaine', 0, '', $conf->entity);
     setEventMessages($langs->trans('SetupSaved'), null, 'mesgs');
@@ -44,6 +43,6 @@ foreach ($fields as $f) {
     print '<label><span>'.dol_escape_htmltag($f[3]).'</span><input name="'.$f[0].'" value="'.dol_escape_htmltag($value).'" autocomplete="off"><small>'.dol_escape_htmltag($f[4]).'</small></label>';
 }
 $history = !empty($conf->global->CHINAPLANETSP_CUSTOMER_HISTORY);
-$notes = !empty($conf->global->CHINAPLANETSP_PUBLIC_SOURCE_NOTES);
-print '</div></section><section class="chinaplanetsp-rule-editor"><h2><span class="fas fa-eye"></span> Customer visibility / ما يظهر للعميل</h2><div class="chinaplanetsp-setting-switches"><label><input type="checkbox" name="customer_history" value="1"'.($history?' checked':'').'><span><strong>Show sale-price history / إظهار سجل سعر البيع</strong><small>External customers can see public price history for the configured period.</small></span></label><label><input type="checkbox" name="public_source_notes" value="1"'.($notes?' checked':'').'><span><strong>Publish future agent notes / نشر ملاحظات الوكيل القادمة</strong><small>Keep disabled until source notes are consistently reviewed and customer-safe. / اتركه معطلاً حتى تتم مراجعة الملاحظات.</small></span></label></div></section><div class="chinaplanetsp-rule-actions"><button class="button button-save chinaplanetsp-submit" type="submit"><span class="fas fa-save"></span> Save settings / حفظ الإعدادات</button></div></form></main>';
+$translationReady = getenv('CHINAPLANETSP_TRANSLATION_ENDPOINT') !== false && getenv('CHINAPLANETSP_TRANSLATION_ENDPOINT') !== '' && getenv('CHINAPLANETSP_TRANSLATION_MODEL') !== false && getenv('CHINAPLANETSP_TRANSLATION_MODEL') !== '';
+print '</div></section><section class="chinaplanetsp-rule-editor"><h2><span class="fas fa-eye"></span> Customer visibility / ما يظهر للعميل</h2><div class="chinaplanetsp-setting-switches"><label><input type="checkbox" name="customer_history" value="1"'.($history?' checked':'').'><span><strong>Show sale-price history / إظهار سجل سعر البيع</strong><small>External customers can see public price history for the configured period.</small></span></label><div class="chinaplanetsp-mapping-help"><span class="fas fa-language"></span><div><strong>Carrier-note translation: '.($translationReady?'Automatic':'Provider not configured').'</strong><p>Valid provider output is accepted automatically during upload and remains editable by authorized staff. Failed translations require manual English text. Endpoint, model and key are server-environment only.</p></div></div></div></section><div class="chinaplanetsp-rule-actions"><button class="button button-save chinaplanetsp-submit" type="submit"><span class="fas fa-save"></span> Save settings / حفظ الإعدادات</button></div></form></main>';
 cpcc_admin_shell_close(); llxFooter(); $db->close();
