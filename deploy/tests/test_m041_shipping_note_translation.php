@@ -43,6 +43,21 @@ m041Assert(in_array('Authorization: Bearer unit-test-secret', $calls[0]['headers
 m041Assert($calls[0]['options']['connect_timeout'] === 2 && $calls[0]['options']['timeout'] === 8 && $calls[0]['options']['connect_timeout_ms'] === 2000 && $calls[0]['options']['timeout_ms'] === 8000 && $calls[0]['options']['max_response_bytes'] === 65536, 'provider bounds changed');
 foreach (array('8.7','8.31','2026.7.20','26.5T','RMB180','KOTA CEMPAKA 0085W') as $fact) m041Assert(strpos($result['notes_en'], $fact) !== false, 'translation fixture fact missing: '.$fact);
 
+$deepSeekCalls = array();
+$deepSeekTransport = function ($endpoint, $payload, $headers, $options) use (&$deepSeekCalls, $transport) {
+    $deepSeekCalls[] = compact('endpoint','payload','headers','options');
+    return $transport($endpoint, $payload, $headers, $options);
+};
+$deepSeekEnv = array(
+    'CHINAPLANETSP_TRANSLATION_ENDPOINT'=>'https://api.deepseek.com/chat/completions',
+    'CHINAPLANETSP_TRANSLATION_MODEL'=>'deepseek-v4-flash',
+    'CHINAPLANETSP_TRANSLATION_API_KEY'=>'unit-test-deepseek-secret',
+);
+$deepSeekResolver = function ($host) { return $host === 'api.deepseek.com' ? array('8.8.4.4') : array(); };
+$deepSeekResult = (new ShippingNoteTranslationService($deepSeekTransport, $deepSeekEnv, $deepSeekResolver))->translate($normalized);
+m041Assert($deepSeekResult['status'] === 'approved' && count($deepSeekCalls) === 1, 'DeepSeek V4 provider contract failed');
+m041Assert(($deepSeekCalls[0]['payload']['thinking']['type'] ?? '') === 'disabled', 'DeepSeek V4 deterministic non-thinking mode was not requested');
+
 $noCalls = 0;
 $neverTransport = function () use (&$noCalls) { $noCalls++; throw new RuntimeException('must not call'); };
 $missing = new ShippingNoteTranslationService($neverTransport, array(), $resolver);

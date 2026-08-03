@@ -131,6 +131,11 @@ class ShippingNoteTranslationService
                 array('role' => 'user', 'content' => $source),
             ),
         );
+        if ($target['provider'] === 'api.deepseek.com' && strpos($model, 'deepseek-v4-') === 0) {
+            // Translation is a bounded deterministic task; DeepSeek V4 defaults
+            // to thinking mode, which is slower and ignores temperature.
+            $payload['thinking'] = array('type'=>'disabled');
+        }
         $headers = array('Accept: application/json', 'Content-Type: application/json');
         if ($apiKey !== '') $headers[] = 'Authorization: Bearer '.$apiKey;
         $remainingMs = $remainingSeconds === null ? self::REQUEST_TIMEOUT * 1000 : max(1, min(self::REQUEST_TIMEOUT * 1000, (int) floor((float) $remainingSeconds * 1000)));
