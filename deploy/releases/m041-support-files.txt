@@ -1,0 +1,12 @@
+deploy/migrations/m041_shipping_note_translation_schema.php
+deploy/tests/test_m034_shipping_price_publication_state.php
+deploy/tests/test_m035_customer_shipping_booking.php
+deploy/tests/test_m035_customer_shipping_booking_source.php
+deploy/tests/test_m041_schema_migration.php
+deploy/tests/test_m041_shipping_note_translation.php
+deploy/tests/test_m041_shipping_note_translation_runtime.php
+deploy/tests/test_m041_shipping_note_translation_source.php
+deploy/tests/test_m041_translation_provider.php
+deploy/tests/test_shipping_prices_integration.php
+deploy/tests/test_shipping_prices_module.php
+deploy/tests/test_shipping_prices_upload_csrf.php
