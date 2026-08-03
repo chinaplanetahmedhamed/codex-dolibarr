@@ -1,0 +1,95 @@
+name: Roll back pinned M041 production release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type ROLLBACK_M041_47CEAE0_FROM_PRODUCTION
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m041-staging-production-delivery
+  cancel-in-progress: false
+
+env:
+  RELEASE_COMMIT: 47ceae0d56848c7badbfbcca4abc9e7af3badbc0
+  RELEASE_ARTIFACT_SHA: 6ee49c1fb298aaa248d56ce771d37d018001b1fc56c0813234e836d8facc7beb
+  DEPLOY_HOST: 31.97.158.178
+  DEPLOY_USER: cp-m041-production
+
+jobs:
+  rollback:
+    name: Explicitly approved production rollback
+    if: ${{ vars.M041_AUTODEPLOY_ENABLED == 'true' && inputs.confirmation == 'ROLLBACK_M041_47CEAE0_FROM_PRODUCTION' }}
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    steps:
+      - name: Check out the exact M041 release
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+          persist-credentials: false
+
+      - name: Rebuild and verify exact artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          artifact="$RUNNER_TEMP/m041-47ceae0.tar.gz"
+          git archive --format=tar "$RELEASE_COMMIT" \
+            $(cat deploy/releases/m041-runtime-files.txt) \
+            $(cat deploy/releases/m041-support-files.txt) \
+            deploy/releases/m041-runtime-files.txt \
+            deploy/releases/m041-support-files.txt | gzip -n > "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$RELEASE_ARTIFACT_SHA"
+
+      - name: Configure production-only forced SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload artifact and capture current status
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-artifact < "$RUNNER_TEMP/m041-47ceae0.tar.gz"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-status'
+
+      - name: Sign and execute exact production rollback
+        shell: bash
+        env:
+          APPROVAL_PRIVATE_KEY: ${{ secrets.PRODUCTION_APPROVAL_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$APPROVAL_PRIVATE_KEY"
+          approval_key="$RUNNER_TEMP/m041-production-approval.pem"
+          approval_message="$RUNNER_TEMP/m041-production-approval.message"
+          approval_signature="$RUNNER_TEMP/m041-production-approval.signature"
+          printf '%s\n' "$APPROVAL_PRIVATE_KEY" > "$approval_key"; chmod 0600 "$approval_key"
+          expires=$(( $(date -u '+%s') + 600 ))
+          printf 'M041\nproduction-rollback\n%s\n%s\n%s\n%s\n' "$RELEASE_COMMIT" "$RELEASE_ARTIFACT_SHA" "$GITHUB_RUN_ID" "$expires" > "$approval_message"
+          openssl pkeyutl -sign -rawin -inkey "$approval_key" -in "$approval_message" -out "$approval_signature"
+          test "$(stat -c '%s' "$approval_signature")" = '64'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-message < "$approval_message"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-signature < "$approval_signature"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-rollback'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-status'
+
+      - name: Remove transient secrets
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" remove-transient-secrets 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/m041-production-approval.pem" "$RUNNER_TEMP/m041-production-approval.message" "$RUNNER_TEMP/m041-production-approval.signature" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"

@@ -1,0 +1,310 @@
+name: Deploy pinned M041 shipping translation
+
+on:
+  push:
+    branches:
+      - feature/m041-shipping-note-translation
+    paths:
+      - custom/chinaplanetshippingprices/**
+      - deploy/migrations/m041_shipping_note_translation_schema.php
+      - deploy/releases/m041-*.txt
+      - deploy/tests/test_m041_*.php
+      - deploy/tests/test_shipping_prices_*.php
+      - .github/workflows/deploy-m041.yml
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type DEPLOY_M041_47CEAE0_TO_PRODUCTION
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m041-staging-production-delivery
+  cancel-in-progress: false
+
+env:
+  RELEASE_COMMIT: 47ceae0d56848c7badbfbcca4abc9e7af3badbc0
+  RELEASE_SHORT: 47ceae0
+  RELEASE_ARTIFACT_SHA: 6ee49c1fb298aaa248d56ce771d37d018001b1fc56c0813234e836d8facc7beb
+  DEPLOY_HOST: 31.97.158.178
+  DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-m041-delivery
+
+jobs:
+  build:
+    name: Verify and build exact M041 artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require exact production confirmation on manual runs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = 'DEPLOY_M041_47CEAE0_TO_PRODUCTION'
+
+      - name: Check out the approved M041 commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+          persist-credentials: false
+
+      - name: Verify release scope and tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          test "$(sha256sum deploy/releases/m041-runtime-files.txt | awk '{print $1}')" = 'dcb358f6544694a0c9167b0b355bbef90c689d4cc903bf3ae45a3bea47ed0cbc'
+          test "$(sha256sum deploy/releases/m041-support-files.txt | awk '{print $1}')" = '807fdf1fa8b579745fdfb34c8e4f6cd29418772179d2dc1679c1b11263b5749b'
+          while IFS= read -r file; do
+            test -f "$file" && test ! -L "$file"
+            if [[ "$file" == *.php ]]; then php -l "$file" >/dev/null; fi
+          done < <(printf '%s\n' deploy/releases/m041-runtime-files.txt deploy/releases/m041-support-files.txt; cat deploy/releases/m041-runtime-files.txt deploy/releases/m041-support-files.txt)
+          php deploy/tests/test_m034_shipping_price_publication_state.php
+          php deploy/tests/test_m041_schema_migration.php
+          php deploy/tests/test_m041_shipping_note_translation.php
+          php deploy/tests/test_m041_shipping_note_translation_source.php
+          php deploy/tests/test_shipping_prices_module.php
+          php deploy/tests/test_shipping_prices_upload_csrf.php
+
+      - name: Build and verify deterministic artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          artifact="$RUNNER_TEMP/m041-${RELEASE_SHORT}.tar.gz"
+          git archive --format=tar "$RELEASE_COMMIT" \
+            $(cat deploy/releases/m041-runtime-files.txt) \
+            $(cat deploy/releases/m041-support-files.txt) \
+            deploy/releases/m041-runtime-files.txt \
+            deploy/releases/m041-support-files.txt | gzip -n > "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$RELEASE_ARTIFACT_SHA"
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '38'
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Store exact artifact for both environments
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m041-47ceae0
+          path: ${{ steps.artifact.outputs.path }}
+          if-no-files-found: error
+          retention-days: 7
+
+  staging:
+    name: Deploy and verify canonical backup-erp
+    if: ${{ vars.M041_AUTODEPLOY_ENABLED == 'true' }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 25
+    env:
+      DEPLOY_USER: cp-m041-staging
+    steps:
+      - name: Download exact artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: m041-47ceae0
+          path: ${{ runner.temp }}/m041
+
+      - name: Configure restricted SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload and validate exact artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          artifact="$RUNNER_TEMP/m041/m041-${RELEASE_SHORT}.tar.gz"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$RELEASE_ARTIFACT_SHA"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-artifact < "$artifact"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-compare'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-preflight'
+
+      - name: Apply with server-side code and database backups
+        id: apply
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          apply_output=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-apply')
+          printf '%s\n' "$apply_output"
+          if grep -Fq 'APPLY=PASS' <<<"$apply_output"; then
+            echo 'did_mutate=true' >> "$GITHUB_OUTPUT"
+          elif grep -Fq 'APPLY=NOOP_ALREADY_APPLIED' <<<"$apply_output"; then
+            echo 'did_mutate=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Unrecognized staging apply result' >&2
+            exit 1
+          fi
+
+      - name: Configure and test DeepSeek without exposing the key
+        shell: bash
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEEPSEEK_API_KEY"
+          key_file="$RUNNER_TEMP/m041-staging-deepseek.key"
+          printf '%s' "$DEEPSEEK_API_KEY" > "$key_file"
+          chmod 0600 "$key_file"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-provider-key < "$key_file"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-configure-provider'
+          rm -f "$key_file"
+
+      - name: Verify staging
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-verify'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-provider-status'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-status'
+
+      - name: Roll back code and schema if post-apply verification fails
+        if: ${{ failure() && steps.apply.outputs.did_mutate == 'true' }}
+        shell: bash
+        run: |
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run staging-rollback'
+
+      - name: Remove transient secret files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" remove-transient-secrets 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/m041-staging-deepseek.key" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  production:
+    name: Explicitly approved production deployment
+    if: ${{ vars.M041_AUTODEPLOY_ENABLED == 'true' && github.event_name == 'workflow_dispatch' && inputs.confirmation == 'DEPLOY_M041_47CEAE0_TO_PRODUCTION' }}
+    needs: staging
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    env:
+      DEPLOY_USER: cp-m041-production
+    steps:
+      - name: Download the identical staged artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: m041-47ceae0
+          path: ${{ runner.temp }}/m041
+
+      - name: Configure restricted SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload, compare, and preflight production
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          artifact="$RUNNER_TEMP/m041/m041-${RELEASE_SHORT}.tar.gz"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$RELEASE_ARTIFACT_SHA"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-artifact < "$artifact"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-compare'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-preflight'
+
+      - name: Apply identical production artifact
+        id: apply
+        shell: bash
+        env:
+          APPROVAL_PRIVATE_KEY: ${{ secrets.PRODUCTION_APPROVAL_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          approval_key="$RUNNER_TEMP/m041-production-approval.pem"
+          approval_message="$RUNNER_TEMP/m041-production-approval.message"
+          approval_signature="$RUNNER_TEMP/m041-production-approval.signature"
+          printf '%s\n' "$APPROVAL_PRIVATE_KEY" > "$approval_key"; chmod 0600 "$approval_key"
+          expires=$(( $(date -u '+%s') + 600 ))
+          printf 'M041\nproduction-apply\n%s\n%s\n%s\n%s\n' "$RELEASE_COMMIT" "$RELEASE_ARTIFACT_SHA" "$GITHUB_RUN_ID" "$expires" > "$approval_message"
+          openssl pkeyutl -sign -rawin -inkey "$approval_key" -in "$approval_message" -out "$approval_signature"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-message < "$approval_message"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-signature < "$approval_signature"
+          apply_output=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-apply')
+          printf '%s\n' "$apply_output"
+          if grep -Fq 'APPLY=PASS' <<<"$apply_output"; then
+            echo 'did_mutate=true' >> "$GITHUB_OUTPUT"
+          elif grep -Fq 'APPLY=NOOP_ALREADY_APPLIED' <<<"$apply_output"; then
+            echo 'did_mutate=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Unrecognized production apply result' >&2
+            exit 1
+          fi
+          rm -f "$approval_key" "$approval_message" "$approval_signature"
+
+      - name: Configure and test production DeepSeek
+        shell: bash
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          APPROVAL_PRIVATE_KEY: ${{ secrets.PRODUCTION_APPROVAL_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEEPSEEK_API_KEY" && test -n "$APPROVAL_PRIVATE_KEY"
+          key_file="$RUNNER_TEMP/m041-production-deepseek.key"
+          approval_key="$RUNNER_TEMP/m041-production-approval.pem"
+          approval_message="$RUNNER_TEMP/m041-production-approval.message"
+          approval_signature="$RUNNER_TEMP/m041-production-approval.signature"
+          printf '%s' "$DEEPSEEK_API_KEY" > "$key_file"
+          printf '%s\n' "$APPROVAL_PRIVATE_KEY" > "$approval_key"
+          chmod 0600 "$key_file" "$approval_key"
+          expires=$(( $(date -u '+%s') + 600 ))
+          printf 'M041\nproduction-configure-provider\n%s\n%s\n%s\n%s\n' "$RELEASE_COMMIT" "$RELEASE_ARTIFACT_SHA" "$GITHUB_RUN_ID" "$expires" > "$approval_message"
+          openssl pkeyutl -sign -rawin -inkey "$approval_key" -in "$approval_message" -out "$approval_signature"
+          test "$(stat -c '%s' "$approval_signature")" = '64'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-provider-key < "$key_file"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-message < "$approval_message"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-signature < "$approval_signature"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-configure-provider'
+          rm -f "$key_file" "$approval_key" "$approval_message" "$approval_signature"
+
+      - name: Verify production
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-verify'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-provider-status'
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-status'
+
+      - name: Roll back code and schema if post-apply verification fails
+        if: ${{ failure() && steps.apply.outputs.did_mutate == 'true' }}
+        shell: bash
+        env:
+          APPROVAL_PRIVATE_KEY: ${{ secrets.PRODUCTION_APPROVAL_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          approval_key="$RUNNER_TEMP/m041-production-approval.pem"
+          approval_message="$RUNNER_TEMP/m041-production-approval.message"
+          approval_signature="$RUNNER_TEMP/m041-production-approval.signature"
+          printf '%s\n' "$APPROVAL_PRIVATE_KEY" > "$approval_key"; chmod 0600 "$approval_key"
+          expires=$(( $(date -u '+%s') + 600 ))
+          printf 'M041\nproduction-rollback\n%s\n%s\n%s\n%s\n' "$RELEASE_COMMIT" "$RELEASE_ARTIFACT_SHA" "$GITHUB_RUN_ID" "$expires" > "$approval_message"
+          openssl pkeyutl -sign -rawin -inkey "$approval_key" -in "$approval_message" -out "$approval_signature"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-message < "$approval_message"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" upload-production-approval-signature < "$approval_signature"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" 'run production-rollback'
+
+      - name: Remove transient secret files
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" remove-transient-secrets 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/m041-production-deepseek.key" "$RUNNER_TEMP/m041-production-approval.pem" "$RUNNER_TEMP/m041-production-approval.message" "$RUNNER_TEMP/m041-production-approval.signature" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
