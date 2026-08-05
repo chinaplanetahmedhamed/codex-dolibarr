@@ -14,12 +14,20 @@ class M043FakePrices {
         );
     }
     public function search($filters, $includeCost, $limit) { return array('results'=>array($this->priced), 'error'=>''); }
+    public function getPublicRouteOptions($countryCode) {
+        if ($countryCode === '') return array('countries'=>array(array('code'=>'EG','label'=>'Egypt')), 'routes'=>array());
+        return array('countries'=>array(), 'routes'=>array(array('pol'=>'NANSHA','pod'=>'ALEXANDRIA')));
+    }
     public function getCustomerRateById($id, $filters) { return $id === 73 ? $this->priced : null; }
 }
 try {
     $fake = new M043FakePrices();
     $service = new PublicShippingRateService(null, 2, str_repeat('k', 32), 1000, $fake);
     $result = $service->search(array('pol'=>'NANSHA','pod'=>'ALEXANDRIA','container_type'=>'40HQ'));
+    $countries = $service->routeOptions(array());
+    m043Assert($countries['countries'][0]['code'] === 'EG' && empty($countries['routes']), 'country options missing');
+    $routes = $service->routeOptions(array('country_code'=>'eg'));
+    m043Assert($routes['country_code'] === 'EG' && $routes['routes'][0]['pod'] === 'ALEXANDRIA', 'dependent route options missing');
     m043Assert(count($result['results']) === 1, 'rate missing');
     $public = $result['results'][0];
     m043Assert(!isset($public['rate_id']) && !isset($public['fingerprint']) && isset($public['rate_token']), 'identifier leaked');

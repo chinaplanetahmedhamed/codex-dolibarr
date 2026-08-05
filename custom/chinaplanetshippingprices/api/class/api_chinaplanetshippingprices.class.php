@@ -86,4 +86,24 @@ class ChinaPlanetShippingPrices extends DolibarrApi
             throw new RestException($e->getHttpStatus(), $e->getPublicCode());
         }
     }
+
+    /**
+     * Bounded route options for the public website's dependent selects.
+     * No prices, rate identifiers, carrier names or availability counts are returned.
+     *
+     * @url GET website-route-options
+     */
+    public function websiteRouteOptions($country_code = '')
+    {
+        $apiUser = DolibarrApiAccess::$user;
+        if (!$apiUser || (!$apiUser->hasRight('chinaplanetshippingprices', 'website_rate_search') && empty($apiUser->admin))) {
+            throw new RestException(403, 'Website rate-search permission required.');
+        }
+        try {
+            $service = new PublicShippingRateService($this->db);
+            return $service->routeOptions(array('country_code' => $country_code));
+        } catch (PublicShippingRateException $e) {
+            throw new RestException($e->getHttpStatus(), $e->getPublicCode());
+        }
+    }
 }

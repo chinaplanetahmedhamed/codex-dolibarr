@@ -38,6 +38,10 @@ try {
     $rateSql = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetsp_rate(entity,fk_batch,source_sheet,source_row,region_label,pol,destination_country,pod,shipping_line,service_type,container_type,cost_price,sale_price,currency_code,valid_from,valid_to,translation_status,public_notes,public_visible,is_current,status,fk_user_creat,date_creation) VALUES(".(int)$conf->entity.",".$testBatchId.",'M043',1,'North Africa','".$db->escape($pol)."','EG','".$db->escape($pod)."','M043 Public Carrier','direct','40HQ',2000,2300,'USD','".date('Y-m-d',strtotime('-1 day'))."','".date('Y-m-d',strtotime('+7 days'))."','approved','Synthetic local-only rate',1,1,1,1,'".$now."')";
     m043RuntimeAssert($db->query($rateSql), 'Could not create synthetic public rate: '.$db->lasterror());
     $testRateId = (int)$db->last_insert_id(MAIN_DB_PREFIX.'chinaplanetsp_rate');
+    $routeOptions = $prices->routeOptions(array('country_code'=>'EG'));
+    $matchingRoute = false;
+    foreach ($routeOptions['routes'] as $route) if ($route['pol'] === $pol && $route['pod'] === $pod) $matchingRoute = true;
+    m043RuntimeAssert($matchingRoute, 'Synthetic published lane missing from dependent route options.');
     $public = $prices->search(array('pol'=>$pol, 'pod'=>$pod, 'container_type'=>'40HQ'));
     m043RuntimeAssert(!empty($public['results'][0]['rate_token']), 'Public rate token not returned.');
     $projection = json_encode($public['results'][0]);

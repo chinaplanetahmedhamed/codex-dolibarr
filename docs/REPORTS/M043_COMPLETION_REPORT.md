@@ -15,6 +15,7 @@
 ## ما تم تنفيذه
 
 - بحث عام مقيد بأسعار FCL المنشورة عبر صلاحية `website_rate_search`، بمدخلات exact `POL + POD + container_type` وحد 20 نتيجة.
+- قوائم مترابطة في React بترتيب دولة الوصول ثم POL ثم POD؛ مصدرها دليل مسارات محدود من أسعار Dolibarr المنشورة والمؤهلة فقط، ولا يعرض أسعارًا أو معرّفات داخلية أو خطوطًا ملاحية أو أعداد توفر.
 - DTO عام allowlist لا يعرض `rate_id` أو fingerprint أو cost أو margin أو بيانات المصدر، مع رمز AES-256-GCM صالح عشر دقائق.
 - إعادة جلب السعر وإعادة تسعيره عند الإرسال مع مقارنة fingerprint ثابتة الزمن وتخزين لقطة تجارية غير قابلة للتعديل.
 - جدول استقبال عام entity-scoped يفصل بيانات الاتصال والأطراف عن JSON الطلب واللقطة التجارية، مع مفتاح idempotency فريد وHMAC.
@@ -29,6 +30,7 @@
 ## الملفات المتأثرة — Dolibarr
 
 - `custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php`
+- `custom/chinaplanetshippingprices/class/ShippingPriceService.class.php`
 - `custom/chinaplanetshippingprices/api/class/api_chinaplanetshippingprices.class.php`
 - `custom/chinaplanetshippingprices/core/modules/modChinaPlanetShippingPrices.class.php`
 - `custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php`
@@ -69,8 +71,8 @@
 - `test_m043_public_website_intake_source.php`: PASS.
 - `test_m043_public_rate_token.php`: PASS للتشفير والعبث والانتهاء والـallowlist.
 - `test_m043_public_website_intake_runtime.php`: PASS على MariaDB المحلية؛ quote، booking، duplicate same-reference، changed-payload 409، snapshot total، و`space_confirmation=false`؛ cleanup ناجح.
-- Node tests: `39/39 PASS` بعد إضافة عقود Dolibarr والشحن وعدم إنشاء WordPress order.
-- UI contract tests: `3/3 PASS`.
+- Node tests: `41/41 PASS` بعد إضافة عقد دليل المسارات والتحقق من ISO-2، مع بقاء عدم إنشاء WordPress order.
+- UI contract tests: `4/4 PASS`، ومنها إثبات استبدال حقلي POL/POD النصيين بقوائم مترابطة.
 - `npm run lint`: PASS.
 - `npm run build -- --configLoader runner`: PASS.
 - متصفح محلي بخدمة Dolibarr وهمية: البحث NANSHA→ALEXANDRIA، ظهور `2450.5 USD / 40HQ`، إرسال الطلب والحصول على `WEB-LOCAL-UI-001`: PASS.
@@ -78,6 +80,13 @@
 - تبديل اللغة بعد النجاح حفظ POL والنموذج والمرجع وغيّر رسالة النجاح إلى اللغة الحالية: PASS بعد تصحيح مكتشف أثناء الاختبار.
 - console warnings/errors في مسار القبول: لا يوجد.
 - `git diff --check`: PASS.
+
+### إعادة تحقق تحسين القوائم — 2026-08-05
+
+- PHP lint وعقد المصدر واختبار token/options النقي: PASS.
+- build وlint واختبارات Node/UI: PASS.
+- المتصفح المحلي: مصر → NANSHA → ALEXANDRIA → 40HQ أعاد `2450.5 USD` دون أخطاء console.
+- تعذر تكرار اختبار DB الاصطناعي في هذه الجولة لأن MariaDB المحلية على `127.0.0.1:8889` لم تكن متصلة؛ لا يغيّر ذلك نجاح الجولة السابقة المسجل أعلاه، لكنه يبقي إعادة تحقق DB لهذا التحسين معلقة حتى تشغيل MariaDB.
 
 ## ما لم يُقبل بعد
 

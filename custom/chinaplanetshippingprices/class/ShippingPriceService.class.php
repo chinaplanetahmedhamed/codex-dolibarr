@@ -42,6 +42,52 @@ class ShippingPriceService
         return $out;
     }
 
+    /**
+     * Return a bounded public-safe route directory for dependent website selects.
+     * With no country it returns available destination countries only. With an
+     * exact ISO-2 country it returns eligible POL/POD pairs for that country.
+     */
+    public function getPublicRouteOptions($countryCode = '')
+    {
+        global $langs;
+        $countryCode = strtoupper(trim((string) $countryCode));
+        $out = array('countries' => array(), 'routes' => array());
+
+        if ($countryCode === '') {
+            $sql = "SELECT DISTINCT r.destination_country,c.label country_label";
+            $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+            $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity";
+            $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."c_country c ON c.code=r.destination_country";
+            $sql .= " WHERE r.entity=".$this->entity." AND r.destination_country<>'' AND r.cost_price>=".price2num($this->ignoreBelow());
+            $sql .= $this->customerEligibilitySql('r', 'b');
+            $sql .= " ORDER BY r.destination_country LIMIT 100";
+            $res = $this->db->query($sql);
+            if (!$res) return $out;
+            while ($obj = $this->db->fetch_object($res)) {
+                $code = strtoupper((string) $obj->destination_country);
+                $translated = $langs->transnoentitiesnoconv('Country'.$code);
+                $label = $translated !== 'Country'.$code ? $translated : ($obj->country_label ?: $code);
+                $out['countries'][] = array('code' => $code, 'label' => dol_ucwords($label));
+            }
+            return $out;
+        }
+
+        $sql = "SELECT DISTINCT r.pol,r.pod";
+        $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+        $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity";
+        $sql .= " WHERE r.entity=".$this->entity." AND r.destination_country='".$this->db->escape($countryCode)."'";
+        $sql .= " AND r.pol<>'' AND r.pod<>'' AND r.pol<>'UNKNOWN' AND r.pod<>'UNKNOWN'";
+        $sql .= " AND r.cost_price>=".price2num($this->ignoreBelow());
+        $sql .= $this->customerEligibilitySql('r', 'b');
+        $sql .= " ORDER BY r.pol,r.pod LIMIT 250";
+        $res = $this->db->query($sql);
+        if (!$res) return $out;
+        while ($obj = $this->db->fetch_object($res)) {
+            $out['routes'][] = array('pol' => (string) $obj->pol, 'pod' => (string) $obj->pod);
+        }
+        return $out;
+    }
+
     public function search(array $filters, $includeCost = false, $limit = 100)
     {
         $filters = $this->normalizeFilters($filters);

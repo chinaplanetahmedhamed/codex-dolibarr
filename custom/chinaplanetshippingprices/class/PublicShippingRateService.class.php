@@ -68,6 +68,21 @@ class PublicShippingRateService
         return array('results' => $results);
     }
 
+    public function routeOptions(array $input)
+    {
+        $countryCode = strtoupper($this->cleanFilter($input['country_code'] ?? '', 2));
+        if ($countryCode !== '' && !preg_match('/^[A-Z]{2}$/', $countryCode)) {
+            throw new PublicShippingRateException('invalid_route_options', 422);
+        }
+        $options = $this->prices->getPublicRouteOptions($countryCode);
+        if (!is_array($options)) throw new PublicShippingRateException('rate_service_unavailable', 503);
+        return array(
+            'country_code' => $countryCode,
+            'countries' => array_values(isset($options['countries']) && is_array($options['countries']) ? $options['countries'] : array()),
+            'routes' => array_values(isset($options['routes']) && is_array($options['routes']) ? $options['routes'] : array()),
+        );
+    }
+
     public function resolveToken($token)
     {
         $payload = $this->decryptToken((string) $token);
