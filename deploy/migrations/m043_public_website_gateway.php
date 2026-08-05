@@ -2,7 +2,7 @@
 /** Staging-only additive schema and least-privilege API gateway provisioning for M043. */
 
 if (PHP_SAPI !== 'cli') { fwrite(STDERR, "M043_GATEWAY=FAIL REASON=CLI_ONLY\n"); exit(1); }
-$commands = array('check', 'apply', 'disable');
+$commands = array('check', 'apply', 'disable', 'finalize-restore');
 if ($argc !== 2 || !in_array($argv[1], $commands, true)) { fwrite(STDERR, "M043_GATEWAY=FAIL REASON=COMMAND_NOT_ALLOWED\n"); exit(1); }
 
 define('NOLOGIN', 1);
@@ -99,6 +99,18 @@ if ($argv[1] === 'disable') {
     if (!$db->query("UPDATE ".MAIN_DB_PREFIX."user SET statut=0,api_key=NULL WHERE entity=".$entity." AND rowid=".(int)$gateway->rowid)) { $db->rollback(); $fail('USER_DISABLE_FAILED'); }
     $db->commit();
     echo "M043_GATEWAY_DISABLE=PASS\n";
+    exit(0);
+}
+
+if ($argv[1] === 'finalize-restore') {
+    if ((string) getenv('M043_SCHEMA_PREEXISTED') !== '0') $fail('RESTORE_PRESTATE_INVALID');
+    if ($tableExists()) {
+        $res = $query("SELECT COUNT(*) total FROM `".$table."`", 'RESTORE_TABLE_QUERY_FAILED');
+        $row = $db->fetch_object($res);
+        if (!$row || (int)$row->total !== 0) $fail('RESTORE_TABLE_NOT_EMPTY');
+        if (!$db->query("DROP TABLE `".$table."`")) $fail('RESTORE_TABLE_DROP_FAILED');
+    }
+    echo "M043_GATEWAY_RESTORE_FINALIZE=PASS\n";
     exit(0);
 }
 
