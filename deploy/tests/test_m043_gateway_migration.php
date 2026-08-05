@@ -12,6 +12,9 @@ try {
     $assert(strpos($source, 'WHERE entity=".$entity." AND fk_user=') !== false, 'gateway-right cleanup is not entity and user scoped');
     $assert(strpos($source, "CHINAPLANET_PUBLIC_RATE_TOKEN_KEY") !== false, 'rate token secret constant absent');
     $assert(strpos($source, "CHINAPLANET_PUBLIC_REQUEST_HMAC_KEY") !== false, 'request HMAC secret constant absent');
+    $assert(strpos($source, "'MAIN_MODULE_API'") !== false, 'REST API module provisioning absent');
+    $assert(strpos($source, "'CHINAPLANET_M043_API_MODULE_PRESTATE'") !== false, 'REST API module prestate absent');
+    $assert(strpos($source, 'dolibarr_del_const') !== false, 'REST API module rollback absent');
     $assert(strpos($source, "#^/tmp/m043-secrets-[0-9]+\$#D") !== false, 'fixed transient secret directory absent');
     $assert(strpos($source, "dolEncrypt(\$apiKey") !== false, 'Dolibarr API-key encryption absent');
     $assert(strpos($source, "api_key=NULL") !== false && strpos($source, "statut=0") !== false, 'fail-closed gateway disable absent');

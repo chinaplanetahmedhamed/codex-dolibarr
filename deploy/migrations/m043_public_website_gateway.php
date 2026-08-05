@@ -28,6 +28,7 @@ $entity = (int) $conf->entity;
 $table = MAIN_DB_PREFIX.'cpo_public_request';
 $login = 'website_staging_gateway';
 $marker = 'M043 staging-only website API gateway';
+$apiModuleMarker = 'CHINAPLANET_M043_API_MODULE_PRESTATE';
 $rightIds = array(500412, 500511, 500512, 500513, 500514);
 $apiRightIds = array(500412, 500511);
 
@@ -45,6 +46,22 @@ $gatewayUser = function () use ($query, $db, $entity, $login) {
     $res = $query("SELECT rowid,entity,admin,statut,fk_soc,note_private,api_key FROM ".MAIN_DB_PREFIX."user WHERE entity=".$entity." AND login='".$db->escape($login)."'", 'USER_QUERY_FAILED');
     if ($db->num_rows($res) > 1) return false;
     return $db->fetch_object($res) ?: null;
+};
+$constantRow = function ($name) use ($query, $db, $entity) {
+    $res = $query("SELECT value,type,visible,note FROM ".MAIN_DB_PREFIX."const WHERE entity=".$entity." AND name='".$db->escape($name)."'", 'CONSTANT_QUERY_FAILED');
+    if ($db->num_rows($res) > 1) return false;
+    return $db->fetch_object($res) ?: null;
+};
+$restoreApiModule = function () use ($constantRow, $db, $entity, $apiModuleMarker, $fail) {
+    $stored = $constantRow($apiModuleMarker);
+    if ($stored === false) $fail('API_MODULE_PRESTATE_DUPLICATE');
+    if (!$stored) return;
+    $decoded = json_decode(base64_decode((string) $stored->value, true), true);
+    if (!is_array($decoded) || !array_key_exists('exists', $decoded)) $fail('API_MODULE_PRESTATE_INVALID');
+    if (!empty($decoded['exists'])) {
+        if (dolibarr_set_const($db, 'MAIN_MODULE_API', (string) ($decoded['value'] ?? ''), (string) ($decoded['type'] ?? 'yesno'), (int) ($decoded['visible'] ?? 0), (string) ($decoded['note'] ?? ''), $entity) < 0) $fail('API_MODULE_RESTORE_FAILED');
+    } elseif (dolibarr_del_const($db, 'MAIN_MODULE_API', $entity) < 0) $fail('API_MODULE_REMOVE_FAILED');
+    if (dolibarr_del_const($db, $apiModuleMarker, $entity) < 0) $fail('API_MODULE_MARKER_REMOVE_FAILED');
 };
 $readSecret = function ($name) use ($fail) {
     $value = '';
@@ -86,19 +103,22 @@ if ($argv[1] === 'check') {
         $row = $db->fetch_object($res);
         if (!$row || strlen((string)$row->value) < 32) $fail('CONSTANT_INVALID');
     }
-    echo "M043_GATEWAY_CHECK=PASS TABLE=YES API_USER=LEAST_PRIVILEGE SECRETS=SERVER_SIDE\n";
+    $apiModule = $constantRow('MAIN_MODULE_API');
+    if ($apiModule === false || !$apiModule || (string) $apiModule->value !== '1') $fail('API_MODULE_DISABLED');
+    echo "M043_GATEWAY_CHECK=PASS TABLE=YES API_MODULE=ENABLED API_USER=LEAST_PRIVILEGE SECRETS=SERVER_SIDE\n";
     exit(0);
 }
 
 if ($argv[1] === 'disable') {
     $gateway = $gatewayUser();
-    if (!$gateway) { echo "M043_GATEWAY_DISABLE=PASS USER=ABSENT\n"; exit(0); }
+    if (!$gateway) { $restoreApiModule(); echo "M043_GATEWAY_DISABLE=PASS USER=ABSENT API_MODULE=PRESTATE\n"; exit(0); }
     if ((string)$gateway->note_private !== $marker || (int)$gateway->admin !== 0 || (int)$gateway->fk_soc !== 0) $fail('UNEXPECTED_EXISTING_USER');
     $db->begin();
     if (!$db->query("DELETE FROM ".MAIN_DB_PREFIX."user_rights WHERE entity=".$entity." AND fk_user=".(int)$gateway->rowid)) { $db->rollback(); $fail('RIGHTS_DISABLE_FAILED'); }
     if (!$db->query("UPDATE ".MAIN_DB_PREFIX."user SET statut=0,api_key=NULL WHERE entity=".$entity." AND rowid=".(int)$gateway->rowid)) { $db->rollback(); $fail('USER_DISABLE_FAILED'); }
     $db->commit();
-    echo "M043_GATEWAY_DISABLE=PASS\n";
+    $restoreApiModule();
+    echo "M043_GATEWAY_DISABLE=PASS API_MODULE=PRESTATE\n";
     exit(0);
 }
 
@@ -117,6 +137,24 @@ if ($argv[1] === 'finalize-restore') {
 $apiKey = $readSecret('M043_DOLIBARR_API_KEY');
 $tokenKey = $readSecret('M043_RATE_TOKEN_KEY');
 $hmacKey = $readSecret('M043_REQUEST_HMAC_KEY');
+
+$apiModule = $constantRow('MAIN_MODULE_API');
+if ($apiModule === false) $fail('API_MODULE_CONSTANT_DUPLICATE');
+if (!$apiModule || (string) $apiModule->value !== '1') {
+    $storedPrestate = $constantRow($apiModuleMarker);
+    if ($storedPrestate === false) $fail('API_MODULE_PRESTATE_DUPLICATE');
+    if (!$storedPrestate) {
+        $prestate = base64_encode(json_encode(array(
+            'exists' => (bool) $apiModule,
+            'value' => $apiModule ? (string) $apiModule->value : '',
+            'type' => $apiModule ? (string) $apiModule->type : 'yesno',
+            'visible' => $apiModule ? (int) $apiModule->visible : 0,
+            'note' => $apiModule ? (string) $apiModule->note : '',
+        )));
+        if (dolibarr_set_const($db, $apiModuleMarker, $prestate, 'chaine', 0, 'M043 API module prestate for rollback', $entity) < 0) $fail('API_MODULE_PRESTATE_STORE_FAILED');
+    }
+    if (dolibarr_set_const($db, 'MAIN_MODULE_API', '1', 'yesno', 0, 'REST API module required by M043 website gateway', $entity) < 0) $fail('API_MODULE_ENABLE_FAILED');
+}
 
 $schema = file_get_contents(dirname(__DIR__, 2).'/custom/chinaplanetoperations/sql/llx_cpo_public_request.sql');
 if ($schema === false) $fail('SCHEMA_SOURCE_UNREADABLE');
@@ -170,4 +208,4 @@ $db->commit();
 if (dolibarr_set_const($db, 'CHINAPLANET_PUBLIC_RATE_TOKEN_KEY', $tokenKey, 'chaine', 0, 'M043 server-side public rate token key', $entity) <= 0) $fail('RATE_TOKEN_CONSTANT_FAILED');
 if (dolibarr_set_const($db, 'CHINAPLANET_PUBLIC_REQUEST_HMAC_KEY', $hmacKey, 'chaine', 0, 'M043 server-side request HMAC key', $entity) <= 0) $fail('REQUEST_HMAC_CONSTANT_FAILED');
 
-echo "M043_GATEWAY_APPLY=PASS TABLE=YES API_USER=LEAST_PRIVILEGE SECRETS=SERVER_SIDE\n";
+echo "M043_GATEWAY_APPLY=PASS TABLE=YES API_MODULE=ENABLED API_USER=LEAST_PRIVILEGE SECRETS=SERVER_SIDE\n";
