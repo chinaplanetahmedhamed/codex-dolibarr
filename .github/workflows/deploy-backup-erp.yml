@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: Type DEPLOY_M043_C01_TO_BACKUP_ERP
+        description: Type DEPLOY_M043_C02_TO_BACKUP_ERP
         required: true
         type: string
 
@@ -16,12 +16,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DELIVERY_COMMIT: 37b8e26d1488511462941652f857c5a79d4091ff
-  RUNTIME_COMMIT: 334c46c4316c8e75c1535e75f772a44e24cb80a7
-  RELEASE_MISSION: M043-C01
-  RELEASE_TAG: m043-c01-staging
-  ARTIFACT_NAME: m043-334c46c.tar.gz
-  ARTIFACT_SHA: 8dd4e625190d2c33de98e9e902bc6f34589b4b8d731f4833462a9a8b2a30224e
+  DELIVERY_COMMIT: 0cda4eea7a4bfb2439863059e08cffdd4f36b733
+  RUNTIME_COMMIT: 87d64018a89e08db4d86551ad046e9d2bebe01fc
+  RELEASE_MISSION: M043-C02
+  RELEASE_TAG: m043-c02-staging
+  ARTIFACT_NAME: m043-87d6401.tar.gz
+  ARTIFACT_SHA: 56ad6b5a22adfaa67e622d6e9d64442d73594b5ea42cb13b7655a71afaaab2d2
   DEPLOY_HOST: 31.97.158.178
   DEPLOY_USER: codex-deploy
   DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m043-deploy
@@ -29,7 +29,7 @@ env:
 
 jobs:
   deploy:
-    name: Validate and deploy pinned M043-C01 release
+    name: Validate and deploy pinned M043-C02 release
     runs-on: ubuntu-latest
     environment: backup-erp
     timeout-minutes: 25
@@ -41,7 +41,7 @@ jobs:
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -Eeuo pipefail
-          test "$CONFIRMATION" = 'DEPLOY_M043_C01_TO_BACKUP_ERP'
+          test "$CONFIRMATION" = 'DEPLOY_M043_C02_TO_BACKUP_ERP'
 
       - name: Check out pinned delivery tooling
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -54,7 +54,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$(git rev-parse HEAD)" = "$DELIVERY_COMMIT"
-          test "$(sha256sum deploy/releases/m043-runtime-files.txt | awk '{print $1}')" = '1aa8f5b84e097c93578ca19fd111f755d0382d156e5ac491b1ebe007c89f719c'
+          test "$(sha256sum deploy/releases/m043-runtime-files.txt | awk '{print $1}')" = 'ed7d67ece8e565a9aef0ce4ff8765411737357ade3805d17eadd30f016ca835a'
           test "$(sha256sum deploy/releases/m043-support-files.txt | awk '{print $1}')" = '043f47e31be6e64afbede6afc35b83e3707a7cc1cc60d796545d02ad4e932757'
           while IFS= read -r file; do
             test -f "$file" && test ! -L "$file"
@@ -77,7 +77,7 @@ jobs:
           artifact="$RUNNER_TEMP/m043/$ARTIFACT_NAME"
           test -f "$artifact" && test ! -L "$artifact"
           test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
-          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '24'
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '26'
           chmod 0644 "$artifact"
           echo "path=$artifact" >> "$GITHUB_OUTPUT"
 
