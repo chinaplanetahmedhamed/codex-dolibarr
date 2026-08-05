@@ -38,7 +38,10 @@ try {
     m043Assert(count($result['results']) === 1, 'rate missing');
     $public = $result['results'][0];
     m043Assert(!isset($public['rate_id']) && !isset($public['fingerprint']) && isset($public['rate_token']), 'identifier leaked');
-    m043Assert(strpos($public['rate_token'], '73') === false && strpos($public['rate_token'], $fake->priced['fingerprint']) === false, 'opaque token leaks source data');
+    $encoded = strtr($public['rate_token'], '-_', '+/');
+    if (strlen($encoded) % 4) $encoded .= str_repeat('=', 4 - (strlen($encoded) % 4));
+    $opaqueBytes = base64_decode($encoded, true);
+    m043Assert($opaqueBytes !== false && strpos($opaqueBytes, '"rate_id":73') === false && strpos($opaqueBytes, $fake->priced['fingerprint']) === false, 'opaque token leaks source data');
     $resolved = $service->resolveToken($public['rate_token']);
     m043Assert((int)$resolved['priced']['rate_id'] === 73, 'valid token did not resolve');
     $tampered = substr($public['rate_token'], 0, -1).($public['rate_token'][strlen($public['rate_token'])-1] === 'A' ? 'B' : 'A');
