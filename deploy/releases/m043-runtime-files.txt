@@ -1,4 +1,5 @@
 custom/chinaplanetoperations/api/class/api_chinaplanetoperations.class.php
+custom/chinaplanetoperations/class/OperationsService.class.php
 custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php
 custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php
 custom/chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang
