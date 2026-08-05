@@ -1,5 +1,15 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-05 — M043 public website intake and FCL booking request
+
+- Added restricted public-site permissions and protected REST actions for exact published FCL rate search and anonymous website intake.
+- Added encrypted, authenticated, ten-minute rate tokens; submit-time repricing; a customer-safe public DTO; and immutable commercial snapshots without cost, margin, source or database identifiers.
+- Added an entity-scoped public-request queue with strict idempotency, separated PII, staff classification, same-entity customer linking, manual Operations promotion and 180-day restart-safe anonymization.
+- Changed the Moaz architecture to `React → same-origin Node → Dolibarr`; WordPress/WooCommerce remains the catalog and packing-plan source but no longer creates the React B2B operational order.
+- Added the public `/shipping-rates` page for Arabic, English and French, supporting 20GP, 40GP and 40HQ and clearly describing submission as a booking request rather than carrier confirmation.
+- Local source, Node, UI-contract, build, database and synthetic browser acceptance passed. Runtime installation of the source branch and authenticated Dolibarr staff-page browser acceptance remain pending.
+- Local only; no n8n, staging, production, VPS, deployment, external message, accounting entry or validated commercial document was created.
+
 ## 2026-07-24 — M037-C04 MariaDB-safe shipping classification
 
 - Removed shipping lifecycle classification from MariaDB JSON expressions and now decodes the allowlisted service payload in PHP.

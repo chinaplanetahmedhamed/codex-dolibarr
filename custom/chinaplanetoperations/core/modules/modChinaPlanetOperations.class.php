@@ -13,14 +13,15 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.2.0';
+        $this->version = '2.3.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
         $this->config_page_url = array('setup.php@chinaplanetoperations');
-        $this->depends = array('modSociete');
+        $this->depends = array('modSociete', 'modChinaPlanetShippingPrices');
         $this->phpmin = array(7, 4);
         $this->need_dolibarr_version = array(23, 0);
+        $this->module_parts = array('api' => 1);
 
         $this->rights = array();
         $this->rights_class = 'chinaplanetoperations';
@@ -35,6 +36,10 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500508, 'Manage internal tasks and Kanban', 'task_write'),
             array(500509, 'Manage operation documents and reviews', 'document_write'),
             array(500510, 'Prepare operation email drafts', 'email_write'),
+            array(500511, 'Create public website intake requests', 'website_intake_create'),
+            array(500512, 'Read public website intake requests', 'publicrequest_read'),
+            array(500513, 'Update public website intake requests', 'publicrequest_update'),
+            array(500514, 'Promote public website requests to operations', 'publicrequest_promote'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;
@@ -87,6 +92,14 @@ class modChinaPlanetOperations extends DolibarrModules
             'langs'=>'chinaplanetoperations@chinaplanetoperations',
             'position'=>106, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
             'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
+            'titre'=>'PublicWebsiteRequests', 'mainmenu'=>'chinaplanetoperations', 'leftmenu'=>'operations_public_requests',
+            'url'=>'/custom/chinaplanetoperations/operations/public_requests.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>108, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
+            'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","publicrequest_read")', 'user'=>0,
         );
         $this->menu[$r++] = array(
             'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',

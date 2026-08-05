@@ -13,7 +13,7 @@ class modChinaPlanetShippingPrices extends DolibarrModules
         $this->family = 'products';
         $this->module_position = 99;
         $this->description = 'Versioned shipping rates, customer inquiry and internal operations SOP library';
-        $this->version = '1.3.0';
+        $this->version = '1.4.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'ship';
         $this->dirs = array('/chinaplanetshippingprices/imports');
@@ -83,6 +83,11 @@ class modChinaPlanetShippingPrices extends DolibarrModules
         $this->rights[11][3] = 1;
         $this->rights[11][4] = 'booking_submit';
         $this->rights[11][5] = 'external';
+
+        $this->rights[12][0] = 500412;
+        $this->rights[12][1] = 'Search public website FCL rates through a restricted server gateway';
+        $this->rights[12][3] = 0;
+        $this->rights[12][4] = 'website_rate_search';
 
         $this->menu = array();
         $r = 0;
