@@ -13,6 +13,7 @@ try {
     $schema = $read('custom/chinaplanetoperations/sql/llx_cpo_public_request.sql');
     $module = $read('custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php');
     $page = $read('custom/chinaplanetoperations/operations/public_requests.php');
+    $pageCss = $read('custom/chinaplanetoperations/css/operations.css');
     $adminDashboard = $read('custom/chinaplanetcustomercenter/admin_dashboard.php');
     $adminShell = $read('custom/chinaplanetcustomercenter/lib/admin_shell.lib.php');
 
@@ -47,6 +48,13 @@ try {
     $assert(strpos($intake, 'idempotency_conflict') !== false && strpos($intake, 'hash_equals') !== false, 'idempotency conflict handling absent');
     $assert(strpos($intake, 'RETENTION_DAYS = 180') !== false && strpos($intake, 'date_anonymized IS NULL') !== false, 'restartable retention policy absent');
     $assert(strpos($page, "cpo_require(\$user, 'publicrequest_read')") !== false, 'staff request page permission absent');
+    $assert(strpos($page, "cpcc_admin_shell_open('website_requests'") !== false, 'staff request page does not use the shared Customer Center admin shell');
+    $assert(strpos($page, '<pre') === false && strpos($page, 'JSON_PRETTY_PRINT') === false, 'staff request page still renders raw JSON');
+    foreach (array('cpo-commercial-card','cpo-price-grid','cpo-terms-grid','PublicCarrierSpaceNotConfirmed') as $marker) {
+        $assert(strpos($page, $marker) !== false, 'professional request detail marker absent '.$marker);
+    }
+    $assert(strpos($pageCss, 'M043-C02') !== false && strpos($pageCss, '@media(max-width:430px)') !== false, 'responsive M043-C02 request detail styling absent');
+    $assert(strpos($intake, 'decodeStoredJson') !== false && strpos($intake, 'is_string($decoded)') !== false, 'historical double-encoded request compatibility absent');
     $requestQueuePath = '/chinaplanetoperations/operations/public_requests.php';
     $assert(strpos($adminShell, $requestQueuePath) !== false && strpos($adminShell, 'Website Requests / طلبات الموقع') !== false, 'shared admin navigation lacks the website requests button');
     $assert(strpos($adminDashboard, $requestQueuePath) !== false && strpos($adminDashboard, '<b>Website Requests</b>') !== false, 'dashboard quick actions lack the website requests button');

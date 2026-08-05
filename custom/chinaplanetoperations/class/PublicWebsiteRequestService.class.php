@@ -101,7 +101,7 @@ class PublicWebsiteRequestService
         if (!$obj) return null;
         $row = (array) $obj;
         foreach (array('party_json'=>'parties', 'request_json'=>'request', 'snapshot_json'=>'snapshot') as $column=>$target) {
-            $row[$target] = !empty($row[$column]) ? json_decode($row[$column], true) : array();
+            $row[$target] = $this->decodeStoredJson(isset($row[$column]) ? $row[$column] : null);
             unset($row[$column]);
         }
         return $row;
@@ -267,6 +267,22 @@ class PublicWebsiteRequestService
         }
         if (is_bool($value) || is_int($value) || is_float($value) || $value === null) return $value;
         return $this->clean($value, 2000);
+    }
+
+    /**
+     * Decode current JSON and the historical double-encoded strings created by
+     * the early public gateway without mutating the stored audit evidence.
+     */
+    private function decodeStoredJson($value)
+    {
+        if ($value === null || $value === '') return array();
+        $decoded = is_array($value) ? $value : json_decode((string) $value, true);
+        for ($depth = 0; $depth < 2 && is_string($decoded); $depth++) {
+            $candidate = json_decode($decoded, true);
+            if (json_last_error() !== JSON_ERROR_NONE) break;
+            $decoded = $candidate;
+        }
+        return is_array($decoded) ? $decoded : array();
     }
 
     private function canonicalJson($value)

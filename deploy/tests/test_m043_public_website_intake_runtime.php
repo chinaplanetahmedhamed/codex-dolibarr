@@ -80,6 +80,28 @@ try {
     $stored = $intake->get((int)$booking['id']);
     m043RuntimeAssert((int)$stored['fk_rate']>0 && (float)$stored['snapshot']['total']>0, 'Commercial snapshot was not stored.');
     m043RuntimeAssert($stored['snapshot']['space_confirmation']===false, 'Booking request incorrectly confirms carrier space.');
+
+    // Historical gateway records were JSON strings encoded a second time.
+    // Keep that immutable evidence in storage, but prove staff can read it.
+    $legacyRequest = json_encode(json_encode(array(
+        'schema_version'=>1,
+        'locale'=>'en',
+        'details'=>array('container_quantity'=>2, 'cargo_type'=>'normal', 'dangerous_goods'=>'no'),
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $legacySnapshot = json_encode(json_encode(array(
+        'schema_version'=>1,
+        'route'=>array('pol'=>$pol, 'pod'=>$pod, 'country_code'=>'EG', 'container_type'=>'40HQ'),
+        'unit_price'=>2300,
+        'container_quantity'=>2,
+        'total'=>4600,
+        'currency'=>'USD',
+        'space_confirmation'=>false,
+    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $legacySql = "UPDATE ".MAIN_DB_PREFIX."cpo_public_request SET request_json='".$db->escape($legacyRequest)."',snapshot_json='".$db->escape($legacySnapshot)."' WHERE entity=".(int)$conf->entity." AND rowid=".(int)$booking['id'];
+    m043RuntimeAssert($db->query($legacySql), 'Could not prepare historical double-encoded fixture.');
+    $legacyStored = $intake->get((int)$booking['id']);
+    m043RuntimeAssert((int)$legacyStored['request']['details']['container_quantity'] === 2, 'Historical request JSON was not decoded for staff.');
+    m043RuntimeAssert((float)$legacyStored['snapshot']['total'] === 4600.0 && $legacyStored['snapshot']['route']['pod'] === $pod, 'Historical commercial snapshot was not decoded for staff.');
     echo 'M043_RUNTIME=PASS quote='.$first['ref'].' booking='.$booking['ref'].' rate='.$pol.'-'.$pod.'-40HQ'."\n";
 } catch (Throwable $e) {
     fwrite(STDERR, 'M043_RUNTIME=FAIL REASON='.$e->getMessage()."\n");
