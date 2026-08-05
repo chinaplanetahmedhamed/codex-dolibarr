@@ -3,11 +3,11 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M043-R01'
-readonly RUNTIME_COMMIT='cf510020386e5679e2e175991c6b43e8a7dcd8bd'
-readonly SHORT_COMMIT='cf51002'
-readonly ARTIFACT_SHA='70f6db326661d865f9a8a2e29fb6bb0bb75af912f404256b29a81df102b10b3e'
-readonly RUNTIME_MANIFEST_SHA='cda3d4b528063aa880c1dead2ebc2024f264e8ad672ce0ed6dbaefa45d3e379f'
+readonly RELEASE='M043-C01'
+readonly RUNTIME_COMMIT='334c46c4316c8e75c1535e75f772a44e24cb80a7'
+readonly SHORT_COMMIT='334c46c'
+readonly ARTIFACT_SHA='8dd4e625190d2c33de98e9e902bc6f34589b4b8d731f4833462a9a8b2a30224e'
+readonly RUNTIME_MANIFEST_SHA='1aa8f5b84e097c93578ca19fd111f755d0382d156e5ac491b1ebe007c89f719c'
 readonly SUPPORT_MANIFEST_SHA='043f47e31be6e64afbede6afc35b83e3707a7cc1cc60d796545d02ad4e932757'
 readonly RUNTIME_MANIFEST='deploy/releases/m043-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m043-support-files.txt'
@@ -108,8 +108,8 @@ validate_artifact() {
   [[ $(sha256 "$CANDIDATE_ROOT/$SUPPORT_MANIFEST") == "$SUPPORT_MANIFEST_SHA" ]] || die 'SUPPORT_MANIFEST_HASH_MISMATCH'
   mapfile -t RUNTIME_FILES <"$CANDIDATE_ROOT/$RUNTIME_MANIFEST"
   mapfile -t SUPPORT_FILES <"$CANDIDATE_ROOT/$SUPPORT_MANIFEST"
-  [[ ${#RUNTIME_FILES[@]} -eq 15 && ${#SUPPORT_FILES[@]} -eq 5 ]] || die 'MANIFEST_COUNT_INVALID'
-  [[ -z $(printf '%s\n' "${RUNTIME_FILES[@]}" | awk '$0 !~ /^custom\/(chinaplanetoperations|chinaplanetshippingprices)\// {print; exit}') ]] || die 'RUNTIME_SCOPE_INVALID'
+  [[ ${#RUNTIME_FILES[@]} -eq 17 && ${#SUPPORT_FILES[@]} -eq 5 ]] || die 'MANIFEST_COUNT_INVALID'
+  [[ -z $(printf '%s\n' "${RUNTIME_FILES[@]}" | awk '$0 !~ /^custom\/(chinaplanetoperations|chinaplanetshippingprices)\// && $0 != "custom/chinaplanetcustomercenter/admin_dashboard.php" && $0 != "custom/chinaplanetcustomercenter/lib/admin_shell.lib.php" {print; exit}') ]] || die 'RUNTIME_SCOPE_INVALID'
   [[ -z $(printf '%s\n' "${SUPPORT_FILES[@]}" | awk '$0 !~ /^deploy\/(migrations|tests)\// {print; exit}') ]] || die 'SUPPORT_SCOPE_INVALID'
   printf '%s\n' "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}" "$RUNTIME_MANIFEST" "$SUPPORT_MANIFEST" | LC_ALL=C sort >"$expected"
   find "$CANDIDATE_ROOT" -type f -printf '%P\n' | LC_ALL=C sort >"$actual"
