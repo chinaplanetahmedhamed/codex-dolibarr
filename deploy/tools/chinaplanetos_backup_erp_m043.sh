@@ -4,10 +4,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M043-R01'
-readonly RUNTIME_COMMIT='efe13c49c221b82525e35b0fd6f5865634096fd8'
-readonly SHORT_COMMIT='efe13c4'
-readonly ARTIFACT_SHA='d691d2c17da883905235222fc1825874958ab1de42adc24e52020ac7658d2511'
-readonly RUNTIME_MANIFEST_SHA='41d85bbd83e1890b10f3cc068ff528f88cc55d50a3b18b74539b1b645f8133a8'
+readonly RUNTIME_COMMIT='ed4c16b76b5c76e36e0d464fd906b40235ee1588'
+readonly SHORT_COMMIT='ed4c16b'
+readonly ARTIFACT_SHA='bc6c08becab5d825d61daad9433d8f61a5f90fbc710ea952c70229b84045b379'
+readonly RUNTIME_MANIFEST_SHA='cda3d4b528063aa880c1dead2ebc2024f264e8ad672ce0ed6dbaefa45d3e379f'
 readonly SUPPORT_MANIFEST_SHA='043f47e31be6e64afbede6afc35b83e3707a7cc1cc60d796545d02ad4e932757'
 readonly RUNTIME_MANIFEST='deploy/releases/m043-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m043-support-files.txt'
@@ -108,7 +108,7 @@ validate_artifact() {
   [[ $(sha256 "$CANDIDATE_ROOT/$SUPPORT_MANIFEST") == "$SUPPORT_MANIFEST_SHA" ]] || die 'SUPPORT_MANIFEST_HASH_MISMATCH'
   mapfile -t RUNTIME_FILES <"$CANDIDATE_ROOT/$RUNTIME_MANIFEST"
   mapfile -t SUPPORT_FILES <"$CANDIDATE_ROOT/$SUPPORT_MANIFEST"
-  [[ ${#RUNTIME_FILES[@]} -eq 13 && ${#SUPPORT_FILES[@]} -eq 5 ]] || die 'MANIFEST_COUNT_INVALID'
+  [[ ${#RUNTIME_FILES[@]} -eq 15 && ${#SUPPORT_FILES[@]} -eq 5 ]] || die 'MANIFEST_COUNT_INVALID'
   [[ -z $(printf '%s\n' "${RUNTIME_FILES[@]}" | awk '$0 !~ /^custom\/(chinaplanetoperations|chinaplanetshippingprices)\// {print; exit}') ]] || die 'RUNTIME_SCOPE_INVALID'
   [[ -z $(printf '%s\n' "${SUPPORT_FILES[@]}" | awk '$0 !~ /^deploy\/(migrations|tests)\// {print; exit}') ]] || die 'SUPPORT_SCOPE_INVALID'
   printf '%s\n' "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}" "$RUNTIME_MANIFEST" "$SUPPORT_MANIFEST" | LC_ALL=C sort >"$expected"
