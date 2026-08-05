@@ -1,3 +1,5 @@
+custom/chinaplanetcustomercenter/admin_dashboard.php
+custom/chinaplanetcustomercenter/lib/admin_shell.lib.php
 custom/chinaplanetoperations/api/class/api_chinaplanetoperations.class.php
 custom/chinaplanetoperations/class/OperationsService.class.php
 custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php

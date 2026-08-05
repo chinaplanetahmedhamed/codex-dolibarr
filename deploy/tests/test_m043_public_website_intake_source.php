@@ -13,6 +13,8 @@ try {
     $schema = $read('custom/chinaplanetoperations/sql/llx_cpo_public_request.sql');
     $module = $read('custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php');
     $page = $read('custom/chinaplanetoperations/operations/public_requests.php');
+    $adminDashboard = $read('custom/chinaplanetcustomercenter/admin_dashboard.php');
+    $adminShell = $read('custom/chinaplanetcustomercenter/lib/admin_shell.lib.php');
 
     foreach (array('supplier_cost','cost_price','base_margin','source_sheet','source_row','batch_ref','rule_id','rate_id','fingerprint') as $forbidden) {
         $projectionStart = strpos($rate, 'private function publicProjection');
@@ -45,6 +47,9 @@ try {
     $assert(strpos($intake, 'idempotency_conflict') !== false && strpos($intake, 'hash_equals') !== false, 'idempotency conflict handling absent');
     $assert(strpos($intake, 'RETENTION_DAYS = 180') !== false && strpos($intake, 'date_anonymized IS NULL') !== false, 'restartable retention policy absent');
     $assert(strpos($page, "cpo_require(\$user, 'publicrequest_read')") !== false, 'staff request page permission absent');
+    $requestQueuePath = '/chinaplanetoperations/operations/public_requests.php';
+    $assert(strpos($adminShell, $requestQueuePath) !== false && strpos($adminShell, 'Website Requests / طلبات الموقع') !== false, 'shared admin navigation lacks the website requests button');
+    $assert(strpos($adminDashboard, $requestQueuePath) !== false && strpos($adminDashboard, '<b>Website Requests</b>') !== false, 'dashboard quick actions lack the website requests button');
     foreach (array('new Facture(', 'new Commande(', 'new Propal(', 'new Expedition(') as $forbiddenObject) $assert(stripos($intake, $forbiddenObject) === false, 'automatic Dolibarr business object creation found '.$forbiddenObject);
     echo "M043_SOURCE=PASS public_projection=ALLOWLIST idempotency=STRICT promotion=MANUAL retention=180D\n";
 } catch(Throwable $e) { fwrite(STDERR,"M043_SOURCE=FAIL REASON=".$e->getMessage()."\n"); exit(1); }
