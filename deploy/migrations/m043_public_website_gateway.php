@@ -47,7 +47,22 @@ $gatewayUser = function () use ($query, $db, $entity, $login) {
     return $db->fetch_object($res) ?: null;
 };
 $readSecret = function ($name) use ($fail) {
-    $value = trim((string) getenv($name));
+    $value = '';
+    $secretDir = (string) getenv('M043_SECRET_DIR');
+    if ($secretDir !== '') {
+        if (!preg_match('#^/tmp/m043-secrets-[0-9]+$#D', $secretDir)) $fail('SECRET_DIR_INVALID');
+        $files = array(
+            'M043_DOLIBARR_API_KEY' => 'api.key',
+            'M043_RATE_TOKEN_KEY' => 'rate-token.key',
+            'M043_REQUEST_HMAC_KEY' => 'request-hmac.key',
+        );
+        if (!isset($files[$name])) $fail('SECRET_NAME_INVALID');
+        $path = $secretDir.'/'.$files[$name];
+        if (!is_file($path) || is_link($path)) $fail($name.'_FILE_INVALID');
+        $value = trim((string) file_get_contents($path));
+    } else {
+        $value = trim((string) getenv($name));
+    }
     if (strlen($value) < 32 || strlen($value) > 255) $fail($name.'_INVALID');
     return $value;
 };
