@@ -29,9 +29,9 @@ for command in preflight apply verify rollback status; do
   expected+="${line}"$'\n'
 done
 [[ $(wc -l <"$sudoers") -eq 5 ]] || fail 'SUDOERS_COMMAND_COUNT_INVALID'
-grep -Fq "readonly HELPER_SHA='e17809593ee74d060ac928026255b144f8aa39c8b7619d4a42fa7ba4892da0d8'" "$installer" || fail 'INSTALLER_HELPER_HASH_INVALID'
-grep -Fq "readonly PREVIOUS_HELPER_SHA='7e56a34cab9983cfe3d11edf6b4c9a657199e268a0e63956bbdc4116240894dd'" "$installer" || fail 'INSTALLER_PREVIOUS_HELPER_HASH_INVALID'
+grep -Fq "readonly HELPER_SHA='503491ed45bc3df3bb8ba9ccd38f0a71527af8c1e201c3ae67fc40bcf83dabf9'" "$installer" || fail 'INSTALLER_HELPER_HASH_INVALID'
+grep -Fq "readonly PREVIOUS_HELPER_SHA='e17809593ee74d060ac928026255b144f8aa39c8b7619d4a42fa7ba4892da0d8'" "$installer" || fail 'INSTALLER_PREVIOUS_HELPER_HASH_INVALID'
 grep -Fq "readonly SUDOERS_SHA='7f14c3cdb269d29de15923ff5adb40cebe6751ad4f43fbc24acc4000863d605a'" "$installer" || fail 'INSTALLER_SUDOERS_HASH_INVALID'
-[[ $(sha256sum "$helper" | awk '{print $1}') == 'e17809593ee74d060ac928026255b144f8aa39c8b7619d4a42fa7ba4892da0d8' ]] || fail 'HELPER_HASH_DRIFT'
+[[ $(sha256sum "$helper" | awk '{print $1}') == '503491ed45bc3df3bb8ba9ccd38f0a71527af8c1e201c3ae67fc40bcf83dabf9' ]] || fail 'HELPER_HASH_DRIFT'
 [[ $(sha256sum "$sudoers" | awk '{print $1}') == '7f14c3cdb269d29de15923ff5adb40cebe6751ad4f43fbc24acc4000863d605a' ]] || fail 'SUDOERS_HASH_DRIFT'
 echo 'M043_HELPER_SOURCE=PASS TARGET=CANONICAL_STAGING SUDOERS=EXACT BACKUP=CODE_AND_DB ROLLBACK=AUTO'

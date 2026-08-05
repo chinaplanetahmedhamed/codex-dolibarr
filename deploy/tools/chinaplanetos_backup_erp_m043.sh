@@ -233,10 +233,14 @@ live_checks() {
   docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" check >/dev/null || return 1
   docker exec -e M043_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$RUNTIME_TEST" >/dev/null || return 1
   if [[ -f "$API_KEY_FILE" ]]; then
-    local gateway_key api_body
+    local gateway_key api_body api_status
     gateway_key=$(tr -d '\r\n' <"$API_KEY_FILE")
-    api_body=$(curl -sS --max-time 15 -H "DOLAPIKEY: ${gateway_key}" "${TARGET_HTTP}/api/index.php/chinaplanetshippingprices/website-route-options") || return 1
-    grep -Fq '"countries"' <<<"$api_body" || return 1
+    api_body=$(curl -sS --max-time 15 -w $'\n%{http_code}' -H "DOLAPIKEY: ${gateway_key}" "${TARGET_HTTP}/api/index.php/chinaplanetshippingprices/website-route-options") || { echo 'M043_API_HTTP=FAIL REASON=REQUEST_FAILED' >&2; return 1; }
+    api_status=${api_body##*$'\n'}; api_body=${api_body%$'\n'*}
+    if [[ "$api_status" != '200' ]] || ! grep -Fq '"countries"' <<<"$api_body"; then
+      echo "M043_API_HTTP=FAIL STATUS=${api_status} BODY=$(tr '\r\n' '  ' <<<"${api_body:0:500}")" >&2
+      return 1
+    fi
   fi
   [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]]
 }
