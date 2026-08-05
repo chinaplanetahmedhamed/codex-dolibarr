@@ -35,6 +35,9 @@ class PublicWebsiteRequestService
         $this->db = $db;
         $this->entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
         $configured = $hmacKey === null ? (string) getenv('CHINAPLANET_PUBLIC_REQUEST_HMAC_KEY') : (string) $hmacKey;
+        if ($hmacKey === null && strlen($configured) < 32 && function_exists('getDolGlobalString')) {
+            $configured = (string) getDolGlobalString('CHINAPLANET_PUBLIC_REQUEST_HMAC_KEY');
+        }
         if (strlen($configured) < 32) throw new PublicWebsiteRequestException('intake_service_not_configured', 503);
         $this->hmacKey = $configured;
         $this->rates = $rateService;

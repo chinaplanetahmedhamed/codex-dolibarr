@@ -41,6 +41,9 @@ class PublicShippingRateService
         $this->entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
         $this->prices = $priceService ?: new ShippingPriceService($db, $this->entity);
         $configuredKey = $tokenKey === null ? (string) getenv('CHINAPLANET_PUBLIC_RATE_TOKEN_KEY') : (string) $tokenKey;
+        if ($tokenKey === null && strlen($configuredKey) < 32 && function_exists('getDolGlobalString')) {
+            $configuredKey = (string) getDolGlobalString('CHINAPLANET_PUBLIC_RATE_TOKEN_KEY');
+        }
         if (strlen($configuredKey) < 32) throw new PublicShippingRateException('rate_service_not_configured', 503);
         $this->tokenKey = hash('sha256', $configuredKey, true);
         $this->now = $now === null ? time() : (int) $now;
