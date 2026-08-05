@@ -1,6 +1,7 @@
 custom/chinaplanetoperations/api/class/api_chinaplanetoperations.class.php
 custom/chinaplanetoperations/class/OperationsService.class.php
 custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php
+custom/chinaplanetoperations/class/api_chinaplanetoperations.class.php
 custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php
 custom/chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang
 custom/chinaplanetoperations/langs/en_US/chinaplanetoperations.lang
@@ -10,4 +11,5 @@ custom/chinaplanetoperations/sql/llx_cpo_public_request.sql
 custom/chinaplanetshippingprices/api/class/api_chinaplanetshippingprices.class.php
 custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php
 custom/chinaplanetshippingprices/class/ShippingPriceService.class.php
+custom/chinaplanetshippingprices/class/api_chinaplanetshippingprices.class.php
 custom/chinaplanetshippingprices/core/modules/modChinaPlanetShippingPrices.class.php

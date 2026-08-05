@@ -6,8 +6,10 @@ $assert = function ($condition, $message) { if(!$condition) throw new RuntimeExc
 try {
     $rate = $read('custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php');
     $rateApi = $read('custom/chinaplanetshippingprices/api/class/api_chinaplanetshippingprices.class.php');
+    $rateApiEntrypoint = $read('custom/chinaplanetshippingprices/class/api_chinaplanetshippingprices.class.php');
     $intake = $read('custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php');
     $intakeApi = $read('custom/chinaplanetoperations/api/class/api_chinaplanetoperations.class.php');
+    $intakeApiEntrypoint = $read('custom/chinaplanetoperations/class/api_chinaplanetoperations.class.php');
     $schema = $read('custom/chinaplanetoperations/sql/llx_cpo_public_request.sql');
     $module = $read('custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php');
     $page = $read('custom/chinaplanetoperations/operations/public_requests.php');
@@ -25,9 +27,11 @@ try {
     $assert(strpos($rateApi, "hasRight('chinaplanetshippingprices', 'website_rate_search')") !== false, 'dedicated rate permission absent');
     $assert(strpos($rateApi, '@url GET website-route-options') !== false, 'public dependent route options endpoint absent');
     $assert(strpos($rateApi, '@url GET website-rate-trend') !== false, 'public reference trend endpoint absent');
+    $assert(strpos($rateApiEntrypoint, "api/class/api_chinaplanetshippingprices.class.php") !== false, 'Dolibarr shipping API router entrypoint absent');
     $assert(strpos($rate, 'getPublicRouteOptions') !== false, 'route options do not use the eligible published-rate source');
     $assert(strpos($rate, 'getPublicPriceTrend') !== false, 'trend does not use published shipping-rate history');
     $assert(strpos($intakeApi, "hasRight('chinaplanetoperations', 'website_intake_create')") !== false, 'dedicated intake permission absent');
+    $assert(strpos($intakeApiEntrypoint, "api/class/api_chinaplanetoperations.class.php") !== false, 'Dolibarr intake API router entrypoint absent');
     $assert(strpos($intake, "getDolGlobalString('CHINAPLANET_PUBLIC_REQUEST_HMAC_KEY')") !== false, 'server-side intake HMAC constant fallback absent');
     $assert(strpos($module, "'api' => 1") !== false, 'operations API module flag absent');
     foreach (array('website_intake_create','publicrequest_read','publicrequest_update','publicrequest_promote') as $right) $assert(strpos($module, $right) !== false, 'missing right '.$right);
