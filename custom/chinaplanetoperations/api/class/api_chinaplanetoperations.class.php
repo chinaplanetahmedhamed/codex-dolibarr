@@ -25,23 +25,23 @@ class ChinaPlanetOperations extends DolibarrApi
      * Create an internal intake request. This never creates a ThirdParty,
      * proposal, order, shipment, invoice or accounting entry.
      *
-     * @param array|null $request_data Website request payload
      * @return array
      * @url POST website-requests
      */
-    public function websiteRequests($request_data = null)
+    public function websiteRequests()
     {
         $apiUser = DolibarrApiAccess::$user;
         if (!$apiUser || (!$apiUser->hasRight('chinaplanetoperations', 'website_intake_create') && empty($apiUser->admin))) {
             throw new RestException(403, 'Website intake permission required.');
         }
-        if ($request_data === null) {
-            $length = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
-            if ($length > self::MAX_BODY_BYTES) throw new RestException(413, 'request_too_large');
-            $raw = file_get_contents('php://input', false, null, 0, self::MAX_BODY_BYTES + 1);
-            if ($raw === false || strlen($raw) > self::MAX_BODY_BYTES) throw new RestException(413, 'request_too_large');
-            $request_data = json_decode($raw, true);
-        }
+        // Read the JSON body explicitly. Dolibarr's bundled Restler maps method
+        // parameters before invocation, so a synthetic array parameter can fail
+        // with an empty HTTP 500 before our validation and error boundary run.
+        $length = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
+        if ($length > self::MAX_BODY_BYTES) throw new RestException(413, 'request_too_large');
+        $raw = file_get_contents('php://input', false, null, 0, self::MAX_BODY_BYTES + 1);
+        if ($raw === false || strlen($raw) > self::MAX_BODY_BYTES) throw new RestException(413, 'request_too_large');
+        $request_data = json_decode($raw, true);
         if (!is_array($request_data)) throw new RestException(400, 'invalid_json');
         try {
             $service = new PublicWebsiteRequestService($this->db);

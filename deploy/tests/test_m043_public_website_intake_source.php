@@ -31,6 +31,8 @@ try {
     $assert(strpos($rate, 'getPublicRouteOptions') !== false, 'route options do not use the eligible published-rate source');
     $assert(strpos($rate, 'getPublicPriceTrend') !== false, 'trend does not use published shipping-rate history');
     $assert(strpos($intakeApi, "hasRight('chinaplanetoperations', 'website_intake_create')") !== false, 'dedicated intake permission absent');
+    $assert(strpos($intakeApi, 'public function websiteRequests()') !== false, 'intake endpoint must not expose a Restler-mapped body parameter');
+    $assert(strpos($intakeApi, "file_get_contents('php://input'") !== false, 'intake endpoint does not read its bounded JSON body explicitly');
     $assert(strpos($intakeApiEntrypoint, "api/class/api_chinaplanetoperations.class.php") !== false, 'Dolibarr intake API router entrypoint absent');
     $assert(strpos($intake, "getDolGlobalString('CHINAPLANET_PUBLIC_REQUEST_HMAC_KEY')") !== false, 'server-side intake HMAC constant fallback absent');
     $assert(strpos($module, "'api' => 1") !== false, 'operations API module flag absent');
