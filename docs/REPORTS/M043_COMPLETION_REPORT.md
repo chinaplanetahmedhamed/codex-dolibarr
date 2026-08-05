@@ -104,6 +104,8 @@
 - فرع Dolibarr مرفوع: `feature/m043-public-website-intake` حتى helper pin `37b8e26`; كود runtime المعتمد عند `334c46c4316c8e75c1535e75f772a44e24cb80a7`.
 - فرع React مرفوع: `feature/m043-dolibarr-public-gateway`; إعداد بوابة staging أضيف في PR رقم 13.
 - نُشر artifact المقيد `m043-334c46c.tar.gz` على `backup-erp` فقط، SHA-256 `8dd4e625190d2c33de98e9e902bc6f34589b4b8d731f4833462a9a8b2a30224e`، وعدد ملفات runtime المسموح بها 17.
+- حُفظت الحزمة نفسها كـGitHub prerelease باسم `m043-c01-staging`، وصُححت `.github/workflows/deploy-backup-erp.yml` من M004 القديم إلى M043-C01 مع تشغيل يدوي فقط وبيئة `backup-erp` وتراجع تلقائي عند فشل التحقق.
+- تحتوي GitHub Environment الآن على سري SSH الموجودين وثلاثة أسرار M043 المطلوبة؛ لم تُطبع القيم ولم تُسجل داخل Git.
 - نتائج الأداة المقيدة: `M043_STAGING_PREFLIGHT=PASS`, `M043_STAGING_APPLY=PASS`, `M043_STAGING_VERIFY=PASS`, و`PRODUCTION_ACCESSED=NO`.
 - أُخذت نسخة كود قبل التطبيق عند `/root/backup-erp-code-backups/m043-before-334c46c-20260805T225143Z.tar.gz` ونسخة قاعدة بيانات عند `/root/backup-erp-db-backups/m043-before-334c46c-20260805T225143Z.sql` مع checksums مثبتة في Mission `M043-C01`.
 - قبول المتصفح الموثق: زر Website Requests ظاهر في shared admin navigation وفي Quick Actions، يفتح القائمة وصفحة `id=14`; عرض 390×844 يضعه داخل القائمة المتجاوبة بصورة سليمة.

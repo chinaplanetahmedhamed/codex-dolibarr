@@ -6,6 +6,7 @@
 - Kept the existing staff permission boundary and request queue unchanged; no new Dolibarr top-level module icon, API, schema, portal, mobile, accounting, or business-record behavior was added.
 - Deployed the checksum-pinned 17-file `M043-C01` artifact to canonical `backup-erp` staging after code and database backups; restricted preflight, apply, and verify all passed.
 - Verified the authenticated dashboard, queue, and request `id=14` on desktop, and verified the responsive navigation at 390×844.
+- Replaced the obsolete M004 `backup-erp` workflow with a manually confirmed, M043-C01-pinned staging workflow backed by the exact GitHub prerelease artifact and environment-scoped secrets.
 - Production and n8n were not accessed or changed.
 
 ## 2026-08-05 — M043 public website intake and FCL booking request

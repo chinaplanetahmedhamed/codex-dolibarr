@@ -4,7 +4,7 @@
 
 - **Mission ID:** M043-R01
 - **Type:** STAGING_RELEASE
-- **Status:** BLOCKED_BEFORE_APPLY
+- **Status:** DOLIBARR_STAGING_VERIFIED / REACT_STAGING_PENDING
 - **Owner:** Ahmed Hamed
 - **Target:** canonical `backup-erp` Dolibarr staging and `https://new.chinaplanet.org`
 - **Production:** forbidden; `https://chinaplanet.org` is recorded only as the future React production domain
@@ -52,15 +52,19 @@ Publish the reviewed M043 public website intake and FCL rate/booking flow to sta
 5. GitHub staging must contain the dedicated `DOLIBARR_API_KEY`; no `VITE_*` secret is permitted.
 6. Dolibarr must be deployed and verified before merging/deploying the React PR.
 
-## Current evidence — 2026-08-05
+## Current evidence — 2026-08-06
 
 - `new.chinaplanet.org`: HTTP 200, Cloudflare, `noindex`.
 - `backup-erp.visiontrading.biz`: HTTP 200.
 - Canonical staging state command responds and records M014; the old legacy status wrapper has no running containers.
-- Restricted account `codex-deploy` has no M043 helper command in `sudo -n -l`.
-- React PR: `chinaplanetahmedhamed/Moaz#13`; staging gateway variables are prepared, but the dedicated API-key secret is intentionally absent until Dolibarr provisioning.
-- No staging apply, React merge, React workflow dispatch, or production action has occurred for M043.
+- The checksum-pinned M043 helper and exact five-command sudoers surface are installed for restricted account `codex-deploy`.
+- Dolibarr artifact `m043-334c46c.tar.gz` (SHA-256 `8dd4e625190d2c33de98e9e902bc6f34589b4b8d731f4833462a9a8b2a30224e`) passed restricted preflight, apply, and verify on canonical `backup-erp`.
+- Authenticated staff acceptance passed for the website request queue, request `id=14`, the Admin Dashboard button, and the 390px responsive navigation.
+- GitHub Environment `backup-erp` now contains the two restricted SSH secrets and the three M043 gateway secrets. Their values were not printed or committed.
+- GitHub prerelease `m043-c01-staging` stores the exact approved artifact, and `.github/workflows/deploy-backup-erp.yml` is pinned to M043-C01 with manual confirmation, staging-only environment, backup/apply/verify, and failure rollback.
+- React PR remains `chinaplanetahmedhamed/Moaz#13`; React staging merge/dispatch and end-to-end public acceptance remain pending.
+- No production action has occurred for M043.
 
 ## Stop condition
 
-M043-R01 remains blocked before apply until the server administrator installs the reviewed M043-only helper/sudoers surface and the shared public rate limit is verified. Do not substitute the legacy generic staging wrapper.
+The Dolibarr staging gate is complete. M043-R01 remains open until the shared public rate limit is verified and the React PR is deployed and accepted on `new.chinaplanet.org`. Production remains forbidden and requires a separate mission and approval.
