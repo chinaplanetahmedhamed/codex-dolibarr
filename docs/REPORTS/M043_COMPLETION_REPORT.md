@@ -9,7 +9,8 @@
 - Dolibarr worktree: `feature/m043-public-website-intake`.
 - React worktree: `feature/m043-dolibarr-public-gateway`.
 - محلي فقط، بتاريخ 2026-08-05.
-- لم يُستخدم n8n، ولم يُفتح staging أو production أو VPS، ولم يحدث deploy أو push.
+- التنفيذ الوظيفي الموصوف في هذا التقرير كان محليًا فقط بتاريخ 2026-08-05. لاحقًا رُفع الفرع إلى GitHub، ثم وافق أحمد على تحضير نشر staging في M043-R01؛ لم يحدث apply على Dolibarr staging أو production.
+- لم يُستخدم n8n، ولم يحدث أي deploy أو تغيير على production.
 - لم تُنشأ Third Party أو Proposal أو Sales Order أو Invoice أو Shipment أو Payment أو حركة مخزون أو قيد محاسبي تلقائيًا.
 
 ## ما تم تنفيذه
@@ -96,6 +97,15 @@
 - لم يُختبر من الواجهة الفعلية status update أو ربط Third Party أو promotion locking؛ عقود المصدر موجودة فقط، ويحتاج ذلك جولة قبول محلية بعد تثبيت الفرع وتفعيل الصلاحيات والمفاتيح.
 - لم تُختبر rates فعلية حالية لأن بيانات السعر المحلية القديمة لم تحقق عقد النشر الحالي؛ استخدم اختبار DB سعرًا اصطناعيًا حذف بعده.
 - المحدد المحلي in-memory مناسب للاختبار فقط؛ قبل أي نشر يلزم limiter مشترك أو reverse-proxy/edge limiter.
+
+## بوابة نشر staging — M043-R01
+
+- فرع Dolibarr مرفوع: `feature/m043-public-website-intake` عند `5e71bc5`.
+- فرع React مرفوع: `feature/m043-dolibarr-public-gateway`; إعداد بوابة staging أضيف لاحقًا وفتح PR رقم 13.
+- الفحص الخارجي للقراءة فقط أثبت HTTP 200 على `new.chinaplanet.org` و`backup-erp.visiontrading.biz`.
+- لا توجد أداة M043 مقيدة ضمن `sudo -n -l` للحساب `codex-deploy`; الأدوات العامة القديمة تشير إلى `codex_staging_*` المحظور وليست بديلًا.
+- النشر متوقف قبل apply إلى أن يثبت مسؤول الخادم helper/sudoers خاصين بـM043، ويجهز مستخدم API محدود الصلاحيات، ويثبت limiter مشترك/طرفي.
+- لم يُدمج PR ولم يُشغّل workflow، ولم يُلمس `chinaplanet.org`.
 
 ## التطابق
 
