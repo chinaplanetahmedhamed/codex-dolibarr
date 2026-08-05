@@ -88,6 +88,36 @@ class ShippingPriceService
         return $out;
     }
 
+    /** Public reference trend for one exact FCL route, aggregated monthly. */
+    public function getPublicPriceTrend(array $filters, $months = 12)
+    {
+        $filters = $this->normalizeFilters($filters);
+        $months = max(1, min(24, (int) $months));
+        $sql = "SELECT DATE_FORMAT(r.valid_from,'%Y-%m-01') period_date,r.currency_code,AVG(r.sale_price) average_price";
+        $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+        $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity AND b.status=2";
+        $sql .= " WHERE r.entity=".$this->entity." AND r.status=1 AND r.public_visible=1 AND r.sale_price>0";
+        $sql .= " AND r.cost_price>=".price2num($this->ignoreBelow());
+        $sql .= " AND r.valid_from>=DATE_SUB(CURDATE(),INTERVAL ".$months." MONTH) AND r.valid_from<=CURDATE()";
+        foreach (array('pol', 'pod', 'container_type') as $field) {
+            $sql .= " AND r.".$field."='".$this->db->escape($filters[$field])."'";
+        }
+        if ($filters['country_code'] !== '') $sql .= " AND r.destination_country='".$this->db->escape($filters['country_code'])."'";
+        $sql .= $this->enabledRateSql('r');
+        $sql .= " GROUP BY period_date,r.currency_code ORDER BY period_date ASC LIMIT 60";
+        $res = $this->db->query($sql);
+        if (!$res) return array('points' => array(), 'error' => $this->db->lasterror());
+        $points = array();
+        while ($obj = $this->db->fetch_object($res)) {
+            $points[] = array(
+                'date' => (string) $obj->period_date,
+                'price' => round((float) $obj->average_price, 2),
+                'currency' => (string) $obj->currency_code,
+            );
+        }
+        return array('points' => $points, 'error' => '');
+    }
+
     public function search(array $filters, $includeCost = false, $limit = 100)
     {
         $filters = $this->normalizeFilters($filters);

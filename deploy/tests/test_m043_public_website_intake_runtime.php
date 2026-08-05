@@ -42,6 +42,8 @@ try {
     $matchingRoute = false;
     foreach ($routeOptions['routes'] as $route) if ($route['pol'] === $pol && $route['pod'] === $pod) $matchingRoute = true;
     m043RuntimeAssert($matchingRoute, 'Synthetic published lane missing from dependent route options.');
+    $trend = $prices->priceTrend(array('country_code'=>'EG','pol'=>$pol,'pod'=>$pod,'container_type'=>'40HQ'));
+    m043RuntimeAssert(!empty($trend['points']) && (float)$trend['points'][count($trend['points'])-1]['price'] === 2300.0, 'Synthetic public price trend missing.');
     $public = $prices->search(array('pol'=>$pol, 'pod'=>$pod, 'container_type'=>'40HQ'));
     m043RuntimeAssert(!empty($public['results'][0]['rate_token']), 'Public rate token not returned.');
     $projection = json_encode($public['results'][0]);

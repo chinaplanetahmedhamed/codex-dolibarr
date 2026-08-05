@@ -83,6 +83,24 @@ class PublicShippingRateService
         );
     }
 
+    public function priceTrend(array $input)
+    {
+        $filters = $this->normalizeRequiredFilters($input);
+        $trend = $this->prices->getPublicPriceTrend($filters, 12);
+        if (!empty($trend['error'])) throw new PublicShippingRateException('rate_service_unavailable', 503);
+        return array(
+            'route' => array(
+                'country_code' => $filters['country_code'],
+                'pol' => $filters['pol'],
+                'pod' => $filters['pod'],
+                'container_type' => $filters['container_type'],
+            ),
+            'period_months' => 12,
+            'reference_only' => true,
+            'points' => array_values(isset($trend['points']) && is_array($trend['points']) ? $trend['points'] : array()),
+        );
+    }
+
     public function resolveToken($token)
     {
         $payload = $this->decryptToken((string) $token);

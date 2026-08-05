@@ -23,7 +23,9 @@ try {
     $assert(strpos($rate, "'aes-256-gcm'") !== false && strpos($rate, 'TOKEN_TTL = 600') !== false, 'authenticated short-lived rate token absent');
     $assert(strpos($rateApi, "hasRight('chinaplanetshippingprices', 'website_rate_search')") !== false, 'dedicated rate permission absent');
     $assert(strpos($rateApi, '@url GET website-route-options') !== false, 'public dependent route options endpoint absent');
+    $assert(strpos($rateApi, '@url GET website-rate-trend') !== false, 'public reference trend endpoint absent');
     $assert(strpos($rate, 'getPublicRouteOptions') !== false, 'route options do not use the eligible published-rate source');
+    $assert(strpos($rate, 'getPublicPriceTrend') !== false, 'trend does not use published shipping-rate history');
     $assert(strpos($intakeApi, "hasRight('chinaplanetoperations', 'website_intake_create')") !== false, 'dedicated intake permission absent');
     $assert(strpos($module, "'api' => 1") !== false, 'operations API module flag absent');
     foreach (array('website_intake_create','publicrequest_read','publicrequest_update','publicrequest_promote') as $right) $assert(strpos($module, $right) !== false, 'missing right '.$right);

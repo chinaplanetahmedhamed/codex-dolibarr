@@ -106,4 +106,28 @@ class ChinaPlanetShippingPrices extends DolibarrApi
             throw new RestException($e->getHttpStatus(), $e->getPublicCode());
         }
     }
+
+    /**
+     * Monthly public-price reference for one exact route and FCL equipment type.
+     *
+     * @url GET website-rate-trend
+     */
+    public function websiteRateTrend($pol = '', $pod = '', $container_type = '', $country_code = '')
+    {
+        $apiUser = DolibarrApiAccess::$user;
+        if (!$apiUser || (!$apiUser->hasRight('chinaplanetshippingprices', 'website_rate_search') && empty($apiUser->admin))) {
+            throw new RestException(403, 'Website rate-search permission required.');
+        }
+        try {
+            $service = new PublicShippingRateService($this->db);
+            return $service->priceTrend(array(
+                'pol' => $pol,
+                'pod' => $pod,
+                'container_type' => $container_type,
+                'country_code' => $country_code,
+            ));
+        } catch (PublicShippingRateException $e) {
+            throw new RestException($e->getHttpStatus(), $e->getPublicCode());
+        }
+    }
 }

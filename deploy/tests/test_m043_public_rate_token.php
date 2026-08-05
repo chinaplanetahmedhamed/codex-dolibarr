@@ -18,6 +18,9 @@ class M043FakePrices {
         if ($countryCode === '') return array('countries'=>array(array('code'=>'EG','label'=>'Egypt')), 'routes'=>array());
         return array('countries'=>array(), 'routes'=>array(array('pol'=>'NANSHA','pod'=>'ALEXANDRIA')));
     }
+    public function getPublicPriceTrend($filters, $months) {
+        return array('points'=>array(array('date'=>'2026-07-01','price'=>2300.00,'currency'=>'USD')), 'error'=>'');
+    }
     public function getCustomerRateById($id, $filters) { return $id === 73 ? $this->priced : null; }
 }
 try {
@@ -28,6 +31,10 @@ try {
     m043Assert($countries['countries'][0]['code'] === 'EG' && empty($countries['routes']), 'country options missing');
     $routes = $service->routeOptions(array('country_code'=>'eg'));
     m043Assert($routes['country_code'] === 'EG' && $routes['routes'][0]['pod'] === 'ALEXANDRIA', 'dependent route options missing');
+    $trend = $service->priceTrend(array('country_code'=>'EG','pol'=>'NANSHA','pod'=>'ALEXANDRIA','container_type'=>'40HQ'));
+    m043Assert($trend['reference_only'] === true && $trend['points'][0]['price'] === 2300.00, 'public trend projection missing');
+    $trendJson = json_encode($trend);
+    foreach (array('cost_price','supplier_cost','base_margin','rate_id','fingerprint','shipping_line') as $forbidden) m043Assert(strpos($trendJson, $forbidden) === false, 'public trend leaks '.$forbidden);
     m043Assert(count($result['results']) === 1, 'rate missing');
     $public = $result['results'][0];
     m043Assert(!isset($public['rate_id']) && !isset($public['fingerprint']) && isset($public['rate_token']), 'identifier leaked');
