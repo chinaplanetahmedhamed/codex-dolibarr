@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-06 — M043-C01 Website Requests dashboard navigation
+
+- Added `Website Requests / طلبات الموقع` to the shared Customer Center admin navigation and to the Admin Dashboard Quick Actions.
+- Kept the existing staff permission boundary and request queue unchanged; no new Dolibarr top-level module icon, API, schema, portal, mobile, accounting, or business-record behavior was added.
+- Deployed the checksum-pinned 17-file `M043-C01` artifact to canonical `backup-erp` staging after code and database backups; restricted preflight, apply, and verify all passed.
+- Verified the authenticated dashboard, queue, and request `id=14` on desktop, and verified the responsive navigation at 390×844.
+- Production and n8n were not accessed or changed.
+
 ## 2026-08-05 — M043 public website intake and FCL booking request
 
 - Added restricted public-site permissions and protected REST actions for exact published FCL rate search and anonymous website intake.

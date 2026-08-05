@@ -4,7 +4,7 @@
 
 - **Mission ID:** M043-C01
 - **Type:** UI_CORRECTION / STAGING
-- **Status:** IN_PROGRESS
+- **Status:** COMPLETED
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — requested a dashboard button for Website Requests
 - **Approval date:** 2026-08-06
@@ -36,3 +36,16 @@ Make the existing staff-only Public Website Requests queue discoverable from the
 - Existing request list/detail behavior and permissions remain unchanged.
 - Desktop and 390px pages have no horizontal overflow.
 - Production is not accessed or changed.
+
+## Completion evidence — 2026-08-06
+
+- Source commit: `334c46c4316c8e75c1535e75f772a44e24cb80a7`.
+- Restricted helper pin: `37b8e26`.
+- Staging artifact: `m043-334c46c.tar.gz`, SHA-256 `8dd4e625190d2c33de98e9e902bc6f34589b4b8d731f4833462a9a8b2a30224e`.
+- Canonical `backup-erp` preflight, apply, and verify: `PASS` for release `M043-C01`.
+- Backup before apply:
+  - code: `/root/backup-erp-code-backups/m043-before-334c46c-20260805T225143Z.tar.gz`, SHA-256 `b6a61d7c4e0a4fd71f732660c011fc3c7fb8ac992c83f713e6698901523e9aff`;
+  - database: `/root/backup-erp-db-backups/m043-before-334c46c-20260805T225143Z.sql`, SHA-256 `c3ae2ba3873e2fa5f5a415bf319787582534379e4171e16b56801dc222e5c128`.
+- Authenticated desktop acceptance: shared navigation and Quick Actions both expose `Website Requests / طلبات الموقع`; the link opens the queue and request detail `id=14`.
+- Authenticated 390×844 acceptance: responsive menu opens and exposes the same Website Requests destination without material horizontal overflow.
+- Existing request permissions and data behavior were unchanged; no customer portal, mobile app, API, schema, n8n, or production change was made.

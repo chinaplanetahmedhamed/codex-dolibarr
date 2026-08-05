@@ -2,14 +2,13 @@
 
 ## النتيجة
 
-`PASS_WITH_PENDING_RUNTIME_UI` — اكتمل تنفيذ المصدر والاختبارات المحلية لربط React بـDolibarr للاستفسارات وطلبات الكتالوج وبحث أسعار FCL وطلبات حجز الحاويات. نجحت عقود الأمان، قاعدة البيانات المحلية، بوابة Node، build، والواجهة العامة في المتصفح. لم تُثبت ملفات الفرع بعد داخل Dolibarr runtime المحلي، لذلك تبقى شاشة موظف Dolibarr وقبول الترقية اليدوية من الواجهة الفعلية `PENDING`.
+`STAGING_VERIFIED` — اكتمل تنفيذ وربط React بـDolibarr للاستفسارات وطلبات الكتالوج وبحث أسعار FCL وطلبات حجز الحاويات، ثم نُشر الإصدار المقيد `M043-C01` على `backup-erp` فقط. نجحت عقود الأمان والاختبارات المحلية، كما نجحت مراحل staging `preflight/apply/verify` وقبول شاشة موظف Dolibarr الفعلية، بما فيها زر `Website Requests / طلبات الموقع` من لوحة الإدارة وعرض 390px. لم يُستخدم n8n ولم تُلمس production.
 
 ## حدود التنفيذ
 
 - Dolibarr worktree: `feature/m043-public-website-intake`.
 - React worktree: `feature/m043-dolibarr-public-gateway`.
-- محلي فقط، بتاريخ 2026-08-05.
-- التنفيذ الوظيفي الموصوف في هذا التقرير كان محليًا فقط بتاريخ 2026-08-05. لاحقًا رُفع الفرع إلى GitHub، ثم وافق أحمد على تحضير نشر staging في M043-R01؛ لم يحدث apply على Dolibarr staging أو production.
+- بدأ التنفيذ والقبول الوظيفي محليًا بتاريخ 2026-08-05، ثم وافق أحمد على staging ونُشر الإصدار `M043-C01` على `backup-erp` بتاريخ 2026-08-06.
 - لم يُستخدم n8n، ولم يحدث أي deploy أو تغيير على production.
 - لم تُنشأ Third Party أو Proposal أو Sales Order أو Invoice أو Shipment أو Payment أو حركة مخزون أو قيد محاسبي تلقائيًا.
 
@@ -40,6 +39,8 @@
 - `custom/chinaplanetoperations/operations/public_requests.php`
 - `custom/chinaplanetoperations/sql/llx_cpo_public_request.sql`
 - `custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php`
+- `custom/chinaplanetcustomercenter/admin_dashboard.php`
+- `custom/chinaplanetcustomercenter/lib/admin_shell.lib.php`
 - `custom/chinaplanetoperations/langs/{ar_SA,en_US,zh_CN}/chinaplanetoperations.lang`
 - `deploy/tests/test_m043_public_website_intake_source.php`
 - `deploy/tests/test_m043_public_rate_token.php`
@@ -82,6 +83,7 @@
 - تبديل اللغة بعد النجاح حفظ POL والنموذج والمرجع وغيّر رسالة النجاح إلى اللغة الحالية: PASS بعد تصحيح مكتشف أثناء الاختبار.
 - console warnings/errors في مسار القبول: لا يوجد.
 - `git diff --check`: PASS.
+- فحص source الخاص بزر لوحة الإدارة: PASS للوجهتين المشتركتين في navigation وQuick Actions.
 
 ### إعادة تحقق تحسين القوائم — 2026-08-05
 
@@ -91,27 +93,27 @@
 - الرسم المحلي لنفس المسار عرض 12 نقطة من سبتمبر 2025 إلى أغسطس 2026، والأحدث `2450.5 USD`، والأقل `2290 USD`، والأعلى `2780 USD`، دون أخطاء console.
 - تعذر تكرار اختبار DB الاصطناعي في هذه الجولة لأن MariaDB المحلية على `127.0.0.1:8889` لم تكن متصلة؛ لا يغيّر ذلك نجاح الجولة السابقة المسجل أعلاه، لكنه يبقي إعادة تحقق DB لهذا التحسين معلقة حتى تشغيل MariaDB.
 
-## ما لم يُقبل بعد
+## حدود القبول الحالية
 
-- لم تُثبت ملفات فرع Dolibarr في runtime المحلي، لذلك لم تُفتح شاشة `Public Website Requests` بجلسة موظف فعلية.
-- لم يُختبر من الواجهة الفعلية status update أو ربط Third Party أو promotion locking؛ عقود المصدر موجودة فقط، ويحتاج ذلك جولة قبول محلية بعد تثبيت الفرع وتفعيل الصلاحيات والمفاتيح.
-- لم تُختبر rates فعلية حالية لأن بيانات السعر المحلية القديمة لم تحقق عقد النشر الحالي؛ استخدم اختبار DB سعرًا اصطناعيًا حذف بعده.
-- المحدد المحلي in-memory مناسب للاختبار فقط؛ قبل أي نشر يلزم limiter مشترك أو reverse-proxy/edge limiter.
+- فُتحت شاشة `Public Website Requests` وصفحة الطلب `id=14` بجلسة موظف فعلية على `backup-erp`، لكن لم تُنفذ أثناء هذا التصحيح أي عملية تغيير status أو ربط Third Party أو promotion حتى لا نغيّر سجل أعمال حقيقيًا.
+- لم تُختبر rates تجارية فعلية من هذا التصحيح؛ قبول زر الإدارة لا يغير عقد البحث أو التسعير الذي تحقق في M043 الأساسي.
+- لا يزال limiter المشترك أو الطرفي مطلوبًا قبل أي إنتاج عام؛ staging لا يُعد قبول production.
 
-## بوابة نشر staging — M043-R01
+## نشر staging — M043-R01 / M043-C01
 
-- فرع Dolibarr مرفوع: `feature/m043-public-website-intake` عند `5e71bc5`.
-- فرع React مرفوع: `feature/m043-dolibarr-public-gateway`; إعداد بوابة staging أضيف لاحقًا وفتح PR رقم 13.
-- الفحص الخارجي للقراءة فقط أثبت HTTP 200 على `new.chinaplanet.org` و`backup-erp.visiontrading.biz`.
-- لا توجد أداة M043 مقيدة ضمن `sudo -n -l` للحساب `codex-deploy`; الأدوات العامة القديمة تشير إلى `codex_staging_*` المحظور وليست بديلًا.
-- النشر متوقف قبل apply إلى أن يثبت مسؤول الخادم helper/sudoers خاصين بـM043، ويجهز مستخدم API محدود الصلاحيات، ويثبت limiter مشترك/طرفي.
-- لم يُدمج PR ولم يُشغّل workflow، ولم يُلمس `chinaplanet.org`.
+- فرع Dolibarr مرفوع: `feature/m043-public-website-intake` حتى helper pin `37b8e26`; كود runtime المعتمد عند `334c46c4316c8e75c1535e75f772a44e24cb80a7`.
+- فرع React مرفوع: `feature/m043-dolibarr-public-gateway`; إعداد بوابة staging أضيف في PR رقم 13.
+- نُشر artifact المقيد `m043-334c46c.tar.gz` على `backup-erp` فقط، SHA-256 `8dd4e625190d2c33de98e9e902bc6f34589b4b8d731f4833462a9a8b2a30224e`، وعدد ملفات runtime المسموح بها 17.
+- نتائج الأداة المقيدة: `M043_STAGING_PREFLIGHT=PASS`, `M043_STAGING_APPLY=PASS`, `M043_STAGING_VERIFY=PASS`, و`PRODUCTION_ACCESSED=NO`.
+- أُخذت نسخة كود قبل التطبيق عند `/root/backup-erp-code-backups/m043-before-334c46c-20260805T225143Z.tar.gz` ونسخة قاعدة بيانات عند `/root/backup-erp-db-backups/m043-before-334c46c-20260805T225143Z.sql` مع checksums مثبتة في Mission `M043-C01`.
+- قبول المتصفح الموثق: زر Website Requests ظاهر في shared admin navigation وفي Quick Actions، يفتح القائمة وصفحة `id=14`; عرض 390×844 يضعه داخل القائمة المتجاوبة بصورة سليمة.
+- لم يُلمس `chinaplanet.org` أو أي production.
 
 ## التطابق
 
 - Public React: `LOCAL_BROWSER_VERIFIED`.
 - Dolibarr service/database contract: `LOCAL_RUNTIME_VERIFIED`.
-- Dolibarr staff UI: `PENDING_RUNTIME_INSTALL`.
+- Dolibarr staff UI: `STAGING_AUTHENTICATED_BROWSER_VERIFIED`.
 - Authenticated Customer Center: `UNCHANGED / NOT_APPLICABLE`.
 - Mobile app: `NOT_APPLICABLE`.
 - n8n: `POSTPONED / NOT_USED`.
