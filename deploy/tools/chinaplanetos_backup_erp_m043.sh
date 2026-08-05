@@ -4,9 +4,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M043-R01'
-readonly RUNTIME_COMMIT='63c5f3a98f5c7dd01e7ffd4874996ef51b3a9be8'
-readonly SHORT_COMMIT='63c5f3a'
-readonly ARTIFACT_SHA='8be9ea0f42d19f40586953c8b2faf94a1e9e4a0d6f2151e4098b8ad64c68f598'
+readonly RUNTIME_COMMIT='efe13c49c221b82525e35b0fd6f5865634096fd8'
+readonly SHORT_COMMIT='efe13c4'
+readonly ARTIFACT_SHA='d691d2c17da883905235222fc1825874958ab1de42adc24e52020ac7658d2511'
 readonly RUNTIME_MANIFEST_SHA='41d85bbd83e1890b10f3cc068ff528f88cc55d50a3b18b74539b1b645f8133a8'
 readonly SUPPORT_MANIFEST_SHA='043f47e31be6e64afbede6afc35b83e3707a7cc1cc60d796545d02ad4e932757'
 readonly RUNTIME_MANIFEST='deploy/releases/m043-runtime-files.txt'
@@ -144,6 +144,7 @@ schema_prestate() {
   local output rc=0
   set +e; output=$(docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" check 2>&1); rc=$?; set -e
   if [[ $rc -eq 0 && "$output" == M043_GATEWAY_CHECK=PASS* ]]; then SCHEMA_PREEXISTED='1'; return; fi
+  if grep -Eq 'REASON=API_MODULE_DISABLED' <<<"$output"; then SCHEMA_PREEXISTED='1'; return; fi
   if grep -Eq 'REASON=(TABLE_ABSENT|RIGHT_ABSENT_|GATEWAY_USER_INVALID|CONSTANT_INVALID)' <<<"$output"; then SCHEMA_PREEXISTED='0'; return; fi
   die 'SCHEMA_PRESTATE_DRIFT'
 }
@@ -231,6 +232,12 @@ live_checks() {
   done
   docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" check >/dev/null || return 1
   docker exec -e M043_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$RUNTIME_TEST" >/dev/null || return 1
+  if [[ -f "$API_KEY_FILE" ]]; then
+    local gateway_key api_body
+    gateway_key=$(tr -d '\r\n' <"$API_KEY_FILE")
+    api_body=$(curl -sS --max-time 15 -H "DOLAPIKEY: ${gateway_key}" "${TARGET_HTTP}/api/index.php/chinaplanetshippingprices/website-route-options") || return 1
+    grep -Fq '"countries"' <<<"$api_body" || return 1
+  fi
   [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]]
 }
 
