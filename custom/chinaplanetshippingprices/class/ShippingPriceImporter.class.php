@@ -516,7 +516,7 @@ class ShippingPriceImporter
             'JEDDAH'=>'SA','DAMMAM'=>'SA','RIYADH'=>'SA','JUBAIL'=>'SA','JEBEL ALI'=>'AE','ABU DHABI'=>'AE','SHARJAH'=>'AE','AJMAN'=>'AE','KHOR FAKKAN'=>'AE','FUJAIRAH'=>'AE','UMM AL QAIWAIN'=>'AE','RAS AL KHAIMAH'=>'AE',
             'HAMAD'=>'QA','DOHA'=>'QA','AQABA'=>'JO','ADEN'=>'YE','HODEIDAH'=>'YE','PORT SUDAN'=>'SD','DJIBOUTI'=>'DJ','BERBERA'=>'SO','MOGADISHU'=>'SO',
             'UMM QASR'=>'IQ','SHUWAIKH'=>'KW','SHUAIBA'=>'KW','KUWAIT'=>'KW','BAHRAIN'=>'BH','SOHAR'=>'OM','SALALAH'=>'OM','MUSCAT'=>'OM',
-            'ASHDOD'=>'IL','HAIFA'=>'IL','MISURATA'=>'LY','BENGHAZI'=>'LY','TRIPOLI'=>'LY','LATTAKIA'=>'SY','BEIRUT'=>'LB','MERSIN'=>'TR','ISTANBUL'=>'TR',
+            'ASHDOD'=>'PS','HAIFA'=>'PS','MISURATA'=>'LY','BENGHAZI'=>'LY','TRIPOLI'=>'LY','LATTAKIA'=>'SY','BEIRUT'=>'LB','MERSIN'=>'TR','ISTANBUL'=>'TR',
         );
     }
 

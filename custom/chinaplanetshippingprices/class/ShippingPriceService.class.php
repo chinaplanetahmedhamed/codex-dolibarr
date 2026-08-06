@@ -27,8 +27,7 @@ class ShippingPriceService
         while ($obj = $this->db->fetch_object($res)) {
             if ($obj->pol !== '') $out['pol'][$obj->pol] = $obj->pol;
             if (!empty($obj->destination_country)) {
-                $translated = $langs->transnoentitiesnoconv('Country'.$obj->destination_country);
-                $countryName = $translated !== 'Country'.$obj->destination_country ? $translated : ($obj->country_label ?: $obj->destination_country);
+                $countryName = $this->countryLabel($obj->destination_country, $obj->country_label);
                 $out['countries'][$obj->destination_country] = dol_ucwords($countryName);
                 if (!isset($out['pod_by_country'][$obj->destination_country])) $out['pod_by_country'][$obj->destination_country] = array();
                 if ($obj->pod !== '') $out['pod_by_country'][$obj->destination_country][$obj->pod] = $obj->pod;
@@ -65,8 +64,7 @@ class ShippingPriceService
             if (!$res) return $out;
             while ($obj = $this->db->fetch_object($res)) {
                 $code = strtoupper((string) $obj->destination_country);
-                $translated = $langs->transnoentitiesnoconv('Country'.$code);
-                $label = $translated !== 'Country'.$code ? $translated : ($obj->country_label ?: $code);
+                $label = $this->countryLabel($code, $obj->country_label);
                 $out['countries'][] = array('code' => $code, 'label' => dol_ucwords($label));
             }
             return $out;
@@ -86,6 +84,19 @@ class ShippingPriceService
             $out['routes'][] = array('pol' => (string) $obj->pol, 'pod' => (string) $obj->pod);
         }
         return $out;
+    }
+
+    /** Keep the China Planet shipping-country naming policy scoped to this module. */
+    private function countryLabel($code, $databaseLabel = '')
+    {
+        global $langs;
+        $code = strtoupper(trim((string) $code));
+        if ($code === 'PS') {
+            $label = $langs->transnoentitiesnoconv('ChinaPlanetCountryPS');
+            return $label !== 'ChinaPlanetCountryPS' ? $label : 'Palestine';
+        }
+        $translated = $langs->transnoentitiesnoconv('Country'.$code);
+        return $translated !== 'Country'.$code ? $translated : ($databaseLabel ?: $code);
     }
 
     /** Public reference trend for one exact FCL route, aggregated monthly. */

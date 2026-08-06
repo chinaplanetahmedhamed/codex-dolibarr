@@ -1,5 +1,15 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-08-06 — M044 Palestine shipping-country normalization
+
+- Source change: Shipping Prices importer and public/staff country label normalize Ashdod and Haifa from `IL` to `PS`.
+- Admin ERP: affected in Shipping Prices filters, port mappings, and future workbook imports.
+- Customer portal: existing customer-safe price data contract remains; the affected destination label becomes Palestine.
+- Mobile app: `NOT_APPLICABLE`; it does not own the public Shipping Prices importer or destination selector.
+- API/data dependency: public route options return `PS` with the scoped Palestine label.
+- Design impact: terminology only; no navigation, status, document, finance, or mobile layout change.
+- Verification: pending M044 staging and production release acceptance.
+
 ## Purpose
 
 This is the canonical synchronization log for the three ChinaPlanetOS product surfaces:
