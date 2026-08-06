@@ -77,7 +77,7 @@ jobs:
           artifact="$RUNNER_TEMP/m043/$ARTIFACT_NAME"
           test -f "$artifact" && test ! -L "$artifact"
           test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
-          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '26'
+          test "$(python3 -c 'import sys,tarfile; print(len(tarfile.open(sys.argv[1]).getmembers()))' "$artifact")" = '26'
           chmod 0644 "$artifact"
           echo "path=$artifact" >> "$GITHUB_OUTPUT"
 
