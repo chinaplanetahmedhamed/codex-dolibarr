@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DELIVERY_COMMIT: fe8027a59714aedec2d9aac55f06ec58d72855a2
+  DELIVERY_COMMIT: 3d94f2d53309c5fe3e4406be432f3e460bbc7eca
   RUNTIME_COMMIT: bea5c9798f2001473a8458a54b1e31821843875b
   RELEASE_TAG: m044-production-candidate
   ARTIFACT_NAME: m044-bea5c97.tar.gz
