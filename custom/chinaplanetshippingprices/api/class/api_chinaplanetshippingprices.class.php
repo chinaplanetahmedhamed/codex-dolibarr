@@ -4,6 +4,7 @@ use Luracast\Restler\RestException;
 
 require_once DOL_DOCUMENT_ROOT.'/api/class/api.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetshippingprices/class/ShippingPriceService.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php';
 
 /**
  * Deterministic shipping price service for Phase 2, n8n and AI clients.
@@ -57,5 +58,76 @@ class ChinaPlanetShippingPrices extends DolibarrApi
             'count' => count($payload['results']),
             'results' => $payload['results'],
         );
+    }
+
+    /**
+     * Restricted website gateway search. This is deliberately separate from
+     * the authenticated M035/customer API permission and projection.
+     *
+     * @url GET website-rates
+     */
+    public function websiteRates($pol = '', $pod = '', $container_type = '', $country_code = '', $service_type = '', $incoterm = 'FOB')
+    {
+        $apiUser = DolibarrApiAccess::$user;
+        if (!$apiUser || (!$apiUser->hasRight('chinaplanetshippingprices', 'website_rate_search') && empty($apiUser->admin))) {
+            throw new RestException(403, 'Website rate-search permission required.');
+        }
+        try {
+            $service = new PublicShippingRateService($this->db);
+            return $service->search(array(
+                'pol' => $pol,
+                'pod' => $pod,
+                'container_type' => $container_type,
+                'country_code' => $country_code,
+                'service_type' => $service_type,
+                'incoterm' => $incoterm,
+            ));
+        } catch (PublicShippingRateException $e) {
+            throw new RestException($e->getHttpStatus(), $e->getPublicCode());
+        }
+    }
+
+    /**
+     * Bounded route options for the public website's dependent selects.
+     * No prices, rate identifiers, carrier names or availability counts are returned.
+     *
+     * @url GET website-route-options
+     */
+    public function websiteRouteOptions($country_code = '')
+    {
+        $apiUser = DolibarrApiAccess::$user;
+        if (!$apiUser || (!$apiUser->hasRight('chinaplanetshippingprices', 'website_rate_search') && empty($apiUser->admin))) {
+            throw new RestException(403, 'Website rate-search permission required.');
+        }
+        try {
+            $service = new PublicShippingRateService($this->db);
+            return $service->routeOptions(array('country_code' => $country_code));
+        } catch (PublicShippingRateException $e) {
+            throw new RestException($e->getHttpStatus(), $e->getPublicCode());
+        }
+    }
+
+    /**
+     * Monthly public-price reference for one exact route and FCL equipment type.
+     *
+     * @url GET website-rate-trend
+     */
+    public function websiteRateTrend($pol = '', $pod = '', $container_type = '', $country_code = '')
+    {
+        $apiUser = DolibarrApiAccess::$user;
+        if (!$apiUser || (!$apiUser->hasRight('chinaplanetshippingprices', 'website_rate_search') && empty($apiUser->admin))) {
+            throw new RestException(403, 'Website rate-search permission required.');
+        }
+        try {
+            $service = new PublicShippingRateService($this->db);
+            return $service->priceTrend(array(
+                'pol' => $pol,
+                'pod' => $pod,
+                'container_type' => $container_type,
+                'country_code' => $country_code,
+            ));
+        } catch (PublicShippingRateException $e) {
+            throw new RestException($e->getHttpStatus(), $e->getPublicCode());
+        }
     }
 }

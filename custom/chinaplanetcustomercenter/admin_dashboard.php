@@ -315,6 +315,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
   <section class="cpad-panel" data-cpad-widget="quick_access" data-default-size="full">
     <div class="cpad-title"><span>Quick Actions / إجراءات سريعة</span><small>Vision System</small></div>
     <div class="cpad-quick-grid">
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/public_requests.php',1); ?>"><span class="fas fa-inbox"></span><b>Website Requests</b><small>طلبات الموقع</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?action=create',1); ?>"><span class="fas fa-plus-circle"></span><b>New Shipment</b><small>شحنة جديدة</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetoperations/index.php',1); ?>"><span class="fas fa-route"></span><b>Internal Operations</b><small>مركز العمليات الداخلي</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetoperations/sop/index.php',1); ?>"><span class="fas fa-book-open"></span><b>SOP Library</b><small>مكتبة إجراءات التشغيل</small></a>

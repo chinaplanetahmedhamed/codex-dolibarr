@@ -42,6 +42,82 @@ class ShippingPriceService
         return $out;
     }
 
+    /**
+     * Return a bounded public-safe route directory for dependent website selects.
+     * With no country it returns available destination countries only. With an
+     * exact ISO-2 country it returns eligible POL/POD pairs for that country.
+     */
+    public function getPublicRouteOptions($countryCode = '')
+    {
+        global $langs;
+        $countryCode = strtoupper(trim((string) $countryCode));
+        $out = array('countries' => array(), 'routes' => array());
+
+        if ($countryCode === '') {
+            $sql = "SELECT DISTINCT r.destination_country,c.label country_label";
+            $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+            $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity";
+            $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."c_country c ON c.code=r.destination_country";
+            $sql .= " WHERE r.entity=".$this->entity." AND r.destination_country<>'' AND r.cost_price>=".price2num($this->ignoreBelow());
+            $sql .= $this->customerEligibilitySql('r', 'b');
+            $sql .= " ORDER BY r.destination_country LIMIT 100";
+            $res = $this->db->query($sql);
+            if (!$res) return $out;
+            while ($obj = $this->db->fetch_object($res)) {
+                $code = strtoupper((string) $obj->destination_country);
+                $translated = $langs->transnoentitiesnoconv('Country'.$code);
+                $label = $translated !== 'Country'.$code ? $translated : ($obj->country_label ?: $code);
+                $out['countries'][] = array('code' => $code, 'label' => dol_ucwords($label));
+            }
+            return $out;
+        }
+
+        $sql = "SELECT DISTINCT r.pol,r.pod";
+        $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+        $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity";
+        $sql .= " WHERE r.entity=".$this->entity." AND r.destination_country='".$this->db->escape($countryCode)."'";
+        $sql .= " AND r.pol<>'' AND r.pod<>'' AND r.pol<>'UNKNOWN' AND r.pod<>'UNKNOWN'";
+        $sql .= " AND r.cost_price>=".price2num($this->ignoreBelow());
+        $sql .= $this->customerEligibilitySql('r', 'b');
+        $sql .= " ORDER BY r.pol,r.pod LIMIT 250";
+        $res = $this->db->query($sql);
+        if (!$res) return $out;
+        while ($obj = $this->db->fetch_object($res)) {
+            $out['routes'][] = array('pol' => (string) $obj->pol, 'pod' => (string) $obj->pod);
+        }
+        return $out;
+    }
+
+    /** Public reference trend for one exact FCL route, aggregated monthly. */
+    public function getPublicPriceTrend(array $filters, $months = 12)
+    {
+        $filters = $this->normalizeFilters($filters);
+        $months = max(1, min(24, (int) $months));
+        $sql = "SELECT DATE_FORMAT(r.valid_from,'%Y-%m-01') period_date,r.currency_code,AVG(r.sale_price) average_price";
+        $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate r";
+        $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_batch b ON b.rowid=r.fk_batch AND b.entity=r.entity AND b.status=2";
+        $sql .= " WHERE r.entity=".$this->entity." AND r.status=1 AND r.public_visible=1 AND r.sale_price>0";
+        $sql .= " AND r.cost_price>=".price2num($this->ignoreBelow());
+        $sql .= " AND r.valid_from>=DATE_SUB(CURDATE(),INTERVAL ".$months." MONTH) AND r.valid_from<=CURDATE()";
+        foreach (array('pol', 'pod', 'container_type') as $field) {
+            $sql .= " AND r.".$field."='".$this->db->escape($filters[$field])."'";
+        }
+        if ($filters['country_code'] !== '') $sql .= " AND r.destination_country='".$this->db->escape($filters['country_code'])."'";
+        $sql .= $this->enabledRateSql('r');
+        $sql .= " GROUP BY period_date,r.currency_code ORDER BY period_date ASC LIMIT 60";
+        $res = $this->db->query($sql);
+        if (!$res) return array('points' => array(), 'error' => $this->db->lasterror());
+        $points = array();
+        while ($obj = $this->db->fetch_object($res)) {
+            $points[] = array(
+                'date' => (string) $obj->period_date,
+                'price' => round((float) $obj->average_price, 2),
+                'currency' => (string) $obj->currency_code,
+            );
+        }
+        return array('points' => $points, 'error' => '');
+    }
+
     public function search(array $filters, $includeCost = false, $limit = 100)
     {
         $filters = $this->normalizeFilters($filters);

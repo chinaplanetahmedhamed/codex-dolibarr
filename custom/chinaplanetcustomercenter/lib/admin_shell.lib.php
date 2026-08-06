@@ -34,6 +34,7 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
     {
         $items = array(
             'dashboard'=>array('/chinaplanetcustomercenter/admin_dashboard.php', 'fa-chart-line', 'Dashboard / الرئيسية'),
+            'website_requests'=>array('/chinaplanetoperations/operations/public_requests.php', 'fa-inbox', 'Website Requests / طلبات الموقع'),
             'portal'=>array('/chinaplanetcustomercenter/board.php', 'fa-users', 'Customer Center / مركز العملاء'),
             'shipping'=>array('/chinaplanetlogistics/index.php', 'fa-ship', 'Shipping Center / مركز الشحن'),
             'documents'=>array('/chinaplanetcustomercenter/documents.php', 'fa-folder-open', 'Documents / المستندات'),

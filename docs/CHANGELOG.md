@@ -1,5 +1,32 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-06 — M043-C02 professional website-request detail
+
+- Replaced raw and historical double-encoded request/commercial JSON with responsive operational cards while preserving the stored evidence and all existing staff actions and permission boundaries.
+- Added structured contact, cargo, route, equipment, price, validity, inclusion, exclusion, warning, and carrier-space sections plus English, Arabic, and Chinese labels.
+- Deployed the checksum-pinned 26-file `M043-C02` artifact to canonical `backup-erp` through the manual GitHub Actions workflow; restricted preflight, backups, apply, runtime verification, and cleanup passed without rollback.
+- Verified authenticated request `id=14` on desktop and at 390x844 with no raw JSON, escaped-newline leakage, or page-wide horizontal overflow.
+- Removed the temporary Termius helper snippet after deployment; production and n8n were not accessed or changed.
+
+## 2026-08-06 — M043-C01 Website Requests dashboard navigation
+
+- Added `Website Requests / طلبات الموقع` to the shared Customer Center admin navigation and to the Admin Dashboard Quick Actions.
+- Kept the existing staff permission boundary and request queue unchanged; no new Dolibarr top-level module icon, API, schema, portal, mobile, accounting, or business-record behavior was added.
+- Deployed the checksum-pinned 17-file `M043-C01` artifact to canonical `backup-erp` staging after code and database backups; restricted preflight, apply, and verify all passed.
+- Verified the authenticated dashboard, queue, and request `id=14` on desktop, and verified the responsive navigation at 390×844.
+- Replaced the obsolete M004 `backup-erp` workflow with a manually confirmed, M043-C01-pinned staging workflow backed by the exact GitHub prerelease artifact and environment-scoped secrets.
+- Production and n8n were not accessed or changed.
+
+## 2026-08-05 — M043 public website intake and FCL booking request
+
+- Added restricted public-site permissions and protected REST actions for exact published FCL rate search and anonymous website intake.
+- Added encrypted, authenticated, ten-minute rate tokens; submit-time repricing; a customer-safe public DTO; and immutable commercial snapshots without cost, margin, source or database identifiers.
+- Added an entity-scoped public-request queue with strict idempotency, separated PII, staff classification, same-entity customer linking, manual Operations promotion and 180-day restart-safe anonymization.
+- Changed the Moaz architecture to `React → same-origin Node → Dolibarr`; WordPress/WooCommerce remains the catalog and packing-plan source but no longer creates the React B2B operational order.
+- Added the public `/shipping-rates` page for Arabic, English and French, supporting 20GP, 40GP and 40HQ and clearly describing submission as a booking request rather than carrier confirmation.
+- Local source, Node, UI-contract, build, database and synthetic browser acceptance passed. Runtime installation of the source branch and authenticated Dolibarr staff-page browser acceptance remain pending.
+- Local only; no n8n, staging, production, VPS, deployment, external message, accounting entry or validated commercial document was created.
+
 ## 2026-07-24 — M037-C04 MariaDB-safe shipping classification
 
 - Removed shipping lifecycle classification from MariaDB JSON expressions and now decodes the allowlisted service payload in PHP.
