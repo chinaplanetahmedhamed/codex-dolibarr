@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-06 — M043-C02 professional website-request detail
+
+- Replaced raw and historical double-encoded request/commercial JSON with responsive operational cards while preserving the stored evidence and all existing staff actions and permission boundaries.
+- Added structured contact, cargo, route, equipment, price, validity, inclusion, exclusion, warning, and carrier-space sections plus English, Arabic, and Chinese labels.
+- Deployed the checksum-pinned 26-file `M043-C02` artifact to canonical `backup-erp` through the manual GitHub Actions workflow; restricted preflight, backups, apply, runtime verification, and cleanup passed without rollback.
+- Verified authenticated request `id=14` on desktop and at 390x844 with no raw JSON, escaped-newline leakage, or page-wide horizontal overflow.
+- Removed the temporary Termius helper snippet after deployment; production and n8n were not accessed or changed.
+
 ## 2026-08-06 — M043-C01 Website Requests dashboard navigation
 
 - Added `Website Requests / طلبات الموقع` to the shared Customer Center admin navigation and to the Admin Dashboard Quick Actions.
