@@ -1,0 +1,281 @@
+name: Deploy pinned M044 ERP release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      confirmation:
+        description: Type the exact confirmation for the selected target
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m044-erp-deployment
+  cancel-in-progress: false
+
+env:
+  DELIVERY_COMMIT: fe8027a59714aedec2d9aac55f06ec58d72855a2
+  RUNTIME_COMMIT: bea5c9798f2001473a8458a54b1e31821843875b
+  RELEASE_TAG: m044-production-candidate
+  ARTIFACT_NAME: m044-bea5c97.tar.gz
+  ARTIFACT_SHA: ce65bc0ce331ead157d4a09ea814bdaef7faf6f1277a1d7a1f54cfb1ab7b5cbd
+  DEPLOY_HOST: 31.97.158.178
+  DEPLOY_USER: codex-deploy
+  DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-m044-palestine-release
+  REMOTE_INBOX: /home/codex-deploy/staging-inbox
+
+jobs:
+  staging:
+    if: ${{ inputs.target == 'staging' }}
+    name: Deploy and verify M044 on backup-erp
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 30
+
+    steps:
+      - name: Require exact staging confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = 'DEPLOY_M044_TO_BACKUP_ERP'
+
+      - name: Check out pinned delivery tooling
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.DELIVERY_COMMIT }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify pinned source and helper contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$DELIVERY_COMMIT"
+          test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
+          test "$(sha256sum deploy/releases/m044-runtime-files.txt | awk '{print $1}')" = 'e82694f92592b20a6e3c43401576c73c47b4caec1ef6e5d310aae0af99cc6833'
+          test "$(sha256sum deploy/releases/m044-support-files.txt | awk '{print $1}')" = '52f5ccb4b87818fd889ba8f9e14e14540acfe2bee2b8bd090553e84c45735a04'
+          while IFS= read -r file; do
+            test -f "$file" && test ! -L "$file"
+            if [[ "$file" == *.php ]]; then php -l "$file" >/dev/null; fi
+          done < <(cat deploy/releases/m044-runtime-files.txt deploy/releases/m044-support-files.txt)
+          php deploy/tests/test_m043_gateway_migration.php
+          php deploy/tests/test_m043_public_rate_token.php
+          php deploy/tests/test_m043_public_website_intake_source.php
+          php deploy/tests/test_m044_palestine_shipping_country.php
+          bash deploy/tests/test_m044_release_helper.sh
+          bash deploy/tests/test_m044_release_helper_installer.sh
+
+      - name: Download and verify the approved artifact
+        id: artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m044"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$RUNNER_TEMP/m044"
+          artifact="$RUNNER_TEMP/m044/$ARTIFACT_NAME"
+          test -f "$artifact" && test ! -L "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
+          test "$(python3 -c 'import sys,tarfile; print(len(tarfile.open(sys.argv[1]).getmembers()))' "$artifact")" = '32'
+          chmod 0644 "$artifact"
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Prepare protected staging secrets
+        id: gateway_secrets
+        shell: bash
+        env:
+          API_KEY: ${{ secrets.M043_API_KEY }}
+          RATE_TOKEN_KEY: ${{ secrets.M043_RATE_TOKEN_KEY }}
+          REQUEST_HMAC_KEY: ${{ secrets.M043_REQUEST_HMAC_KEY }}
+        run: |
+          set -Eeuo pipefail
+          test ${#API_KEY} -ge 32
+          test ${#RATE_TOKEN_KEY} -ge 32
+          test ${#REQUEST_HMAC_KEY} -ge 32
+          install -d -m 0700 "$RUNNER_TEMP/m044-secrets"
+          printf '%s' "$API_KEY" > "$RUNNER_TEMP/m044-secrets/m044-staging-api.key"
+          printf '%s' "$RATE_TOKEN_KEY" > "$RUNNER_TEMP/m044-secrets/m044-staging-rate-token.key"
+          printf '%s' "$REQUEST_HMAC_KEY" > "$RUNNER_TEMP/m044-secrets/m044-staging-request-hmac.key"
+          chmod 0600 "$RUNNER_TEMP"/m044-secrets/*.key
+          echo 'prepared=true' >> "$GITHUB_OUTPUT"
+
+      - name: Upload pinned artifact and transient secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
+          scp "${ssh_opts[@]}" "$RUNNER_TEMP"/m044-secrets/*.key "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME' && chmod 0600 '$REMOTE_INBOX'/m044-staging-*.key"
+
+      - name: Restricted staging preflight
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER staging-preflight"
+
+      - name: Apply staging with backups and automatic rollback
+        id: apply
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER staging-apply"
+
+      - name: Verify staging release
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER staging-verify"
+
+      - name: Roll back if staging verification fails
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER staging-rollback"
+
+      - name: Remove transient credentials
+        if: ${{ always() && steps.gateway_secrets.outputs.prepared == 'true' }}
+        shell: bash
+        run: |
+          if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
+            ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "rm -f '$REMOTE_INBOX'/m044-staging-*.key" 2>/dev/null || true
+          fi
+          rm -rf "$RUNNER_TEMP/m044-secrets" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  production:
+    if: ${{ inputs.target == 'production' }}
+    name: Verify staging then deploy M044 on live ERP
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 35
+
+    steps:
+      - name: Require exact production confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = 'DEPLOY_M044_TO_ERP_PRODUCTION'
+
+      - name: Check out pinned delivery tooling
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.DELIVERY_COMMIT }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify pinned source and helper contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$DELIVERY_COMMIT"
+          test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
+          php deploy/tests/test_m044_palestine_shipping_country.php
+          bash deploy/tests/test_m044_release_helper.sh
+          bash deploy/tests/test_m044_release_helper_installer.sh
+
+      - name: Download and verify the staging-approved artifact
+        id: artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m044"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$RUNNER_TEMP/m044"
+          artifact="$RUNNER_TEMP/m044/$ARTIFACT_NAME"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
+          test "$(python3 -c 'import sys,tarfile; print(len(tarfile.open(sys.argv[1]).getmembers()))' "$artifact")" = '32'
+          chmod 0644 "$artifact"
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Require the identical artifact to be healthy on staging
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER staging-verify"
+
+      - name: Prepare protected production secrets
+        id: gateway_secrets
+        shell: bash
+        env:
+          API_KEY: ${{ secrets.M043_API_KEY }}
+          RATE_TOKEN_KEY: ${{ secrets.M043_RATE_TOKEN_KEY }}
+          REQUEST_HMAC_KEY: ${{ secrets.M043_REQUEST_HMAC_KEY }}
+        run: |
+          set -Eeuo pipefail
+          test ${#API_KEY} -ge 32
+          test ${#RATE_TOKEN_KEY} -ge 32
+          test ${#REQUEST_HMAC_KEY} -ge 32
+          install -d -m 0700 "$RUNNER_TEMP/m044-secrets"
+          printf '%s' "$API_KEY" > "$RUNNER_TEMP/m044-secrets/m044-production-api.key"
+          printf '%s' "$RATE_TOKEN_KEY" > "$RUNNER_TEMP/m044-secrets/m044-production-rate-token.key"
+          printf '%s' "$REQUEST_HMAC_KEY" > "$RUNNER_TEMP/m044-secrets/m044-production-request-hmac.key"
+          chmod 0600 "$RUNNER_TEMP"/m044-secrets/*.key
+          echo 'prepared=true' >> "$GITHUB_OUTPUT"
+
+      - name: Upload identical artifact and transient production secrets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
+          scp "${ssh_opts[@]}" "$RUNNER_TEMP"/m044-secrets/*.key "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME' && chmod 0600 '$REMOTE_INBOX'/m044-production-*.key"
+
+      - name: Restricted production preflight
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER production-preflight"
+
+      - name: Apply production with backups and automatic rollback
+        id: apply
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER production-apply"
+
+      - name: Verify live ERP release
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER production-verify"
+
+      - name: Roll back if production verification fails
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER production-rollback"
+
+      - name: Remove transient credentials
+        if: ${{ always() && steps.gateway_secrets.outputs.prepared == 'true' }}
+        shell: bash
+        run: |
+          if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
+            ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "rm -f '$REMOTE_INBOX'/m044-production-*.key" 2>/dev/null || true
+          fi
+          rm -rf "$RUNNER_TEMP/m044-secrets" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
