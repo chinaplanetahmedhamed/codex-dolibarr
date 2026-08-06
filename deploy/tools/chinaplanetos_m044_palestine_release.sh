@@ -56,17 +56,29 @@ DB_BACKUP=''
 DB_BACKUP_SHA=''
 SCHEMA_PREEXISTED='0'
 REMOVE_SECRETS=0
+MUTATED=0
 
 die() { echo "M044_${ENVIRONMENT^^}_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
 
 cleanup() {
+  local rc=$?
+  trap - EXIT
+  if [[ $MUTATED -eq 1 ]]; then
+    if restore_code && restore_database; then
+      echo "M044_${ENVIRONMENT^^}_AUTO_ROLLBACK=PASS" >&2
+    else
+      echo "M044_${ENVIRONMENT^^}_AUTO_ROLLBACK=FAIL" >&2
+    fi
+  fi
   if [[ -n "$SECRET_REMOTE" && "$SECRET_REMOTE" == /tmp/m044-secrets-* ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$SECRET_REMOTE" >/dev/null 2>&1 || true; fi
+  if [[ -n "$SECRET_REMOTE" && "$SECRET_REMOTE" == /tmp/m043-secrets-* ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$SECRET_REMOTE" >/dev/null 2>&1 || true; fi
   if [[ -n "$COUNTRY_SNAPSHOT_REMOTE" && "$COUNTRY_SNAPSHOT_REMOTE" == /tmp/m044-country-snapshot-*.json ]]; then docker exec "$TARGET_CONTAINER" rm -f "$COUNTRY_SNAPSHOT_REMOTE" >/dev/null 2>&1 || true; fi
   if [[ -n "$CANDIDATE_REMOTE" && "$CANDIDATE_REMOTE" == /tmp/m044-candidate-* ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true; fi
   if [[ -n "$CANDIDATE_ROOT" && "$CANDIDATE_ROOT" == /root/m044-candidate.* && -d "$CANDIDATE_ROOT" ]]; then rm -rf "$CANDIDATE_ROOT"; fi
   if [[ -n "$ARTIFACT_COPY" && "$ARTIFACT_COPY" == /root/m044-artifact.* && -f "$ARTIFACT_COPY" ]]; then rm -f "$ARTIFACT_COPY"; fi
   if [[ $REMOVE_SECRETS -eq 1 ]]; then rm -f "$API_KEY_FILE" "$RATE_TOKEN_FILE" "$REQUEST_HMAC_FILE"; fi
+  exit "$rc"
 }
 trap cleanup EXIT
 
@@ -235,7 +247,7 @@ apply_code() {
 }
 
 configure_gateway() {
-  SECRET_REMOTE="/tmp/m044-secrets-$$"; docker exec "$TARGET_CONTAINER" rm -rf "$SECRET_REMOTE"; docker exec "$TARGET_CONTAINER" mkdir -p "$SECRET_REMOTE"
+  SECRET_REMOTE="/tmp/m043-secrets-$$"; docker exec "$TARGET_CONTAINER" rm -rf "$SECRET_REMOTE"; docker exec "$TARGET_CONTAINER" mkdir -p "$SECRET_REMOTE"
   docker cp "$API_KEY_FILE" "$TARGET_CONTAINER:$SECRET_REMOTE/api.key"
   docker cp "$RATE_TOKEN_FILE" "$TARGET_CONTAINER:$SECRET_REMOTE/rate-token.key"
   docker cp "$REQUEST_HMAC_FILE" "$TARGET_CONTAINER:$SECRET_REMOTE/request-hmac.key"
@@ -317,9 +329,7 @@ command_apply() {
   exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
   check_environment; validate_artifact; candidate_checks; validate_secret_files; schema_prestate; country_prestate; create_code_backup; create_database_backup; create_country_snapshot
   REMOVE_SECRETS=1
-  local mutated=0
-  trap 'rc=$?; if [[ $mutated -eq 1 ]]; then restore_code && restore_database && echo M044_AUTO_ROLLBACK=PASS >&2 || echo M044_AUTO_ROLLBACK=FAIL >&2; fi; exit $rc' ERR
-  mutated=1; apply_code; configure_gateway; apply_country; live_checks || die 'LIVE_CHECK_FAILED'; mutated=0; trap - ERR; save_state
+  MUTATED=1; apply_code; configure_gateway; apply_country; live_checks || die 'LIVE_CHECK_FAILED'; MUTATED=0; save_state
   echo "M044_${ENVIRONMENT^^}_APPLY=PASS COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA COUNTRY_SNAPSHOT=$COUNTRY_SNAPSHOT COUNTRY_SNAPSHOT_SHA=$COUNTRY_SNAPSHOT_SHA"
 }
 command_verify() { check_environment; validate_artifact; candidate_checks; load_state; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M044_${ENVIRONMENT^^}_VERIFY=PASS COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA"; }
