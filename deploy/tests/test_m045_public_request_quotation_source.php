@@ -26,6 +26,7 @@ try {
     $assert(strpos($page, 'cpo-quote-table') !== false && strpos($page, 'cpo_public_request_product_image_html') !== false, 'structured product table or image absent');
     $assert(strpos($css, 'M045') !== false && strpos($css, '@media(max-width:430px)') !== false, 'responsive M045 UI contract absent');
     $assert(strpos($css, '.cpo-quote-table td:nth-child(2){grid-column:2;grid-row:1') !== false && strpos($css, '.cpo-quote-table td:not(.cpo-quote-image-cell):not(:nth-child(2)){grid-column:1/-1}') !== false, 'mobile quotation cells can overlap or hide values');
+    $assert(strpos($css, 'height:auto!important;min-height:0') !== false, 'Dolibarr fixed table-cell height is not overridden on mobile');
     $assert(strpos($quotation, "getDolGlobalString('CHINAPLANET_PUBLIC_PRODUCT_IMAGE_HOSTS')") !== false && strpos($quotation, "!== 'https'") !== false, 'remote product image allowlist absent');
     $assert(strpos($quotation, 'cp_woo_variation_id') !== false && strpos($quotation, 'p.ref=') !== false, 'server-side product mapping fallbacks absent');
     $assert(strpos($quotation, "array('dolibarr','manual')") !== false && strpos($quotation, 'quotation_manual_price_invalid') !== false, 'controlled selling price choice absent');
