@@ -1,10 +1,18 @@
-name: Deploy pinned M043 release to backup-erp
+name: Deploy pinned release to backup-erp
 
 on:
   workflow_dispatch:
     inputs:
+      release:
+        description: Approved staging release
+        required: true
+        type: choice
+        options:
+          - m043-c02
+          - m045-r01
+        default: m043-c02
       confirmation:
-        description: Type DEPLOY_M043_C02_TO_BACKUP_ERP
+        description: Type the exact confirmation for the selected release
         required: true
         type: string
 
@@ -29,6 +37,7 @@ env:
 
 jobs:
   deploy:
+    if: ${{ inputs.release == 'm043-c02' }}
     name: Validate and deploy pinned M043-C02 release
     runs-on: ubuntu-latest
     environment: backup-erp
@@ -158,3 +167,113 @@ jobs:
               "rm -f '$REMOTE_INBOX/m043-api.key' '$REMOTE_INBOX/m043-rate-token.key' '$REMOTE_INBOX/m043-request-hmac.key'" 2>/dev/null || true
           fi
           rm -rf "$RUNNER_TEMP/m043-secrets" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  deploy_m045:
+    if: ${{ inputs.release == 'm045-r01' }}
+    name: Validate and deploy M045-R01 on backup-erp
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 25
+    env:
+      DELIVERY_COMMIT: 50dc281bd32c288ae6968d27a32658634aa66305
+      RUNTIME_COMMIT: 8d919fd9f2164bca6cfd859e89df338e985c486a
+      RELEASE_MISSION: M045-R01
+      RELEASE_TAG: m045-r01-staging
+      ARTIFACT_NAME: m045-8d919fd.tar.gz
+      ARTIFACT_SHA: 7387a62e3b0411f7ba86b44809b0100324b9c562cbf3f2c78269b56dd3cdcd02
+      DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy
+
+    steps:
+      - name: Require exact manual confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = 'DEPLOY_M045_R01_TO_BACKUP_ERP'
+
+      - name: Check out pinned delivery tooling
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ env.DELIVERY_COMMIT }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify pinned source and helper contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$DELIVERY_COMMIT"
+          test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
+          test "$(sha256sum deploy/releases/m045-runtime-files.txt | awk '{print $1}')" = '21c948877b57b9c3851a374db61df68ea39886174bb05170862c0a958da52608'
+          test "$(sha256sum deploy/releases/m045-support-files.txt | awk '{print $1}')" = '81c6dea9e540c4b69500b33702ff06994c02a0a33c4ae70be5407c5eac78a701'
+          while IFS= read -r file; do
+            test -f "$file" && test ! -L "$file"
+            if [[ "$file" == *.php ]]; then php -l "$file" >/dev/null; fi
+          done < <(cat deploy/releases/m045-runtime-files.txt deploy/releases/m045-support-files.txt)
+          php deploy/tests/test_m045_public_request_quotation_source.php
+          bash deploy/tests/test_m045_staging_helper.sh
+
+      - name: Download and verify approved artifact
+        id: artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m045"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$RUNNER_TEMP/m045"
+          artifact="$RUNNER_TEMP/m045/$ARTIFACT_NAME"
+          test -f "$artifact" && test ! -L "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '13'
+          chmod 0644 "$artifact"
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted staging SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload pinned artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME'"
+
+      - name: Compare staging files
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER compare"
+
+      - name: Restricted staging preflight
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
+
+      - name: Apply with backups and automatic rollback
+        id: apply
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply"
+
+      - name: Verify deployed staging state
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify"
+
+      - name: Roll back if post-apply verification fails
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER rollback"
+
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        shell: bash
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
