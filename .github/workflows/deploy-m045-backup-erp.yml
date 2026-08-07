@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DELIVERY_COMMIT: 9fe7a5668b8e92bc4ad49f62f8abdad4eebfc9bf
+  DELIVERY_COMMIT: 9860ef62dcd95ff7c5551001d1cea227fe2d42f0
   RUNTIME_COMMIT: 2bc1de310f401fdea587873736ffaa52e2cad9dc
   RELEASE_MISSION: M045-C01
   ARTIFACT_NAME: m045c01-2bc1de3.tar.gz
