@@ -52,3 +52,9 @@ Release the staging-accepted M045 public-request quotation workspace to producti
 
 - Apply-time failure restores both affected runtime files and the complete pre-apply database automatically.
 - Manual rollback restores the exact recorded code and database backups and retains a checksum-addressed reapply archive.
+
+## First production attempt — rolled back
+
+- GitHub run `31211913874` passed staging verification, production compare, and production preflight.
+- Apply stopped at the acceptance-product update and the helper reported `M045_PRODUCTION_AUTO_ROLLBACK=PASS`.
+- M045-C02 corrects preservation of existing production product extra fields and must pass staging before this mission is retried.

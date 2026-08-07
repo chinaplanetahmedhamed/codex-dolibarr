@@ -23,11 +23,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RUNTIME_COMMIT: 28ce3ee50886dc70e680717dcfc6f36161b6a8d1
+  RUNTIME_COMMIT: 1e6d58a917402db927b56a9e4b5af33bba7d04d1
   RELEASE_MISSION: M045-P01
-  RELEASE_TAG: m045-c01-production-candidate
-  ARTIFACT_NAME: m045c01-28ce3ee.tar.gz
-  ARTIFACT_SHA: c413922cebb16645d1dfdd59da8d027cea7d49e838639b4302ac4d872e2ee794
+  RELEASE_TAG: m045-c02-staging
+  ARTIFACT_NAME: m045c02-1e6d58a.tar.gz
+  ARTIFACT_SHA: 20637c0e9cc4f3b48827d5a5cb5f27853bfda058e857b043e7c04e194667f1cc
   DEPLOY_HOST: 31.97.158.178
   DEPLOY_USER: codex-deploy
   STAGING_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy
@@ -101,11 +101,15 @@ jobs:
           ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
           scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
           scp "${ssh_opts[@]}" \
+            deploy/tools/chinaplanetos_backup_erp_m045.sh \
+            deploy/tools/install_backup_erp_m045_helper.sh \
             deploy/tools/chinaplanetos_production_m045.sh \
             deploy/tools/install_production_m045_helper.sh \
+            deploy/tools/install_m045_release_helpers.sh \
+            deploy/config/codex-deploy-backup-erp-m045.sudoers \
             deploy/config/codex-deploy-production-m045.sudoers \
             "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/"
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME' '$REMOTE_INBOX/chinaplanetos_production_m045.sh' '$REMOTE_INBOX/install_production_m045_helper.sh' '$REMOTE_INBOX/codex-deploy-production-m045.sudoers'"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME' '$REMOTE_INBOX/chinaplanetos_backup_erp_m045.sh' '$REMOTE_INBOX/install_backup_erp_m045_helper.sh' '$REMOTE_INBOX/chinaplanetos_production_m045.sh' '$REMOTE_INBOX/install_production_m045_helper.sh' '$REMOTE_INBOX/install_m045_release_helpers.sh' '$REMOTE_INBOX/codex-deploy-backup-erp-m045.sudoers' '$REMOTE_INBOX/codex-deploy-production-m045.sudoers'"
 
       - name: Remove transient SSH material
         if: ${{ always() }}

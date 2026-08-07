@@ -8,8 +8,8 @@ sudoers="$root/deploy/config/codex-deploy-backup-erp-m045.sudoers"
 
 bash -n "$helper"
 bash -n "$installer"
-grep -Fq "readonly RUNTIME_COMMIT='28ce3ee50886dc70e680717dcfc6f36161b6a8d1'" "$helper"
-grep -Fq "readonly ARTIFACT_SHA='c413922cebb16645d1dfdd59da8d027cea7d49e838639b4302ac4d872e2ee794'" "$helper"
+grep -Fq "readonly RUNTIME_COMMIT='1e6d58a917402db927b56a9e4b5af33bba7d04d1'" "$helper"
+grep -Fq "readonly ARTIFACT_SHA='20637c0e9cc4f3b48827d5a5cb5f27853bfda058e857b043e7c04e194667f1cc'" "$helper"
 grep -Fq "readonly PRODUCT_SYNC='deploy/tools/m045_c01_sync_cms_product.php'" "$helper"
 grep -Fq 'sync_acceptance_product' "$helper"
 grep -Fq "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'" "$helper"
@@ -26,7 +26,7 @@ fi
 for command in compare preflight apply verify rollback status; do
   grep -Fxq "codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy $command" "$sudoers"
 done
-grep -Fq "readonly HELPER_SHA='51c7b1e14ad931b23f7f413f7f468e2db9fe6b347a2c00b689d035cfdb2cdbe2'" "$installer"
-grep -Fq "readonly PREVIOUS_HELPER_SHA='623bf8594a32c2b67c5fbffbf7d2ef63d24ab0708a3ce829842429e70f8da4bb'" "$installer"
+grep -Fq "readonly HELPER_SHA='a7ff9ef3c0e58451e5a6d2341b43904c2374b816e052b0b377f5e37d087b6bf0'" "$installer"
+grep -Fq "readonly PREVIOUS_HELPER_SHA='51c7b1e14ad931b23f7f413f7f468e2db9fe6b347a2c00b689d035cfdb2cdbe2'" "$installer"
 grep -Fq "readonly SUDOERS_SHA='244522b944918fb96616bb38ed9ccaab0f883749ffc5728a432e3beb4935671b'" "$installer"
 echo 'M045_HELPER_TEST=PASS TARGET=BACKUP_ERP_ONLY COMMANDS=6'
