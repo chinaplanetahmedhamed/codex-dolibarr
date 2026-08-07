@@ -4,7 +4,7 @@
 
 - **Mission ID:** M045
 - **Type:** WORKFLOW / UI / QUOTATION / LOCAL_IMPLEMENTATION
-- **Status:** APPROVED
+- **Status:** DEVELOPER_REPORTED
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — "ok, do it" in the current task
 - **Approval date:** 2026-08-07

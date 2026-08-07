@@ -10,6 +10,18 @@
 - Design impact: terminology only; no navigation, status, document, finance, or mobile layout change.
 - Verification: pending M044 staging and production release acceptance.
 
+## 2026-08-07 — M045 public-request quotation workspace
+
+- Source change: the staff-only website-request detail gains structured product rows, safe images and mapping, selling-price selection/manual price, separated notes, and one idempotently linked standard draft `Propal`.
+- Admin ERP: `STAGING_BACKEND_VERIFIED / AUTHENTICATED_UI_PENDING`; M045 is deployed on canonical `backup-erp`, schema and file verification pass, and anonymous access reaches only the Dolibarr login form. Desktop and 390px authenticated visual acceptance is still required.
+- Customer Portal: `NOT_APPLICABLE`; no customer-portal page, permission, data projection, document, or action changed.
+- Mobile App: `NOT_APPLICABLE`; the app does not own public inquiry intake or staff quotation preparation, and `/api/mobile/v1` did not change.
+- API/data dependency: the public React secure gateway remains the intake boundary; Dolibarr owns mapping and quotation authority. No supplier price, purchase cost, margin, private note, or staff-only metadata is added to customer/mobile contracts.
+- Design/terminology impact: staff-only responsive product table/card behavior and standard Dolibarr proposal handoff; no customer/mobile terminology change.
+- Phone verification: source responsive rules are present, but authenticated `390px` staging verification is `PENDING` until a dedicated `backup-erp` staff session is available.
+- Status: `ADMIN_STAGING_BACKEND_VERIFIED`, `ADMIN_UI_PENDING`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `PRODUCTION_NOT_ACCESSED`.
+- Follow-up: complete authenticated desktop and 390px acceptance with synthetic staging data only; do not send email or validate a real customer proposal.
+
 ## Purpose
 
 This is the canonical synchronization log for the three ChinaPlanetOS product surfaces:

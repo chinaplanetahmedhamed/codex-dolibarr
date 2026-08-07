@@ -2,9 +2,9 @@
 
 ## Verdict
 
-`PASS / SOURCE_IMPLEMENTED / READY_FOR_STAGING_ACCEPTANCE`.
+`PASS / SOURCE_IMPLEMENTED / STAGING_DEPLOYED / AUTHENTICATED_UI_ACCEPTANCE_PENDING`.
 
-The public catalog request now has a responsive product quotation workspace backed by one standard Dolibarr draft `Propal`. Source, security, accounting-boundary, WordPress contract, React gateway, PHP syntax, and regression checks pass locally. Authenticated Dolibarr runtime and browser acceptance remain intentionally pending because the local MariaDB configured at `127.0.0.1:8889` is unavailable. No staging, production, customer email, or real business record was accessed or changed.
+The public catalog request now has a responsive product quotation workspace backed by one standard Dolibarr draft `Propal`. Source, security, accounting-boundary, WordPress contract, React gateway, PHP syntax, and regression checks pass locally. The exact Dolibarr runtime was deployed to canonical `backup-erp`; restricted compare, preflight, apply, schema checks, file verification, and anonymous-access checks passed. Authenticated desktop and 390px staff-page visual acceptance remains pending because no staging staff session was available. Production, customer email, and real business records were not accessed or changed.
 
 ## Delivered behavior
 
@@ -68,9 +68,33 @@ The public catalog request now has a responsive product quotation workspace back
 9. Send only to Mailpit or another staging sink; do not send to a real customer.
 10. Confirm no supplier cost, purchase price, or margin is present in the page, API payload, PDF, or email.
 
+## Staging deployment result — 2026-08-07
+
+- Environment: canonical `backup-erp.visiontrading.biz` only.
+- GitHub Actions: run `31200353003`, successful in 36 seconds.
+- Runtime commit: `8d919fd9f2164bca6cfd859e89df338e985c486a`.
+- Delivery tooling head: `feedd99ca59d9d5c7a191112e7f5cb9e8dc7e909`.
+- Artifact: `m045-8d919fd.tar.gz`; SHA-256 `2503f666d86c9422207295e4c21fa000bd725cd7060eb79ec86881652f6846cd`.
+- Restricted helper: SHA-256 `71be7469cddefb9d9b715e36653c4464df64a985a48168f2e4de6c4a4efd01db`; exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` are allowed.
+- Compare, preflight, apply, workflow verify, and independent post-run verify: `PASS`.
+- Runtime state: `DEPLOYED`; all nine runtime files match the release hashes.
+- Database: added nullable `fk_propal`, the unique `(entity, fk_propal)` index, right definition `500515` with no default grant, and Product Extra Fields `cp_woo_product_id` and `cp_woo_variation_id`. No business record was created.
+- Code backup: `/root/backup-erp-code-backups/m045-before-8d919fd-20260807T170155Z.tar.gz`; SHA-256 `b258c049dcaea3838358a64cb07305fbcc8162858aab9fe9ae00e13fc7cbc30a`.
+- Pre-existing-absence manifest: `/root/backup-erp-code-backups/m045-absent-before-8d919fd-20260807T170155Z.txt`; SHA-256 `282ce78ca01bce1a47c50d3feae42312a3b8cd46ef25227a7ed5be22ef60f707`.
+- Database backup: `/root/backup-erp-db-backups/m045-before-8d919fd-20260807T170155Z.sql`; SHA-256 `dfc2009202aadb407d1b406c91cf0ce98d16f4d81ae8f422ce0207a91a8e8683`.
+- HTTP: public ERP root `200`; anonymous request route produced the Dolibarr login form, so no anonymous staff workspace or write path was exposed.
+- Rollback: no rollback occurred. If Ahmed approves a later staging rollback, the fixed command is `sudo -n /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy rollback`; it restores the prior code and leaves the additive schema dormant as specified by M045-R01.
+- Production: `PRODUCTION_ACCESSED=NO`.
+
+### Remaining acceptance
+
+- Log in with a dedicated `backup-erp` staff test account that has the explicit quotation right.
+- Verify an existing request on desktop and at 390px: product rows, images, mapping controls, price source/manual price, notes, and standard proposal handoff.
+- Use only synthetic staging data if creation/update behavior is exercised; do not send customer email.
+
 ## Boundaries
 
-- No staging or production deployment occurred.
+- Staging deployment occurred only on canonical `backup-erp`; production was not accessed or changed.
 - No proposal was validated, signed, accepted, refused, closed, invoiced, paid, stocked, or posted to accounting.
 - No email was sent.
 - No unrelated Dolibarr worktree changes were touched.

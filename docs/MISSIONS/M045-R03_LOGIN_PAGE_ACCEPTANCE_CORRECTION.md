@@ -4,7 +4,7 @@
 
 - **Mission ID:** M045-R03
 - **Type:** STAGING_TEST_HARNESS_CORRECTION
-- **Status:** APPROVED
+- **Status:** COMPLETED
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — the approved `backup-erp` deployment remains in progress
 - **Approval date:** 2026-08-07
@@ -26,3 +26,10 @@ Dolibarr 23.0.3 returns its login form with HTTP `200` for an anonymous request 
 ## Exclusions
 
 - No runtime source, artifact, schema, permission, business record, production, WordPress, React, n8n, proxy, DNS, Compose, container, or volume change.
+
+## Result — 2026-08-07
+
+- Corrected helper SHA-256 `71be7469cddefb9d9b715e36653c4464df64a985a48168f2e4de6c4a4efd01db` was installed with the unchanged six-command staging-only sudo surface.
+- M045-R01 run `31200353003` passed apply and verify; no rollback was required.
+- The anonymous route was accepted only after the response matched the two Dolibarr login-form markers.
+- `PRODUCTION_ACCESSED=NO`.

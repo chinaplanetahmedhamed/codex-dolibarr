@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-07 — M045 public-request quotation workspace on backup-erp
+
+- Deployed the exact nine-file M045 Dolibarr runtime to canonical `backup-erp` from commit `8d919fd9f2164bca6cfd859e89df338e985c486a` through the checksum-pinned GitHub workflow.
+- Added the nullable proposal link and entity-scoped unique index, explicit quotation-right definition without grants, and two WooCommerce product-mapping Extra Fields; no quotation or other business record was created.
+- Restricted compare, preflight, apply, schema checks, file verification, ERP health, and anonymous-login boundary all passed; code and database backups were recorded.
+- Authenticated desktop and 390px staff-workspace visual acceptance remains pending until a dedicated `backup-erp` staff session is available.
+- Production, WordPress, React, n8n, email, proxy, DNS, Compose, documents, and customer/mobile surfaces were not changed.
+
 ## 2026-08-06 — M043-C02 professional website-request detail
 
 - Replaced raw and historical double-encoded request/commercial JSON with responsive operational cards while preserving the stored evidence and all existing staff actions and permission boundaries.
