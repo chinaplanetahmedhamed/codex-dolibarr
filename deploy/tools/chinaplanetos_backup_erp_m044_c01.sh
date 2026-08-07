@@ -11,7 +11,7 @@ readonly RUNTIME_MANIFEST_SHA='51031466dad513a091cfb7e0b03b09ea57b2648159c1b3148
 readonly SUPPORT_MANIFEST_SHA='e2a5226abfcde343cea1a2777ee5a2184319850356c071bdc4a6ef5cc57b0822'
 readonly SERVICE_SHA='60912061f2b613b648fcebe7d0bee5112b506aeee3720dbb02132276efa3a333'
 readonly IMPORTER_SHA='f2ba5156aecdf7ec9a065bf7fd7b9a21173f97ddea9365538deade9fb4b168d3'
-readonly IMPORT_PAGE_SHA='da411ef9ee298f479fb920e6bdf14c9033d5a3d337d64ba773fc600c7b0fd125'
+readonly IMPORT_PAGE_SHA='35261cc40213fab3988cb32a85eae170a1239799eaef8b0b573ab1da1245584c'
 
 readonly RUNTIME_MANIFEST='deploy/releases/m044-c01-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m044-c01-support-files.txt'
