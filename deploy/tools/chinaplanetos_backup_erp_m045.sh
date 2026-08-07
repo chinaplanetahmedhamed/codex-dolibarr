@@ -3,19 +3,21 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M045-R01'
-readonly RUNTIME_COMMIT='8d919fd9f2164bca6cfd859e89df338e985c486a'
-readonly SHORT_COMMIT='8d919fd'
-readonly ARTIFACT_SHA='2503f666d86c9422207295e4c21fa000bd725cd7060eb79ec86881652f6846cd'
+readonly RELEASE='M045-C01'
+readonly RUNTIME_COMMIT='6cecabf1710cc3aeb4ea794f502b9ea6551d0bff'
+readonly SHORT_COMMIT='6cecabf'
+readonly ARTIFACT_SHA='12a86da19ce2d4b16fb4e6e2f28345c072e24d781ad00f5aee5ae80b8d0a19c6'
 readonly RUNTIME_MANIFEST_SHA='21c948877b57b9c3851a374db61df68ea39886174bb05170862c0a958da52608'
-readonly SUPPORT_MANIFEST_SHA='81c6dea9e540c4b69500b33702ff06994c02a0a33c4ae70be5407c5eac78a701'
+readonly SUPPORT_MANIFEST_SHA='5831f1e4107e25dc6e3dce9f16c3ec871999565dcf6add84e6810e414d6549e7'
 readonly RUNTIME_MANIFEST='deploy/releases/m045-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m045-support-files.txt'
 readonly MIGRATION='deploy/migrations/m045_public_request_quotation_schema.php'
 readonly SOURCE_TEST='deploy/tests/test_m045_public_request_quotation_source.php'
+readonly PRODUCT_SYNC='deploy/tools/m045_c01_sync_cms_product.php'
+readonly PRODUCT_FIXTURE='deploy/fixtures/m045_c01_wp_9688b.json'
 
 readonly INBOX='/home/codex-deploy/staging-inbox'
-readonly ARTIFACT="${INBOX}/m045-${SHORT_COMMIT}.tar.gz"
+readonly ARTIFACT="${INBOX}/m045c01-${SHORT_COMMIT}.tar.gz"
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
@@ -117,11 +119,11 @@ validate_artifact() {
   local listing types expected actual file
   listing=$(mktemp); types=$(mktemp); expected=$(mktemp); actual=$(mktemp)
   tar -tzf "$ARTIFACT_COPY" >"$listing" || die 'ARTIFACT_TAR_INVALID'
-  [[ $(wc -l <"$listing") -eq 13 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
+  [[ $(wc -l <"$listing") -eq 33 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
   [[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\._/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
   [[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
   tar -tvzf "$ARTIFACT_COPY" >"$types" || die 'ARTIFACT_LIST_FAILED'
-  [[ -z $(awk 'substr($1,1,1)!="-" {print; exit}' "$types") ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
+  [[ -z $(awk 'substr($1,1,1)!="-" && substr($1,1,1)!="d" {print; exit}' "$types") ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
   CANDIDATE_ROOT=$(mktemp -d /root/m045-candidate.XXXXXX)
   tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT" || die 'ARTIFACT_EXTRACT_FAILED'
   [[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) ]] || die 'ARTIFACT_SYMLINK_FORBIDDEN'
@@ -129,9 +131,9 @@ validate_artifact() {
   [[ $(sha256 "$CANDIDATE_ROOT/$SUPPORT_MANIFEST") == "$SUPPORT_MANIFEST_SHA" ]] || die 'SUPPORT_MANIFEST_HASH_MISMATCH'
   mapfile -t RUNTIME_FILES <"$CANDIDATE_ROOT/$RUNTIME_MANIFEST"
   mapfile -t SUPPORT_FILES <"$CANDIDATE_ROOT/$SUPPORT_MANIFEST"
-  [[ ${#RUNTIME_FILES[@]} -eq 9 && ${#SUPPORT_FILES[@]} -eq 2 ]] || die 'MANIFEST_COUNT_INVALID'
+  [[ ${#RUNTIME_FILES[@]} -eq 9 && ${#SUPPORT_FILES[@]} -eq 4 ]] || die 'MANIFEST_COUNT_INVALID'
   [[ -z $(printf '%s\n' "${RUNTIME_FILES[@]}" | awk '$0 !~ /^custom\/chinaplanetoperations\// {print; exit}') ]] || die 'RUNTIME_SCOPE_INVALID'
-  [[ -z $(printf '%s\n' "${SUPPORT_FILES[@]}" | awk '$0 !~ /^deploy\/(migrations|tests)\// {print; exit}') ]] || die 'SUPPORT_SCOPE_INVALID'
+  [[ -z $(printf '%s\n' "${SUPPORT_FILES[@]}" | awk '$0 !~ /^deploy\/(migrations|tests|tools|fixtures)\// {print; exit}') ]] || die 'SUPPORT_SCOPE_INVALID'
   printf '%s\n' "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}" "$RUNTIME_MANIFEST" "$SUPPORT_MANIFEST" | LC_ALL=C sort >"$expected"
   find "$CANDIDATE_ROOT" -type f -printf '%P\n' | LC_ALL=C sort >"$actual"
   diff -u "$expected" "$actual" >/dev/null || die 'ARTIFACT_ALLOWLIST_MISMATCH'
@@ -219,6 +221,10 @@ apply_code() {
   done
 }
 
+sync_acceptance_product() {
+  docker exec -e M045_DOL_DOCUMENT_ROOT=/var/www/html -e M045_C01_PRODUCT_JSON="$CANDIDATE_REMOTE/$PRODUCT_FIXTURE" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$PRODUCT_SYNC" apply >/dev/null || die 'PRODUCT_SYNC_FAILED'
+}
+
 live_checks() {
   local rel status request_body
   for rel in "${RUNTIME_FILES[@]}"; do
@@ -227,6 +233,7 @@ live_checks() {
   done
   docker exec -e M045_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" check >/dev/null || return 1
   docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SOURCE_TEST" >/dev/null || return 1
+  docker exec -e M045_DOL_DOCUMENT_ROOT=/var/www/html -e M045_C01_PRODUCT_JSON="$CANDIDATE_REMOTE/$PRODUCT_FIXTURE" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$PRODUCT_SYNC" check >/dev/null || return 1
   [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || return 1
   request_body=$(mktemp)
   status=$(curl -sS -o "$request_body" -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/custom/chinaplanetoperations/operations/public_requests.php") || { rm -f "$request_body"; return 1; }
@@ -286,6 +293,7 @@ command_apply() {
   MUTATED=1
   apply_schema
   apply_code
+  sync_acceptance_product
   live_checks || die 'LIVE_CHECK_FAILED'
   MUTATED=0
   save_state
