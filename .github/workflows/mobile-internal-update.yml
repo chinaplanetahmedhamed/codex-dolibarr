@@ -74,6 +74,7 @@ jobs:
           native_changes="$(git diff --name-only "$BINARY_SOURCE_COMMIT"..HEAD -- \
             mobile/chinaplanet-customer-app/package.json \
             mobile/chinaplanet-customer-app/package-lock.json \
+          mobile/chinaplanet-customer-app/app.json \
             mobile/chinaplanet-customer-app/app.config.ts \
             mobile/chinaplanet-customer-app/eas.json \
             mobile/chinaplanet-customer-app/android \
