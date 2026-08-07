@@ -4,7 +4,7 @@
 
 - **Mission ID:** M045-C01
 - **Type:** CORRECTION / STAGING_INTEGRATION
-- **Status:** APPROVED
+- **Status:** STAGING_VERIFIED_WITH_CURRENCY_BLOCKER
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — current task: correct piece pricing, sync CMS products to backup ERP, and test through new.chinaplanet.org
 - **Approval date:** 2026-08-07
@@ -43,8 +43,16 @@ Ahmed selected the safe manual-price fallback after staging proved that backup E
 
 ## Acceptance
 
-- The React cart obtains packing from the CMS server path and rejects a product whose pieces/carton is unknown.
-- The ERP workspace shows a real product image and the explicit carton/piece equation.
-- A quotation draft uses total pieces as `qty` and a selling price per piece.
-- The synced staging product carries CMS/Woo identifiers, piece price, and all available packing fields.
-- Local tests, staging deployment checks, and authenticated desktop plus 390px verification pass.
+- [x] The React cart obtains packing from the CMS server path and rejects a product whose pieces/carton is unknown.
+- [x] The ERP workspace shows a real product image and the explicit carton/piece equation.
+- [ ] A USD quotation draft uses total pieces as `qty` and a selling price per piece. Backup ERP currently exposes only EUR and has no approved USD conversion rate, so no incorrect draft was created.
+- [x] The synced staging product carries CMS/Woo identifiers and all available packing fields; the authoritative CMS piece price is verified as `0.34 USD`, with base-price synchronization intentionally skipped because conversion is unavailable.
+- [x] Local tests, staging deployment checks, and authenticated desktop plus 390px verification pass.
+
+## Staging result — 2026-08-07
+
+- React staging accepted the synthetic request `WEB-20260807-182858-81C9DA` for WooCommerce product `105789` / `WP-9688B`.
+- Request `id=32` contains `2 cartons × 100 pieces/carton = 200 pieces`, `0.152 m³`, and `24.00 kg`.
+- The mapped Dolibarr product and real CMS image render on desktop and at `390×844`; the final phone layout has no page-wide horizontal overflow.
+- Runtime commit `28ce3ee50886dc70e680717dcfc6f36161b6a8d1` and artifact SHA-256 `c413922cebb16645d1dfdd59da8d027cea7d49e838639b4302ac4d872e2ee794` passed restricted compare, preflight, apply, and verify on canonical `backup-erp`.
+- The quotation currency selector contains only `EUR`. No draft, validation, PDF, email, order, invoice, stock, accounting, or production mutation was performed.

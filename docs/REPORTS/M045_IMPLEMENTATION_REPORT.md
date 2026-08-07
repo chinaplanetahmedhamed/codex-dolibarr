@@ -2,9 +2,9 @@
 
 ## Verdict
 
-`PASS / SOURCE_IMPLEMENTED / STAGING_DEPLOYED / AUTHENTICATED_UI_ACCEPTANCE_PENDING`.
+`PASS_WITH_BLOCKER / SOURCE_IMPLEMENTED / STAGING_DEPLOYED / AUTHENTICATED_UI_VERIFIED / USD_DRAFT_PENDING`.
 
-The public catalog request now has a responsive product quotation workspace backed by one standard Dolibarr draft `Propal`. Source, security, accounting-boundary, WordPress contract, React gateway, PHP syntax, and regression checks pass locally. The exact Dolibarr runtime was deployed to canonical `backup-erp`; restricted compare, preflight, apply, schema checks, file verification, and anonymous-access checks passed. Authenticated desktop and 390px staff-page visual acceptance remains pending because no staging staff session was available. Production, customer email, and real business records were not accessed or changed.
+The public catalog request now has a responsive product quotation workspace designed to hand off to one standard Dolibarr draft `Propal`. Source, security, accounting-boundary, WordPress contract, React gateway, PHP syntax, and regression checks pass. The exact corrected runtime was deployed to canonical `backup-erp`; restricted compare, preflight, apply, schema checks, file verification, product sync, and authenticated desktop/390px acceptance passed. A USD draft was not created because staging exposes only EUR and has no approved USD conversion rate. Production, customer email, and real business records were not accessed or changed.
 
 ## Delivered behavior
 
@@ -14,7 +14,7 @@ The public catalog request now has a responsive product quotation workspace back
 - Creates one draft `Propal` per public request and uses a connection advisory lock plus an entity-scoped unique link to prevent duplicate creation.
 - Requires the dedicated `publicrequest_quote` right and standard product/proposal rights; the new financial right receives no implicit user grants.
 - Supports current Dolibarr/customer-level selling prices or a non-negative manual selling price.
-- Uses total pieces as proposal quantity when units/carton is known; otherwise the quoted unit is one carton.
+- Uses total pieces as proposal quantity and fails closed when units/carton is missing; cartons are packing information only.
 - Supports one controlled proposal currency with the standard Dolibarr rate, and converts foreign selling prices back to base currency using the proposal exchange rate.
 - Keeps customer-visible, internal, and per-line notes separate. No purchase cost, supplier price, margin, or accounting posting is read or exposed.
 - Hands preview, validation, PDF generation, and customer email to the standard Dolibarr proposal page.
@@ -31,7 +31,7 @@ The public catalog request now has a responsive product quotation workspace back
 
 ### UI/UX
 
-`PASS_SOURCE / RUNTIME_PENDING`. The table has clear mapping/pricing actions, status, standard quotation handoff, legacy/unmapped states, and responsive card behavior at the `700px` and `430px` breakpoints. Authenticated desktop and 390px browser evidence is required on staging before release.
+`PASS_STAGING`. The table has clear mapping/pricing actions, status, standard quotation handoff, legacy/unmapped states, and responsive card behavior. Authenticated desktop and `390×844` acceptance passed with the real product image and all row values visible without page-wide horizontal overflow.
 
 ### Security
 
@@ -43,7 +43,7 @@ The public catalog request now has a responsive product quotation workspace back
 
 ### QA
 
-`PASS_LOCAL / DB_RUNTIME_PENDING`.
+`PASS_LOCAL_AND_STAGING / USD_DRAFT_PENDING`.
 
 - M045 source/security contract: pass.
 - M043 intake regression contract: pass.
@@ -86,11 +86,12 @@ The public catalog request now has a responsive product quotation workspace back
 - Rollback: no rollback occurred. If Ahmed approves a later staging rollback, the fixed command is `sudo -n /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy rollback`; it restores the prior code and leaves the additive schema dormant as specified by M045-R01.
 - Production: `PRODUCTION_ACCESSED=NO`.
 
-### Remaining acceptance
+### M045-C01 authenticated acceptance — 2026-08-07
 
-- Log in with a dedicated `backup-erp` staff test account that has the explicit quotation right.
-- Verify an existing request on desktop and at 390px: product rows, images, mapping controls, price source/manual price, notes, and standard proposal handoff.
-- Use only synthetic staging data if creation/update behavior is exercised; do not send customer email.
+- Synthetic request `WEB-20260807-182858-81C9DA` / `id=32` passed authenticated desktop and `390×844` verification.
+- The mapped real product `WP-9688B`, CMS image, `2 cartons × 100 pieces/carton = 200 pieces`, `0.152 m³`, `24.00 kg`, price-source selector, per-piece label, and notes are visible.
+- The final corrected runtime is `28ce3ee50886dc70e680717dcfc6f36161b6a8d1`; artifact SHA-256 is `c413922cebb16645d1dfdd59da8d027cea7d49e838639b4302ac4d872e2ee794`.
+- Remaining acceptance is limited to creating a synthetic USD draft after USD and an approved rate are separately configured. Staging currently exposes only EUR, so no incorrect `0.34 EUR` draft was created.
 
 ## Boundaries
 

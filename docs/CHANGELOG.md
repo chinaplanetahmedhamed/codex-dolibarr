@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-07 — M045-C01 piece pricing and controlled staging product sync
+
+- Deployed the checksum-pinned M045-C01 correction to canonical `backup-erp` and synchronized only the allowlisted CMS product `105789` / `WP-9688B` with its Woo mapping and packing fields.
+- Submitted synthetic request `WEB-20260807-182858-81C9DA` through `new.chinaplanet.org`; the ERP workspace shows the real product image and `2 cartons × 100 pieces/carton = 200 pieces`.
+- Corrected the responsive quotation card after live 390px acceptance exposed Dolibarr's fixed table-cell height; desktop and `390×844` now show every product, packing, mapping, pricing, and notes value with no page-wide horizontal overflow.
+- Verified the CMS selling price as `0.34 USD / piece` but did not write it into the EUR base price or create a false EUR quotation. Backup ERP exposes only EUR and has no approved USD rate, so the USD draft remains a documented blocker.
+- Restricted compare, preflight, apply, verify, product check, backups, and authenticated browser acceptance passed. No validation, PDF, email, order, invoice, stock, accounting, bulk sync, or production access occurred.
+
 ## 2026-08-07 — M045 public-request quotation workspace on backup-erp
 
 - Deployed the exact nine-file M045 Dolibarr runtime to canonical `backup-erp` from commit `8d919fd9f2164bca6cfd859e89df338e985c486a` through the checksum-pinned GitHub workflow.

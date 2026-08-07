@@ -13,14 +13,14 @@
 ## 2026-08-07 — M045 public-request quotation workspace
 
 - Source change: the staff-only website-request detail gains structured product rows, safe images and mapping, selling-price selection/manual price, separated notes, and one idempotently linked standard draft `Propal`.
-- Admin ERP: `STAGING_BACKEND_VERIFIED / AUTHENTICATED_UI_PENDING`; M045 is deployed on canonical `backup-erp`, schema and file verification pass, and anonymous access reaches only the Dolibarr login form. Desktop and 390px authenticated visual acceptance is still required.
+- Admin ERP: `STAGING_AUTHENTICATED_UI_VERIFIED_WITH_CURRENCY_BLOCKER`; M045-C01 is deployed on canonical `backup-erp`, the allowlisted `WP-9688B` product and packing fields are synchronized, and request `WEB-20260807-182858-81C9DA` renders the real image and `2 × 100 = 200 pieces` equation. USD draft creation remains blocked because staging exposes only EUR and no approved USD rate.
 - Customer Portal: `NOT_APPLICABLE`; no customer-portal page, permission, data projection, document, or action changed.
 - Mobile App: `NOT_APPLICABLE`; the app does not own public inquiry intake or staff quotation preparation, and `/api/mobile/v1` did not change.
 - API/data dependency: the public React secure gateway remains the intake boundary; Dolibarr owns mapping and quotation authority. No supplier price, purchase cost, margin, private note, or staff-only metadata is added to customer/mobile contracts.
 - Design/terminology impact: staff-only responsive product table/card behavior and standard Dolibarr proposal handoff; no customer/mobile terminology change.
-- Phone verification: source responsive rules are present, but authenticated `390px` staging verification is `PENDING` until a dedicated `backup-erp` staff session is available.
-- Status: `ADMIN_STAGING_BACKEND_VERIFIED`, `ADMIN_UI_PENDING`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `PRODUCTION_NOT_ACCESSED`.
-- Follow-up: complete authenticated desktop and 390px acceptance with synthetic staging data only; do not send email or validate a real customer proposal.
+- Phone verification: authenticated `390×844` staging verification is `PASS`; the product image and every packing, mapping, price-source, per-piece-price, and notes value are visible with no page-wide horizontal overflow.
+- Status: `ADMIN_STAGING_UI_VERIFIED`, `USD_DRAFT_BLOCKED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `PRODUCTION_NOT_ACCESSED`.
+- Follow-up: configure USD and an approved conversion rate under a separate authorization, then create a synthetic draft only; do not email or validate a real customer proposal.
 
 ## Purpose
 
