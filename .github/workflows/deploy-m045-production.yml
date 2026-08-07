@@ -1,0 +1,205 @@
+name: Deploy pinned M045-P01 release to production ERP
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Prepare the restricted helper or deploy the approved release
+        required: true
+        type: choice
+        options:
+          - prepare
+          - deploy
+      confirmation:
+        description: Type the exact confirmation for the selected action
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m045-production-erp-deployment
+  cancel-in-progress: false
+
+env:
+  RUNTIME_COMMIT: 28ce3ee50886dc70e680717dcfc6f36161b6a8d1
+  RELEASE_MISSION: M045-P01
+  ARTIFACT_NAME: m045c01-28ce3ee.tar.gz
+  ARTIFACT_SHA: c413922cebb16645d1dfdd59da8d027cea7d49e838639b4302ac4d872e2ee794
+  DEPLOY_HOST: 31.97.158.178
+  DEPLOY_USER: codex-deploy
+  STAGING_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy
+  PRODUCTION_HELPER: /usr/local/sbin/chinaplanetos-production-m045-deploy
+  REMOTE_INBOX: /home/codex-deploy/staging-inbox
+
+jobs:
+  prepare:
+    if: ${{ inputs.action == 'prepare' }}
+    name: Upload checksum-pinned production helper package
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+
+    steps:
+      - name: Require exact preparation confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = 'PREPARE_M045_P01_PRODUCTION_HELPER'
+
+      - name: Check out the workflow-trigger commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify production helper contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
+          php deploy/tests/test_m045_public_request_quotation_source.php
+          bash deploy/tests/test_m045_production_helper.sh
+
+      - name: Build and verify the staging-approved artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m045"
+          artifact="$RUNNER_TEMP/m045/$ARTIFACT_NAME"
+          git archive --format=tar "$RUNTIME_COMMIT" \
+            $(cat deploy/releases/m045-runtime-files.txt) \
+            $(cat deploy/releases/m045-support-files.txt) \
+            deploy/releases/m045-runtime-files.txt \
+            deploy/releases/m045-support-files.txt | gzip -n > "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '33'
+          chmod 0644 "$artifact"
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted production SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload pinned artifact and helper package only
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
+          scp "${ssh_opts[@]}" \
+            deploy/tools/chinaplanetos_production_m045.sh \
+            deploy/tools/install_production_m045_helper.sh \
+            deploy/config/codex-deploy-production-m045.sudoers \
+            "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME' '$REMOTE_INBOX/chinaplanetos_production_m045.sh' '$REMOTE_INBOX/install_production_m045_helper.sh' '$REMOTE_INBOX/codex-deploy-production-m045.sudoers'"
+
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  deploy:
+    if: ${{ inputs.action == 'deploy' }}
+    name: Verify staging then deploy M045-P01 to live ERP
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 35
+
+    steps:
+      - name: Require exact production confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = 'DEPLOY_M045_P01_TO_ERP_PRODUCTION'
+
+      - name: Check out the workflow-trigger commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify pinned source and production helper contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
+          php deploy/tests/test_m045_public_request_quotation_source.php
+          bash deploy/tests/test_m045_production_helper.sh
+
+      - name: Build and verify the identical artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m045"
+          artifact="$RUNNER_TEMP/m045/$ARTIFACT_NAME"
+          git archive --format=tar "$RUNTIME_COMMIT" \
+            $(cat deploy/releases/m045-runtime-files.txt) \
+            $(cat deploy/releases/m045-support-files.txt) \
+            deploy/releases/m045-runtime-files.txt \
+            deploy/releases/m045-support-files.txt | gzip -n > "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '33'
+          chmod 0644 "$artifact"
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted production SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Require the identical artifact to be healthy on staging
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $STAGING_HELPER verify"
+
+      - name: Upload the identical artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME'"
+
+      - name: Compare production files
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $PRODUCTION_HELPER compare"
+
+      - name: Restricted production preflight
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $PRODUCTION_HELPER preflight"
+
+      - name: Apply with protected backups and automatic rollback
+        id: apply
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $PRODUCTION_HELPER apply"
+
+      - name: Verify deployed production state independently
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $PRODUCTION_HELPER verify"
+
+      - name: Roll back if post-apply verification fails
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $PRODUCTION_HELPER rollback"
+
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
