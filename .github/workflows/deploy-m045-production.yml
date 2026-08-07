@@ -25,6 +25,7 @@ concurrency:
 env:
   RUNTIME_COMMIT: 28ce3ee50886dc70e680717dcfc6f36161b6a8d1
   RELEASE_MISSION: M045-P01
+  RELEASE_TAG: m045-c01-production-candidate
   ARTIFACT_NAME: m045c01-28ce3ee.tar.gz
   ARTIFACT_SHA: c413922cebb16645d1dfdd59da8d027cea7d49e838639b4302ac4d872e2ee794
   DEPLOY_HOST: 31.97.158.178
@@ -64,18 +65,17 @@ jobs:
           php deploy/tests/test_m045_public_request_quotation_source.php
           bash deploy/tests/test_m045_production_helper.sh
 
-      - name: Build and verify the staging-approved artifact
+      - name: Download and verify the staging-approved artifact
         id: artifact
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
           install -d -m 0700 "$RUNNER_TEMP/m045"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$RUNNER_TEMP/m045"
           artifact="$RUNNER_TEMP/m045/$ARTIFACT_NAME"
-          git archive --format=tar "$RUNTIME_COMMIT" \
-            $(cat deploy/releases/m045-runtime-files.txt) \
-            $(cat deploy/releases/m045-support-files.txt) \
-            deploy/releases/m045-runtime-files.txt \
-            deploy/releases/m045-support-files.txt | gzip -n > "$artifact"
+          test -f "$artifact" && test ! -L "$artifact"
           test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
           test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '33'
           chmod 0644 "$artifact"
@@ -141,18 +141,17 @@ jobs:
           php deploy/tests/test_m045_public_request_quotation_source.php
           bash deploy/tests/test_m045_production_helper.sh
 
-      - name: Build and verify the identical artifact
+      - name: Download and verify the identical artifact
         id: artifact
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
           install -d -m 0700 "$RUNNER_TEMP/m045"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$RUNNER_TEMP/m045"
           artifact="$RUNNER_TEMP/m045/$ARTIFACT_NAME"
-          git archive --format=tar "$RUNTIME_COMMIT" \
-            $(cat deploy/releases/m045-runtime-files.txt) \
-            $(cat deploy/releases/m045-support-files.txt) \
-            deploy/releases/m045-runtime-files.txt \
-            deploy/releases/m045-support-files.txt | gzip -n > "$artifact"
+          test -f "$artifact" && test ! -L "$artifact"
           test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
           test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '33'
           chmod 0644 "$artifact"
