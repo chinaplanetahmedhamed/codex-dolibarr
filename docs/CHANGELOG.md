@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-08 — M044-C01 Shipping Prices import dependency correction
+
+- Restored the authenticated Shipping Prices import page on canonical `backup-erp` by adding the one missing, source-matched `ShippingNoteTranslationService.class.php` dependency.
+- Kept the importer and import page unchanged and pinned their verified staging hashes before apply; the first workflow stopped safely on a stale import-page assumption and changed nothing.
+- The corrected checksum-pinned GitHub run passed compare, preflight, one-file backup/apply, workflow verify, and independent verify without rollback.
+- Authenticated desktop and `390×844` acceptance passed with the workbook form, draft action, and batch history present and no fatal error or horizontal overflow.
+- Database, application configuration, shipping rates, documents, business records, Customer Portal, Mobile App, React, and production were not changed.
+
 ## 2026-08-07 — M045-C01 piece pricing and controlled staging product sync
 
 - Deployed the checksum-pinned M045-C01 correction to canonical `backup-erp` and synchronized only the allowlisted CMS product `105789` / `WP-9688B` with its Woo mapping and packing fields.
