@@ -220,7 +220,7 @@ apply_code() {
 }
 
 live_checks() {
-  local rel status
+  local rel status request_body
   for rel in "${RUNTIME_FILES[@]}"; do
     [[ $(sha256 "$TARGET_ROOT/${rel#custom/}") == $(sha256 "$CANDIDATE_ROOT/$rel") ]] || return 1
     if [[ "$rel" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "/var/www/html/$rel" >/dev/null || return 1; fi
@@ -228,8 +228,18 @@ live_checks() {
   docker exec -e M045_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" check >/dev/null || return 1
   docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SOURCE_TEST" >/dev/null || return 1
   [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || return 1
-  status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/custom/chinaplanetoperations/operations/public_requests.php") || return 1
-  [[ "$status" =~ ^(302|401|403)$ ]]
+  request_body=$(mktemp)
+  status=$(curl -sS -o "$request_body" -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/custom/chinaplanetoperations/operations/public_requests.php") || { rm -f "$request_body"; return 1; }
+  if [[ "$status" =~ ^(302|401|403)$ ]]; then
+    rm -f "$request_body"
+    return 0
+  fi
+  if [[ "$status" == '200' ]] && grep -Fq '<form id="login"' "$request_body" && grep -Fq 'name="actionlogin"' "$request_body"; then
+    rm -f "$request_body"
+    return 0
+  fi
+  rm -f "$request_body"
+  return 1
 }
 
 save_state() {
