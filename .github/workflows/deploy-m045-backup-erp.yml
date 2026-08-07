@@ -1,10 +1,10 @@
-name: Deploy pinned M045 release to backup-erp
+name: Deploy pinned M045-C01 release to backup-erp
 
 on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: Type DEPLOY_M045_R01_TO_BACKUP_ERP
+        description: Type DEPLOY_M045_C01_TO_BACKUP_ERP
         required: true
         type: string
 
@@ -16,12 +16,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DELIVERY_COMMIT: 9f87197c27f9216d25fac94a7a92bde81877fb2d
-  RUNTIME_COMMIT: 8d919fd9f2164bca6cfd859e89df338e985c486a
-  RELEASE_MISSION: M045-R01
-  RELEASE_TAG: m045-r01-staging
-  ARTIFACT_NAME: m045-8d919fd.tar.gz
-  ARTIFACT_SHA: 2503f666d86c9422207295e4c21fa000bd725cd7060eb79ec86881652f6846cd
+  DELIVERY_COMMIT: 0ffcacc9919eb67689f5f45ea9e0f2493c09f839
+  RUNTIME_COMMIT: 6cecabf1710cc3aeb4ea794f502b9ea6551d0bff
+  RELEASE_MISSION: M045-C01
+  ARTIFACT_NAME: m045c01-6cecabf.tar.gz
+  ARTIFACT_SHA: 12a86da19ce2d4b16fb4e6e2f28345c072e24d781ad00f5aee5ae80b8d0a19c6
   DEPLOY_HOST: 31.97.158.178
   DEPLOY_USER: codex-deploy
   DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy
@@ -29,7 +28,7 @@ env:
 
 jobs:
   deploy:
-    name: Validate and deploy M045-R01 on backup-erp
+    name: Validate and deploy M045-C01 on backup-erp
     runs-on: ubuntu-latest
     environment: backup-erp
     timeout-minutes: 25
@@ -41,7 +40,7 @@ jobs:
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -Eeuo pipefail
-          test "$CONFIRMATION" = 'DEPLOY_M045_R01_TO_BACKUP_ERP'
+          test "$CONFIRMATION" = 'DEPLOY_M045_C01_TO_BACKUP_ERP'
 
       - name: Check out pinned delivery tooling
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -57,7 +56,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$DELIVERY_COMMIT"
           test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
           test "$(sha256sum deploy/releases/m045-runtime-files.txt | awk '{print $1}')" = '21c948877b57b9c3851a374db61df68ea39886174bb05170862c0a958da52608'
-          test "$(sha256sum deploy/releases/m045-support-files.txt | awk '{print $1}')" = '81c6dea9e540c4b69500b33702ff06994c02a0a33c4ae70be5407c5eac78a701'
+          test "$(sha256sum deploy/releases/m045-support-files.txt | awk '{print $1}')" = '5831f1e4107e25dc6e3dce9f16c3ec871999565dcf6add84e6810e414d6549e7'
           while IFS= read -r file; do
             test -f "$file" && test ! -L "$file"
             if [[ "$file" == *.php ]]; then php -l "$file" >/dev/null; fi
@@ -65,19 +64,21 @@ jobs:
           php deploy/tests/test_m045_public_request_quotation_source.php
           bash deploy/tests/test_m045_staging_helper.sh
 
-      - name: Download and verify approved artifact
+      - name: Build and verify approved artifact
         id: artifact
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
           install -d -m 0700 "$RUNNER_TEMP/m045"
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$RUNNER_TEMP/m045"
           artifact="$RUNNER_TEMP/m045/$ARTIFACT_NAME"
+          git archive --format=tar "$RUNTIME_COMMIT" \
+            $(cat deploy/releases/m045-runtime-files.txt) \
+            $(cat deploy/releases/m045-support-files.txt) \
+            deploy/releases/m045-runtime-files.txt \
+            deploy/releases/m045-support-files.txt | gzip -n > "$artifact"
           test -f "$artifact" && test ! -L "$artifact"
           test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
-          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '13'
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '33'
           chmod 0644 "$artifact"
           echo "path=$artifact" >> "$GITHUB_OUTPUT"
 
