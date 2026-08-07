@@ -76,6 +76,7 @@ $user = new User($db);
 if ($user->fetch(1) <= 0 || empty($user->admin)) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=ADMIN_USER_UNAVAILABLE\n"); exit(1); }
 $product = new Product($db);
 if ($productId > 0 && $product->fetch($productId) <= 0) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=PRODUCT_FETCH_FAILED\n"); exit(1); }
+if ($productId > 0 && $product->fetch_optionals() < 0) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=PRODUCT_EXTRAFIELDS_FETCH_FAILED\n"); exit(1); }
 $targetBaseUnitPrice = $priceConvertible ? $baseUnitPrice : ($productId > 0 ? (float)$product->price : 0.0);
 $product->ref = 'WP-9688B';
 $product->label = trim((string)($data['name'] ?? 'Valve Fitting WP-9688B'));
@@ -92,7 +93,7 @@ foreach ($fields as $field=>$value) $product->array_options['options_'.$field] =
 $db->begin();
 try {
     if ($productId > 0) {
-        if ($product->update($productId, $user) <= 0) throw new RuntimeException($product->error ?: 'PRODUCT_UPDATE_FAILED');
+        if ($product->update($productId, $user) <= 0) throw new RuntimeException($product->error ?: (!empty($product->errors) ? implode('|', $product->errors) : 'PRODUCT_UPDATE_FAILED'));
     } else {
         $productId = $product->create($user);
         if ($productId <= 0) throw new RuntimeException($product->error ?: 'PRODUCT_CREATE_FAILED');
