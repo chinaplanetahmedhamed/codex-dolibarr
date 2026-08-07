@@ -10,6 +10,7 @@ try {
     $schema = $read('custom/chinaplanetoperations/sql/llx_cpo_public_request.sql');
     $module = $read('custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php');
     $migration = $read('deploy/migrations/m045_public_request_quotation_schema.php');
+    $productSync = $read('deploy/tools/m045_c01_sync_cms_product.php');
     $css = $read('custom/chinaplanetoperations/css/operations.css');
 
     $assert(strpos($intake, 'new Propal(') === false, 'anonymous intake creates a quotation automatically');
@@ -40,6 +41,10 @@ try {
         $assert(stripos($quotation, $forbidden) === false, 'quotation bridge handles forbidden private cost '.$forbidden);
     }
     $assert(strpos($module, "'cp_woo_product_id'") !== false && strpos($module, "'cp_woo_variation_id'") !== false, 'Dolibarr product mapping fields absent');
+    $assert(strpos($productSync, "'MANUAL_REQUIRED CMS_PRICE='") !== false, 'missing-currency manual-price marker absent');
+    $assert(strpos($productSync, '$priceConvertible && $product->updatePrice') !== false, 'unsafe unconditional base-currency price update remains');
+    $assert(strpos($productSync, "REASON=CURRENCY_RATE_MISSING") === false, 'missing currency rate still blocks packing sync');
+    $assert(strpos($productSync, '$productId > 0 ? (float)$product->price : 0.0') !== false, 'manual-price fallback does not preserve existing base price');
     echo "M045_SOURCE=PASS propal=STANDARD idempotency=LOCKED pricing=SELL_ONLY grants=EXPLICIT\n";
 } catch (Throwable $e) {
     fwrite(STDERR, 'M045_SOURCE=FAIL REASON='.$e->getMessage()."\n");

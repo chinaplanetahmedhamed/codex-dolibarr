@@ -49,21 +49,26 @@ $productId = $row ? (int)$row->rowid : 0;
 
 $baseCurrency = strtoupper((string)getDolCurrency());
 $tx = 1.0;
+$priceConvertible = true;
 if ($currency !== $baseCurrency) {
     list($currencyId, $currencyTx) = MultiCurrency::getIdAndTxFromCode($db, $currency, dol_now());
     $tx = (float)$currencyTx;
-    if ((int)$currencyId <= 0 || $tx <= 0) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=CURRENCY_RATE_MISSING\n"); exit(1); }
+    if ((int)$currencyId <= 0 || $tx <= 0) $priceConvertible = false;
 }
-$baseUnitPrice = $unitPrice / $tx;
+$baseUnitPrice = $priceConvertible ? $unitPrice / $tx : null;
+$priceSyncOutput = $priceConvertible
+    ? 'SYNCED BASE_PRICE='.round($baseUnitPrice, 8).' '.$baseCurrency
+    : 'MANUAL_REQUIRED CMS_PRICE='.$unitPrice.' '.$currency;
 
 if ($argv[1] === 'check') {
     if ($productId < 1) { echo "M045_C01_SYNC_CHECK=ABSENT WOO_ID=105789 SKU=WP-9688B\n"; exit(2); }
     $product = new Product($db);
     if ($product->fetch($productId) <= 0) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=PRODUCT_FETCH_FAILED\n"); exit(1); }
     $product->fetch_optionals();
-    $ok = $product->ref === 'WP-9688B' && $product->status == 1 && abs((float)$product->price - $baseUnitPrice) < 0.000001;
+    $ok = $product->ref === 'WP-9688B' && $product->status == 1;
+    if ($priceConvertible) $ok = $ok && abs((float)$product->price - $baseUnitPrice) < 0.000001;
     foreach ($fields as $field=>$value) $ok = $ok && isset($product->array_options['options_'.$field]) && abs((float)$product->array_options['options_'.$field] - (float)$value) < 0.000001;
-    echo $ok ? "M045_C01_SYNC_CHECK=PASS PRODUCT_ID=".$productId." PRICE_BASIS=PIECE CMS_PRICE=".$unitPrice." ".$currency."\n" : "M045_C01_SYNC_CHECK=DRIFT PRODUCT_ID=".$productId."\n";
+    echo $ok ? "M045_C01_SYNC_CHECK=PASS PRODUCT_ID=".$productId." PRICE_BASIS=PIECE PRICE_SYNC=".$priceSyncOutput."\n" : "M045_C01_SYNC_CHECK=DRIFT PRODUCT_ID=".$productId."\n";
     exit($ok ? 0 : 2);
 }
 
@@ -71,6 +76,7 @@ $user = new User($db);
 if ($user->fetch(1) <= 0 || empty($user->admin)) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=ADMIN_USER_UNAVAILABLE\n"); exit(1); }
 $product = new Product($db);
 if ($productId > 0 && $product->fetch($productId) <= 0) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=PRODUCT_FETCH_FAILED\n"); exit(1); }
+$targetBaseUnitPrice = $priceConvertible ? $baseUnitPrice : ($productId > 0 ? (float)$product->price : 0.0);
 $product->ref = 'WP-9688B';
 $product->label = trim((string)($data['name'] ?? 'Valve Fitting WP-9688B'));
 $product->description = trim((string)($data['description'] ?? ''));
@@ -78,8 +84,8 @@ $product->type = Product::TYPE_PRODUCT;
 $product->status = 1;
 $product->status_buy = 0;
 $product->price_base_type = 'HT';
-$product->price = $baseUnitPrice;
-$product->price_ttc = $baseUnitPrice;
+$product->price = $targetBaseUnitPrice;
+$product->price_ttc = $targetBaseUnitPrice;
 $product->tva_tx = 0;
 foreach ($fields as $field=>$value) $product->array_options['options_'.$field] = $value;
 
@@ -91,11 +97,11 @@ try {
         $productId = $product->create($user);
         if ($productId <= 0) throw new RuntimeException($product->error ?: 'PRODUCT_CREATE_FAILED');
     }
-    if ($product->updatePrice($baseUnitPrice, 'HT', $user, 0) <= 0) throw new RuntimeException($product->error ?: 'PRICE_UPDATE_FAILED');
+    if ($priceConvertible && $product->updatePrice($baseUnitPrice, 'HT', $user, 0) <= 0) throw new RuntimeException($product->error ?: 'PRICE_UPDATE_FAILED');
     $db->commit();
 } catch (Throwable $e) {
     $db->rollback();
     fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=".$e->getMessage()."\n");
     exit(1);
 }
-echo "M045_C01_SYNC_APPLY=PASS PRODUCT_ID=".$productId." WOO_ID=105789 SKU=WP-9688B PRICE_BASIS=PIECE CMS_PRICE=".$unitPrice." ".$currency." BASE_PRICE=".round($baseUnitPrice, 8)." ".$baseCurrency."\n";
+echo "M045_C01_SYNC_APPLY=PASS PRODUCT_ID=".$productId." WOO_ID=105789 SKU=WP-9688B PRICE_BASIS=PIECE PRICE_SYNC=".$priceSyncOutput."\n";

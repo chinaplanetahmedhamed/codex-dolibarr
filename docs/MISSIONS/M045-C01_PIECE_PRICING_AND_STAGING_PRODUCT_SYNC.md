@@ -23,6 +23,16 @@ Make every quotation line use pieces as the commercial quantity and unit-price b
 4. Synchronize the single acceptance product `WP-9688B` / WooCommerce product `105789` into backup ERP, idempotently, including its piece price and packing fields.
 5. Create one synthetic staging inquiry through `new.chinaplanet.org` and verify it in backup ERP without validating or emailing the quotation.
 
+## Approved exception — 2026-08-07
+
+Ahmed selected the safe manual-price fallback after staging proved that backup ERP has no active USD conversion rate:
+
+- Do not configure or invent an FX rate as part of this mission.
+- Synchronize the CMS/WooCommerce identifier and all packing fields for `WP-9688B` even when the CMS currency cannot be converted safely into the Dolibarr base currency.
+- When no safe conversion exists, preserve an existing Dolibarr base price; for a newly created product use zero rather than writing `0.34 USD` as if it were the base currency.
+- Use the verified CMS selling price `0.34 USD / piece` only as a manually entered price in the synthetic staging quotation draft.
+- In this acceptance run, “including its piece price” means verifying the authoritative CMS price and the manually entered USD piece price; it does not authorize an incorrect base-currency price write.
+
 ## Restrictions
 
 - The CMS is read-only and WooSync remains disabled.
