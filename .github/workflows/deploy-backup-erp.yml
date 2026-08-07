@@ -180,7 +180,7 @@ jobs:
       RELEASE_MISSION: M045-R01
       RELEASE_TAG: m045-r01-staging
       ARTIFACT_NAME: m045-8d919fd.tar.gz
-      ARTIFACT_SHA: 7387a62e3b0411f7ba86b44809b0100324b9c562cbf3f2c78269b56dd3cdcd02
+      ARTIFACT_SHA: 2503f666d86c9422207295e4c21fa000bd725cd7060eb79ec86881652f6846cd
       DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy
 
     steps:
