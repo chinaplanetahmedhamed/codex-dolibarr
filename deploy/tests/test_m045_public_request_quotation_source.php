@@ -48,6 +48,9 @@ try {
     $assert(strpos($productSync, "REASON=CURRENCY_RATE_MISSING") === false, 'missing currency rate still blocks packing sync');
     $assert(strpos($productSync, '$productId > 0 ? (float)$product->price : 0.0') !== false, 'manual-price fallback does not preserve existing base price');
     $assert(strpos($productSync, '$product->fetch_optionals()') !== false, 'existing product extra fields are not preserved before update');
+    $assert(strpos($productSync, '$product->update($productId, $user, 1)') !== false, 'CMS import can fire outbound product update triggers');
+    $assert(strpos($productSync, '$product->create($user, 1)') !== false, 'CMS import can fire outbound product create triggers');
+    $assert(strpos($productSync, "array(), '', '', 1)") !== false, 'CMS import can fire outbound product price triggers');
     echo "M045_SOURCE=PASS propal=STANDARD idempotency=LOCKED pricing=SELL_ONLY grants=EXPLICIT\n";
 } catch (Throwable $e) {
     fwrite(STDERR, 'M045_SOURCE=FAIL REASON='.$e->getMessage()."\n");

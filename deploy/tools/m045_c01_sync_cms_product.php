@@ -93,12 +93,15 @@ foreach ($fields as $field=>$value) $product->array_options['options_'.$field] =
 $db->begin();
 try {
     if ($productId > 0) {
-        if ($product->update($productId, $user) <= 0) throw new RuntimeException($product->error ?: (!empty($product->errors) ? implode('|', $product->errors) : 'PRODUCT_UPDATE_FAILED'));
+        // This is the authoritative CMS -> ERP import. Do not fire Dolibarr
+        // product triggers here: a WooCommerce connector can otherwise send
+        // the same update back to the CMS and create a sync loop.
+        if ($product->update($productId, $user, 1) <= 0) throw new RuntimeException($product->error ?: (!empty($product->errors) ? implode('|', $product->errors) : 'PRODUCT_UPDATE_FAILED'));
     } else {
-        $productId = $product->create($user);
+        $productId = $product->create($user, 1);
         if ($productId <= 0) throw new RuntimeException($product->error ?: 'PRODUCT_CREATE_FAILED');
     }
-    if ($priceConvertible && $product->updatePrice($baseUnitPrice, 'HT', $user, 0) <= 0) throw new RuntimeException($product->error ?: 'PRICE_UPDATE_FAILED');
+    if ($priceConvertible && $product->updatePrice($baseUnitPrice, 'HT', $user, 0, 0, 0, 0, 0, 0, array(), '', '', 1) <= 0) throw new RuntimeException($product->error ?: 'PRICE_UPDATE_FAILED');
     $db->commit();
 } catch (Throwable $e) {
     $db->rollback();
