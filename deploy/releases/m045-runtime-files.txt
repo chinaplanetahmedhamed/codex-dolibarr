@@ -1,0 +1,9 @@
+custom/chinaplanetoperations/class/PublicRequestQuotationService.class.php
+custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php
+custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php
+custom/chinaplanetoperations/css/operations.css
+custom/chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang
+custom/chinaplanetoperations/langs/en_US/chinaplanetoperations.lang
+custom/chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang
+custom/chinaplanetoperations/operations/public_requests.php
+custom/chinaplanetoperations/sql/llx_cpo_public_request.sql
