@@ -16,11 +16,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DELIVERY_COMMIT: 0ffcacc9919eb67689f5f45ea9e0f2493c09f839
-  RUNTIME_COMMIT: 6cecabf1710cc3aeb4ea794f502b9ea6551d0bff
+  DELIVERY_COMMIT: 9fe7a5668b8e92bc4ad49f62f8abdad4eebfc9bf
+  RUNTIME_COMMIT: d488f3f30e822089c88a73ea9693adea13afc107
   RELEASE_MISSION: M045-C01
-  ARTIFACT_NAME: m045c01-6cecabf.tar.gz
-  ARTIFACT_SHA: 12a86da19ce2d4b16fb4e6e2f28345c072e24d781ad00f5aee5ae80b8d0a19c6
+  ARTIFACT_NAME: m045c01-d488f3f.tar.gz
+  ARTIFACT_SHA: d048ac349940ce59df40615a0b2f74ad28ce3813cff84032fe927a6d3780309d
   DEPLOY_HOST: 31.97.158.178
   DEPLOY_USER: codex-deploy
   DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m045-deploy
