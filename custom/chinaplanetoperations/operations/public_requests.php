@@ -4,6 +4,7 @@ define('CSRFCHECK_WITH_TOKEN', 1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/../lib/main.lib.php';
 require_once __DIR__.'/../class/PublicWebsiteRequestService.class.php';
+require_once __DIR__.'/../class/PublicRequestQuotationService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 function cpo_public_request_has_value($value)
@@ -76,11 +77,46 @@ function cpo_public_request_money($value, $currency)
     return number_format((float) $value, 2, '.', ',').' '.dol_escape_htmltag((string) $currency);
 }
 
+function cpo_public_request_product_image_html(array $line)
+{
+    global $conf;
+    if (!empty($line['product']) && !empty($line['product']->entity) && !empty($conf->product->multidir_output[$line['product']->entity])) {
+        $html = $line['product']->show_photos('product', $conf->product->multidir_output[$line['product']->entity], 1, 1, 0, 0, 0, 72, 72, 1, 1, 0, '1', 'cpo-quote-product-image');
+        if (!empty($line['product']->nbphoto)) return $html;
+    }
+    if (!empty($line['image'])) return '<img class="cpo-quote-product-image" src="'.dol_escape_htmltag($line['image']).'" alt="" loading="lazy" referrerpolicy="no-referrer">';
+    return '<span class="cpo-quote-product-placeholder fas fa-box" aria-hidden="true"></span>';
+}
+
 cpo_require($user, 'publicrequest_read');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $service = new PublicWebsiteRequestService($db);
+$quotationService = new PublicRequestQuotationService($db);
 $action = GETPOST('action', 'aZ09');
 $id = GETPOSTINT('id');
+
+if ($action === 'save_quotation') {
+    cpo_require($user, 'publicrequest_quote');
+    if (!$user->hasRight('propal', 'creer') || !$user->hasRight('product', 'read')) accessforbidden();
+    try {
+        $products = GETPOST('line_product', 'array:int');
+        $sources = GETPOST('line_price_source', 'array:aZ09');
+        $manualPrices = GETPOST('line_manual_price', 'array:alphanohtml');
+        $lineNotes = GETPOST('line_note', 'array:restricthtml');
+        $lineInput = array();
+        foreach ((array) $products as $index=>$productId) {
+            $lineInput[(int) $index] = array(
+                'fk_product'=>(int) $productId,
+                'price_source'=>isset($sources[$index]) ? $sources[$index] : 'dolibarr',
+                'manual_price'=>isset($manualPrices[$index]) ? $manualPrices[$index] : '',
+                'note'=>isset($lineNotes[$index]) ? $lineNotes[$index] : '',
+            );
+        }
+        $proposal = $quotationService->saveDraft($id, GETPOSTINT('quote_fk_soc'), GETPOSTINT('quote_contact_id'), GETPOST('quote_currency', 'alpha'), GETPOST('quote_note_public', 'restricthtml'), GETPOST('quote_note_private', 'restricthtml'), $lineInput, $user);
+        setEventMessages($langs->trans('PublicQuotationSaved', $proposal->ref), null, 'mesgs');
+        header('Location: public_requests.php?id='.(int) $id); exit;
+    } catch (Throwable $e) { setEventMessages($langs->trans($e->getMessage()), null, 'errors'); }
+}
 
 if ($action === 'update_status') {
     cpo_require($user, 'publicrequest_update');
@@ -115,6 +151,22 @@ $snapshot = $selected && isset($selected['snapshot']) && is_array($selected['sna
 $route = isset($snapshot['route']) && is_array($snapshot['route']) ? $snapshot['route'] : array();
 $terms = isset($snapshot['terms']) && is_array($snapshot['terms']) ? $snapshot['terms'] : array();
 $components = isset($snapshot['components']) && is_array($snapshot['components']) ? $snapshot['components'] : array();
+$catalogLines = $selected && $selected['request_type'] === 'catalog_order' ? $quotationService->catalogLines($selected) : array();
+$quoteProducts = $catalogLines ? $quotationService->products() : array();
+$quoteContacts = $catalogLines ? $quotationService->contacts() : array();
+$quoteCurrencies = $catalogLines ? $quotationService->currencies() : array();
+$quoteProposal = null;
+if ($selected && !empty($selected['fk_propal'])) {
+    $quoteProposal = new Propal($db);
+    if ($quoteProposal->fetch((int) $selected['fk_propal']) <= 0 || (int) $quoteProposal->entity !== (int) $conf->entity) $quoteProposal = null;
+}
+$quoteSocId = $quoteProposal ? (int) $quoteProposal->socid : (int) ($selected['fk_soc'] ?? 0);
+$quoteCurrency = $quoteProposal ? strtoupper((string) $quoteProposal->multicurrency_code) : strtoupper((string) ($details['currency'] ?? getDolCurrency()));
+if (!isset($quoteCurrencies[$quoteCurrency])) $quoteCurrency = strtoupper((string) getDolCurrency());
+$quoteSelectedProducts = array();
+foreach ((array) GETPOST('line_product', 'array:int') as $index=>$productId) $quoteSelectedProducts[(int) $index] = (int) $productId;
+$preparedQuoteLines = $catalogLines ? $quotationService->prepareLines($selected, $quoteSocId, $quoteSelectedProducts, $quoteCurrency) : array();
+$canQuote = $catalogLines && cpo_can($user, 'publicrequest_quote') && $user->hasRight('propal', 'creer') && $user->hasRight('product', 'read');
 $morecss = array(
     cpo_asset('/custom/chinaplanetoperations/css/operations.css'),
     cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),
@@ -162,11 +214,69 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
         <h3><span class="fas fa-clipboard-list" aria-hidden="true"></span><?php echo $langs->trans('RequestDetails'); ?></h3>
         <div class="cpo-request-field-grid">
           <?php echo cpo_public_request_field_html('locale', isset($request['locale']) ? strtoupper((string) $request['locale']) : '', $langs); ?>
-          <?php foreach($details as $key=>$value) echo cpo_public_request_field_html($key, $value, $langs, in_array($key, array('message','cargo_summary','lines','packing_plan','required_services'), true)); ?>
+          <?php foreach($details as $key=>$value) { if(in_array($key, array('lines','packing_plan'), true)) continue; echo cpo_public_request_field_html($key, $value, $langs, in_array($key, array('message','cargo_summary','required_services'), true)); } ?>
           <?php if(empty($details)){ ?><div class="cpo-request-empty-state"><span class="fas fa-info-circle" aria-hidden="true"></span><?php echo $langs->trans('PublicNoReadableDetails'); ?></div><?php } ?>
         </div>
       </article>
     </div>
+
+    <?php if(!empty($preparedQuoteLines)){
+      $postedSources = (array) GETPOST('line_price_source', 'array:aZ09');
+      $postedManualPrices = (array) GETPOST('line_manual_price', 'array:alphanohtml');
+      $postedLineNotes = (array) GETPOST('line_note', 'array:restricthtml');
+      $quoteIsDraft = !$quoteProposal || (int) $quoteProposal->status === Propal::STATUS_DRAFT;
+      $quotePublicValue = $quoteProposal ? (string) $quoteProposal->note_public : '';
+      $quotePrivateValue = $quoteProposal ? (string) $quoteProposal->note_private : '';
+      $privatePrefix = 'Website request: '.$selected['ref'];
+      if(strpos($quotePrivateValue, $privatePrefix) === 0) $quotePrivateValue = ltrim(substr($quotePrivateValue, strlen($privatePrefix)));
+      $quoteContactId = 0;
+      if($quoteProposal){ $linkedContacts = $quoteProposal->getIdContact('external', 'CUSTOMER'); if(!empty($linkedContacts[0])) $quoteContactId = (int) $linkedContacts[0]; }
+    ?>
+    <article class="cpo-request-block cpo-quote-workspace">
+      <div class="cpo-quote-heading">
+        <div><span class="fas fa-file-signature" aria-hidden="true"></span><div><h3><?php echo $langs->trans('PublicQuotationWorkspace'); ?></h3><p><?php echo $langs->trans('PublicQuotationWorkspaceHelp'); ?></p></div></div>
+        <?php if($quoteProposal){ ?><a class="button button-save" href="<?php echo DOL_URL_ROOT; ?>/comm/propal/card.php?id=<?php echo (int) $quoteProposal->id; ?>"><span class="fas fa-external-link-alt" aria-hidden="true"></span> <?php echo $langs->trans('PublicOpenQuotation', $quoteProposal->ref); ?></a><?php } ?>
+      </div>
+
+      <?php if($quoteProposal){ ?><div class="cpo-quote-status"><span class="fas fa-link" aria-hidden="true"></span><strong><?php echo dol_escape_htmltag($quoteProposal->ref); ?></strong><span><?php echo $quoteProposal->getLibStatut(1); ?></span><span><?php echo price($quoteProposal->multicurrency_total_ttc, 0, $langs, 1, -1, -1, $quoteProposal->multicurrency_code); ?></span></div><?php } ?>
+
+      <form method="post" class="cpo-quote-form">
+        <input type="hidden" name="token" value="<?php echo newToken(); ?>">
+        <input type="hidden" name="action" value="save_quotation">
+        <input type="hidden" name="id" value="<?php echo (int) $selected['rowid']; ?>">
+        <div class="cpo-quote-controls">
+          <label class="cpo-field"><span><?php echo $langs->trans('Customer'); ?> *</span>
+            <?php if($quoteProposal){ ?><input type="hidden" name="quote_fk_soc" value="<?php echo (int) $quoteSocId; ?>"><select disabled><option><?php echo dol_escape_htmltag(isset($companies[$quoteSocId]) ? $companies[$quoteSocId] : '#'.$quoteSocId); ?></option></select><?php } else { ?>
+            <select name="quote_fk_soc" id="cpo-quote-customer" required<?php echo !$canQuote || !$quoteIsDraft ? ' disabled' : ''; ?>><option value=""><?php echo $langs->trans('SelectThirdParty'); ?></option><?php foreach($companies as $companyId=>$companyName){ ?><option value="<?php echo $companyId; ?>"<?php echo $quoteSocId===$companyId?' selected':''; ?>><?php echo dol_escape_htmltag($companyName); ?></option><?php } ?></select><?php } ?>
+          </label>
+          <label class="cpo-field"><span><?php echo $langs->trans('PublicQuotationContact'); ?></span><select name="quote_contact_id" id="cpo-quote-contact"<?php echo !$canQuote || !$quoteIsDraft ? ' disabled' : ''; ?>><option value="0"><?php echo $langs->trans('PublicNoSpecificContact'); ?></option><?php foreach($quoteContacts as $contact){ if($quoteProposal && (int)$contact['fk_soc']!==$quoteSocId) continue; ?><option value="<?php echo (int) $contact['id']; ?>" data-soc="<?php echo (int) $contact['fk_soc']; ?>"<?php echo $quoteContactId===(int)$contact['id']?' selected':''; ?>><?php echo dol_escape_htmltag($contact['name'].($contact['email']?' · '.$contact['email']:'')); ?></option><?php } ?></select></label>
+          <label class="cpo-field"><span><?php echo $langs->trans('Currency'); ?> *</span><?php if($quoteProposal){ ?><input type="hidden" name="quote_currency" value="<?php echo dol_escape_htmltag($quoteCurrency); ?>"><select disabled><option><?php echo dol_escape_htmltag($quoteCurrency); ?></option></select><?php } else { ?><select name="quote_currency" required<?php echo !$canQuote || !$quoteIsDraft ? ' disabled' : ''; ?>><?php foreach($quoteCurrencies as $code){ ?><option value="<?php echo dol_escape_htmltag($code); ?>"<?php echo $quoteCurrency===$code?' selected':''; ?>><?php echo dol_escape_htmltag($code); ?></option><?php } ?></select><?php } ?></label>
+        </div>
+
+        <div class="div-table-responsive cpo-quote-table-wrap"><table class="liste centpercent cpo-quote-table">
+          <thead><tr><th><?php echo $langs->trans('Image'); ?></th><th><?php echo $langs->trans('Product'); ?></th><th><?php echo $langs->trans('PublicPacking'); ?></th><th><?php echo $langs->trans('PublicDolibarrProduct'); ?></th><?php if($canQuote){ ?><th><?php echo $langs->trans('PublicPriceSource'); ?></th><th><?php echo $langs->trans('PublicUnitSellingPrice'); ?></th><th><?php echo $langs->trans('Notes'); ?></th><?php } ?></tr></thead>
+          <tbody><?php foreach($preparedQuoteLines as $line){
+            $lineIndex = (int) $line['index'];
+            $mappedId = !empty($line['product']) ? (int) $line['product']->id : 0;
+            $priceSource = isset($postedSources[$lineIndex]) ? $postedSources[$lineIndex] : ($quoteProposal ? 'manual' : 'dolibarr');
+            $manualValue = isset($postedManualPrices[$lineIndex]) ? $postedManualPrices[$lineIndex] : ($line['saved_price'] !== null ? $line['saved_price'] : ($line['default_price'] !== null ? $line['default_price'] : ''));
+            $lineNote = isset($postedLineNotes[$lineIndex]) ? $postedLineNotes[$lineIndex] : $line['saved_note'];
+          ?><tr>
+            <td class="cpo-quote-image-cell"><?php echo cpo_public_request_product_image_html($line); ?></td>
+            <td data-title="<?php echo dol_escape_htmltag($langs->trans('Product')); ?>"><strong><?php echo dol_escape_htmltag($line['name'] ?: $langs->trans('PublicLegacyProduct', $line['product_id'])); ?></strong><?php if($line['option']){ ?><small><?php echo dol_escape_htmltag($line['option']); ?></small><?php } ?><span dir="ltr"><?php echo dol_escape_htmltag($line['sku'] ?: 'Woo #'.$line['product_id'].($line['variation_id']?' / '.$line['variation_id']:'')); ?></span></td>
+            <td data-title="<?php echo dol_escape_htmltag($langs->trans('PublicPacking')); ?>"><strong><?php echo (int) $line['cartons']; ?> <?php echo $langs->trans('PublicCartons'); ?></strong><?php if($line['total_units']){ ?><small><?php echo (int) $line['total_units'].' '.$langs->trans('PublicUnits').' · '.(int)$line['units_per_carton'].'/'.$langs->trans('PublicCarton'); ?></small><?php } ?><?php if($line['total_cbm']){ ?><small><?php echo price($line['total_cbm']).' m³'; ?></small><?php } ?><?php if($line['total_gross_weight']){ ?><small><?php echo price($line['total_gross_weight']).' kg'; ?></small><?php } ?></td>
+            <td data-title="<?php echo dol_escape_htmltag($langs->trans('PublicDolibarrProduct')); ?>"><?php if($canQuote && $quoteIsDraft){ ?><select required name="line_product[<?php echo $lineIndex; ?>]"><option value=""><?php echo $langs->trans('PublicSelectProductMapping'); ?></option><?php foreach($quoteProducts as $productOption){ ?><option value="<?php echo (int) $productOption['id']; ?>"<?php echo $mappedId===(int)$productOption['id']?' selected':''; ?>><?php echo dol_escape_htmltag($productOption['ref'].' · '.$productOption['label']); ?></option><?php } ?></select><?php } elseif($line['product']){ ?><a href="<?php echo DOL_URL_ROOT; ?>/product/card.php?id=<?php echo (int)$line['product']->id; ?>"><?php echo dol_escape_htmltag($line['product']->ref.' · '.$line['product']->label); ?></a><?php } else { ?><span class="cpo-quote-unmapped"><?php echo $langs->trans('PublicProductNotMapped'); ?></span><?php } ?></td>
+            <?php if($canQuote){ ?><td data-title="<?php echo dol_escape_htmltag($langs->trans('PublicPriceSource')); ?>"><select name="line_price_source[<?php echo $lineIndex; ?>]"<?php echo !$quoteIsDraft?' disabled':''; ?>><option value="dolibarr"<?php echo $priceSource==='dolibarr'?' selected':''; ?>><?php echo $langs->trans('PublicDolibarrSellingPrice'); ?><?php echo $line['default_price']!==null?' · '.price($line['default_price']).' '.$quoteCurrency:''; ?></option><option value="manual"<?php echo $priceSource==='manual'?' selected':''; ?>><?php echo $langs->trans('PublicManualSellingPrice'); ?></option></select></td>
+            <td data-title="<?php echo dol_escape_htmltag($langs->trans('PublicUnitSellingPrice')); ?>"><input name="line_manual_price[<?php echo $lineIndex; ?>]" type="number" min="0" max="1000000000" step="0.000001" value="<?php echo dol_escape_htmltag($manualValue); ?>"<?php echo !$quoteIsDraft?' disabled':''; ?>><small><?php echo dol_escape_htmltag($quoteCurrency).' / '.$langs->trans($line['units_per_carton']>0?'PublicUnit':'PublicCarton'); ?></small></td>
+            <td data-title="<?php echo dol_escape_htmltag($langs->trans('Notes')); ?>"><textarea name="line_note[<?php echo $lineIndex; ?>]" rows="2" maxlength="1000"<?php echo !$quoteIsDraft?' disabled':''; ?>><?php echo dol_escape_htmltag($lineNote); ?></textarea></td><?php } ?>
+          </tr><?php } ?></tbody>
+        </table></div>
+
+        <?php if($canQuote){ ?><div class="cpo-quote-notes"><label><span><?php echo $langs->trans('PublicQuotationPublicNote'); ?></span><textarea name="quote_note_public" rows="3" maxlength="10000"<?php echo !$quoteIsDraft?' disabled':''; ?>><?php echo dol_escape_htmltag(GETPOST('quote_note_public','restricthtml') ?: $quotePublicValue); ?></textarea><small><?php echo $langs->trans('PublicQuotationPublicNoteHelp'); ?></small></label><label><span><?php echo $langs->trans('PublicQuotationPrivateNote'); ?></span><textarea name="quote_note_private" rows="3" maxlength="10000"<?php echo !$quoteIsDraft?' disabled':''; ?>><?php echo dol_escape_htmltag(GETPOST('quote_note_private','restricthtml') ?: $quotePrivateValue); ?></textarea><small><?php echo $langs->trans('PublicQuotationPrivateNoteHelp'); ?></small></label></div><?php } ?>
+        <?php if($canQuote && $quoteIsDraft){ ?><div class="cpo-quote-actions"><p><span class="fas fa-shield-alt" aria-hidden="true"></span><?php echo $langs->trans('PublicQuotationStandardWorkflowHelp'); ?></p><button class="button button-save"><span class="fas fa-save" aria-hidden="true"></span> <?php echo $langs->trans($quoteProposal?'PublicUpdateDraftQuotation':'PublicCreateDraftQuotation'); ?></button></div><?php } elseif($quoteProposal && !$quoteIsDraft){ ?><div class="cpo-space-notice"><span class="fas fa-lock" aria-hidden="true"></span><div><strong><?php echo $langs->trans('PublicQuotationLocked'); ?></strong><p><?php echo $langs->trans('PublicQuotationLockedHelp'); ?></p></div></div><?php } ?>
+      </form>
+    </article>
+    <?php } ?>
 
     <?php if(!empty($snapshot)){ ?>
     <article class="cpo-request-block cpo-commercial-card">
@@ -221,4 +331,23 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
 
   <?php if(!empty($user->admin)){ ?><form method="post" class="cpo-anonymize-form"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="anonymize_expired"><button class="button"><span class="fas fa-user-shield" aria-hidden="true"></span> <?php echo $langs->trans('AnonymizeExpiredRequests'); ?></button></form><?php } ?>
 </div>
+<script>
+(function () {
+  var customer = document.getElementById('cpo-quote-customer');
+  var contact = document.getElementById('cpo-quote-contact');
+  if (!customer || !contact) return;
+  function filterContacts() {
+    var soc = customer.value;
+    Array.prototype.forEach.call(contact.options, function (option) {
+      if (!option.dataset.soc) return;
+      var allowed = soc !== '' && option.dataset.soc === soc;
+      option.hidden = !allowed;
+      option.disabled = !allowed;
+      if (!allowed && option.selected) contact.value = '0';
+    });
+  }
+  customer.addEventListener('change', filterContacts);
+  filterContacts();
+}());
+</script>
 <?php cpcc_admin_shell_close(); llxFooter(); $db->close(); ?>

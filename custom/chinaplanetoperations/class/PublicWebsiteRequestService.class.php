@@ -109,7 +109,7 @@ class PublicWebsiteRequestService
 
     public function listing(array $filters = array(), $limit = 100)
     {
-        $sql = "SELECT rowid,ref,request_type,contact_name,company_name,country_code,status,fk_soc,fk_operation,date_creation,date_modification FROM ".MAIN_DB_PREFIX."cpo_public_request WHERE entity=".$this->entity;
+        $sql = "SELECT rowid,ref,request_type,contact_name,company_name,country_code,status,fk_soc,fk_operation,fk_propal,date_creation,date_modification FROM ".MAIN_DB_PREFIX."cpo_public_request WHERE entity=".$this->entity;
         if (!empty($filters['status']) && in_array($filters['status'], self::statuses(), true)) $sql .= " AND status=".$this->q($filters['status']);
         if (!empty($filters['request_type']) && in_array($filters['request_type'], self::requestTypes(), true)) $sql .= " AND request_type=".$this->q($filters['request_type']);
         $sql .= " ORDER BY date_creation DESC,rowid DESC LIMIT ".max(1, min(250, (int) $limit));

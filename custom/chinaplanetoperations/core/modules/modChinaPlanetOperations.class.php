@@ -13,12 +13,12 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.3.0';
+        $this->version = '2.4.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
         $this->config_page_url = array('setup.php@chinaplanetoperations');
-        $this->depends = array('modSociete', 'modChinaPlanetShippingPrices');
+        $this->depends = array('modSociete', 'modProduct', 'modPropale', 'modChinaPlanetShippingPrices');
         $this->phpmin = array(7, 4);
         $this->need_dolibarr_version = array(23, 0);
         $this->module_parts = array('api' => 1);
@@ -40,6 +40,7 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500512, 'Read public website intake requests', 'publicrequest_read'),
             array(500513, 'Update public website intake requests', 'publicrequest_update'),
             array(500514, 'Promote public website requests to operations', 'publicrequest_promote'),
+            array(500515, 'Prepare draft quotations from public website requests', 'publicrequest_quote'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;
@@ -131,6 +132,10 @@ class modChinaPlanetOperations extends DolibarrModules
         foreach ($defaults as $key=>$value) {
             if (!isset($GLOBALS['conf']->global->$key)) dolibarr_set_const($this->db, $key, $value, 'chaine', 0, '', $GLOBALS['conf']->entity);
         }
+        require_once DOL_DOCUMENT_ROOT.'/core/class/extrafields.class.php';
+        $extraFields = new ExtraFields($this->db);
+        if ($extraFields->addExtraField('cp_woo_product_id', 'WooCommerce product ID', 'int', 500, '20', 'product', 0, 0, '', '', 1, '', '1', 'Authoritative mapping to the WordPress/WooCommerce product.', '', (int) $GLOBALS['conf']->entity, '', '1', 0, 0) < 0) return -1;
+        if ($extraFields->addExtraField('cp_woo_variation_id', 'WooCommerce variation ID', 'int', 501, '20', 'product', 0, 0, '', '', 1, '', '1', 'Optional authoritative mapping to a WooCommerce variation.', '', (int) $GLOBALS['conf']->entity, '', '1', 0, 0) < 0) return -1;
         $this->seedCategories();
         try {
             require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/lib/standard_sops.lib.php';

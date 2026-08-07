@@ -18,6 +18,7 @@ CREATE TABLE llx_cpo_public_request (
   fk_rate bigint NULL,
   fk_soc integer NULL,
   fk_operation bigint NULL,
+  fk_propal bigint NULL,
   status varchar(32) NOT NULL DEFAULT 'new',
   internal_reason varchar(255) NULL,
   fk_user_creat integer NOT NULL,
@@ -31,5 +32,6 @@ CREATE TABLE llx_cpo_public_request (
   UNIQUE KEY uk_cpo_public_request_idempotency (entity, integration_source, request_type, idempotency_key),
   KEY idx_cpo_public_request_queue (entity, status, date_creation),
   KEY idx_cpo_public_request_contact (entity, contact_hmac),
-  KEY idx_cpo_public_request_operation (entity, fk_operation)
+  KEY idx_cpo_public_request_operation (entity, fk_operation),
+  UNIQUE KEY uk_cpo_public_request_propal (entity, fk_propal)
 ) ENGINE=innodb;
