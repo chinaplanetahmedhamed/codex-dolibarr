@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M045-C02'
-readonly RUNTIME_COMMIT='1e6d58a917402db927b56a9e4b5af33bba7d04d1'
-readonly SHORT_COMMIT='1e6d58a'
-readonly ARTIFACT_SHA='20637c0e9cc4f3b48827d5a5cb5f27853bfda058e857b043e7c04e194667f1cc'
+readonly RELEASE='M045-C03'
+readonly RUNTIME_COMMIT='bd553a72eadeaa0437105060ea7cdafc8f11ecdd'
+readonly SHORT_COMMIT='bd553a7'
+readonly ARTIFACT_SHA='2b01b0b4bc31c0f1e8ee80110f953ddb3b6b0c16e5e99d5de5e19b0b8e1b073f'
 readonly RUNTIME_MANIFEST_SHA='21c948877b57b9c3851a374db61df68ea39886174bb05170862c0a958da52608'
 readonly SUPPORT_MANIFEST_SHA='5831f1e4107e25dc6e3dce9f16c3ec871999565dcf6add84e6810e414d6549e7'
 readonly RUNTIME_MANIFEST='deploy/releases/m045-runtime-files.txt'
@@ -17,7 +17,7 @@ readonly PRODUCT_SYNC='deploy/tools/m045_c01_sync_cms_product.php'
 readonly PRODUCT_FIXTURE='deploy/fixtures/m045_c01_wp_9688b.json'
 
 readonly INBOX='/home/codex-deploy/staging-inbox'
-readonly ARTIFACT="${INBOX}/m045c02-${SHORT_COMMIT}.tar.gz"
+readonly ARTIFACT="${INBOX}/m045c03-${SHORT_COMMIT}.tar.gz"
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
