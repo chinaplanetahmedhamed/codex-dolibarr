@@ -27,6 +27,11 @@ try {
     $assert(strpos($quotation, "getDolGlobalString('CHINAPLANET_PUBLIC_PRODUCT_IMAGE_HOSTS')") !== false && strpos($quotation, "!== 'https'") !== false, 'remote product image allowlist absent');
     $assert(strpos($quotation, 'cp_woo_variation_id') !== false && strpos($quotation, 'p.ref=') !== false, 'server-side product mapping fallbacks absent');
     $assert(strpos($quotation, "array('dolibarr','manual')") !== false && strpos($quotation, 'quotation_manual_price_invalid') !== false, 'controlled selling price choice absent');
+    $assert(strpos($quotation, "throw new RuntimeException('quotation_pieces_per_carton_required')") !== false, 'missing packing does not fail closed');
+    $assert(strpos($quotation, "\$qty = \$line['cartons'] * \$line['units_per_carton']") !== false, 'quotation quantity is not total pieces');
+    $assert(strpos($quotation, ": \$line['cartons'];") === false, 'cartons are still used as fallback commercial quantity');
+    $assert(strpos($quotation, "'cms.chinaplanet.org'") !== false, 'authoritative CMS image host absent');
+    $assert(strpos($page, "trans('PublicPiece')") !== false && strpos($page, "trans('PublicPiecesPerCarton')") !== false, 'piece pricing labels absent');
     $assert(strpos($quotation, 'MultiCurrency::getIdAndTxFromCode') !== false && strpos($quotation, '$priceBase = $priceCurrency / $currencyInfo') !== false, 'multicurrency base conversion absent');
     $assert(strpos($quotation, 'note_public') !== false && strpos($quotation, 'note_private') !== false, 'public/private note separation absent');
     $assert(strpos($page, '/comm/propal/card.php?id=') !== false, 'standard preview/validate/send handoff absent');

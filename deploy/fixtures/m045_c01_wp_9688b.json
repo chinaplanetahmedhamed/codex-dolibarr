@@ -1,0 +1,19 @@
+{
+  "id": 105789,
+  "sku": "WP-9688B",
+  "name": "Valve Fitting WP-9688B",
+  "description": "",
+  "images": ["https://cms.chinaplanet.org/wp-content/uploads/2026/07/1770087838837730.jpg"],
+  "unitPrice": 0.34,
+  "cartonPrice": 34,
+  "currency": "USD",
+  "packing": {
+    "unitsPerCarton": 100,
+    "lengthCm": 50,
+    "widthCm": 40,
+    "heightCm": 38,
+    "cbmPerCarton": 0.076,
+    "netWeightKg": 11,
+    "grossWeightKg": 12
+  }
+}

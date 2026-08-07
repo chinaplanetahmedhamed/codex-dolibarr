@@ -1,2 +1,4 @@
 deploy/migrations/m045_public_request_quotation_schema.php
+deploy/fixtures/m045_c01_wp_9688b.json
 deploy/tests/test_m045_public_request_quotation_source.php
+deploy/tools/m045_c01_sync_cms_product.php

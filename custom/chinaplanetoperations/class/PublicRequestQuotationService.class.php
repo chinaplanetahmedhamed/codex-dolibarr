@@ -92,6 +92,7 @@ class PublicRequestQuotationService
         foreach ($this->catalogLines($requestRow) as $index=>$line) {
             $selectedId = isset($selectedProducts[$index]) ? (int) $selectedProducts[$index] : 0;
             $product = $this->resolveProduct($line, $selectedId);
+            $line = $this->withProductPacking($line, $product);
             $defaultBase = $product ? $this->sellingPrice($product, $customer) : null;
             $saved = isset($proposalLines[$index]) ? $proposalLines[$index] : null;
             $line['product'] = $product;
@@ -124,6 +125,8 @@ class PublicRequestQuotationService
                 $input = isset($lineInput[$index]) && is_array($lineInput[$index]) ? $lineInput[$index] : array();
                 $product = $this->resolveProduct($line, (int) ($input['fk_product'] ?? 0));
                 if (!$product) throw new RuntimeException('quotation_product_mapping_required');
+                $line = $this->withProductPacking($line, $product);
+                if ($line['units_per_carton'] < 1) throw new RuntimeException('quotation_pieces_per_carton_required');
                 $source = (string) ($input['price_source'] ?? 'dolibarr');
                 if (!in_array($source, array('dolibarr','manual'), true)) throw new RuntimeException('quotation_price_source_invalid');
                 $defaultBase = $this->sellingPrice($product, $customer);
@@ -135,7 +138,7 @@ class PublicRequestQuotationService
                     $priceCurrency = $this->positivePrice($input['manual_price'] ?? null);
                     $priceBase = $priceCurrency / $currencyInfo['tx'];
                 }
-                $qty = $line['units_per_carton'] > 0 ? $line['cartons'] * $line['units_per_carton'] : $line['cartons'];
+                $qty = $line['cartons'] * $line['units_per_carton'];
                 $validated[] = array(
                     'line'=>$line,
                     'product'=>$product,
@@ -195,7 +198,7 @@ class PublicRequestQuotationService
         $parts = parse_url($url);
         $host = strtolower((string) ($parts['host'] ?? ''));
         if (strtolower((string) ($parts['scheme'] ?? '')) !== 'https' || $host === '' || filter_var($host, FILTER_VALIDATE_IP)) return '';
-        $allowed = array('chinaplanet.org', 'www.chinaplanet.org');
+        $allowed = array('chinaplanet.org', 'www.chinaplanet.org', 'cms.chinaplanet.org');
         $configured = function_exists('getDolGlobalString') ? (string) getDolGlobalString('CHINAPLANET_PUBLIC_PRODUCT_IMAGE_HOSTS') : '';
         foreach (explode(',', $configured) as $item) if (trim($item) !== '') $allowed[] = strtolower(trim($item));
         foreach (array_unique($allowed) as $domain) {
@@ -262,6 +265,19 @@ class PublicRequestQuotationService
         if (!$res || !$this->db->fetch_object($res)) return null;
         $product = new Product($this->db);
         return $product->fetch((int) $id) > 0 ? $product : null;
+    }
+
+    private function withProductPacking(array $line, $product)
+    {
+        if ($line['units_per_carton'] > 0 || !$product || !$this->hasColumn(MAIN_DB_PREFIX.'product_extrafields', 'b2b_units_per_carton')) return $line;
+        $res = $this->db->query("SELECT b2b_units_per_carton FROM ".MAIN_DB_PREFIX."product_extrafields WHERE fk_object=".(int) $product->id);
+        $obj = $res ? $this->db->fetch_object($res) : null;
+        $units = $obj ? max(0, min(1000000, (int) $obj->b2b_units_per_carton)) : 0;
+        if ($units < 1) return $line;
+        $line['units_per_carton'] = $units;
+        $line['total_units'] = $line['cartons'] * $units;
+        $line['packing_source'] = 'dolibarr_product';
+        return $line;
     }
 
     private function sellingPrice($product, $customer)
@@ -333,7 +349,10 @@ class PublicRequestQuotationService
         $parts = array();
         if ($line['option'] !== '') $parts[] = 'Option: '.$line['option'];
         $parts[] = 'Cartons: '.$line['cartons'];
-        if ($line['units_per_carton'] > 0) $parts[] = 'Units/carton: '.$line['units_per_carton'];
+        if ($line['units_per_carton'] > 0) {
+            $parts[] = 'Pieces/carton: '.$line['units_per_carton'];
+            $parts[] = 'Total pieces: '.$line['total_units'];
+        }
         if ($line['total_cbm'] > 0) $parts[] = 'Total CBM: '.round($line['total_cbm'], 4);
         if ($line['total_gross_weight'] > 0) $parts[] = 'Gross weight: '.round($line['total_gross_weight'], 3).' kg';
         $description = implode(' | ', $parts);
