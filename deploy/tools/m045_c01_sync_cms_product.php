@@ -50,9 +50,9 @@ $productId = $row ? (int)$row->rowid : 0;
 $baseCurrency = strtoupper((string)getDolCurrency());
 $tx = 1.0;
 if ($currency !== $baseCurrency) {
-    $currencyInfo = MultiCurrency::getIdAndTxFromCode($db, $currency);
-    $tx = is_array($currencyInfo) ? (float)($currencyInfo['rate'] ?? $currencyInfo['tx'] ?? 0) : 0;
-    if ($tx <= 0) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=CURRENCY_RATE_MISSING\n"); exit(1); }
+    list($currencyId, $currencyTx) = MultiCurrency::getIdAndTxFromCode($db, $currency, dol_now());
+    $tx = (float)$currencyTx;
+    if ((int)$currencyId <= 0 || $tx <= 0) { fwrite(STDERR, "M045_C01_SYNC=FAIL REASON=CURRENCY_RATE_MISSING\n"); exit(1); }
 }
 $baseUnitPrice = $unitPrice / $tx;
 
