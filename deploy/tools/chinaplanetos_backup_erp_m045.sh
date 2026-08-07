@@ -4,9 +4,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M045-C01'
-readonly RUNTIME_COMMIT='2bc1de310f401fdea587873736ffaa52e2cad9dc'
-readonly SHORT_COMMIT='2bc1de3'
-readonly ARTIFACT_SHA='5e5ab632407137473895f6d10353c2955332ce69bc2b374220bc2e5dca76f1e4'
+readonly RUNTIME_COMMIT='b9e39120d83855bb584398de9b7d56c27a1eed7b'
+readonly SHORT_COMMIT='b9e3912'
+readonly ARTIFACT_SHA='525b3288d072c29ab258c66ef03e81b87a15da4f76fceeb28d7938cf578d71a0'
 readonly RUNTIME_MANIFEST_SHA='21c948877b57b9c3851a374db61df68ea39886174bb05170862c0a958da52608'
 readonly SUPPORT_MANIFEST_SHA='5831f1e4107e25dc6e3dce9f16c3ec871999565dcf6add84e6810e414d6549e7'
 readonly RUNTIME_MANIFEST='deploy/releases/m045-runtime-files.txt'
