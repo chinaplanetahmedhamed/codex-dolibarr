@@ -4,7 +4,7 @@
 
 - **Mission ID:** M045-P01
 - **Type:** PRODUCTION_RELEASE
-- **Status:** APPROVED
+- **Status:** DEPLOYED
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — “Approve adding the restricted M045 production sudo rule and deploying to erp.visiontrading.biz”
 - **Approval date:** 2026-08-07
@@ -17,7 +17,7 @@ Release the staging-accepted M045 public-request quotation workspace to producti
 
 ## Authorized scope
 
-1. Deploy only the nine M045 runtime files below `custom/chinaplanetoperations` from runtime commit `28ce3ee50886dc70e680717dcfc6f36161b6a8d1`.
+1. Deploy only the nine M045 runtime files below `custom/chinaplanetoperations` from the checksum-pinned runtime commit.
 2. Apply only the additive M045 quotation schema from the checksum-pinned artifact.
 3. Synchronize the single acceptance product `WP-9688B` / WooCommerce `105789` idempotently, preserving any existing Dolibarr base price when no approved USD conversion rate exists.
 4. Add one restricted production helper and six exact `sudo` commands for `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status`.
@@ -33,20 +33,20 @@ Release the staging-accepted M045 public-request quotation workspace to producti
 
 ## Release pins
 
-- Runtime commit: `28ce3ee50886dc70e680717dcfc6f36161b6a8d1`
-- Artifact: `m045c01-28ce3ee.tar.gz`
-- Artifact SHA-256: `c413922cebb16645d1dfdd59da8d027cea7d49e838639b4302ac4d872e2ee794`
+- Runtime commit: `bd553a72eadeaa0437105060ea7cdafc8f11ecdd`
+- Artifact: `m045c03-bd553a7.tar.gz`
+- Artifact SHA-256: `2b01b0b4bc31c0f1e8ee80110f953ddb3b6b0c16e5e99d5de5e19b0b8e1b073f`
 - Runtime manifest SHA-256: `21c948877b57b9c3851a374db61df68ea39886174bb05170862c0a958da52608`
 - Support manifest SHA-256: `5831f1e4107e25dc6e3dce9f16c3ec871999565dcf6add84e6810e414d6549e7`
 
 ## Acceptance
 
-- [ ] Local source, helper, installer, and workflow contract tests pass.
-- [ ] The identical staging artifact verifies before production preflight.
-- [ ] Production compare and preflight verify the exact container, database, volume, artifact, source checks, schema prestate, and live authentication boundary.
-- [ ] Production apply reports protected code/database backup paths and hashes.
-- [ ] Independent production verify passes exact runtime hashes, schema, mapped acceptance product, ERP root, and anonymous-login boundary.
-- [ ] `erp.visiontrading.biz` remains healthy and no quotation/customer/email/business transaction is created by deployment.
+- [x] Local source, helper, installer, and workflow contract tests pass.
+- [x] The identical staging artifact verifies before production preflight.
+- [x] Production compare and preflight verify the exact container, database, volume, artifact, source checks, schema prestate, and live authentication boundary.
+- [x] Production apply reports protected code/database backup paths and hashes.
+- [x] Independent production verify passes exact runtime hashes, schema, mapped acceptance product, ERP root, and anonymous-login boundary.
+- [x] `erp.visiontrading.biz` remains healthy and no quotation/customer/email/business transaction was created by deployment.
 
 ## Rollback
 
@@ -58,3 +58,21 @@ Release the staging-accepted M045 public-request quotation workspace to producti
 - GitHub run `31211913874` passed staging verification, production compare, and production preflight.
 - Apply stopped at the acceptance-product update and the helper reported `M045_PRODUCTION_AUTO_ROLLBACK=PASS`.
 - M045-C02 corrects preservation of existing production product extra fields and must pass staging before this mission is retried.
+
+## Second production attempt — rolled back
+
+- GitHub run `31213109770` passed staging verification, production compare, and production preflight.
+- Apply exposed an existing outbound WooCommerce trigger that attempted to send the imported product back to the `chinaplanet` remote site.
+- The remote response was invalid and the helper reported `M045_PRODUCTION_AUTO_ROLLBACK=PASS`.
+- M045-C03 makes the authoritative CMS-to-ERP import trigger-free, preventing the outbound sync loop.
+
+## Successful release
+
+- M045-C03 staging run `31214187404` passed compare, preflight, apply, and independent verify on `backup-erp`.
+- Production GitHub run `31214265559` deployed the identical artifact and passed independent production verification.
+- Code backup: `/root/chinaplanetos-production-code-backups/m045-before-bd553a7-20260807T200505Z.tar.gz`
+- Code backup SHA-256: `714e6321949c45b256fabf9a030d1acfd111c2614cb3ba0e754b67cec2d855f5`
+- Database backup: `/root/chinaplanetos-production-db-backups/m045-before-bd553a7-20260807T200505Z.sql`
+- Database backup SHA-256: `1eb78e017e779c18855fa65f54bc23c503f0b2b65095eee5db444d1df7e1d149`
+- External ERP root returned HTTP 200; anonymous access returned the Dolibarr login form.
+- Authenticated runtime inspection confirmed the quotation workspace, structured rows, product mapping, per-piece price controls, notes, and draft-quotation action without a fatal error.
