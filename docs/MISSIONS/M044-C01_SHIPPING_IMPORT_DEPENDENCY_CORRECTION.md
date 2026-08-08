@@ -4,7 +4,7 @@
 
 - **Mission ID:** M044-C01
 - **Type:** CORRECTION / RELEASE_PACKAGING
-- **Status:** APPROVED
+- **Status:** COMPLETED
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — approved the diagnosed correction and staging-first test
 - **Approval date:** 2026-08-07
@@ -63,3 +63,18 @@ from the runtime artifact.
 - **Admin ERP:** affected; authenticated import page only.
 - **Customer Portal:** `NOT_APPLICABLE`; no customer-facing contract changes.
 - **Mobile App:** `NOT_APPLICABLE`; no mobile contract changes.
+
+## Completion evidence — 2026-08-08
+
+- GitHub PRs `#12` and `#13` merged to `main`.
+- Runtime commit: `dc6387f41611f2bec24c5a96eb8aacc252f019ce`.
+- Artifact SHA-256: `946479da0e9072ff83e2145ac5a82e75e2109459e262e449ef7375a53446a847`.
+- First workflow run `31221565605` stopped read-only at
+  `IMPORT_PAGE_PREREQUISITE_DRIFT`; no apply occurred.
+- Corrected workflow run `31221891055` passed compare, preflight, apply, and
+  verify on canonical `backup-erp`.
+- Independent restricted status is `DEPLOYED` and independent verify passed.
+- Authenticated desktop acceptance passed. At `390×844`, the page title,
+  workbook control, draft action, and batch history were present with document
+  width `390px` and scroll width `390px`; no fatal error or horizontal overflow.
+- Production was not accessed or changed.
