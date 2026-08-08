@@ -1,0 +1,142 @@
+name: Deploy M044-C03 note-review UI to backup-erp
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type DEPLOY_M044_C03_TO_BACKUP_ERP
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-erp-deployment
+  cancel-in-progress: false
+
+env:
+  RUNTIME_COMMIT: 045be07b340f7af8caffa2fa2077cacb53dc0724
+  RELEASE_MISSION: M044-C03
+  RELEASE_TAG: m044-c03-staging
+  ARTIFACT_NAME: m044-c03-045be07.tar.gz
+  ARTIFACT_SHA: adb96df5b75e682739cad60d84e1c6f760b2092280cf5c368cd0f7e78ef7abe2
+  DEPLOY_HOST: 31.97.158.178
+  DEPLOY_USER: codex-deploy
+  DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m044-c03-note-review
+  REMOTE_INBOX: /home/codex-deploy/staging-inbox
+
+jobs:
+  deploy:
+    name: Validate and deploy M044-C03 on backup-erp
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 20
+
+    steps:
+      - name: Require exact staging confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = 'DEPLOY_M044_C03_TO_BACKUP_ERP'
+
+      - name: Check out the workflow-trigger commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify pinned source and helper contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
+          test "$(sha256sum deploy/releases/m044-c03-runtime-files.txt | awk '{print $1}')" = '15d9508ca25c2b8564a85dd8cee2ff22948762bdb64d5df9b98a977d11083419'
+          test "$(sha256sum deploy/releases/m044-c03-support-files.txt | awk '{print $1}')" = 'fe8ba9f22b89b052f07652f90589eb087d79782e92f15af9e3c066b4eaeeab24'
+          test "$(sha256sum custom/chinaplanetshippingprices/admin/batch.php | awk '{print $1}')" = '151cfe7b2d24efcb476a77fed51f34b2ab27493dcd944d8b55a14cbe329f383f'
+          test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php | awk '{print $1}')" = '32854848a2874423ed9401102890129ff749cd7c775f52c55275ee3bc75bde84'
+          test "$(sha256sum custom/chinaplanetshippingprices/css/shippingprices.css | awk '{print $1}')" = '24473c66ee3d441fa145d40a942bddd8ca1fe8c21d76daf47317cd1f322a5372'
+          php -l custom/chinaplanetshippingprices/admin/batch.php >/dev/null
+          php -l custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php >/dev/null
+          php deploy/tests/test_m044_c03_note_review_ui.php
+          bash deploy/tests/test_m044_c03_staging_helper.sh
+
+      - name: Download and verify approved artifact
+        id: artifact
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m044-c03"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$RUNNER_TEMP/m044-c03"
+          artifact="$RUNNER_TEMP/m044-c03/$ARTIFACT_NAME"
+          test -f "$artifact" && test ! -L "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '14'
+          chmod 0644 "$artifact"
+          echo "path=$artifact" >> "$GITHUB_OUTPUT"
+
+      - name: Configure restricted staging SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Upload pinned artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME'"
+
+      - name: Compare staging files
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER compare"
+
+      - name: Restricted staging preflight
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
+
+      - name: Apply with file backup and automatic rollback
+        id: apply
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          output=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply")
+          printf '%s\n' "$output"
+          if grep -Fq 'M044_C03_STAGING_APPLY=PASS' <<<"$output"; then
+            echo 'did_mutate=true' >> "$GITHUB_OUTPUT"
+          elif grep -Fq 'M044_C03_STAGING_APPLY=NOOP_ALREADY_APPLIED' <<<"$output"; then
+            echo 'did_mutate=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Unrecognized staging apply result' >&2
+            exit 1
+          fi
+
+      - name: Verify deployed staging files
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify"
+
+      - name: Roll back if post-apply verification fails
+        if: ${{ failure() && steps.apply.outputs.did_mutate == 'true' }}
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER rollback"
+
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        shell: bash
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
