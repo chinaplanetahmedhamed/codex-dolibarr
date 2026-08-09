@@ -16,7 +16,7 @@ class ShippingNoteTranslationService
     const REQUEST_TIMEOUT = 8;
     const FREE_ENDPOINT = 'https://api.mymemory.translated.net/get';
     const FREE_LANGUAGE_PAIR = 'zh-CN|en';
-    const FREE_MAX_QUERY_BYTES = 500;
+    const FREE_MAX_QUERY_CHARS = 500;
     const SAFE_DERIVED_TOKENS = array('TBD');
 
     private $transport;
@@ -167,7 +167,7 @@ class ShippingNoteTranslationService
             $masked = self::maskProtectedTokens($source);
             $providerSource = $masked['text'];
             $protectedTokenMap = $masked['map'];
-            if (strlen($providerSource) > self::FREE_MAX_QUERY_BYTES) {
+            if (mb_strlen($providerSource, 'UTF-8') > self::FREE_MAX_QUERY_CHARS) {
                 $result['status'] = 'failed'; $result['error'] = 'free_provider_input_too_long'; return $result;
             }
         } elseif (!$this->safeIdentifier($model, 128)) {

@@ -79,8 +79,8 @@ m041Assert(substr_count($freeCalls[0]['payload']['q'], 'tokenzz') === 3 && strpo
 m041Assert(($freeCalls[0]['options']['method'] ?? '') === 'GET' && count(array_filter($freeCalls[0]['headers'], function ($header) { return stripos($header, 'authorization:') === 0; })) === 0, 'free provider method or no-key contract changed');
 $beforeEnglish = count($freeCalls);
 m041Assert($free->translate('Already English')['status'] === 'approved' && count($freeCalls) === $beforeEnglish, 'English-only note called provider');
-$freeTooLong = $free->translate(str_repeat('中', 167));
-m041Assert($freeTooLong['status'] === 'failed' && $freeTooLong['error'] === 'free_provider_input_too_long' && count($freeCalls) === $beforeEnglish, 'free provider byte limit was not fail-closed');
+$freeTooLong = $free->translate(str_repeat('中', 501));
+m041Assert($freeTooLong['status'] === 'failed' && $freeTooLong['error'] === 'free_provider_input_too_long' && count($freeCalls) === $beforeEnglish, 'free provider character limit was not fail-closed');
 $privateEndpoint = new ShippingNoteTranslationService($neverTransport, array('CHINAPLANETSP_TRANSLATION_ENDPOINT'=>'https://10.0.0.1/v1','CHINAPLANETSP_TRANSLATION_MODEL'=>'model'), $resolver);
 m041Assert($privateEndpoint->translate('中文')['error'] === 'endpoint_ip_forbidden' && $noCalls === 0, 'private endpoint was accepted');
 $queryEndpoint = new ShippingNoteTranslationService($neverTransport, array('CHINAPLANETSP_TRANSLATION_ENDPOINT'=>'https://example.com/v1?key=secret','CHINAPLANETSP_TRANSLATION_MODEL'=>'model'), $resolver);

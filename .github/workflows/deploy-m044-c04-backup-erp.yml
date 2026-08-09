@@ -16,11 +16,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RUNTIME_COMMIT: 10e803cdeb98f1d76d0a793244054c1e648bb23b
-  RELEASE_MISSION: M044-C04-R1
-  RELEASE_TAG: m044-c04-staging-r1
-  ARTIFACT_NAME: m044-c04-10e803c.tar.gz
-  ARTIFACT_SHA: 3de5353b46a1f78fd9d2b41c54d6d24ef31d037038e28e06d0c5ab52ddf7da33
+  RUNTIME_COMMIT: 99124ee517bb022b7220f4bafb90c34ca1e49069
+  RELEASE_MISSION: M044-C04-R2
+  RELEASE_TAG: m044-c04-staging-r2
+  ARTIFACT_NAME: m044-c04-99124ee.tar.gz
+  ARTIFACT_SHA: 516853c0fda282ef5b7f8e8cbe263cca285b196516b00f3ce768aac254435e61
   DEPLOY_HOST: 31.97.158.178
   DEPLOY_USER: codex-deploy
   DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m044-c04-auto-translation
@@ -62,7 +62,7 @@ jobs:
           test "$(sha256sum custom/chinaplanetshippingprices/admin/import.php | awk '{print $1}')" = 'f0a0148fd560971273f132860ed5bf6a34b27bb235e147eb3eaf3e186b86c00e'
           test "$(sha256sum custom/chinaplanetshippingprices/admin/setup.php | awk '{print $1}')" = '7b90f28d70e12e055ceec6f9c80f1da7852c0c773bf541b9e61ba41f87e12349'
           test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php | awk '{print $1}')" = 'bba37e89ef252937ef4d79e69a9cef6e01ed7573fcabe292fcd319f172b92a6d'
-          test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php | awk '{print $1}')" = 'ba6d7879a21c381f4f5ad6290e65204f838dfb18fb816bbcc92578ad3d50eca3'
+          test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php | awk '{print $1}')" = 'cfe9d925762add8741743f86be029cfa6a94f953c35bf1d72b3e441d2552f40a'
           test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php | awk '{print $1}')" = '666a81699e8b764a6a32429c4654f2843745a1a0edf66bef3c4bdc6d0e0ac543'
           php -l custom/chinaplanetshippingprices/admin/batch.php >/dev/null
           php -l custom/chinaplanetshippingprices/admin/import.php >/dev/null
