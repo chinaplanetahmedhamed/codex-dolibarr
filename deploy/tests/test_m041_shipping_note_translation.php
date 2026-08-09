@@ -63,14 +63,19 @@ $neverTransport = function () use (&$noCalls) { $noCalls++; throw new RuntimeExc
 $freeCalls = array();
 $freeTransport = function ($endpoint, $payload, $headers, $options) use (&$freeCalls) {
     $freeCalls[] = compact('endpoint','payload','headers','options');
-    return array('status'=>200, 'body'=>json_encode(array('responseStatus'=>200, 'responseData'=>array('translatedText'=>'Nansha voyage AB12CD34 40HQ surcharge RMB180'))), 'error'=>'');
+    preg_match_all('/zzcp[a-z]+tokenzz/i', $payload['q'], $placeholders);
+    $tokens = $placeholders[0];
+    $text = 'Nansha voyage '.($tokens[0] ?? '').' '.($tokens[1] ?? '').' surcharge '.($tokens[2] ?? '');
+    return array('status'=>200, 'body'=>json_encode(array('responseStatus'=>200, 'responseData'=>array('translatedText'=>$text))), 'error'=>'');
 };
 $freeResolver = function ($host) { return $host === 'api.mymemory.translated.net' ? array('8.8.8.8') : array(); };
 $free = new ShippingNoteTranslationService($freeTransport, array(), $freeResolver);
 $freeResult = $free->translate('南沙 航次 AB12CD34 40HQ 加收 RMB180');
 m041Assert($freeResult['status'] === 'approved' && $freeResult['provider'] === 'api.mymemory.translated.net', 'free default provider was not accepted automatically: '.$freeResult['error']);
 m041Assert(count($freeCalls) === 1 && $freeCalls[0]['endpoint'] === ShippingNoteTranslationService::FREE_ENDPOINT, 'free provider endpoint changed');
-m041Assert($freeCalls[0]['payload'] === array('q'=>'南沙 航次 AB12CD34 40HQ 加收 RMB180','langpair'=>'zh-CN|en','mt'=>'1'), 'free provider sent unexpected fields');
+m041Assert(array_keys($freeCalls[0]['payload']) === array('q','langpair','mt') && $freeCalls[0]['payload']['langpair'] === 'zh-CN|en' && $freeCalls[0]['payload']['mt'] === '1', 'free provider sent unexpected fields');
+m041Assert(strpos($freeCalls[0]['payload']['q'], 'AB12CD34') === false && strpos($freeCalls[0]['payload']['q'], '40HQ') === false && strpos($freeCalls[0]['payload']['q'], 'RMB180') === false, 'protected tokens were exposed to free translation');
+m041Assert(substr_count($freeCalls[0]['payload']['q'], 'tokenzz') === 3 && strpos($freeResult['notes_en'], 'AB12CD34') !== false && strpos($freeResult['notes_en'], '40HQ') !== false && strpos($freeResult['notes_en'], 'RMB180') !== false, 'protected tokens were not restored verbatim');
 m041Assert(($freeCalls[0]['options']['method'] ?? '') === 'GET' && count(array_filter($freeCalls[0]['headers'], function ($header) { return stripos($header, 'authorization:') === 0; })) === 0, 'free provider method or no-key contract changed');
 $beforeEnglish = count($freeCalls);
 m041Assert($free->translate('Already English')['status'] === 'approved' && count($freeCalls) === $beforeEnglish, 'English-only note called provider');
@@ -112,6 +117,7 @@ foreach ($adversarial as $name=>$case) {
 m041Assert(ShippingNoteTranslationService::validateEnglishTranslation('航次 AB12CD34', 'Voyage AB12CD35') === 'protected_token_missing', 'alternating voyage code change was accepted');
 m041Assert(ShippingNoteTranslationService::validateEnglishTranslation('航次 A1B2', 'Voyage A1B3') === 'protected_token_missing', 'short alternating voyage code change was accepted');
 m041Assert(ShippingNoteTranslationService::validateEnglishTranslation('航次 AB12CD34', 'Voyage AB12CD34') === '', 'unchanged alternating voyage code was rejected');
+m041Assert(ShippingNoteTranslationService::validateEnglishTranslation('价格待定', 'Price TBD') === '', 'safe derived TBD marker was rejected');
 
 $boundedService = new ShippingNoteTranslationService($transport, $env, $resolver);
 $boundedService->translate($normalized, 0.35);

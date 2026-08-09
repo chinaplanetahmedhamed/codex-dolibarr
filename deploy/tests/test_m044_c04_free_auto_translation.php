@@ -20,7 +20,8 @@ $importPage = $read('custom/chinaplanetshippingprices/admin/import.php');
 
 $assert(strpos($translator, "FREE_ENDPOINT = 'https://api.mymemory.translated.net/get'") !== false, 'fixed MyMemory endpoint absent');
 $assert(strpos($translator, "FREE_LANGUAGE_PAIR = 'zh-CN|en'") !== false, 'fixed language pair absent');
-$assert(strpos($translator, "array('q'=>\$source, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1')") !== false, 'minimal free-provider payload absent');
+$assert(strpos($translator, "array('q'=>\$providerSource, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1')") !== false, 'minimal free-provider payload absent');
+$assert(strpos($translator, 'maskProtectedTokens') !== false && strpos($translator, 'restoreProtectedTokens') !== false, 'free-provider token preservation absent');
 $assert(strpos($translator, "'method' => \$isFreeProvider ? 'GET' : 'POST'") !== false, 'provider method isolation absent');
 $assert(strpos($translator, 'provider_quota_exhausted') !== false && strpos($translator, 'FREE_MAX_QUERY_BYTES = 500') !== false, 'quota or byte-limit fail-closed behavior absent');
 $assert(strpos($translator, 'validateEnglishTranslation') !== false && strpos($translator, 'CURLOPT_FOLLOWLOCATION => false') !== false && strpos($translator, 'CURLOPT_RESOLVE') !== false, 'translation validation or SSRF controls absent');
