@@ -19,10 +19,12 @@ $importer = $read('custom/chinaplanetshippingprices/class/ShippingPriceImporter.
 $importPage = $read('custom/chinaplanetshippingprices/admin/import.php');
 
 $assert(strpos($translator, "FREE_ENDPOINT = 'https://api.mymemory.translated.net/get'") !== false, 'fixed MyMemory endpoint absent');
+$assert(strpos($translator, "GOOGLE_FREE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single'") !== false, 'fixed Google fallback endpoint absent');
 $assert(strpos($translator, "FREE_LANGUAGE_PAIR = 'zh-CN|en'") !== false, 'fixed language pair absent');
 $assert(strpos($translator, "array('q'=>\$providerSource, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1')") !== false, 'minimal free-provider payload absent');
+$assert(strpos($translator, "array('client'=>'gtx', 'sl'=>'zh-CN', 'tl'=>'en', 'dt'=>'t', 'q'=>\$providerSource)") !== false, 'minimal Google fallback payload absent');
 $assert(strpos($translator, 'maskProtectedTokens') !== false && strpos($translator, 'restoreProtectedTokens') !== false, 'free-provider token preservation absent');
-$assert(strpos($translator, "'method' => \$isFreeProvider ? 'GET' : 'POST'") !== false, 'provider method isolation absent');
+$assert(strpos($translator, "'method' => 'GET'") !== false && strpos($translator, "'method' => 'POST'") !== false, 'provider method isolation absent');
 $assert(strpos($translator, 'provider_quota_exhausted') !== false && strpos($translator, 'FREE_MAX_QUERY_CHARS = 500') !== false, 'quota or character-limit fail-closed behavior absent');
 $assert(strpos($translator, 'validateEnglishTranslation') !== false && strpos($translator, 'CURLOPT_FOLLOWLOCATION => false') !== false && strpos($translator, 'CURLOPT_RESOLVE') !== false, 'translation validation or SSRF controls absent');
 
@@ -121,4 +123,4 @@ $failed = (new ShippingNoteReviewService($failedDb, $staff, 1, new M044C04FakeTr
 $assert($failed['approved'] === 0 && $failed['failed'] === 1 && $failed['remaining'] === 1 && $failed['stalled'] === true, 'failed provider did not stop safely');
 $assert(count($failedDb->updates) === 1 && strpos($failedDb->updates[0], 'public_notes=NULL') !== false && strpos($failedDb->updates[0], 'provider_quota_exhausted') !== false, 'failed provider output was not kept private');
 
-echo "M044_C04_FREE_AUTO_TRANSLATION=PASS provider=MYMEMORY key=NONE retry=BOUNDED db_flow=PASS approval=AUTOMATIC publication=BLOCKED_WHILE_PENDING\n";
+echo "M044_C04_FREE_AUTO_TRANSLATION=PASS provider=MYMEMORY_PLUS_GOOGLE_FALLBACK key=NONE retry=BOUNDED db_flow=PASS approval=AUTOMATIC publication=BLOCKED_WHILE_PENDING\n";
