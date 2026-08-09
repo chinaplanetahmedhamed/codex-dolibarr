@@ -76,6 +76,14 @@ m041Assert(count($freeCalls) === 1 && $freeCalls[0]['endpoint'] === ShippingNote
 m041Assert(array_keys($freeCalls[0]['payload']) === array('q','langpair','mt') && $freeCalls[0]['payload']['langpair'] === 'zh-CN|en' && $freeCalls[0]['payload']['mt'] === '1', 'free provider sent unexpected fields');
 m041Assert(strpos($freeCalls[0]['payload']['q'], 'AB12CD34') === false && strpos($freeCalls[0]['payload']['q'], '40HQ') === false && strpos($freeCalls[0]['payload']['q'], 'RMB180') === false, 'protected tokens were exposed to free translation');
 m041Assert(substr_count($freeCalls[0]['payload']['q'], 'tokenzz') === 3 && strpos($freeResult['notes_en'], 'AB12CD34') !== false && strpos($freeResult['notes_en'], '40HQ') !== false && strpos($freeResult['notes_en'], 'RMB180') !== false, 'protected tokens were not restored verbatim');
+$dropTransport = function ($endpoint, $payload) {
+    preg_match_all('/zzcp[a-z]+tokenzz/i', $payload['q'], $placeholders);
+    $tokens = $placeholders[0];
+    $text = 'Nansha voyage '.($tokens[0] ?? '').' '.($tokens[1] ?? '');
+    return array('status'=>200, 'body'=>json_encode(array('responseStatus'=>200, 'responseData'=>array('translatedText'=>$text))), 'error'=>'');
+};
+$dropResult = (new ShippingNoteTranslationService($dropTransport, array(), $freeResolver))->translate('南沙 航次 AB12CD34 40HQ 加收 RMB180');
+m041Assert($dropResult['status'] === 'approved' && strpos($dropResult['notes_en'], 'Carrier references preserved from source:') !== false && strpos($dropResult['notes_en'], 'RMB180') !== false, 'provider-dropped source token was not preserved explicitly');
 m041Assert(($freeCalls[0]['options']['method'] ?? '') === 'GET' && count(array_filter($freeCalls[0]['headers'], function ($header) { return stripos($header, 'authorization:') === 0; })) === 0, 'free provider method or no-key contract changed');
 $beforeEnglish = count($freeCalls);
 m041Assert($free->translate('Already English')['status'] === 'approved' && count($freeCalls) === $beforeEnglish, 'English-only note called provider');
