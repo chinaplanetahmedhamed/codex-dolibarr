@@ -17,6 +17,7 @@ class ShippingNoteTranslationService
     const FREE_ENDPOINT = 'https://api.mymemory.translated.net/get';
     const FREE_LANGUAGE_PAIR = 'zh-CN|en';
     const FREE_MAX_QUERY_BYTES = 500;
+    const SAFE_DERIVED_TOKENS = array('TBD');
 
     private $transport;
     private $environment;
@@ -83,10 +84,43 @@ class ShippingNoteTranslationService
         $sourceTokens = self::protectedTokens($source);
         $translationTokens = self::protectedTokens($translation);
         foreach ($sourceTokens as $token) if (strpos($translation, $token) === false) return 'protected_token_missing';
-        foreach ($translationTokens as $token) if (!in_array($token, $sourceTokens, true)) return 'protected_token_added';
+        foreach ($translationTokens as $token) {
+            if (!in_array($token, $sourceTokens, true) && !in_array($token, self::SAFE_DERIVED_TOKENS, true)) return 'protected_token_added';
+        }
         $prose = trim(str_replace($sourceTokens, ' ', $translation));
         if (preg_match('/[A-Za-z]{3,}/', $prose) !== 1) return 'translation_not_english';
         return '';
+    }
+
+    /** Hide operational tokens from keyless machine translation, then restore them verbatim. */
+    private static function maskProtectedTokens($source)
+    {
+        $masked = $source;
+        $map = array();
+        $index = 0;
+        foreach (self::protectedTokens($source) as $token) {
+            do {
+                $value = $index++;
+                $letters = '';
+                do {
+                    $letters = chr(97 + ($value % 26)).$letters;
+                    $value = intdiv($value, 26) - 1;
+                } while ($value >= 0);
+                $placeholder = 'zzcp'.$letters.'tokenzz';
+            } while (stripos($source, $placeholder) !== false || isset($map[$placeholder]));
+            $masked = str_replace($token, ' '.$placeholder.' ', $masked);
+            $map[$placeholder] = $token;
+        }
+        return array('text'=>$masked, 'map'=>$map);
+    }
+
+    private static function restoreProtectedTokens($translation, array $map)
+    {
+        if (!$map) return $translation;
+        $replacements = array();
+        foreach ($map as $token) $replacements[] = ' '.$token.' ';
+        $translation = str_ireplace(array_keys($map), $replacements, $translation);
+        return preg_replace('/[ \t]{2,}/u', ' ', $translation);
     }
 
     /**
@@ -124,11 +158,16 @@ class ShippingNoteTranslationService
             $result['status'] = 'failed'; $result['error'] = $target['error']; return $result;
         }
         $isFreeProvider = $target['provider'] === 'api.mymemory.translated.net';
+        $providerSource = $source;
+        $protectedTokenMap = array();
         if ($isFreeProvider) {
             if ($endpoint !== self::FREE_ENDPOINT || $model !== self::FREE_LANGUAGE_PAIR) {
                 $result['status'] = 'failed'; $result['error'] = 'free_provider_config_invalid'; return $result;
             }
-            if (strlen($source) > self::FREE_MAX_QUERY_BYTES) {
+            $masked = self::maskProtectedTokens($source);
+            $providerSource = $masked['text'];
+            $protectedTokenMap = $masked['map'];
+            if (strlen($providerSource) > self::FREE_MAX_QUERY_BYTES) {
                 $result['status'] = 'failed'; $result['error'] = 'free_provider_input_too_long'; return $result;
             }
         } elseif (!$this->safeIdentifier($model, 128)) {
@@ -139,7 +178,7 @@ class ShippingNoteTranslationService
         $result['provider'] = $target['provider'];
         $result['model'] = $model;
         if ($isFreeProvider) {
-            $payload = array('q'=>$source, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1');
+            $payload = array('q'=>$providerSource, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1');
             $headers = array('Accept: application/json');
         } else {
             $payload = array(
@@ -200,6 +239,7 @@ class ShippingNoteTranslationService
                 $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
             }
             $rawTranslation = html_entity_decode($rawTranslation, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $rawTranslation = self::restoreProtectedTokens($rawTranslation, $protectedTokenMap);
         } else {
             if (!is_array($decoded) || !isset($decoded['choices'][0]['message']['content']) || !is_string($decoded['choices'][0]['message']['content'])) {
                 $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
