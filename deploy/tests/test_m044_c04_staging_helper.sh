@@ -15,10 +15,10 @@ grep -Fq "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'" "$helper"
 grep -Fq "readonly TARGET_VOLUME='erp-staging_erp-staging_custom'" "$helper"
 grep -Fq "readonly STATE_ROOT='/var/lib/chinaplanetos-m044-c04-staging'" "$helper"
 grep -Fq 'FILES=6 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO' "$helper"
-grep -Fq "readonly HELPER_SHA='d1e47e43d9c6ba6597ec534e00bfb3a7b08fee68f590121bdb595e645a622526'" "$installer"
-grep -Fq "readonly PREVIOUS_HELPER_SHA='276354b2bd8d97e1b43f8189070593d7a716df702c6b04e1899056f092f8fe04'" "$installer"
+grep -Fq "readonly HELPER_SHA='741c4978c6b6acf17605807130f8f35fced43b04b33ae5db143b5b759d28970a'" "$installer"
+grep -Fq "readonly PREVIOUS_HELPER_SHA='d1e47e43d9c6ba6597ec534e00bfb3a7b08fee68f590121bdb595e645a622526'" "$installer"
 grep -Fq "readonly SUDOERS_SHA='8cdb77ae3b5633463b9a2bd2eee16febb010ff20b0d146695b26516baa5d570e'" "$installer"
-[[ $(sha256sum "$helper" | awk '{print $1}') == 'd1e47e43d9c6ba6597ec534e00bfb3a7b08fee68f590121bdb595e645a622526' ]]
+[[ $(sha256sum "$helper" | awk '{print $1}') == '741c4978c6b6acf17605807130f8f35fced43b04b33ae5db143b5b759d28970a' ]]
 [[ $(sha256sum "$sudoers" | awk '{print $1}') == '8cdb77ae3b5633463b9a2bd2eee16febb010ff20b0d146695b26516baa5d570e' ]]
 
 if grep -Eq 'vision_erp|vision_db|vision-os_dolibarr_custom|https://erp\.visiontrading\.biz|production-(apply|verify|rollback)|environment:[[:space:]]+production' "$helper" "$installer" "$workflow"; then
