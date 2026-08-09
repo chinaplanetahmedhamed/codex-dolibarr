@@ -3,11 +3,11 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M044-C04-R4'
-readonly RUNTIME_COMMIT='e391707881e150ac02898a4fe317ff7aa5373206'
-readonly SHORT_COMMIT='e391707'
-readonly ARTIFACT_SHA='13b46ffb7881dd12a293cc34da5f3d12f27b09a8b6e86304354276180aeac185'
-readonly RUNTIME_MANIFEST_SHA='00ce85c831fb14b33f391cebd79779c32b0559af17520cb64430b5ad34f256c9'
+readonly RELEASE='M044-C04-R5'
+readonly RUNTIME_COMMIT='32d38fe9a11c3f7d91b54b70d54c64c224d10e3a'
+readonly SHORT_COMMIT='32d38fe'
+readonly ARTIFACT_SHA='9cd4dda46abe4a7ee265ce52924f5800f9994545aeb826d4d241aef9f8d0c1a8'
+readonly RUNTIME_MANIFEST_SHA='387f8793df2e45f6eb6dd7c3242aed6792b45b3f85ac18fcbb6ced71497f611e'
 readonly SUPPORT_MANIFEST_SHA='105369eb9c2d98e950091e588bb5e6b0d01daef6d6a0905aed7585d22bb300c1'
 
 readonly RUNTIME_MANIFEST='deploy/releases/m044-c04-runtime-files.txt'
@@ -19,14 +19,16 @@ readonly -a RUNTIME_FILES=(
   'custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php'
   'custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php'
   'custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php'
+  'custom/chinaplanetshippingprices/class/ShippingPriceService.class.php'
 )
 readonly -a RUNTIME_SHAS=(
-  '95377602c5898c698fa6e23729c842c452336a28e632e9f0e234d264eccdaac9'
-  'f0a0148fd560971273f132860ed5bf6a34b27bb235e147eb3eaf3e186b86c00e'
-  '7b90f28d70e12e055ceec6f9c80f1da7852c0c773bf541b9e61ba41f87e12349'
+  'adb296f733eea7dfdffc63d7e8994cb991b24237429e7613f08037c36471f858'
+  '31c1464cfdea0ea7c3351a293ee8ff8604e8f6171771af2754f97dd00566a51f'
+  '2dad8649f6da82a96981b510a80740eb0b62e59dc04030af8fc01149f7c0df44'
   'bba37e89ef252937ef4d79e69a9cef6e01ed7573fcabe292fcd319f172b92a6d'
   'c8bbd953633f6eb1fa0d110f4324c16783c790b5a09df4d769081a75526096ea'
-  '666a81699e8b764a6a32429c4654f2843745a1a0edf66bef3c4bdc6d0e0ac543'
+  '7528713f06e4cf340e8d0d7bc317a939b30a05eeffba6d1b5ae260298c48caf8'
+  '3d63618ad27ddc7d168e3e096b28766802fe41cc1104c6a8c6d2c2320de4a782'
 )
 readonly -a TARGET_FILES=(
   'chinaplanetshippingprices/admin/batch.php'
@@ -35,6 +37,7 @@ readonly -a TARGET_FILES=(
   'chinaplanetshippingprices/class/ShippingNoteReviewService.class.php'
   'chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php'
   'chinaplanetshippingprices/class/ShippingPriceImporter.class.php'
+  'chinaplanetshippingprices/class/ShippingPriceService.class.php'
 )
 readonly -a SUPPORT_FILES=(
   'deploy/tests/test_m041_shipping_note_translation.php'
@@ -55,7 +58,7 @@ readonly TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_da
 readonly TARGET_HTTP='http://127.0.0.1:18088'
 readonly BACKUP_ROOT='/root/backup-erp-code-backups'
 readonly STATE_ROOT='/var/lib/chinaplanetos-m044-c04-staging'
-readonly STATE_FILE="${STATE_ROOT}/m044-c04-r4.state"
+readonly STATE_FILE="${STATE_ROOT}/m044-c04-r5.state"
 readonly LOCK_FILE="${STATE_ROOT}/m044-c04.lock"
 
 CANDIDATE_ROOT=''
@@ -83,7 +86,7 @@ restore_prior() {
   [[ -f "$PRESTATE_FILE" && ! -L "$PRESTATE_FILE" && $(sha256 "$PRESTATE_FILE") == "$PRESTATE_SHA" ]] || return 1
   while IFS='|' read -r rel state expected_sha owner group mode; do
     case "$rel" in
-      chinaplanetshippingprices/admin/batch.php|chinaplanetshippingprices/admin/import.php|chinaplanetshippingprices/admin/setup.php|chinaplanetshippingprices/class/ShippingNoteReviewService.class.php|chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php|chinaplanetshippingprices/class/ShippingPriceImporter.class.php) ;;
+      chinaplanetshippingprices/admin/batch.php|chinaplanetshippingprices/admin/import.php|chinaplanetshippingprices/admin/setup.php|chinaplanetshippingprices/class/ShippingNoteReviewService.class.php|chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php|chinaplanetshippingprices/class/ShippingPriceImporter.class.php|chinaplanetshippingprices/class/ShippingPriceService.class.php) ;;
       *) return 1 ;;
     esac
     local target="$TARGET_ROOT/$rel" tmp="${TARGET_ROOT}/${rel}.m044-c04-restore.$$"
@@ -145,7 +148,7 @@ validate_artifact() {
   local listing types expected actual
   listing=$(mktemp); types=$(mktemp); expected=$(mktemp); actual=$(mktemp)
   tar -tzf "$ARTIFACT_COPY" >"$listing" || die 'ARTIFACT_TAR_INVALID'
-  [[ $(wc -l <"$listing") -eq 11 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
+  [[ $(wc -l <"$listing") -eq 12 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
   [[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/\._/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
   [[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
   tar -tvzf "$ARTIFACT_COPY" >"$types" || die 'ARTIFACT_LIST_FAILED'
@@ -194,8 +197,8 @@ compare_files() {
 create_backup() {
   local stamp backup_list rel target
   stamp=$(date -u '+%Y%m%dT%H%M%SZ')
-  CODE_BACKUP="${BACKUP_ROOT}/m044-c04-r4-before-${SHORT_COMMIT}-${stamp}.tar.gz"
-  PRESTATE_FILE="${BACKUP_ROOT}/m044-c04-r4-before-${SHORT_COMMIT}-${stamp}.prestate"
+  CODE_BACKUP="${BACKUP_ROOT}/m044-c04-r5-before-${SHORT_COMMIT}-${stamp}.tar.gz"
+  PRESTATE_FILE="${BACKUP_ROOT}/m044-c04-r5-before-${SHORT_COMMIT}-${stamp}.prestate"
   backup_list=$(mktemp)
   : >"$PRESTATE_FILE"
   for rel in "${TARGET_FILES[@]}"; do
@@ -274,7 +277,7 @@ command_compare() {
 
 command_preflight() {
   check_environment; validate_artifact; candidate_checks; compare_files
-  echo "M044_C04_STAGING_PREFLIGHT=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=6 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
+  echo "M044_C04_STAGING_PREFLIGHT=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
 }
 
 command_apply() {
@@ -294,19 +297,19 @@ command_apply() {
   live_checks || die 'LIVE_CHECK_FAILED'
   MUTATED=0
   save_state
-  echo "M044_C04_STAGING_APPLY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA FILES=6 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
+  echo "M044_C04_STAGING_APPLY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
 }
 
 command_verify() {
   check_environment; validate_artifact; candidate_checks; load_state
   live_checks || die 'LIVE_VERIFY_FAILED'
-  echo "M044_C04_STAGING_VERIFY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=6 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
+  echo "M044_C04_STAGING_VERIFY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
 }
 
 command_rollback() {
   exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
   check_environment; validate_artifact; load_state
-  local reapply="${BACKUP_ROOT}/m044-c04-r4-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"
+  local reapply="${BACKUP_ROOT}/m044-c04-r5-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"
   tar -czpf "$reapply" -C "$TARGET_ROOT" "${TARGET_FILES[@]}"
   chmod 0600 "$reapply"
   restore_prior || die 'CODE_RESTORE_FAILED'

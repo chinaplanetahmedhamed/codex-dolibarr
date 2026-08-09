@@ -168,6 +168,9 @@ class M041FakeTranslator
         return array('status'=>'approved','notes_en'=>'EN '.$source,'source_hash'=>hash('sha256',$source),'provider'=>'fake','model'=>'fake','error'=>'','attempted'=>true);
     }
 }
+if (!isset($GLOBALS['conf'])) $GLOBALS['conf'] = new stdClass();
+if (!isset($GLOBALS['conf']->global)) $GLOBALS['conf']->global = new stdClass();
+$GLOBALS['conf']->global->CHINAPLANETSP_AUTO_TRANSLATION_ENABLED = 1;
 $reflector = new ReflectionClass('ShippingPriceImporter');
 $importer = $reflector->newInstanceWithoutConstructor();
 $set = function ($name, $value) use ($reflector, $importer) { $property=$reflector->getProperty($name); $property->setAccessible(true); $property->setValue($importer,$value); };
@@ -212,4 +215,14 @@ $parse = $reflector->getMethod('parseSheet'); $parse->setAccessible(true);
 $parsed = $parse->invoke($importer,$sheet,array('container_row'=>2,'origin_col'=>1,'pod_col'=>2,'route_col'=>3,'price_cols'=>array(4=>'20GP'),'notes_col'=>5,'effective_date'=>'2026-08-03','price_group'=>'tariff'),1000,'USD');
 m041Assert($acceptedOnlyTranslator->calls === 1 && count($parsed['rows']) === 1 && $parsed['rows'][0]['source_row'] === 4, 'rejected price rows consumed translation budget');
 
-echo "M041_TRANSLATION=PASS normalization=6 provider_bounds=PASS free_provider=PASS ssrf=PASS dedup=PASS circuit=PASS\n";
+$GLOBALS['conf']->global->CHINAPLANETSP_AUTO_TRANSLATION_ENABLED = 0;
+$disabledImporter = $reflector->newInstanceWithoutConstructor();
+$disabledTranslator = new M041FakeTranslator();
+foreach (array('translator'=>$disabledTranslator,'translationCache'=>array(),'translationStartedAt'=>microtime(true),'translationCalls'=>0,'translationCircuitOpen'=>false) as $name=>$value) {
+    $property = $reflector->getProperty($name); $property->setAccessible(true); $property->setValue($disabledImporter, $value);
+}
+$disabledResult = $call->invoke($disabledImporter, '停用翻译 AB12CD34');
+m041Assert($disabledResult['status'] === 'not_needed' && $disabledResult['error'] === 'translation_disabled' && $disabledTranslator->calls === 0, 'disabled translation still called an external provider');
+$GLOBALS['conf']->global->CHINAPLANETSP_AUTO_TRANSLATION_ENABLED = 1;
+
+echo "M041_TRANSLATION=PASS normalization=6 provider_bounds=PASS free_provider=PASS disabled_no_call=PASS ssrf=PASS dedup=PASS circuit=PASS\n";

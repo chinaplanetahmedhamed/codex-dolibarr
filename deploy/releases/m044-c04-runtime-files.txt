@@ -4,3 +4,4 @@ custom/chinaplanetshippingprices/admin/setup.php
 custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php
 custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php
 custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php
+custom/chinaplanetshippingprices/class/ShippingPriceService.class.php

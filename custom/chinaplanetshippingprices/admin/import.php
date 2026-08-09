@@ -9,6 +9,7 @@ require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shel
 chinaplanetsp_require_internal($user, 'import');
 $langs->loadLangs(array('chinaplanetshippingprices@chinaplanetshippingprices', 'admin'));
 $importer = new ShippingPriceImporter($db, $user);
+$translationEnabled = ShippingPriceImporter::automaticTranslationEnabled();
 $action = GETPOST('action', 'aZ09');
 $isPost = !empty($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST';
 
@@ -67,7 +68,11 @@ llxHeader('', 'Import Rates / استيراد الأسعار', '', '', 0, 0, arra
 cpcc_admin_shell_open('shippingprices', 'Import Rates / استيراد أسعار الشحن', 'رفع ملف الوكيل وتجهيز مسودة آمنة للمراجعة قبل نشر الأسعار', 'fa-file-upload');
 print '<main class="chinaplanetsp-rates-manager chinaplanetsp-import-page">';
 print '<div class="chinaplanetsp-admin-toolbar"><a class="button" href="dashboard.php"><span class="fas fa-sliders-h"></span> Control Center / مركز الإدارة</a><a class="button" href="../index.php"><span class="fas fa-search-dollar"></span> Price Inquiry / استعلام الأسعار</a></div>';
-print '<div class="chinaplanetsp-mapping-help"><span class="fas fa-language"></span><div><strong>Automatic English translation / ترجمة إنجليزية تلقائية</strong><p>Carrier-note text is translated automatically with the free MyMemory fallback and valid output is accepted without manual approval. You can edit English only when needed. Uploading still creates a safe draft until you publish it. / تُترجم الملاحظات تلقائيًا دون موافقة يدوية، ويمكن تعديل الإنجليزية عند الحاجة فقط.</p></div></div>';
+if ($translationEnabled) {
+    print '<div class="chinaplanetsp-mapping-help"><span class="fas fa-language"></span><div><strong>Automatic English translation / ترجمة إنجليزية تلقائية</strong><p>Carrier-note text is translated automatically and valid output is accepted without manual approval. You can edit English only when needed. Uploading still creates a safe draft until you publish it. / تُترجم الملاحظات تلقائيًا دون موافقة يدوية، ويمكن تعديل الإنجليزية عند الحاجة فقط.</p></div></div>';
+} else {
+    print '<div class="chinaplanetsp-mapping-help"><span class="fas fa-language"></span><div><strong>Carrier-note translation is disabled / ترجمة ملاحظات الوكيل متوقفة</strong><p>Source notes remain internal, are not sent externally, and do not block publishing the price batch. / تبقى الملاحظات داخلية ولا تُرسل للخارج ولا تمنع نشر دفعة الأسعار.</p></div></div>';
+}
 print '<section class="chinaplanetsp-rule-editor chinaplanetsp-import-card"><div class="chinaplanetsp-list-head"><h2><span class="fas fa-cloud-upload-alt"></span> Upload workbook / رفع ملف الأسعار</h2><span class="chinaplanetsp-format-badge">XLS · XLSX · CSV</span></div>';
 print '<form method="post" action="?uploadform=1" enctype="multipart/form-data"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="upload"><div class="chinaplanetsp-rule-grid chinaplanetsp-import-grid">';
 print '<label class="chinaplanetsp-file-field"><span>Workbook / ملف الأسعار *</span><input type="file" name="ratefile" accept=".xls,.xlsx,.csv" required><small>Choose the original agent workbook. / اختر ملف الأسعار الأصلي من الوكيل.</small></label>';

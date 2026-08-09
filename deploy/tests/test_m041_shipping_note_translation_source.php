@@ -29,6 +29,7 @@ $assert(strpos($batch,"define('CSRFCHECK_WITH_TOKEN', 1)")!==false&&strpos($batc
 $assert(strpos($batch,'listGroups($id, $notePage, 25)')!==false&&strpos($review,'COUNT(DISTINCT source_row)')!==false,'source-row pagination/grouping absent');
 $assert(strpos($service,'private function addInternalProjection')!==false&&strpos($service,"if (\$includeCost) \$result = \$this->addInternalProjection")!==false,'explicit private projection absent');
 $assert(strpos($service,"translation_status === 'approved'")!==false&&strpos($service,'$hasM041Provenance')!==false,'M041 public-note status gate absent');
+$assert(strpos($service,'CHINAPLANETSP_AUTO_TRANSLATION_ENABLED')!==false&&strpos($service,'$translationEnabled &&')!==false,'disabled translation public-note suppression absent');
 $publicSection = substr($service, strpos($service,"'rate_id' =>"), strpos($service,'if ($includeCost)',strpos($service,"'rate_id' =>"))-strpos($service,"'rate_id' =>"));
 foreach (array('source_notes','notes_en','translation_provider','translation_model','translation_error','internal_notes','supplier_cost','base_margin') as $forbidden) $assert(strpos($publicSection,$forbidden)===false,'public projection leak '.$forbidden);
 $assert(strpos($api,'), false, 100)')!==false,'REST API no longer forces public projection');

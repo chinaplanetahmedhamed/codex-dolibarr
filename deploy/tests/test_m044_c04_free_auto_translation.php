@@ -17,6 +17,8 @@ $review = $read('custom/chinaplanetshippingprices/class/ShippingNoteReviewServic
 $batch = $read('custom/chinaplanetshippingprices/admin/batch.php');
 $importer = $read('custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php');
 $importPage = $read('custom/chinaplanetshippingprices/admin/import.php');
+$setupPage = $read('custom/chinaplanetshippingprices/admin/setup.php');
+$priceService = $read('custom/chinaplanetshippingprices/class/ShippingPriceService.class.php');
 
 $assert(strpos($translator, "FREE_ENDPOINT = 'https://api.mymemory.translated.net/get'") !== false, 'fixed MyMemory endpoint absent');
 $assert(strpos($translator, "GOOGLE_FREE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single'") !== false, 'fixed Google fallback endpoint absent');
@@ -39,6 +41,11 @@ $assert(strpos($batch, "\$m041PostedAction === 'auto_translate'") !== false && s
 $assert(strpos($batch, 'form.submit()') !== false && strpos($batch, "\$autoMode !== 'stopped'") !== false, 'automatic continuation or no-progress stop absent');
 $assert(strpos($batch, 'requires manual approval') === false && strpos($importer, 'Approve every imported carrier/source note') === false, 'stale manual-approval requirement remains');
 $assert(strpos($importer, 'manual editing is optional') !== false && strpos($importPage, 'without manual approval') !== false, 'optional-edit wording absent');
+$assert(strpos($importer, 'automaticTranslationEnabled') !== false && strpos($importer, 'if (self::automaticTranslationEnabled())') !== false, 'translation publication toggle absent');
+$assert(strpos($batch, 'Carrier-note translation is disabled.') !== false && strpos($batch, '$canPublish = !$translationEnabled') !== false, 'disabled translation batch behavior absent');
+$assert(strpos($importPage, 'are not sent externally, and do not block publishing') !== false, 'disabled import privacy wording absent');
+$assert(strpos($setupPage, "'CHINAPLANETSP_AUTO_TRANSLATION_ENABLED'") !== false && strpos($setupPage, 'name="auto_translation_enabled"') !== false, 'translation setting toggle absent');
+$assert(strpos($priceService, '$translationEnabled &&') !== false, 'disabled translation leaked existing public notes');
 
 if (!defined('MAIN_DB_PREFIX')) define('MAIN_DB_PREFIX', 'llx_');
 require_once $root.'/custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php';
@@ -123,4 +130,4 @@ $failed = (new ShippingNoteReviewService($failedDb, $staff, 1, new M044C04FakeTr
 $assert($failed['approved'] === 0 && $failed['failed'] === 1 && $failed['remaining'] === 1 && $failed['stalled'] === true, 'failed provider did not stop safely');
 $assert(count($failedDb->updates) === 1 && strpos($failedDb->updates[0], 'public_notes=NULL') !== false && strpos($failedDb->updates[0], 'provider_quota_exhausted') !== false, 'failed provider output was not kept private');
 
-echo "M044_C04_FREE_AUTO_TRANSLATION=PASS provider=MYMEMORY_PLUS_GOOGLE_FALLBACK key=NONE retry=BOUNDED db_flow=PASS approval=AUTOMATIC publication=BLOCKED_WHILE_PENDING\n";
+echo "M044_C04_FREE_AUTO_TRANSLATION=PASS provider=MYMEMORY_PLUS_GOOGLE_FALLBACK key=NONE retry=BOUNDED db_flow=PASS approval=AUTOMATIC toggle=DEFAULT_OFF\n";
