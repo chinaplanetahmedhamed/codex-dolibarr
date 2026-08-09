@@ -117,10 +117,16 @@ class ShippingNoteTranslationService
     private static function restoreProtectedTokens($translation, array $map)
     {
         if (!$map) return $translation;
+        $missing = array();
+        foreach ($map as $placeholder=>$token) {
+            if (stripos($translation, $placeholder) === false) $missing[] = $token;
+        }
         $replacements = array();
         foreach ($map as $token) $replacements[] = ' '.$token.' ';
         $translation = str_ireplace(array_keys($map), $replacements, $translation);
-        return preg_replace('/[ \t]{2,}/u', ' ', $translation);
+        $translation = preg_replace('/[ \t]{2,}/u', ' ', $translation);
+        if ($missing) $translation .= "\nCarrier references preserved from source: ".implode(', ', $missing).'.';
+        return $translation;
     }
 
     /**

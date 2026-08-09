@@ -9,16 +9,16 @@ workflow="$root/.github/workflows/deploy-m044-c04-backup-erp.yml"
 
 bash -n "$helper"
 bash -n "$installer"
-grep -Fq "readonly RUNTIME_COMMIT='99124ee517bb022b7220f4bafb90c34ca1e49069'" "$helper"
-grep -Fq "readonly ARTIFACT_SHA='516853c0fda282ef5b7f8e8cbe263cca285b196516b00f3ce768aac254435e61'" "$helper"
+grep -Fq "readonly RUNTIME_COMMIT='143cf185bb7c1f09d1b45d0acc3e05ca48aecf65'" "$helper"
+grep -Fq "readonly ARTIFACT_SHA='aa8414d07765c6f9074c74e25276e4aa524855b1d3d9e0275a661b29829567a0'" "$helper"
 grep -Fq "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'" "$helper"
 grep -Fq "readonly TARGET_VOLUME='erp-staging_erp-staging_custom'" "$helper"
 grep -Fq "readonly STATE_ROOT='/var/lib/chinaplanetos-m044-c04-staging'" "$helper"
 grep -Fq 'FILES=6 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO' "$helper"
-grep -Fq "readonly HELPER_SHA='a2f44d230f5e25c35344c766eed9ca40ec885b6511feb8780dc10448cd89dded'" "$installer"
-grep -Fq "readonly PREVIOUS_HELPER_SHA='cd10e665fbaababcc3a2c4b3b1ffc6f7f3acbde7e1feae23a6c368b4272ee2c3'" "$installer"
+grep -Fq "readonly HELPER_SHA='cc96cb288bbec33a665576ca9496edc88c9db0f5e867998c4719d6801b17dc38'" "$installer"
+grep -Fq "readonly PREVIOUS_HELPER_SHA='a2f44d230f5e25c35344c766eed9ca40ec885b6511feb8780dc10448cd89dded'" "$installer"
 grep -Fq "readonly SUDOERS_SHA='8cdb77ae3b5633463b9a2bd2eee16febb010ff20b0d146695b26516baa5d570e'" "$installer"
-[[ $(sha256sum "$helper" | awk '{print $1}') == 'a2f44d230f5e25c35344c766eed9ca40ec885b6511feb8780dc10448cd89dded' ]]
+[[ $(sha256sum "$helper" | awk '{print $1}') == 'cc96cb288bbec33a665576ca9496edc88c9db0f5e867998c4719d6801b17dc38' ]]
 [[ $(sha256sum "$sudoers" | awk '{print $1}') == '8cdb77ae3b5633463b9a2bd2eee16febb010ff20b0d146695b26516baa5d570e' ]]
 
 if grep -Eq 'vision_erp|vision_db|vision-os_dolibarr_custom|https://erp\.visiontrading\.biz|production-(apply|verify|rollback)|environment:[[:space:]]+production' "$helper" "$installer" "$workflow"; then
