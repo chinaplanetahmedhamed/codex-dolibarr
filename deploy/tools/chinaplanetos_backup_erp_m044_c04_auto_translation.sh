@@ -41,6 +41,12 @@ readonly -a SUPPORT_FILES=(
   'deploy/tests/test_m041_shipping_note_translation_source.php'
   'deploy/tests/test_m044_c04_free_auto_translation.php'
 )
+readonly -a INTEGRATION_SUPPORT_FILES=(
+  'custom/chinaplanetshippingprices/class/ShippingPriceService.class.php'
+  'custom/chinaplanetshippingprices/customer_booking.php'
+  'custom/chinaplanetshippingprices/api/class/api_chinaplanetshippingprices.class.php'
+  'custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql'
+)
 
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m044-c04-${SHORT_COMMIT}.tar.gz"
@@ -167,8 +173,14 @@ candidate_checks() {
   CANDIDATE_REMOTE="/tmp/m044-c04-candidate-$$"
   docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE"
   docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE/custom/chinaplanetshippingprices/admin" "$CANDIDATE_REMOTE/custom/chinaplanetshippingprices/class" "$CANDIDATE_REMOTE/deploy/tests"
-  local rel
+  local rel source
   for rel in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do docker cp "$CANDIDATE_ROOT/$rel" "$TARGET_CONTAINER:$CANDIDATE_REMOTE/$rel"; done
+  for rel in "${INTEGRATION_SUPPORT_FILES[@]}"; do
+    source="$TARGET_ROOT/${rel#custom/}"
+    [[ -f "$source" && ! -L "$source" ]] || die 'INTEGRATION_SUPPORT_FILE_INVALID'
+    docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE/$(dirname "$rel")"
+    docker cp "$source" "$TARGET_CONTAINER:$CANDIDATE_REMOTE/$rel"
+  done
   for rel in "${RUNTIME_FILES[@]}"; do docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$rel" >/dev/null || die 'CANDIDATE_RUNTIME_LINT_FAILED'; done
   for rel in "${SUPPORT_FILES[@]}"; do docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$rel" >/dev/null || die 'CANDIDATE_CONTRACT_TEST_FAILED'; done
 }
