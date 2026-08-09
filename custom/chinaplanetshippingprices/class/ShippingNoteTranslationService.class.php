@@ -15,6 +15,7 @@ class ShippingNoteTranslationService
     const CONNECT_TIMEOUT = 2;
     const REQUEST_TIMEOUT = 8;
     const FREE_ENDPOINT = 'https://api.mymemory.translated.net/get';
+    const GOOGLE_FREE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single';
     const FREE_LANGUAGE_PAIR = 'zh-CN|en';
     const FREE_MAX_QUERY_CHARS = 500;
     const SAFE_DERIVED_TOKENS = array('TBD');
@@ -153,54 +154,37 @@ class ShippingNoteTranslationService
         $model = trim($this->env('CHINAPLANETSP_TRANSLATION_MODEL'));
         $apiKey = $this->env('CHINAPLANETSP_TRANSLATION_API_KEY');
         if ($endpoint === '' && $model === '') {
-            $endpoint = self::FREE_ENDPOINT;
-            $model = self::FREE_LANGUAGE_PAIR;
-            $apiKey = '';
+            return $this->translateFree($source, $remainingSeconds, $result);
         } elseif ($endpoint === '' || $model === '') {
             $result['status'] = 'pending'; $result['error'] = 'provider_not_configured'; return $result;
+        }
+        if ($endpoint === self::FREE_ENDPOINT && $model === self::FREE_LANGUAGE_PAIR && $apiKey === '') {
+            return $this->translateFree($source, $remainingSeconds, $result);
         }
         $target = $this->validateEndpoint($endpoint);
         if (empty($target['ok'])) {
             $result['status'] = 'failed'; $result['error'] = $target['error']; return $result;
         }
-        $isFreeProvider = $target['provider'] === 'api.mymemory.translated.net';
-        $providerSource = $source;
-        $protectedTokenMap = array();
-        if ($isFreeProvider) {
-            if ($endpoint !== self::FREE_ENDPOINT || $model !== self::FREE_LANGUAGE_PAIR) {
-                $result['status'] = 'failed'; $result['error'] = 'free_provider_config_invalid'; return $result;
-            }
-            $masked = self::maskProtectedTokens($source);
-            $providerSource = $masked['text'];
-            $protectedTokenMap = $masked['map'];
-            if (mb_strlen($providerSource, 'UTF-8') > self::FREE_MAX_QUERY_CHARS) {
-                $result['status'] = 'failed'; $result['error'] = 'free_provider_input_too_long'; return $result;
-            }
-        } elseif (!$this->safeIdentifier($model, 128)) {
+        if (!$this->safeIdentifier($model, 128)) {
             $result['status'] = 'failed'; $result['error'] = 'model_invalid'; return $result;
         }
 
         $result['attempted'] = true;
         $result['provider'] = $target['provider'];
         $result['model'] = $model;
-        if ($isFreeProvider) {
-            $payload = array('q'=>$providerSource, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1');
-            $headers = array('Accept: application/json');
-        } else {
-            $payload = array(
-                'model' => $model,
-                'temperature' => 0,
-                'messages' => array(
-                    array('role' => 'system', 'content' => 'Translate the shipping carrier note into clear operational English. Copy every date, number, vessel name, voyage code, currency, unit, acronym, and alphanumeric token exactly as written in the source; do not reformat tokens such as 2026.7.20 or 8.31. Do not add new dates, numbers, codes, abbreviations, or facts. Preserve line breaks. Return English plain text only, with no Chinese, Markdown, or HTML.'),
-                    array('role' => 'user', 'content' => $source),
-                ),
-            );
-            if ($target['provider'] === 'api.deepseek.com' && strpos($model, 'deepseek-v4-') === 0) {
-                $payload['thinking'] = array('type'=>'disabled');
-            }
-            $headers = array('Accept: application/json', 'Content-Type: application/json');
-            if ($apiKey !== '') $headers[] = 'Authorization: Bearer '.$apiKey;
+        $payload = array(
+            'model' => $model,
+            'temperature' => 0,
+            'messages' => array(
+                array('role' => 'system', 'content' => 'Translate the shipping carrier note into clear operational English. Copy every date, number, vessel name, voyage code, currency, unit, acronym, and alphanumeric token exactly as written in the source; do not reformat tokens such as 2026.7.20 or 8.31. Do not add new dates, numbers, codes, abbreviations, or facts. Preserve line breaks. Return English plain text only, with no Chinese, Markdown, or HTML.'),
+                array('role' => 'user', 'content' => $source),
+            ),
+        );
+        if ($target['provider'] === 'api.deepseek.com' && strpos($model, 'deepseek-v4-') === 0) {
+            $payload['thinking'] = array('type'=>'disabled');
         }
+        $headers = array('Accept: application/json', 'Content-Type: application/json');
+        if ($apiKey !== '') $headers[] = 'Authorization: Bearer '.$apiKey;
         $remainingMs = $remainingSeconds === null ? self::REQUEST_TIMEOUT * 1000 : max(1, min(self::REQUEST_TIMEOUT * 1000, (int) floor((float) $remainingSeconds * 1000)));
         $options = array(
             'connect_timeout' => self::CONNECT_TIMEOUT,
@@ -209,7 +193,7 @@ class ShippingNoteTranslationService
             'timeout_ms' => $remainingMs,
             'max_response_bytes' => self::MAX_RESPONSE_BYTES,
             'resolve' => $target['resolve'],
-            'method' => $isFreeProvider ? 'GET' : 'POST',
+            'method' => 'POST',
         );
 
         try {
@@ -234,24 +218,10 @@ class ShippingNoteTranslationService
             $result['status'] = 'failed'; $result['error'] = 'provider_response_invalid'; return $result;
         }
         $decoded = json_decode($body, true);
-        if ($isFreeProvider) {
-            $providerStatus = is_array($decoded) ? (int) ($decoded['responseStatus'] ?? 0) : 0;
-            $providerMessage = is_array($decoded) ? strtolower((string) ($decoded['responseDetails'] ?? '')) : '';
-            $rawTranslation = is_array($decoded) ? ($decoded['responseData']['translatedText'] ?? null) : null;
-            if ($providerStatus === 403 || $providerStatus === 429 || strpos($providerMessage, 'quota') !== false || (is_string($rawTranslation) && stripos($rawTranslation, 'mymemory warning') !== false)) {
-                $result['status'] = 'failed'; $result['error'] = 'provider_quota_exhausted'; return $result;
-            }
-            if ($providerStatus !== 200 || !is_string($rawTranslation)) {
-                $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
-            }
-            $rawTranslation = html_entity_decode($rawTranslation, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $rawTranslation = self::restoreProtectedTokens($rawTranslation, $protectedTokenMap);
-        } else {
-            if (!is_array($decoded) || !isset($decoded['choices'][0]['message']['content']) || !is_string($decoded['choices'][0]['message']['content'])) {
-                $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
-            }
-            $rawTranslation = $decoded['choices'][0]['message']['content'];
+        if (!is_array($decoded) || !isset($decoded['choices'][0]['message']['content']) || !is_string($decoded['choices'][0]['message']['content'])) {
+            $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
         }
+        $rawTranslation = $decoded['choices'][0]['message']['content'];
         if (preg_match('/<\s*\/?\s*[A-Za-z][^>]*>/u', $rawTranslation)) {
             $result['status'] = 'failed'; $result['error'] = 'translation_markup_invalid'; return $result;
         }
@@ -260,6 +230,142 @@ class ShippingNoteTranslationService
         if ($validationError !== '') { $result['status'] = 'failed'; $result['error'] = $validationError; return $result; }
         $result['status'] = 'approved';
         $result['notes_en'] = $translation;
+        return $result;
+    }
+
+    /**
+     * Translate only the masked carrier/source note through fixed keyless endpoints.
+     * MyMemory remains first; Google is a bounded fallback when the first provider
+     * is unavailable, quota-limited, malformed, or fails content validation.
+     */
+    private function translateFree($source, $remainingSeconds, array $result)
+    {
+        $masked = self::maskProtectedTokens($source);
+        $providerSource = $masked['text'];
+        if (mb_strlen($providerSource, 'UTF-8') > self::FREE_MAX_QUERY_CHARS) {
+            $result['status'] = 'failed'; $result['error'] = 'free_provider_input_too_long'; return $result;
+        }
+
+        $providers = array(
+            array(
+                'endpoint'=>self::FREE_ENDPOINT,
+                'host'=>'api.mymemory.translated.net',
+                'payload'=>array('q'=>$providerSource, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1'),
+                'schema'=>'mymemory',
+            ),
+            array(
+                'endpoint'=>self::GOOGLE_FREE_ENDPOINT,
+                'host'=>'translate.googleapis.com',
+                'payload'=>array('client'=>'gtx', 'sl'=>'zh-CN', 'tl'=>'en', 'dt'=>'t', 'q'=>$providerSource),
+                'schema'=>'google',
+            ),
+        );
+        $budgetSeconds = $remainingSeconds === null
+            ? (float) self::REQUEST_TIMEOUT
+            : max(0.001, min((float) self::REQUEST_TIMEOUT, (float) $remainingSeconds));
+        $deadline = microtime(true) + $budgetSeconds;
+        $lastError = 'provider_unavailable';
+
+        foreach ($providers as $provider) {
+            $availableSeconds = $deadline - microtime(true);
+            if ($availableSeconds <= 0.001) {
+                $lastError = 'timeout';
+                break;
+            }
+            $target = $this->validateEndpoint($provider['endpoint']);
+            if (empty($target['ok']) || $target['provider'] !== $provider['host']) {
+                $lastError = empty($target['error']) ? 'free_provider_config_invalid' : $target['error'];
+                continue;
+            }
+            $result['attempted'] = true;
+            $result['provider'] = $provider['host'];
+            $result['model'] = self::FREE_LANGUAGE_PAIR;
+            $remainingMs = max(1, min(self::REQUEST_TIMEOUT * 1000, (int) floor($availableSeconds * 1000)));
+            $options = array(
+                'connect_timeout' => self::CONNECT_TIMEOUT,
+                'timeout' => min(self::REQUEST_TIMEOUT, max(1, (int) ceil($remainingMs / 1000))),
+                'connect_timeout_ms' => min(self::CONNECT_TIMEOUT * 1000, $remainingMs),
+                'timeout_ms' => $remainingMs,
+                'max_response_bytes' => self::MAX_RESPONSE_BYTES,
+                'resolve' => $target['resolve'],
+                'method' => 'GET',
+            );
+            try {
+                $response = $this->transport
+                    ? call_user_func($this->transport, $provider['endpoint'], $provider['payload'], array('Accept: application/json'), $options)
+                    : $this->curlTransport($provider['endpoint'], $provider['payload'], array('Accept: application/json'), $options);
+            } catch (Throwable $e) {
+                $lastError = 'transport_exception';
+                continue;
+            }
+            if (!is_array($response)) {
+                $lastError = 'transport_invalid';
+                continue;
+            }
+            if (!empty($response['error'])) {
+                $lastError = $this->safeErrorCode($response['error']);
+                continue;
+            }
+            $statusCode = (int) ($response['status'] ?? 0);
+            $body = (string) ($response['body'] ?? '');
+            if ($statusCode < 200 || $statusCode >= 300) {
+                $lastError = in_array($statusCode, array(403, 429), true) ? 'provider_quota_exhausted' : 'provider_http_error';
+                continue;
+            }
+            if ($body === '' || strlen($body) > self::MAX_RESPONSE_BYTES || !mb_check_encoding($body, 'UTF-8')) {
+                $lastError = 'provider_response_invalid';
+                continue;
+            }
+            $decoded = json_decode($body, true);
+            $rawTranslation = null;
+            if ($provider['schema'] === 'mymemory') {
+                $providerStatus = is_array($decoded) ? (int) ($decoded['responseStatus'] ?? 0) : 0;
+                $providerMessage = is_array($decoded) ? strtolower((string) ($decoded['responseDetails'] ?? '')) : '';
+                $rawTranslation = is_array($decoded) ? ($decoded['responseData']['translatedText'] ?? null) : null;
+                if ($providerStatus === 403 || $providerStatus === 429 || strpos($providerMessage, 'quota') !== false || (is_string($rawTranslation) && stripos($rawTranslation, 'mymemory warning') !== false)) {
+                    $lastError = 'provider_quota_exhausted';
+                    continue;
+                }
+                if ($providerStatus !== 200 || !is_string($rawTranslation)) {
+                    $lastError = 'provider_schema_invalid';
+                    continue;
+                }
+                $rawTranslation = html_entity_decode($rawTranslation, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            } elseif (is_array($decoded) && isset($decoded[0]) && is_array($decoded[0])) {
+                $segments = array();
+                foreach ($decoded[0] as $segment) {
+                    if (is_array($segment) && isset($segment[0]) && is_string($segment[0])) $segments[] = $segment[0];
+                }
+                if ($segments) $rawTranslation = implode('', $segments);
+            }
+            if (!is_string($rawTranslation)) {
+                $lastError = 'provider_schema_invalid';
+                continue;
+            }
+            $providerProse = trim(str_ireplace(array_keys($masked['map']), ' ', $rawTranslation));
+            if (preg_match('/[A-Za-z]{3,}/', $providerProse) !== 1) {
+                $lastError = 'translation_not_english';
+                continue;
+            }
+            $rawTranslation = self::restoreProtectedTokens($rawTranslation, $masked['map']);
+            if (preg_match('/<\s*\/?\s*[A-Za-z][^>]*>/u', $rawTranslation)) {
+                $lastError = 'translation_markup_invalid';
+                continue;
+            }
+            $translation = self::safeText($rawTranslation, self::MAX_OUTPUT_CHARS);
+            $validationError = self::validateEnglishTranslation($source, $translation);
+            if ($validationError !== '') {
+                $lastError = $validationError;
+                continue;
+            }
+            $result['status'] = 'approved';
+            $result['notes_en'] = $translation;
+            $result['error'] = '';
+            return $result;
+        }
+
+        $result['status'] = 'failed';
+        $result['error'] = $lastError;
         return $result;
     }
 

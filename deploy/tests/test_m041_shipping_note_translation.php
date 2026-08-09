@@ -85,6 +85,31 @@ $dropTransport = function ($endpoint, $payload) {
 $dropResult = (new ShippingNoteTranslationService($dropTransport, array(), $freeResolver))->translate('南沙 航次 AB12CD34 40HQ 加收 RMB180');
 m041Assert($dropResult['status'] === 'approved' && strpos($dropResult['notes_en'], 'Carrier references preserved from source:') !== false && strpos($dropResult['notes_en'], 'RMB180') !== false, 'provider-dropped source token was not preserved explicitly');
 m041Assert(($freeCalls[0]['options']['method'] ?? '') === 'GET' && count(array_filter($freeCalls[0]['headers'], function ($header) { return stripos($header, 'authorization:') === 0; })) === 0, 'free provider method or no-key contract changed');
+$fallbackCalls = array();
+$fallbackTransport = function ($endpoint, $payload, $headers, $options) use (&$fallbackCalls) {
+    $fallbackCalls[] = compact('endpoint','payload','headers','options');
+    if ($endpoint === ShippingNoteTranslationService::FREE_ENDPOINT) {
+        return array('status'=>429, 'body'=>'{}', 'error'=>'');
+    }
+    preg_match_all('/zzcp[a-z]+tokenzz/i', $payload['q'], $placeholders);
+    $tokens = $placeholders[0];
+    $text = 'Nansha voyage '.($tokens[0] ?? '').' '.($tokens[1] ?? '').' surcharge '.($tokens[2] ?? '');
+    return array('status'=>200, 'body'=>json_encode(array(array(array($text, '')))), 'error'=>'');
+};
+$fallbackResolver = function ($host) {
+    return in_array($host, array('api.mymemory.translated.net', 'translate.googleapis.com'), true) ? array('8.8.8.8') : array();
+};
+$fallbackResult = (new ShippingNoteTranslationService($fallbackTransport, array(), $fallbackResolver))->translate('南沙 航次 AB12CD34 40HQ 加收 RMB180');
+m041Assert($fallbackResult['status'] === 'approved' && $fallbackResult['provider'] === 'translate.googleapis.com', 'Google fallback was not accepted automatically: '.$fallbackResult['error']);
+m041Assert(count($fallbackCalls) === 2 && $fallbackCalls[1]['endpoint'] === ShippingNoteTranslationService::GOOGLE_FREE_ENDPOINT, 'Google fallback call order changed');
+m041Assert(array_keys($fallbackCalls[1]['payload']) === array('client','sl','tl','dt','q') && $fallbackCalls[1]['payload']['client'] === 'gtx' && $fallbackCalls[1]['payload']['sl'] === 'zh-CN' && $fallbackCalls[1]['payload']['tl'] === 'en', 'Google fallback sent unexpected fields');
+m041Assert(strpos($fallbackCalls[1]['payload']['q'], 'AB12CD34') === false && count(array_filter($fallbackCalls[1]['headers'], function ($header) { return stripos($header, 'authorization:') === 0; })) === 0, 'Google fallback exposed a protected token or authorization data');
+$emptyFallback = new ShippingNoteTranslationService(function ($endpoint) {
+    if ($endpoint === ShippingNoteTranslationService::FREE_ENDPOINT) return array('status'=>429, 'body'=>'{}', 'error'=>'');
+    return array('status'=>200, 'body'=>json_encode(array(array(array('', '')))), 'error'=>'');
+}, array(), $fallbackResolver);
+$emptyFallbackResult = $emptyFallback->translate('南沙 航次 AB12CD34 40HQ 加收 RMB180');
+m041Assert($emptyFallbackResult['status'] === 'failed' && $emptyFallbackResult['error'] === 'translation_not_english', 'empty fallback output was accepted through restored source references');
 $beforeEnglish = count($freeCalls);
 m041Assert($free->translate('Already English')['status'] === 'approved' && count($freeCalls) === $beforeEnglish, 'English-only note called provider');
 $freeTooLong = $free->translate(str_repeat('中', 501));
