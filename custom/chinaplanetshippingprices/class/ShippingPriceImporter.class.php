@@ -108,6 +108,11 @@ class ShippingPriceImporter
         return $this->lastImportResults;
     }
 
+    public static function automaticTranslationEnabled()
+    {
+        return !empty($GLOBALS['conf']->global->CHINAPLANETSP_AUTO_TRANSLATION_ENABLED);
+    }
+
     public function getBatchPublicationState($batchId)
     {
         $batchId = (int) $batchId;
@@ -175,14 +180,16 @@ class ShippingPriceImporter
             if (!$batch) return $this->rollbackError();
         }
 
-        $translationSql = "SELECT COUNT(*) pending FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$this->entity." AND fk_batch=".$batchId;
-        $translationSql .= " AND source_notes IS NOT NULL AND source_notes<>'' AND translation_status<>'approved'";
-        $translationRes = $this->db->query($translationSql);
-        $translationRow = $translationRes ? $this->db->fetch_object($translationRes) : null;
-        if (!$translationRow) return $this->rollbackError();
-        if ((int) $translationRow->pending > 0) {
-            $this->db->rollback();
-            throw new RuntimeException('Automatic translation is still pending or failed for one or more carrier/source notes. Open the batch review to retry; manual editing is optional.');
+        if (self::automaticTranslationEnabled()) {
+            $translationSql = "SELECT COUNT(*) pending FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$this->entity." AND fk_batch=".$batchId;
+            $translationSql .= " AND source_notes IS NOT NULL AND source_notes<>'' AND translation_status<>'approved'";
+            $translationRes = $this->db->query($translationSql);
+            $translationRow = $translationRes ? $this->db->fetch_object($translationRes) : null;
+            if (!$translationRow) return $this->rollbackError();
+            if ((int) $translationRow->pending > 0) {
+                $this->db->rollback();
+                throw new RuntimeException('Automatic translation is still pending or failed for one or more carrier/source notes. Open the batch review to retry; manual editing is optional.');
+            }
         }
         $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET status=1,is_current=0 WHERE fk_batch=".$batchId." AND entity=".$this->entity;
         if (!$this->db->query($sql)) return $this->rollbackError();
@@ -339,6 +346,12 @@ class ShippingPriceImporter
         if (isset($this->translationCache[$hash])) return $this->translationCache[$hash];
         if ($notes === '') {
             return $this->translationCache[$hash] = array('status'=>'not_needed','notes_en'=>'','source_hash'=>'','provider'=>'','model'=>'','error'=>'','attempted'=>false);
+        }
+        if (!self::automaticTranslationEnabled()) {
+            return $this->translationCache[$hash] = array(
+                'status'=>'not_needed','notes_en'=>'','source_hash'=>$hash,'provider'=>'','model'=>'',
+                'error'=>'translation_disabled','attempted'=>false,
+            );
         }
         if (ShippingNoteTranslationService::containsHan($notes)) {
             $elapsed = microtime(true) - $this->translationStartedAt;
