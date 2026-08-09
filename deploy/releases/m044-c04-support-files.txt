@@ -1,0 +1,3 @@
+deploy/tests/test_m041_shipping_note_translation.php
+deploy/tests/test_m041_shipping_note_translation_source.php
+deploy/tests/test_m044_c04_free_auto_translation.php
