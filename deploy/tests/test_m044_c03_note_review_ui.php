@@ -27,7 +27,7 @@ if ($batch === false || $service === false || $css === false) {
 
 $batchContracts = array(
     "require_once __DIR__.'/../class/ShippingNoteReviewService.class.php';",
-    "array('save_translation','approve_translation','reset_translation')",
+    "array('save_translation','reset_translation','auto_translate')",
     'CSRFCHECK_WITH_TOKEN',
     'pending_rows',
     'Carrier-note English translation',

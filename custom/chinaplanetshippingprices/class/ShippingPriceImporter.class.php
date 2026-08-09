@@ -182,7 +182,7 @@ class ShippingPriceImporter
         if (!$translationRow) return $this->rollbackError();
         if ((int) $translationRow->pending > 0) {
             $this->db->rollback();
-            throw new RuntimeException('Approve every imported carrier/source note before publishing this batch.');
+            throw new RuntimeException('Automatic translation is still pending or failed for one or more carrier/source notes. Open the batch review to retry; manual editing is optional.');
         }
         $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET status=1,is_current=0 WHERE fk_batch=".$batchId." AND entity=".$this->entity;
         if (!$this->db->query($sql)) return $this->rollbackError();

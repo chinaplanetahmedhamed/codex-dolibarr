@@ -14,6 +14,9 @@ class ShippingNoteTranslationService
     const MAX_RESPONSE_BYTES = 65536;
     const CONNECT_TIMEOUT = 2;
     const REQUEST_TIMEOUT = 8;
+    const FREE_ENDPOINT = 'https://api.mymemory.translated.net/get';
+    const FREE_LANGUAGE_PAIR = 'zh-CN|en';
+    const FREE_MAX_QUERY_BYTES = 500;
 
     private $transport;
     private $environment;
@@ -109,35 +112,50 @@ class ShippingNoteTranslationService
         $endpoint = trim($this->env('CHINAPLANETSP_TRANSLATION_ENDPOINT'));
         $model = trim($this->env('CHINAPLANETSP_TRANSLATION_MODEL'));
         $apiKey = $this->env('CHINAPLANETSP_TRANSLATION_API_KEY');
-        if ($endpoint === '' || $model === '') {
+        if ($endpoint === '' && $model === '') {
+            $endpoint = self::FREE_ENDPOINT;
+            $model = self::FREE_LANGUAGE_PAIR;
+            $apiKey = '';
+        } elseif ($endpoint === '' || $model === '') {
             $result['status'] = 'pending'; $result['error'] = 'provider_not_configured'; return $result;
-        }
-        if (!$this->safeIdentifier($model, 128)) {
-            $result['status'] = 'failed'; $result['error'] = 'model_invalid'; return $result;
         }
         $target = $this->validateEndpoint($endpoint);
         if (empty($target['ok'])) {
             $result['status'] = 'failed'; $result['error'] = $target['error']; return $result;
         }
+        $isFreeProvider = $target['provider'] === 'api.mymemory.translated.net';
+        if ($isFreeProvider) {
+            if ($endpoint !== self::FREE_ENDPOINT || $model !== self::FREE_LANGUAGE_PAIR) {
+                $result['status'] = 'failed'; $result['error'] = 'free_provider_config_invalid'; return $result;
+            }
+            if (strlen($source) > self::FREE_MAX_QUERY_BYTES) {
+                $result['status'] = 'failed'; $result['error'] = 'free_provider_input_too_long'; return $result;
+            }
+        } elseif (!$this->safeIdentifier($model, 128)) {
+            $result['status'] = 'failed'; $result['error'] = 'model_invalid'; return $result;
+        }
 
         $result['attempted'] = true;
         $result['provider'] = $target['provider'];
         $result['model'] = $model;
-        $payload = array(
-            'model' => $model,
-            'temperature' => 0,
-            'messages' => array(
-                array('role' => 'system', 'content' => 'Translate the shipping carrier note into clear operational English. Copy every date, number, vessel name, voyage code, currency, unit, acronym, and alphanumeric token exactly as written in the source; do not reformat tokens such as 2026.7.20 or 8.31. Do not add new dates, numbers, codes, abbreviations, or facts. Preserve line breaks. Return English plain text only, with no Chinese, Markdown, or HTML.'),
-                array('role' => 'user', 'content' => $source),
-            ),
-        );
-        if ($target['provider'] === 'api.deepseek.com' && strpos($model, 'deepseek-v4-') === 0) {
-            // Translation is a bounded deterministic task; DeepSeek V4 defaults
-            // to thinking mode, which is slower and ignores temperature.
-            $payload['thinking'] = array('type'=>'disabled');
+        if ($isFreeProvider) {
+            $payload = array('q'=>$source, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1');
+            $headers = array('Accept: application/json');
+        } else {
+            $payload = array(
+                'model' => $model,
+                'temperature' => 0,
+                'messages' => array(
+                    array('role' => 'system', 'content' => 'Translate the shipping carrier note into clear operational English. Copy every date, number, vessel name, voyage code, currency, unit, acronym, and alphanumeric token exactly as written in the source; do not reformat tokens such as 2026.7.20 or 8.31. Do not add new dates, numbers, codes, abbreviations, or facts. Preserve line breaks. Return English plain text only, with no Chinese, Markdown, or HTML.'),
+                    array('role' => 'user', 'content' => $source),
+                ),
+            );
+            if ($target['provider'] === 'api.deepseek.com' && strpos($model, 'deepseek-v4-') === 0) {
+                $payload['thinking'] = array('type'=>'disabled');
+            }
+            $headers = array('Accept: application/json', 'Content-Type: application/json');
+            if ($apiKey !== '') $headers[] = 'Authorization: Bearer '.$apiKey;
         }
-        $headers = array('Accept: application/json', 'Content-Type: application/json');
-        if ($apiKey !== '') $headers[] = 'Authorization: Bearer '.$apiKey;
         $remainingMs = $remainingSeconds === null ? self::REQUEST_TIMEOUT * 1000 : max(1, min(self::REQUEST_TIMEOUT * 1000, (int) floor((float) $remainingSeconds * 1000)));
         $options = array(
             'connect_timeout' => self::CONNECT_TIMEOUT,
@@ -146,6 +164,7 @@ class ShippingNoteTranslationService
             'timeout_ms' => $remainingMs,
             'max_response_bytes' => self::MAX_RESPONSE_BYTES,
             'resolve' => $target['resolve'],
+            'method' => $isFreeProvider ? 'GET' : 'POST',
         );
 
         try {
@@ -170,10 +189,23 @@ class ShippingNoteTranslationService
             $result['status'] = 'failed'; $result['error'] = 'provider_response_invalid'; return $result;
         }
         $decoded = json_decode($body, true);
-        if (!is_array($decoded) || !isset($decoded['choices'][0]['message']['content']) || !is_string($decoded['choices'][0]['message']['content'])) {
-            $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
+        if ($isFreeProvider) {
+            $providerStatus = is_array($decoded) ? (int) ($decoded['responseStatus'] ?? 0) : 0;
+            $providerMessage = is_array($decoded) ? strtolower((string) ($decoded['responseDetails'] ?? '')) : '';
+            $rawTranslation = is_array($decoded) ? ($decoded['responseData']['translatedText'] ?? null) : null;
+            if ($providerStatus === 403 || $providerStatus === 429 || strpos($providerMessage, 'quota') !== false || (is_string($rawTranslation) && stripos($rawTranslation, 'mymemory warning') !== false)) {
+                $result['status'] = 'failed'; $result['error'] = 'provider_quota_exhausted'; return $result;
+            }
+            if ($providerStatus !== 200 || !is_string($rawTranslation)) {
+                $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
+            }
+            $rawTranslation = html_entity_decode($rawTranslation, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        } else {
+            if (!is_array($decoded) || !isset($decoded['choices'][0]['message']['content']) || !is_string($decoded['choices'][0]['message']['content'])) {
+                $result['status'] = 'failed'; $result['error'] = 'provider_schema_invalid'; return $result;
+            }
+            $rawTranslation = $decoded['choices'][0]['message']['content'];
         }
-        $rawTranslation = $decoded['choices'][0]['message']['content'];
         if (preg_match('/<\s*\/?\s*[A-Za-z][^>]*>/u', $rawTranslation)) {
             $result['status'] = 'failed'; $result['error'] = 'translation_markup_invalid'; return $result;
         }
@@ -263,14 +295,21 @@ class ShippingNoteTranslationService
     private function curlTransport($endpoint, array $payload, array $headers, array $options)
     {
         if (!function_exists('curl_init')) return array('status'=>0, 'body'=>'', 'error'=>'connection_failed');
-        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if ($encoded === false) return array('status'=>0, 'body'=>'', 'error'=>'transport_invalid');
-        $handle = curl_init($endpoint);
+        $method = isset($options['method']) && $options['method'] === 'GET' ? 'GET' : 'POST';
+        if ($method === 'GET') {
+            $query = http_build_query($payload, '', '&', PHP_QUERY_RFC3986);
+            if ($query === '') return array('status'=>0, 'body'=>'', 'error'=>'transport_invalid');
+            $requestUrl = $endpoint.'?'.$query;
+            $encoded = '';
+        } else {
+            $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($encoded === false) return array('status'=>0, 'body'=>'', 'error'=>'transport_invalid');
+            $requestUrl = $endpoint;
+        }
+        $handle = curl_init($requestUrl);
         $body = '';
         $tooLarge = false;
-        curl_setopt_array($handle, array(
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $encoded,
+        $curlOptions = array(
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_MAXREDIRS => 0,
@@ -289,7 +328,14 @@ class ShippingNoteTranslationService
                 $body .= $chunk;
                 return strlen($chunk);
             },
-        ));
+        );
+        if ($method === 'POST') {
+            $curlOptions[CURLOPT_POST] = true;
+            $curlOptions[CURLOPT_POSTFIELDS] = $encoded;
+        } else {
+            $curlOptions[CURLOPT_HTTPGET] = true;
+        }
+        curl_setopt_array($handle, $curlOptions);
         $ok = curl_exec($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
         $errno = curl_errno($handle);
