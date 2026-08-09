@@ -60,9 +60,22 @@ m041Assert(($deepSeekCalls[0]['payload']['thinking']['type'] ?? '') === 'disable
 
 $noCalls = 0;
 $neverTransport = function () use (&$noCalls) { $noCalls++; throw new RuntimeException('must not call'); };
-$missing = new ShippingNoteTranslationService($neverTransport, array(), $resolver);
-m041Assert($missing->translate('中文')['status'] === 'pending' && $noCalls === 0, 'missing provider did not remain pending/no-call');
-m041Assert($missing->translate('Already English')['status'] === 'approved' && $noCalls === 0, 'English-only note called provider');
+$freeCalls = array();
+$freeTransport = function ($endpoint, $payload, $headers, $options) use (&$freeCalls) {
+    $freeCalls[] = compact('endpoint','payload','headers','options');
+    return array('status'=>200, 'body'=>json_encode(array('responseStatus'=>200, 'responseData'=>array('translatedText'=>'Nansha voyage AB12CD34 40HQ surcharge RMB180'))), 'error'=>'');
+};
+$freeResolver = function ($host) { return $host === 'api.mymemory.translated.net' ? array('8.8.8.8') : array(); };
+$free = new ShippingNoteTranslationService($freeTransport, array(), $freeResolver);
+$freeResult = $free->translate('南沙 航次 AB12CD34 40HQ 加收 RMB180');
+m041Assert($freeResult['status'] === 'approved' && $freeResult['provider'] === 'api.mymemory.translated.net', 'free default provider was not accepted automatically: '.$freeResult['error']);
+m041Assert(count($freeCalls) === 1 && $freeCalls[0]['endpoint'] === ShippingNoteTranslationService::FREE_ENDPOINT, 'free provider endpoint changed');
+m041Assert($freeCalls[0]['payload'] === array('q'=>'南沙 航次 AB12CD34 40HQ 加收 RMB180','langpair'=>'zh-CN|en','mt'=>'1'), 'free provider sent unexpected fields');
+m041Assert(($freeCalls[0]['options']['method'] ?? '') === 'GET' && count(array_filter($freeCalls[0]['headers'], function ($header) { return stripos($header, 'authorization:') === 0; })) === 0, 'free provider method or no-key contract changed');
+$beforeEnglish = count($freeCalls);
+m041Assert($free->translate('Already English')['status'] === 'approved' && count($freeCalls) === $beforeEnglish, 'English-only note called provider');
+$freeTooLong = $free->translate(str_repeat('中', 167));
+m041Assert($freeTooLong['status'] === 'failed' && $freeTooLong['error'] === 'free_provider_input_too_long' && count($freeCalls) === $beforeEnglish, 'free provider byte limit was not fail-closed');
 $privateEndpoint = new ShippingNoteTranslationService($neverTransport, array('CHINAPLANETSP_TRANSLATION_ENDPOINT'=>'https://10.0.0.1/v1','CHINAPLANETSP_TRANSLATION_MODEL'=>'model'), $resolver);
 m041Assert($privateEndpoint->translate('中文')['error'] === 'endpoint_ip_forbidden' && $noCalls === 0, 'private endpoint was accepted');
 $queryEndpoint = new ShippingNoteTranslationService($neverTransport, array('CHINAPLANETSP_TRANSLATION_ENDPOINT'=>'https://example.com/v1?key=secret','CHINAPLANETSP_TRANSLATION_MODEL'=>'model'), $resolver);
@@ -160,4 +173,4 @@ $parse = $reflector->getMethod('parseSheet'); $parse->setAccessible(true);
 $parsed = $parse->invoke($importer,$sheet,array('container_row'=>2,'origin_col'=>1,'pod_col'=>2,'route_col'=>3,'price_cols'=>array(4=>'20GP'),'notes_col'=>5,'effective_date'=>'2026-08-03','price_group'=>'tariff'),1000,'USD');
 m041Assert($acceptedOnlyTranslator->calls === 1 && count($parsed['rows']) === 1 && $parsed['rows'][0]['source_row'] === 4, 'rejected price rows consumed translation budget');
 
-echo "M041_TRANSLATION=PASS normalization=6 provider_bounds=PASS ssrf=PASS dedup=PASS circuit=PASS\n";
+echo "M041_TRANSLATION=PASS normalization=6 provider_bounds=PASS free_provider=PASS ssrf=PASS dedup=PASS circuit=PASS\n";

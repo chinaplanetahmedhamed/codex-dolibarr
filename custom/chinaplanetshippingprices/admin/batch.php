@@ -1,6 +1,6 @@
 <?php
 $m041PostedAction = isset($_POST['action']) ? (string) $_POST['action'] : '';
-if (in_array($m041PostedAction, array('save_translation','approve_translation','reset_translation'), true)) define('CSRFCHECK_WITH_TOKEN', 1);
+if (in_array($m041PostedAction, array('save_translation','reset_translation','auto_translate'), true)) define('CSRFCHECK_WITH_TOKEN', 1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/../lib/main.lib.php';
 require_once __DIR__.'/../class/ShippingPriceImporter.class.php';
@@ -10,13 +10,25 @@ require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shel
 chinaplanetsp_require_internal($user, 'import');
 $id = GETPOSTINT('id');
 $notePage = max(0, GETPOSTINT('note_page'));
+$autoMode = GETPOST('auto', 'alpha');
 $reviewService = new ShippingNoteReviewService($db, $user);
 
 if ($m041PostedAction !== '') {
     if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') accessforbidden();
     try {
+        if ($m041PostedAction === 'auto_translate') {
+            $result = $reviewService->autoTranslatePending($id, 8, 18.0);
+            if ((int) $result['approved'] > 0) {
+                setEventMessages('Automatically translated '.(int)$result['approved'].' carrier note(s). / تمت الترجمة التلقائية.', null, 'mesgs');
+            } elseif ((int) $result['remaining'] > 0) {
+                setEventMessages('The free translation service could not make progress now. The notes remain private and can retry later. / لم تتقدم خدمة الترجمة المجانية الآن وستبقى الملاحظات خاصة.', null, 'warnings');
+            }
+            $nextAuto = (int) $result['approved'] > 0 && (int) $result['remaining'] > 0 && empty($result['stalled']) ? 'continue' : 'stopped';
+            header('Location: batch.php?id='.$id.'&note_page='.$notePage.'&auto='.$nextAuto);
+            exit;
+        }
         $result = $reviewService->mutate($id, GETPOSTINT('source_row'), $m041PostedAction, GETPOST('notes_en', 'restricthtml'));
-        setEventMessages('Translation saved for '.(int)$result['affected'].' price row(s). / تم حفظ الترجمة.', null, 'mesgs');
+        setEventMessages('Translation correction saved for '.(int)$result['affected'].' price row(s). / تم حفظ تعديل الترجمة.', null, 'mesgs');
     } catch (Throwable $e) {
         setEventMessages($e->getMessage(), null, 'errors');
     }
@@ -61,7 +73,17 @@ if ((int)$batch->status !== 2 && $canPublish) {
 }
 print '</div>';
 
-if ((int)$batch->status !== 2 && !$canPublish) print '<div class="warning"><strong>Translation needs attention:</strong> '.(int)$translationSummary->pending_rows.' carrier note(s) could not be translated automatically. Add the English text, then save it. / تعذرت الترجمة الآلية لبعض الملاحظات؛ أضف الإنجليزية واحفظها.</div>';
+if ((int)$batch->status !== 2 && (int)$translationSummary->pending_rows > 0 && $canReviewTranslations) {
+    print '<form id="chinaplanetsp-auto-translate" method="post" hidden><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="auto_translate"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="note_page" value="'.(int)$notePage.'"></form>';
+    if ($autoMode !== 'stopped') {
+        print '<div class="info"><strong>Automatic translation is running.</strong> This page will continue in small safe batches; no manual approval is required. / الترجمة التلقائية تعمل على دفعات آمنة ولا تحتاج موافقة يدوية.</div>';
+        print '<script>window.addEventListener("load",function(){window.setTimeout(function(){var form=document.getElementById("chinaplanetsp-auto-translate");if(form)form.submit();},500);});</script>';
+    } else {
+        print '<div class="warning"><strong>Automatic translation paused safely.</strong> The free service may be temporarily unavailable or at its usage limit. Untranslated notes remain private. <button class="button" type="submit" form="chinaplanetsp-auto-translate">Retry automatic translation / إعادة المحاولة</button></div>';
+    }
+}
+
+if ((int)$batch->status !== 2 && !$canPublish) print '<div class="warning"><strong>Automatic translation pending:</strong> '.(int)$translationSummary->pending_rows.' carrier note(s) are still untranslated or invalid. They will retry automatically; manual editing is optional. / ما زالت بعض الملاحظات بانتظار الترجمة التلقائية، والتعديل اليدوي اختياري.</div>';
 if ((int)$batch->status === 2 && !$publication['is_current'] && !$publication['is_latest_relevant']) print '<div class="info">This batch is published as history. A newer relevant batch supplies the current prices. / هذه الدفعة محفوظة كسجل تاريخي.</div>';
 if (!empty($publication['can_reactivate'])) print '<div class="warning">This is the latest published batch, but none of its prices are current. Use repair only if it must be active. / استخدم الإصلاح فقط إذا كانت هذه القائمة المطلوبة.</div>';
 
@@ -86,7 +108,7 @@ print '</div></section>';
 if ((int)$translationSummary->note_rows > 0) {
     print '<section class="chinaplanetsp-rule-list chinaplanetsp-translation-review"><div class="chinaplanetsp-list-head"><h2>Carrier-note English translation / ترجمة ملاحظات الوكيل <span>'.(int)$translationPage['total'].'</span></h2><small>Successful translations are accepted automatically. Edit and save only when correction is needed.</small></div>';
     if (!$canReviewTranslations) {
-        print '<div class="warning">Viewing the source and approving its translation requires both Import and View Cost rights, or administrator access.</div>';
+        print '<div class="warning">Viewing the source or editing its translation requires both Import and View Cost rights, or administrator access.</div>';
     } else {
         foreach ($translationPage['groups'] as $group) {
             $inconsistent = (int)$group->hash_count !== 1 || (int)$group->status_count !== 1;

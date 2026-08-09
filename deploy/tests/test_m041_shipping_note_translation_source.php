@@ -14,7 +14,7 @@ $api = $read('custom/chinaplanetshippingprices/api/class/api_chinaplanetshipping
 $schema = $read('custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql');
 
 foreach (array('source_notes_raw','source_notes','notes_en','translation_status','translation_source_hash','translation_provider','translation_model','translation_error','fk_user_translation_review','date_translation_review') as $column) $assert(strpos($schema,$column)!==false,'schema column absent '.$column);
-$assert(strpos($importer,"translation_status<>'approved'")!==false&&strpos($importer,'Approve every imported carrier/source note')!==false,'publish failure/manual-fallback gate absent');
+$assert(strpos($importer,"translation_status<>'approved'")!==false&&strpos($importer,'Automatic translation is still pending or failed')!==false,'publish failure/automatic-retry gate absent');
 $assert(strpos($translator,"\$result['status'] = 'approved'")!==false&&strpos($importer,"\$translation['status'] === 'approved' ? \$translation['notes_en']")!==false,'automatic acceptance/public-note mapping absent');
 $assert(strpos($importer,'FOR UPDATE')!==false&&strpos($importer,'translationCircuitOpen')!==false&&strpos($importer,'translationCalls >= 10')!==false,'publish lock or import circuit/budget absent');
 $assert(strpos($translator,"getenv(")!==false&&strpos($translator,'CURLOPT_FOLLOWLOCATION => false')!==false&&strpos($translator,'CURLOPT_RESOLVE')!==false,'environment-only provider or SSRF pinning absent');
@@ -24,6 +24,7 @@ $assert(strpos($importer,'$acceptedPrices')!==false&&strpos($importer,'remaining
 $assert(strpos($review,"hasRight('chinaplanetshippingprices', 'import')")!==false&&strpos($review,"hasRight('chinaplanetshippingprices', 'viewcost')")!==false,'combined private-note review right absent');
 $assert(strpos($review,'entity=')!==false&&strpos($review,'fk_batch=')!==false&&strpos($review,'source_row=')!==false&&strpos($review,'FOR UPDATE')!==false,'entity/batch/source-row locking absent');
 $assert(strpos($review,"translation_status='approved'")!==false&&strpos($review,"translation_provider='staff'")!==false&&strpos($review,"array(0, 2)")!==false,'editable automatic translation behavior absent');
+$assert(strpos($review,'autoTranslatePending')!==false&&strpos($review,"translation_status<>'approved'")!==false,'automatic pending-note retry absent');
 $assert(strpos($batch,"define('CSRFCHECK_WITH_TOKEN', 1)")!==false&&strpos($batch,"REQUEST_METHOD")!==false,'translation mutation CSRF/POST gate absent');
 $assert(strpos($batch,'listGroups($id, $notePage, 25)')!==false&&strpos($review,'COUNT(DISTINCT source_row)')!==false,'source-row pagination/grouping absent');
 $assert(strpos($service,'private function addInternalProjection')!==false&&strpos($service,"if (\$includeCost) \$result = \$this->addInternalProjection")!==false,'explicit private projection absent');
