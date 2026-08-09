@@ -16,11 +16,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RUNTIME_COMMIT: e391707881e150ac02898a4fe317ff7aa5373206
-  RELEASE_MISSION: M044-C04-R4
-  RELEASE_TAG: m044-c04-staging-r4
-  ARTIFACT_NAME: m044-c04-e391707.tar.gz
-  ARTIFACT_SHA: 13b46ffb7881dd12a293cc34da5f3d12f27b09a8b6e86304354276180aeac185
+  RUNTIME_COMMIT: 32d38fe9a11c3f7d91b54b70d54c64c224d10e3a
+  RELEASE_MISSION: M044-C04-R5
+  RELEASE_TAG: m044-c04-staging-r5
+  ARTIFACT_NAME: m044-c04-32d38fe.tar.gz
+  ARTIFACT_SHA: 9cd4dda46abe4a7ee265ce52924f5800f9994545aeb826d4d241aef9f8d0c1a8
   DEPLOY_HOST: 31.97.158.178
   DEPLOY_USER: codex-deploy
   DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m044-c04-auto-translation
@@ -56,20 +56,22 @@ jobs:
           test "$GITHUB_REF" = 'refs/heads/main'
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git rev-parse "$RUNTIME_COMMIT^{commit}")" = "$RUNTIME_COMMIT"
-          test "$(sha256sum deploy/releases/m044-c04-runtime-files.txt | awk '{print $1}')" = '00ce85c831fb14b33f391cebd79779c32b0559af17520cb64430b5ad34f256c9'
+          test "$(sha256sum deploy/releases/m044-c04-runtime-files.txt | awk '{print $1}')" = '387f8793df2e45f6eb6dd7c3242aed6792b45b3f85ac18fcbb6ced71497f611e'
           test "$(sha256sum deploy/releases/m044-c04-support-files.txt | awk '{print $1}')" = '105369eb9c2d98e950091e588bb5e6b0d01daef6d6a0905aed7585d22bb300c1'
-          test "$(sha256sum custom/chinaplanetshippingprices/admin/batch.php | awk '{print $1}')" = '95377602c5898c698fa6e23729c842c452336a28e632e9f0e234d264eccdaac9'
-          test "$(sha256sum custom/chinaplanetshippingprices/admin/import.php | awk '{print $1}')" = 'f0a0148fd560971273f132860ed5bf6a34b27bb235e147eb3eaf3e186b86c00e'
-          test "$(sha256sum custom/chinaplanetshippingprices/admin/setup.php | awk '{print $1}')" = '7b90f28d70e12e055ceec6f9c80f1da7852c0c773bf541b9e61ba41f87e12349'
+          test "$(sha256sum custom/chinaplanetshippingprices/admin/batch.php | awk '{print $1}')" = 'adb296f733eea7dfdffc63d7e8994cb991b24237429e7613f08037c36471f858'
+          test "$(sha256sum custom/chinaplanetshippingprices/admin/import.php | awk '{print $1}')" = '31c1464cfdea0ea7c3351a293ee8ff8604e8f6171771af2754f97dd00566a51f'
+          test "$(sha256sum custom/chinaplanetshippingprices/admin/setup.php | awk '{print $1}')" = '2dad8649f6da82a96981b510a80740eb0b62e59dc04030af8fc01149f7c0df44'
           test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php | awk '{print $1}')" = 'bba37e89ef252937ef4d79e69a9cef6e01ed7573fcabe292fcd319f172b92a6d'
           test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php | awk '{print $1}')" = 'c8bbd953633f6eb1fa0d110f4324c16783c790b5a09df4d769081a75526096ea'
-          test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php | awk '{print $1}')" = '666a81699e8b764a6a32429c4654f2843745a1a0edf66bef3c4bdc6d0e0ac543'
+          test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php | awk '{print $1}')" = '7528713f06e4cf340e8d0d7bc317a939b30a05eeffba6d1b5ae260298c48caf8'
+          test "$(sha256sum custom/chinaplanetshippingprices/class/ShippingPriceService.class.php | awk '{print $1}')" = '3d63618ad27ddc7d168e3e096b28766802fe41cc1104c6a8c6d2c2320de4a782'
           php -l custom/chinaplanetshippingprices/admin/batch.php >/dev/null
           php -l custom/chinaplanetshippingprices/admin/import.php >/dev/null
           php -l custom/chinaplanetshippingprices/admin/setup.php >/dev/null
           php -l custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php >/dev/null
           php -l custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php >/dev/null
           php -l custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php >/dev/null
+          php -l custom/chinaplanetshippingprices/class/ShippingPriceService.class.php >/dev/null
           php deploy/tests/test_m041_shipping_note_translation.php
           php deploy/tests/test_m041_shipping_note_translation_source.php
           php deploy/tests/test_m044_c04_free_auto_translation.php
@@ -87,7 +89,7 @@ jobs:
           artifact="$RUNNER_TEMP/m044-c04/$ARTIFACT_NAME"
           test -f "$artifact" && test ! -L "$artifact"
           test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
-          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '11'
+          test "$(tar -tzf "$artifact" | wc -l | tr -d ' ')" = '12'
           chmod 0644 "$artifact"
           echo "path=$artifact" >> "$GITHUB_OUTPUT"
 
