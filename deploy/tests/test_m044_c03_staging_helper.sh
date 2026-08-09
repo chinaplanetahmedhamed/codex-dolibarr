@@ -16,6 +16,10 @@ grep -Fq "readonly REVIEW_SERVICE_SHA='32854848a2874423ed9401102890129ff749cd7c7
 grep -Fq "readonly CSS_SHA='24473c66ee3d441fa145d40a942bddd8ca1fe8c21d76daf47317cd1f322a5372'" "$helper"
 grep -Fq "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'" "$helper"
 grep -Fq "readonly TARGET_VOLUME='erp-staging_erp-staging_custom'" "$helper"
+grep -Fq "readonly BATCH_TARGET='chinaplanetshippingprices/admin/batch.php'" "$helper"
+grep -Fq "readonly REVIEW_SERVICE_TARGET='chinaplanetshippingprices/class/ShippingNoteReviewService.class.php'" "$helper"
+grep -Fq "readonly CSS_TARGET='chinaplanetshippingprices/css/shippingprices.css'" "$helper"
+grep -Fq 'target_rel=${TARGET_FILES[$index]}' "$helper"
 grep -Fq 'CODE_BACKUP=' "$helper"
 grep -Fq 'PRESTATE=' "$helper"
 grep -Fq 'DATABASE_CHANGED=NO' "$helper"
@@ -32,7 +36,8 @@ fi
 for command in compare preflight apply verify rollback status; do
   grep -Fxq "codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m044-c03-note-review $command" "$sudoers"
 done
-grep -Fq "readonly HELPER_SHA='7592090e27f438f36a1ef84d2705a3ec50a2cf70a2be0732a5b5140c4b18c0d7'" "$installer"
+grep -Fq "readonly HELPER_SHA='0438c8dbdd17a29604f02e6c7c2253c3a3bd8d95211ee96ab9da63addffc7623'" "$installer"
+grep -Fq "readonly PREVIOUS_HELPER_SHA='7592090e27f438f36a1ef84d2705a3ec50a2cf70a2be0732a5b5140c4b18c0d7'" "$installer"
 grep -Fq "readonly SUDOERS_SHA='9a7ffd57580142239544cb504434463db3f68cc7c9e07d3cc02883c0ba1fb502'" "$installer"
 grep -Fq 'DEPLOY_M044_C03_TO_BACKUP_ERP' "$workflow"
 grep -Fq 'environment: backup-erp' "$workflow"
