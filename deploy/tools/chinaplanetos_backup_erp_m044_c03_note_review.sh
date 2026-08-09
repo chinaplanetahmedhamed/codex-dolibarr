@@ -21,6 +21,10 @@ readonly REVIEW_SERVICE_FILE='custom/chinaplanetshippingprices/class/ShippingNot
 readonly CSS_FILE='custom/chinaplanetshippingprices/css/shippingprices.css'
 readonly -a RUNTIME_FILES=("$BATCH_FILE" "$REVIEW_SERVICE_FILE" "$CSS_FILE")
 readonly -a RUNTIME_SHAS=("$BATCH_SHA" "$REVIEW_SERVICE_SHA" "$CSS_SHA")
+readonly BATCH_TARGET='chinaplanetshippingprices/admin/batch.php'
+readonly REVIEW_SERVICE_TARGET='chinaplanetshippingprices/class/ShippingNoteReviewService.class.php'
+readonly CSS_TARGET='chinaplanetshippingprices/css/shippingprices.css'
+readonly -a TARGET_FILES=("$BATCH_TARGET" "$REVIEW_SERVICE_TARGET" "$CSS_TARGET")
 
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="${INBOX}/m044-c03-${SHORT_COMMIT}.tar.gz"
@@ -58,7 +62,7 @@ restore_prior() {
   [[ -f "$CODE_BACKUP" && ! -L "$CODE_BACKUP" && $(sha256 "$CODE_BACKUP") == "$CODE_BACKUP_SHA" ]] || return 1
   [[ -f "$PRESTATE_FILE" && ! -L "$PRESTATE_FILE" && $(sha256 "$PRESTATE_FILE") == "$PRESTATE_SHA" ]] || return 1
   while IFS='|' read -r rel state expected_sha owner group mode; do
-    [[ "$rel" == "$BATCH_FILE" || "$rel" == "$REVIEW_SERVICE_FILE" || "$rel" == "$CSS_FILE" ]] || return 1
+    [[ "$rel" == "$BATCH_TARGET" || "$rel" == "$REVIEW_SERVICE_TARGET" || "$rel" == "$CSS_TARGET" ]] || return 1
     local target="$TARGET_ROOT/$rel" tmp="${TARGET_ROOT}/${rel}.m044-c03-restore.$$"
     case "$state" in
       ABSENT)
@@ -153,9 +157,9 @@ candidate_checks() {
 }
 
 compare_files() {
-  local index rel target target_sha state
+  local index rel target_rel target target_sha state
   for index in 0 1 2; do
-    rel=${RUNTIME_FILES[$index]}; target="$TARGET_ROOT/$rel"
+    rel=${RUNTIME_FILES[$index]}; target_rel=${TARGET_FILES[$index]}; target="$TARGET_ROOT/$target_rel"
     if [[ ! -e "$target" && ! -L "$target" ]]; then state='ABSENT'; target_sha='none'
     else
       [[ -f "$target" && ! -L "$target" ]] || die 'TARGET_FILE_INVALID'
@@ -173,7 +177,7 @@ create_backup() {
   PRESTATE_FILE="${BACKUP_ROOT}/m044-c03-before-${SHORT_COMMIT}-${stamp}.prestate"
   backup_list=$(mktemp)
   : >"$PRESTATE_FILE"
-  for rel in "${RUNTIME_FILES[@]}"; do
+  for rel in "${TARGET_FILES[@]}"; do
     target="$TARGET_ROOT/$rel"
     if [[ -e "$target" || -L "$target" ]]; then
       [[ -f "$target" && ! -L "$target" ]] || die 'TARGET_FILE_INVALID'
@@ -192,9 +196,9 @@ create_backup() {
 }
 
 apply_files() {
-  local index rel target tmp
+  local index rel target_rel target tmp
   for index in 0 1 2; do
-    rel=${RUNTIME_FILES[$index]}; target="$TARGET_ROOT/$rel"; tmp="${TARGET_ROOT}/${rel}.m044-c03.$$"
+    rel=${RUNTIME_FILES[$index]}; target_rel=${TARGET_FILES[$index]}; target="$TARGET_ROOT/$target_rel"; tmp="${TARGET_ROOT}/${target_rel}.m044-c03.$$"
     install -d -o www-data -g www-data -m 0755 "$(dirname "$target")"
     install -o www-data -g www-data -m 0644 "$CANDIDATE_ROOT/$rel" "$tmp"
     [[ $(sha256 "$tmp") == "${RUNTIME_SHAS[$index]}" ]] || die 'TEMP_FILE_HASH_MISMATCH'
@@ -203,9 +207,9 @@ apply_files() {
 }
 
 live_checks() {
-  local index rel target body status
+  local index rel target_rel target body status
   for index in 0 1 2; do
-    rel=${RUNTIME_FILES[$index]}; target="$TARGET_ROOT/$rel"
+    rel=${RUNTIME_FILES[$index]}; target_rel=${TARGET_FILES[$index]}; target="$TARGET_ROOT/$target_rel"
     [[ -f "$target" && ! -L "$target" && $(sha256 "$target") == "${RUNTIME_SHAS[$index]}" ]] || return 1
     [[ $(stat -c '%U:%G %a' "$target") == 'www-data:www-data 644' ]] || return 1
   done
@@ -283,7 +287,7 @@ command_rollback() {
   exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
   check_environment; validate_artifact; load_state
   local reapply="${BACKUP_ROOT}/m044-c03-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"
-  tar -czpf "$reapply" -C "$TARGET_ROOT" "${RUNTIME_FILES[@]}"
+  tar -czpf "$reapply" -C "$TARGET_ROOT" "${TARGET_FILES[@]}"
   chmod 0600 "$reapply"
   restore_prior || die 'CODE_RESTORE_FAILED'
   [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || die 'ROLLBACK_HTTP_FAILED'
