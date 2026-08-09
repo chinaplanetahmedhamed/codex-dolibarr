@@ -20,7 +20,17 @@ $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 $_SERVER['SERVER_NAME'] = '127.0.0.1';
 $_SERVER['SERVER_PORT'] = '18088';
 require $documentRoot.'/master.inc.php';
-require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php';
+$translationServicePath = getenv('M046_C01_TRANSLATION_SERVICE_PATH');
+if ($translationServicePath === false || $translationServicePath === '') {
+    $translationServicePath = DOL_DOCUMENT_ROOT.'/custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php';
+} else {
+    $translationServicePath = realpath($translationServicePath);
+    if ($translationServicePath === false || preg_match('#^/tmp/m046-c01-candidate-[0-9]+/custom/chinaplanetshippingprices/class/ShippingNoteTranslationService\.class\.php$#', $translationServicePath) !== 1) {
+        fwrite(STDERR, "M046_C01_POLICY=FAIL REASON=CANDIDATE_SERVICE_PATH_INVALID\n");
+        exit(1);
+    }
+}
+require_once $translationServicePath;
 
 $entity = (int) $conf->entity;
 $constantName = 'CHINAPLANETSP_AUTO_TRANSLATION_ENABLED';
