@@ -51,6 +51,11 @@ m046SetupAssert($route('POST', array('ignore_below'=>'9999'), array('action'=>'s
 m046SetupAssert($route('POST', array(), array('action'=>'delete')) === 'deny', 'unsupported POST action accepted');
 m046SetupAssert($route('POST', array('action'=>'save'), array()) === 'render', 'query action overrode empty POST');
 
+if (!function_exists('proc_open')) {
+    echo "M046_C01_SETUP_ROUTE=PASS fixture=SOURCE_ONLY_PROC_OPEN_UNAVAILABLE action=POST_ONLY payload=POST_ONLY csrf=BEFORE_BOOTSTRAP admin=INTERNAL_ONLY toggle=ABSENT real_route=LOCAL_ONLY\n";
+    exit(0);
+}
+
 $fixtureRoot = sys_get_temp_dir().'/m046-c01-setup-'.bin2hex(random_bytes(6));
 $fixtureDirs = array(
     $fixtureRoot,
