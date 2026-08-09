@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M044-C04-R2'
-readonly RUNTIME_COMMIT='99124ee517bb022b7220f4bafb90c34ca1e49069'
-readonly SHORT_COMMIT='99124ee'
-readonly ARTIFACT_SHA='516853c0fda282ef5b7f8e8cbe263cca285b196516b00f3ce768aac254435e61'
+readonly RELEASE='M044-C04-R3'
+readonly RUNTIME_COMMIT='143cf185bb7c1f09d1b45d0acc3e05ca48aecf65'
+readonly SHORT_COMMIT='143cf18'
+readonly ARTIFACT_SHA='aa8414d07765c6f9074c74e25276e4aa524855b1d3d9e0275a661b29829567a0'
 readonly RUNTIME_MANIFEST_SHA='00ce85c831fb14b33f391cebd79779c32b0559af17520cb64430b5ad34f256c9'
 readonly SUPPORT_MANIFEST_SHA='105369eb9c2d98e950091e588bb5e6b0d01daef6d6a0905aed7585d22bb300c1'
 
@@ -25,7 +25,7 @@ readonly -a RUNTIME_SHAS=(
   'f0a0148fd560971273f132860ed5bf6a34b27bb235e147eb3eaf3e186b86c00e'
   '7b90f28d70e12e055ceec6f9c80f1da7852c0c773bf541b9e61ba41f87e12349'
   'bba37e89ef252937ef4d79e69a9cef6e01ed7573fcabe292fcd319f172b92a6d'
-  'cfe9d925762add8741743f86be029cfa6a94f953c35bf1d72b3e441d2552f40a'
+  'a77fc3cae254d875cdf401325bf22d62711b19eb01a638a06cc1a0636575bfb2'
   '666a81699e8b764a6a32429c4654f2843745a1a0edf66bef3c4bdc6d0e0ac543'
 )
 readonly -a TARGET_FILES=(
@@ -55,7 +55,7 @@ readonly TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_da
 readonly TARGET_HTTP='http://127.0.0.1:18088'
 readonly BACKUP_ROOT='/root/backup-erp-code-backups'
 readonly STATE_ROOT='/var/lib/chinaplanetos-m044-c04-staging'
-readonly STATE_FILE="${STATE_ROOT}/m044-c04-r2.state"
+readonly STATE_FILE="${STATE_ROOT}/m044-c04-r3.state"
 readonly LOCK_FILE="${STATE_ROOT}/m044-c04.lock"
 
 CANDIDATE_ROOT=''
@@ -194,8 +194,8 @@ compare_files() {
 create_backup() {
   local stamp backup_list rel target
   stamp=$(date -u '+%Y%m%dT%H%M%SZ')
-  CODE_BACKUP="${BACKUP_ROOT}/m044-c04-r2-before-${SHORT_COMMIT}-${stamp}.tar.gz"
-  PRESTATE_FILE="${BACKUP_ROOT}/m044-c04-r2-before-${SHORT_COMMIT}-${stamp}.prestate"
+  CODE_BACKUP="${BACKUP_ROOT}/m044-c04-r3-before-${SHORT_COMMIT}-${stamp}.tar.gz"
+  PRESTATE_FILE="${BACKUP_ROOT}/m044-c04-r3-before-${SHORT_COMMIT}-${stamp}.prestate"
   backup_list=$(mktemp)
   : >"$PRESTATE_FILE"
   for rel in "${TARGET_FILES[@]}"; do
@@ -306,7 +306,7 @@ command_verify() {
 command_rollback() {
   exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
   check_environment; validate_artifact; load_state
-  local reapply="${BACKUP_ROOT}/m044-c04-r2-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"
+  local reapply="${BACKUP_ROOT}/m044-c04-r3-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"
   tar -czpf "$reapply" -C "$TARGET_ROOT" "${TARGET_FILES[@]}"
   chmod 0600 "$reapply"
   restore_prior || die 'CODE_RESTORE_FAILED'
