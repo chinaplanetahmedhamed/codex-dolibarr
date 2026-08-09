@@ -1,23 +1,32 @@
 <?php
+$m046SetupActionPresent = array_key_exists('action', $_POST);
+$m046SetupAction = $m046SetupActionPresent && is_string($_POST['action']) ? $_POST['action'] : null;
+if ($m046SetupActionPresent) define('CSRFCHECK_WITH_TOKEN', 1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
 require_once __DIR__.'/../lib/main.lib.php';
+require_once __DIR__.'/../class/ShippingNoteTranslationService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 chinaplanetsp_require_internal($user, 'admin');
 $langs->loadLangs(array('admin', 'chinaplanetshippingprices@chinaplanetshippingprices'));
+$translationPolicyDisabled = !ShippingNoteTranslationService::automaticTranslationEnabled();
+if (!$translationPolicyDisabled) accessforbidden('Translation enablement requires a separately approved Mission.');
 
-if (GETPOST('action', 'aZ09') === 'save') {
+if ($m046SetupActionPresent) {
+    if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST' || $m046SetupAction !== 'save') accessforbidden();
+    foreach (array('ignore_below','default_pol','margin_20gp','margin_40gp','margin_40hq','margin_45hq','currency','history_months') as $requiredPostField) {
+        if (!array_key_exists($requiredPostField, $_POST)) accessforbidden();
+    }
     $values = array(
-        'CHINAPLANETSP_IGNORE_BELOW' => max(0, (float) GETPOST('ignore_below', 'alphanohtml')),
-        'CHINAPLANETSP_DEFAULT_POL' => trim(GETPOST('default_pol', 'alphanohtml')) ?: 'Guangzhou',
-        'CHINAPLANETSP_MARGIN_20GP' => (float) GETPOST('margin_20gp', 'alphanohtml'),
-        'CHINAPLANETSP_MARGIN_40GP' => (float) GETPOST('margin_40gp', 'alphanohtml'),
-        'CHINAPLANETSP_MARGIN_40HQ' => (float) GETPOST('margin_40hq', 'alphanohtml'),
-        'CHINAPLANETSP_MARGIN_45HQ' => (float) GETPOST('margin_45hq', 'alphanohtml'),
-        'CHINAPLANETSP_CURRENCY' => strtoupper(GETPOST('currency', 'alpha')),
-        'CHINAPLANETSP_CUSTOMER_HISTORY' => GETPOSTINT('customer_history') ? 1 : 0,
-        'CHINAPLANETSP_AUTO_TRANSLATION_ENABLED' => GETPOSTINT('auto_translation_enabled') ? 1 : 0,
-        'CHINAPLANETSP_HISTORY_MONTHS' => max(1, min(60, GETPOSTINT('history_months'))),
+        'CHINAPLANETSP_IGNORE_BELOW' => max(0, (float) GETPOST('ignore_below', 'alphanohtml', 2)),
+        'CHINAPLANETSP_DEFAULT_POL' => trim(GETPOST('default_pol', 'alphanohtml', 2)) ?: 'Guangzhou',
+        'CHINAPLANETSP_MARGIN_20GP' => (float) GETPOST('margin_20gp', 'alphanohtml', 2),
+        'CHINAPLANETSP_MARGIN_40GP' => (float) GETPOST('margin_40gp', 'alphanohtml', 2),
+        'CHINAPLANETSP_MARGIN_40HQ' => (float) GETPOST('margin_40hq', 'alphanohtml', 2),
+        'CHINAPLANETSP_MARGIN_45HQ' => (float) GETPOST('margin_45hq', 'alphanohtml', 2),
+        'CHINAPLANETSP_CURRENCY' => strtoupper(GETPOST('currency', 'alpha', 2)),
+        'CHINAPLANETSP_CUSTOMER_HISTORY' => GETPOSTINT('customer_history', 2) ? 1 : 0,
+        'CHINAPLANETSP_HISTORY_MONTHS' => max(1, min(60, GETPOSTINT('history_months', 2))),
     );
     foreach ($values as $key => $value) dolibarr_set_const($db, $key, (string) $value, 'chaine', 0, '', $conf->entity);
     setEventMessages($langs->trans('SetupSaved'), null, 'mesgs');
@@ -44,8 +53,5 @@ foreach ($fields as $f) {
     print '<label><span>'.dol_escape_htmltag($f[3]).'</span><input name="'.$f[0].'" value="'.dol_escape_htmltag($value).'" autocomplete="off"><small>'.dol_escape_htmltag($f[4]).'</small></label>';
 }
 $history = !empty($conf->global->CHINAPLANETSP_CUSTOMER_HISTORY);
-$translationEnabled = !empty($conf->global->CHINAPLANETSP_AUTO_TRANSLATION_ENABLED);
-$privateTranslationReady = getenv('CHINAPLANETSP_TRANSLATION_ENDPOINT') !== false && getenv('CHINAPLANETSP_TRANSLATION_ENDPOINT') !== '' && getenv('CHINAPLANETSP_TRANSLATION_MODEL') !== false && getenv('CHINAPLANETSP_TRANSLATION_MODEL') !== '';
-$translationProviderLabel = $privateTranslationReady ? 'Automatic private provider' : 'Automatic free fallback (MyMemory)';
-print '</div></section><section class="chinaplanetsp-rule-editor"><h2><span class="fas fa-eye"></span> Customer visibility / ما يظهر للعميل</h2><div class="chinaplanetsp-setting-switches"><label><input type="checkbox" name="customer_history" value="1"'.($history?' checked':'').'><span><strong>Show sale-price history / إظهار سجل سعر البيع</strong><small>External customers can see public price history for the configured period.</small></span></label><label><input type="checkbox" name="auto_translation_enabled" value="1"'.($translationEnabled?' checked':'').'><span><strong>Automatic carrier-note translation / ترجمة ملاحظات الوكيل تلقائيًا</strong><small>Disabled by default. When off, source notes stay internal and never block price publication. / متوقفة افتراضيًا وتبقى الملاحظات داخلية.</small></span></label><div class="chinaplanetsp-mapping-help"><span class="fas fa-language"></span><div><strong>Carrier-note translation: '.($translationEnabled ? $translationProviderLabel : 'Disabled / متوقفة').'</strong><p>'.($translationEnabled ? 'Valid English output is accepted automatically and remains editable by authorized staff.' : 'No carrier-note text is sent to an external translation service, and untranslated notes do not block publishing.').'</p></div></div></div></section><div class="chinaplanetsp-rule-actions"><button class="button button-save chinaplanetsp-submit" type="submit"><span class="fas fa-save"></span> Save settings / حفظ الإعدادات</button></div></form></main>';
+print '</div></section><section class="chinaplanetsp-rule-editor"><h2><span class="fas fa-eye"></span> Customer visibility / ما يظهر للعميل</h2><div class="chinaplanetsp-setting-switches"><label><input type="checkbox" name="customer_history" value="1"'.($history?' checked':'').'><span><strong>Show sale-price history / إظهار سجل سعر البيع</strong><small>External customers can see public price history for the configured period.</small></span></label><div class="chinaplanetsp-mapping-help"><span class="fas fa-language"></span><div><strong>Carrier-note translation: Disabled by release policy / متوقفة بسياسة الإصدار</strong><p>No carrier-note text is sent to an external translation service or exposed to customers. Future enablement requires a separately approved Mission. / لا تُرسل الملاحظات إلى خدمة خارجية ولا تظهر للعملاء، ويتطلب تفعيلها مهمة مستقلة معتمدة.</p></div></div></div></section><div class="chinaplanetsp-rule-actions"><button class="button button-save chinaplanetsp-submit" type="submit"><span class="fas fa-save"></span> Save settings / حفظ الإعدادات</button></div></form></main>';
 cpcc_admin_shell_close(); llxFooter(); $db->close();

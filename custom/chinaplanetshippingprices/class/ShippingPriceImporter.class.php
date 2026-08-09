@@ -9,18 +9,12 @@ class ShippingPriceImporter
     private $user;
     private $countryMap;
     private $lastImportResults = array();
-    private $translator;
-    private $translationCache = array();
-    private $translationStartedAt = 0.0;
-    private $translationCalls = 0;
-    private $translationCircuitOpen = false;
 
     public function __construct($db, $user, $entity = null, $translator = null)
     {
         $this->db = $db;
         $this->user = $user;
         $this->entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
-        $this->translator = $translator ?: new ShippingNoteTranslationService();
         $this->countryMap = $this->defaultCountryMap();
         $this->loadSavedCountryMap();
     }
@@ -28,10 +22,6 @@ class ShippingPriceImporter
     public function importFile($path, $originalName, array $options)
     {
         $this->lastImportResults = array();
-        $this->translationCache = array();
-        $this->translationStartedAt = microtime(true);
-        $this->translationCalls = 0;
-        $this->translationCircuitOpen = false;
         require_once DOL_DOCUMENT_ROOT.'/includes/phpoffice/phpspreadsheet/src/autoloader.php';
         require_once DOL_DOCUMENT_ROOT.'/includes/Psr/autoloader.php';
 
@@ -110,7 +100,7 @@ class ShippingPriceImporter
 
     public static function automaticTranslationEnabled()
     {
-        return !empty($GLOBALS['conf']->global->CHINAPLANETSP_AUTO_TRANSLATION_ENABLED);
+        return ShippingNoteTranslationService::automaticTranslationEnabled();
     }
 
     public function getBatchPublicationState($batchId)
@@ -343,33 +333,16 @@ class ShippingPriceImporter
     {
         $notes = ShippingNoteTranslationService::normalizeSource($notes);
         $hash = $notes === '' ? '' : hash('sha256', $notes);
-        if (isset($this->translationCache[$hash])) return $this->translationCache[$hash];
         if ($notes === '') {
-            return $this->translationCache[$hash] = array('status'=>'not_needed','notes_en'=>'','source_hash'=>'','provider'=>'','model'=>'','error'=>'','attempted'=>false);
+            return array('status'=>'not_needed','notes_en'=>'','source_hash'=>'','provider'=>'','model'=>'','error'=>'','attempted'=>false);
         }
         if (!self::automaticTranslationEnabled()) {
-            return $this->translationCache[$hash] = array(
+            return array(
                 'status'=>'not_needed','notes_en'=>'','source_hash'=>$hash,'provider'=>'','model'=>'',
                 'error'=>'translation_disabled','attempted'=>false,
             );
         }
-        if (ShippingNoteTranslationService::containsHan($notes)) {
-            $elapsed = microtime(true) - $this->translationStartedAt;
-            if ($this->translationCircuitOpen || $this->translationCalls >= 10 || $elapsed >= 19.75) {
-                return $this->translationCache[$hash] = array(
-                    'status'=>'pending','notes_en'=>'','source_hash'=>$hash,'provider'=>'','model'=>'',
-                    'error'=>$this->translationCircuitOpen ? 'provider_circuit_open' : 'translation_budget_exhausted','attempted'=>false,
-                );
-            }
-        }
-        $remainingSeconds = max(0.001, 20.0 - (microtime(true) - $this->translationStartedAt));
-        $result = $this->translator->translate($notes, $remainingSeconds);
-        if (!empty($result['attempted'])) $this->translationCalls++;
-        if (in_array($result['status'], array('pending','failed'), true) && ShippingNoteTranslationService::containsHan($notes)) {
-            $this->translationCircuitOpen = true;
-        }
-        if ((microtime(true) - $this->translationStartedAt) >= 20.0) $this->translationCircuitOpen = true;
-        return $this->translationCache[$hash] = $result;
+        throw new RuntimeException('No translation provider is available in this release.');
     }
 
     /** Initialize a reused legacy draft without modifying published/history price data. */

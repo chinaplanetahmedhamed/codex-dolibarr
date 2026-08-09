@@ -1,6 +1,5 @@
 <?php
-
-/** M044-C04 keyless-provider and automatic-retry source contract. */
+/** M044-C04 behavior retained behind the M046-C01 hard-disable boundary. */
 
 $root = dirname(__DIR__, 2);
 $read = function ($path) use ($root) {
@@ -8,126 +7,48 @@ $read = function ($path) use ($root) {
     if ($value === false) throw new RuntimeException('Unreadable '.$path);
     return $value;
 };
-$assert = function ($condition, $message) {
-    if (!$condition) throw new RuntimeException($message);
-};
+$assert = function ($condition, $message) { if (!$condition) throw new RuntimeException($message); };
 
-$translator = $read('custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php');
-$review = $read('custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php');
-$batch = $read('custom/chinaplanetshippingprices/admin/batch.php');
-$importer = $read('custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php');
-$importPage = $read('custom/chinaplanetshippingprices/admin/import.php');
-$setupPage = $read('custom/chinaplanetshippingprices/admin/setup.php');
-$priceService = $read('custom/chinaplanetshippingprices/class/ShippingPriceService.class.php');
+$translatorSource = $read('custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php');
+$reviewSource = $read('custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php');
+$batchSource = $read('custom/chinaplanetshippingprices/admin/batch.php');
+$setupSource = $read('custom/chinaplanetshippingprices/admin/setup.php');
+$importerSource = $read('custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php');
+$serviceSource = $read('custom/chinaplanetshippingprices/class/ShippingPriceService.class.php');
 
-$assert(strpos($translator, "FREE_ENDPOINT = 'https://api.mymemory.translated.net/get'") !== false, 'fixed MyMemory endpoint absent');
-$assert(strpos($translator, "GOOGLE_FREE_ENDPOINT = 'https://translate.googleapis.com/translate_a/single'") !== false, 'fixed Google fallback endpoint absent');
-$assert(strpos($translator, "FREE_LANGUAGE_PAIR = 'zh-CN|en'") !== false, 'fixed language pair absent');
-$assert(strpos($translator, "array('q'=>\$providerSource, 'langpair'=>self::FREE_LANGUAGE_PAIR, 'mt'=>'1')") !== false, 'minimal free-provider payload absent');
-$assert(strpos($translator, "array('client'=>'gtx', 'sl'=>'zh-CN', 'tl'=>'en', 'dt'=>'t', 'q'=>\$providerSource)") !== false, 'minimal Google fallback payload absent');
-$assert(strpos($translator, 'maskProtectedTokens') !== false && strpos($translator, 'restoreProtectedTokens') !== false, 'free-provider token preservation absent');
-$assert(strpos($translator, "'method' => 'GET'") !== false && strpos($translator, "'method' => 'POST'") !== false, 'provider method isolation absent');
-$assert(strpos($translator, 'provider_quota_exhausted') !== false && strpos($translator, 'FREE_MAX_QUERY_CHARS = 500') !== false, 'quota or character-limit fail-closed behavior absent');
-$assert(strpos($translator, 'validateEnglishTranslation') !== false && strpos($translator, 'CURLOPT_FOLLOWLOCATION => false') !== false && strpos($translator, 'CURLOPT_RESOLVE') !== false, 'translation validation or SSRF controls absent');
-
-$assert(strpos($review, 'public function autoTranslatePending') !== false, 'automatic retry service absent');
-$assert(strpos($review, "AND translation_status<>'approved'") !== false, 'pending-only retry filter absent');
-$assert(strpos($review, 'FOR UPDATE') !== false && strpos($review, 'hash_equals') !== false, 'retry locking or source-hash validation absent');
-$assert(strpos($review, "translation_status='approved'") !== false && strpos($review, 'fk_user_translation_review=NULL') !== false, 'automatic acceptance provenance absent');
-$assert(strpos($review, "hasRight('chinaplanetshippingprices', 'import')") !== false && strpos($review, "hasRight('chinaplanetshippingprices', 'viewcost')") !== false, 'private-note permissions absent');
-
-$assert(strpos($batch, "array('save_translation','reset_translation','auto_translate')") !== false, 'CSRF action allowlist absent');
-$assert(strpos($batch, "\$m041PostedAction === 'auto_translate'") !== false && strpos($batch, 'autoTranslatePending($id, 8, 18.0)') !== false, 'bounded automatic POST retry absent');
-$assert(strpos($batch, 'form.submit()') !== false && strpos($batch, "\$autoMode !== 'stopped'") !== false, 'automatic continuation or no-progress stop absent');
-$assert(strpos($batch, 'requires manual approval') === false && strpos($importer, 'Approve every imported carrier/source note') === false, 'stale manual-approval requirement remains');
-$assert(strpos($importer, 'manual editing is optional') !== false && strpos($importPage, 'without manual approval') !== false, 'optional-edit wording absent');
-$assert(strpos($importer, 'automaticTranslationEnabled') !== false && strpos($importer, 'if (self::automaticTranslationEnabled())') !== false, 'translation publication toggle absent');
-$assert(strpos($batch, 'Carrier-note translation is disabled.') !== false && strpos($batch, '$canPublish = !$translationEnabled') !== false, 'disabled translation batch behavior absent');
-$assert(strpos($importPage, 'are not sent externally, and do not block publishing') !== false, 'disabled import privacy wording absent');
-$assert(strpos($setupPage, "'CHINAPLANETSP_AUTO_TRANSLATION_ENABLED'") !== false && strpos($setupPage, 'name="auto_translation_enabled"') !== false, 'translation setting toggle absent');
-$assert(strpos($priceService, '$translationEnabled &&') !== false, 'disabled translation leaked existing public notes');
+$assert(strpos($translatorSource, 'public static function automaticTranslationEnabled()') !== false && strpos($translatorSource, 'return false;') !== false, 'central hard-disable absent');
+$assert(strpos($importerSource, 'ShippingNoteTranslationService::automaticTranslationEnabled()') !== false, 'importer bypasses central policy');
+$assert(strpos($serviceSource, 'ShippingNoteTranslationService::automaticTranslationEnabled()') !== false, 'public projection bypasses central policy');
+$assert(strpos($setupSource, 'ShippingNoteTranslationService::automaticTranslationEnabled()') !== false, 'setup bypasses central policy');
+$assert(substr_count($reviewSource, 'Carrier-note translation is disabled by release policy.') >= 2, 'review mutations are not both guarded');
+$assert(strpos($batchSource, '$canReviewTranslations ? $reviewService->listGroups') !== false, 'authorized read-only note review is hidden');
+$assert(strpos($batchSource, 'Read-only source and provenance review') !== false && strpos($batchSource, 'name="notes_en"') === false && strpos($batchSource, 'chinaplanetsp-auto-translate') === false, 'disabled read-only rendering boundary absent');
+$assert(strpos($setupSource, 'name="auto_translation_enabled"') === false && strpos($setupSource, "'CHINAPLANETSP_AUTO_TRANSLATION_ENABLED'") === false, 'setup can still write translation toggle');
 
 if (!defined('MAIN_DB_PREFIX')) define('MAIN_DB_PREFIX', 'llx_');
 require_once $root.'/custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php';
-
-class M044C04FakeResult
-{
-    public $rows;
-    public $index = 0;
-    public function __construct(array $rows) { $this->rows = $rows; }
+class M044C04NoDb {
+    public $queries = 0; public $begins = 0; public $updates = 0;
+    public function query($sql) { $this->queries++; if (strpos($sql, 'UPDATE ') === 0) $this->updates++; throw new RuntimeException('database must not run'); }
+    public function begin() { $this->begins++; throw new RuntimeException('transaction must not start'); }
 }
-
-class M044C04FakeDb
-{
-    public $source = '南沙 航次 AB12CD34 40HQ 加收 RMB180';
-    public $approved = false;
-    public $updates = array();
-    public $begins = 0;
-    public $commits = 0;
-    public $rollbacks = 0;
-
-    public function query($sql)
-    {
-        if (strpos($sql, 'SELECT status FROM llx_chinaplanetsp_batch') === 0) return new M044C04FakeResult(array((object) array('status'=>0)));
-        if (strpos($sql, 'SELECT source_row,MIN(source_notes)') === 0) {
-            if ($this->approved) return new M044C04FakeResult(array());
-            return new M044C04FakeResult(array((object) array(
-                'source_row'=>9,
-                'source_notes'=>$this->source,
-                'source_hash'=>hash('sha256', $this->source),
-                'note_count'=>1,
-                'hash_count'=>1,
-            )));
-        }
-        if (strpos($sql, 'SELECT source_notes,translation_source_hash,translation_status') === 0) {
-            return new M044C04FakeResult(array((object) array(
-                'source_notes'=>$this->source,
-                'translation_source_hash'=>hash('sha256', $this->source),
-                'translation_status'=>$this->approved ? 'approved' : 'failed',
-            )));
-        }
-        if (strpos($sql, 'UPDATE llx_chinaplanetsp_rate SET ') === 0) {
-            $this->updates[] = $sql;
-            if (strpos($sql, "translation_status='approved'") !== false) $this->approved = true;
-            return true;
-        }
-        if (strpos($sql, 'SELECT COUNT(DISTINCT source_row) remaining') === 0) {
-            return new M044C04FakeResult(array((object) array('remaining'=>$this->approved ? 0 : 1)));
-        }
-        throw new RuntimeException('Unexpected fake SQL: '.$sql);
-    }
-    public function fetch_object($result)
-    {
-        if ($result->index >= count($result->rows)) return false;
-        return $result->rows[$result->index++];
-    }
-    public function begin() { $this->begins++; }
-    public function commit() { $this->commits++; }
-    public function rollback() { $this->rollbacks++; }
-    public function escape($value) { return addslashes((string) $value); }
-    public function lasterror() { return 'fake_db_error'; }
+class M044C04NoTranslator {
+    public $calls = 0;
+    public function translate($source, $remainingSeconds = null) { $this->calls++; throw new RuntimeException('translator must not run'); }
 }
-
-class M044C04FakeTranslator
-{
-    private $fail;
-    public function __construct($fail = false) { $this->fail = (bool) $fail; }
-    public function translate($source, $remainingSeconds = null)
-    {
-        if ($this->fail) return array('status'=>'failed','notes_en'=>'','source_hash'=>hash('sha256',$source),'provider'=>'api.mymemory.translated.net','model'=>'zh-CN|en','error'=>'provider_quota_exhausted','attempted'=>true);
-        return array('status'=>'approved','notes_en'=>'Nansha voyage AB12CD34 40HQ surcharge RMB180','source_hash'=>hash('sha256',$source),'provider'=>'api.mymemory.translated.net','model'=>'zh-CN|en','error'=>'','attempted'=>true);
-    }
-}
-
 $staff = (object) array('socid'=>0, 'admin'=>1, 'id'=>7);
-$successDb = new M044C04FakeDb();
-$success = (new ShippingNoteReviewService($successDb, $staff, 1, new M044C04FakeTranslator()))->autoTranslatePending(21, 8, 18.0);
-$assert($success['approved'] === 1 && $success['remaining'] === 0 && $successDb->begins === 1 && $successDb->commits === 1 && $successDb->rollbacks === 0, 'successful automatic retry transaction failed');
-$assert(count($successDb->updates) === 1 && strpos($successDb->updates[0], "public_notes='Nansha voyage AB12CD34 40HQ surcharge RMB180'") !== false && strpos($successDb->updates[0], 'fk_user_translation_review=NULL') !== false, 'automatic acceptance persistence failed');
+foreach (array('auto','manual') as $path) {
+    $db = new M044C04NoDb();
+    $translator = new M044C04NoTranslator();
+    $review = new ShippingNoteReviewService($db, $staff, 1, $translator);
+    try {
+        if ($path === 'auto') $review->autoTranslatePending(21, 8, 18.0);
+        else $review->mutate(21, 9, 'save_translation', 'Bounded English');
+        throw new RuntimeException($path.' mutation unexpectedly succeeded');
+    } catch (RuntimeException $e) {
+        $assert($e->getMessage() === 'Carrier-note translation is disabled by release policy.', $path.' mutation returned wrong refusal');
+    }
+    $assert($db->queries === 0 && $db->begins === 0 && $db->updates === 0 && $translator->calls === 0, $path.' refusal touched DB or transport');
+}
 
-$failedDb = new M044C04FakeDb();
-$failed = (new ShippingNoteReviewService($failedDb, $staff, 1, new M044C04FakeTranslator(true)))->autoTranslatePending(21, 8, 18.0);
-$assert($failed['approved'] === 0 && $failed['failed'] === 1 && $failed['remaining'] === 1 && $failed['stalled'] === true, 'failed provider did not stop safely');
-$assert(count($failedDb->updates) === 1 && strpos($failedDb->updates[0], 'public_notes=NULL') !== false && strpos($failedDb->updates[0], 'provider_quota_exhausted') !== false, 'failed provider output was not kept private');
-
-echo "M044_C04_FREE_AUTO_TRANSLATION=PASS provider=MYMEMORY_PLUS_GOOGLE_FALLBACK key=NONE retry=BOUNDED db_flow=PASS approval=AUTOMATIC toggle=DEFAULT_OFF\n";
+echo "M044_C04_FREE_AUTO_TRANSLATION=PASS effective=DISABLED review=READ_ONLY provider_calls=0 db_mutations=0\n";
