@@ -99,12 +99,12 @@ jobs:
           git merge-base --is-ancestor "$RUNTIME_COMMIT" HEAD
           test "$(sha256sum deploy/releases/m046-c01-runtime-files.txt | awk '{print $1}')" = '69d754158a34b54dbf3186a2ba69c7a9a2c958a5f43b3e0605462cc470c7f798'
           test "$(sha256sum deploy/releases/m046-c01-support-files.txt | awk '{print $1}')" = '6c64b2f9441a1a3fdbb8950f295209f973c34c7e788d05b7303a5c5c7e4ec47b'
-          test "$(sha256sum deploy/tools/chinaplanetos_backup_erp_m046_c01_translation_policy.sh | awk '{print $1}')" = '2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa'
-          test "$(sha256sum deploy/tools/install_backup_erp_m046_c01_helper.sh | awk '{print $1}')" = 'f2ba74352883d8ab8b8477e1dba927adc0e4d8c6831cb6f0884030ae21676884'
+          test "$(sha256sum deploy/tools/chinaplanetos_backup_erp_m046_c01_translation_policy.sh | awk '{print $1}')" = '2546a927e27c3b0fcf1d4957c0b8864fd1359a177250fcc980bdd2f0bc50ea1f'
+          test "$(sha256sum deploy/tools/install_backup_erp_m046_c01_helper.sh | awk '{print $1}')" = '124eacc1316e11b96a428842bd71183dece8088dc9118c7f172286bb5c9a2704'
           test "$(sha256sum deploy/tools/build_m046_c01_artifact.sh | awk '{print $1}')" = '7b66b8da8fc6650a6525689462f47eb0b1854dbafb14f2543cca48edc02089b6'
           test "$(sha256sum deploy/config/codex-deploy-backup-erp-m046-c01.sudoers | awk '{print $1}')" = 'a44d291dcc7a3a417c98aff42421b88d51212f97b7ef26406a7adba14a98633b'
           test "$(sha256sum deploy/tests/test_m046_c01_staging_helper.sh | awk '{print $1}')" = 'ac9e607043fa6005c4099db4b2e79c0ed6b0506b67c6a57623e044194a17c577'
-          test "$(sha256sum deploy/tests/test_m046_c01_release_contract.sh | awk '{print $1}')" = '125e2990537a5a2078a9ba4642ef77c267d5f056cece6cf77496d740bbf957d9'
+          test "$(sha256sum deploy/tests/test_m046_c01_release_contract.sh | awk '{print $1}')" = 'c672c1a87b00703982a641a5b601ac9f9deede26ed988b359fd74e43e276e1d2'
           php deploy/tests/test_m041_shipping_note_translation.php
           php deploy/tests/test_m041_shipping_note_translation_source.php
           php deploy/tests/test_m041_shipping_note_translation_runtime.php
@@ -165,7 +165,7 @@ jobs:
           ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
           remote_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$DEPLOY_HELPER'")
           remote_sha=${remote_output%% *}
-          test "$remote_sha" = '2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa'
+          test "$remote_sha" = '2546a927e27c3b0fcf1d4957c0b8864fd1359a177250fcc980bdd2f0bc50ea1f'
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER status"
 
       - name: Upload pinned staging artifact
