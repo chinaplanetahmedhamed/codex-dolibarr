@@ -50,6 +50,10 @@ if grep -Eq ' (apply|verify|rollback)( |$)' "$sudoers"; then die 'MUTATING_SUDO_
 
 grep -Fq 'PREPARE_M046_PRODUCTION_PREFLIGHT' "$workflow" || die 'WORKFLOW_CONFIRMATION_INVALID'
 grep -Fq 'environment: erp-production' "$workflow" || die 'WORKFLOW_ENVIRONMENT_INVALID'
+grep -Fq 'phase:' "$workflow" || die 'WORKFLOW_PHASE_GATE_MISSING'
+grep -Fq "inputs.phase == 'preflight'" "$workflow" || die 'WORKFLOW_PREFLIGHT_PHASE_GATE_MISSING'
+grep -Fq 'Upload and verify pinned helper installation assets' "$workflow" || die 'WORKFLOW_BOOTSTRAP_UPLOAD_MISSING'
+grep -Fq 'd76cf5f024f879090ce869fa5f7af967a3e8034f4050cf6d27b7f8a089ca0b38' "$workflow" || die 'WORKFLOW_INSTALLER_PIN_INVALID'
 for command in compare preflight status; do
   grep -Fq "sudo -n \$DEPLOY_HELPER $command" "$workflow" || die 'WORKFLOW_COMMAND_MISSING'
 done

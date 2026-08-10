@@ -7,6 +7,14 @@ on:
         description: Type PREPARE_M046_PRODUCTION_PREFLIGHT
         required: true
         type: string
+      phase:
+        description: Upload pinned assets first, then run preflight after the root installer
+        required: true
+        default: bootstrap
+        type: choice
+        options:
+          - bootstrap
+          - preflight
 
 permissions:
   contents: read
@@ -68,7 +76,7 @@ jobs:
           bash deploy/tests/test_m046_production_release_contract.sh
 
   preflight:
-    name: Upload artifact and inspect erp production read-only
+    name: Bootstrap assets or inspect erp production read-only
     needs: validate
     runs-on: ubuntu-latest
     environment: erp-production
@@ -126,7 +134,26 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" >"$HOME/.ssh/known_hosts"
           chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
 
+      - name: Upload and verify pinned helper installation assets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" \
+            deploy/tools/chinaplanetos_production_m046_translation_policy.sh \
+            deploy/config/codex-deploy-production-m046-preflight.sudoers \
+            deploy/tools/install_production_m046_helper.sh \
+            "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/chinaplanetos_production_m046_translation_policy.sh' '$REMOTE_INBOX/codex-deploy-production-m046-preflight.sudoers' '$REMOTE_INBOX/install_production_m046_helper.sh'"
+          helper_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$REMOTE_INBOX/chinaplanetos_production_m046_translation_policy.sh'")
+          sudoers_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$REMOTE_INBOX/codex-deploy-production-m046-preflight.sudoers'")
+          installer_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$REMOTE_INBOX/install_production_m046_helper.sh'")
+          test "${helper_output%% *}" = '0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58'
+          test "${sudoers_output%% *}" = '18a7dfd57efe44ea961ec45af13c589b090eb4c626145b11ea03bc5bb58fe17d'
+          test "${installer_output%% *}" = 'd76cf5f024f879090ce869fa5f7af967a3e8034f4050cf6d27b7f8a089ca0b38'
+
       - name: Verify separately installed production helper and restricted sudo surface
+        if: ${{ inputs.phase == 'preflight' }}
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -146,15 +173,17 @@ jobs:
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME'"
 
       - name: Compare production runtime files read-only
+        if: ${{ inputs.phase == 'preflight' }}
         shell: bash
         run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER compare"
 
       - name: Run restricted production preflight read-only
+        if: ${{ inputs.phase == 'preflight' }}
         shell: bash
         run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
 
       - name: Record production helper status
-        if: ${{ always() }}
+        if: ${{ always() && inputs.phase == 'preflight' }}
         shell: bash
         run: |
           set -Eeuo pipefail
