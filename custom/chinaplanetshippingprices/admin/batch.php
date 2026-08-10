@@ -10,7 +10,6 @@ require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shel
 chinaplanetsp_require_internal($user, 'import');
 $id = GETPOSTINT('id');
 $notePage = max(0, GETPOSTINT('note_page'));
-$autoMode = GETPOST('auto', 'alpha');
 $reviewService = new ShippingNoteReviewService($db, $user);
 $translationEnabled = ShippingPriceImporter::automaticTranslationEnabled();
 
@@ -58,14 +57,14 @@ $res = $db->query($summarySql);
 if ($res && ($row = $db->fetch_object($res))) $translationSummary = $row;
 $canPublish = !$translationEnabled || (int)$translationSummary->pending_rows === 0;
 $canReviewTranslations = $reviewService->canReview();
-$translationPage = $translationEnabled && $canReviewTranslations ? $reviewService->listGroups($id, $notePage, 25) : array('groups'=>array(),'total'=>0,'page'=>0,'pages'=>0);
+$translationPage = $canReviewTranslations ? $reviewService->listGroups($id, $notePage, 25) : array('groups'=>array(),'total'=>0,'page'=>0,'pages'=>0);
 
 $css = array(
     cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),
     cpcc_admin_shell_asset('/custom/chinaplanetshippingprices/css/shippingprices.css'),
 );
 llxHeader('', 'Review '.$batch->ref, '', '', 0, 0, array(), $css);
-cpcc_admin_shell_open('shippingprices', 'Review import / مراجعة ملف الأسعار', 'تُترجم ملاحظات الوكيل تلقائيًا ويمكنك تعديل الإنجليزية عند الحاجة', 'fa-search');
+cpcc_admin_shell_open('shippingprices', 'Review import / مراجعة ملف الأسعار', 'مراجعة الأسعار وملاحظات الوكيل الداخلية وفق صلاحيات العرض', 'fa-search');
 print '<main class="chinaplanetsp-rates-manager">';
 print '<div class="chinaplanetsp-admin-toolbar"><a class="button" href="import.php">Back to imports</a><a class="button" href="dashboard.php">Control center</a>';
 if ((int)$batch->status !== 2 && $canPublish) {
@@ -75,18 +74,8 @@ if ((int)$batch->status !== 2 && $canPublish) {
 }
 print '</div>';
 
-if ($translationEnabled && (int)$batch->status !== 2 && (int)$translationSummary->pending_rows > 0 && $canReviewTranslations) {
-    print '<form id="chinaplanetsp-auto-translate" method="post" hidden><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="auto_translate"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="note_page" value="'.(int)$notePage.'"></form>';
-    if ($autoMode !== 'stopped') {
-        print '<div class="info"><strong>Automatic translation is running.</strong> This page will continue in small safe batches; no manual approval is required. / الترجمة التلقائية تعمل على دفعات آمنة ولا تحتاج موافقة يدوية.</div>';
-        print '<script>window.addEventListener("load",function(){window.setTimeout(function(){var form=document.getElementById("chinaplanetsp-auto-translate");if(form)form.submit();},500);});</script>';
-    } else {
-        print '<div class="warning"><strong>Automatic translation paused safely.</strong> The free service may be temporarily unavailable or at its usage limit. Untranslated notes remain private. <button class="button" type="submit" form="chinaplanetsp-auto-translate">Retry automatic translation / إعادة المحاولة</button></div>';
-    }
-}
-
 if ($translationEnabled && (int)$batch->status !== 2 && !$canPublish) print '<div class="warning"><strong>Automatic translation pending:</strong> '.(int)$translationSummary->pending_rows.' carrier note(s) are still untranslated or invalid. They will retry automatically; manual editing is optional. / ما زالت بعض الملاحظات بانتظار الترجمة التلقائية، والتعديل اليدوي اختياري.</div>';
-if (!$translationEnabled) print '<div class="info"><strong>Carrier-note translation is disabled.</strong> Source notes remain internal, are not sent to an external service, and do not block price publication. / ترجمة ملاحظات الوكيل متوقفة، وتبقى الملاحظات داخلية ولا تمنع نشر الأسعار.</div>';
+if (!$translationEnabled) print '<div class="info"><strong>Carrier-note translation is disabled by release policy.</strong> Authorized staff may review source/provenance fields read-only. Source notes remain internal, are not sent externally, never appear to customers, and do not block price publication. / الترجمة متوقفة بسياسة الإصدار، ويمكن للمصرح لهم مراجعة المصدر للقراءة فقط دون إرساله خارجيًا أو عرضه للعملاء.</div>';
 if ((int)$batch->status === 2 && !$publication['is_current'] && !$publication['is_latest_relevant']) print '<div class="info">This batch is published as history. A newer relevant batch supplies the current prices. / هذه الدفعة محفوظة كسجل تاريخي.</div>';
 if (!empty($publication['can_reactivate'])) print '<div class="warning">This is the latest published batch, but none of its prices are current. Use repair only if it must be active. / استخدم الإصلاح فقط إذا كانت هذه القائمة المطلوبة.</div>';
 
@@ -102,16 +91,17 @@ $stats = array(
     array('Accepted prices',(int)$batch->accepted_rows,'Parsed from workbook / مقبول',''),
     array('Current prices',(int)$publication['current_rates'],'Active now / الحالية الآن',''),
     array('Customer search',(int)$publication['searchable_rates'],'Visible in inquiry / ظاهرة في البحث',''),
-    array('Carrier notes',(int)$translationSummary->note_rows,'Automatically translated on upload',''),
+    array('Carrier notes',(int)$translationSummary->note_rows,$translationEnabled ? 'Automatically translated on upload' : 'Restricted internal review only',''),
     array($translationEnabled ? 'Need attention' : 'Translation',$translationEnabled ? (int)$translationSummary->pending_rows : 'Off',$translationEnabled ? 'Only failed or unconfigured translations' : 'Source notes stay internal',$translationEnabled && (int)$translationSummary->pending_rows ? 'warn' : ''),
 );
 foreach ($stats as $stat) print '<div class="'.$stat[3].'"><span>'.$stat[0].'</span><strong>'.$stat[1].'</strong><small>'.$stat[2].'</small></div>';
 print '</div></section>';
 
-if ($translationEnabled && (int)$translationSummary->note_rows > 0) {
-    print '<section class="chinaplanetsp-rule-list chinaplanetsp-translation-review"><div class="chinaplanetsp-list-head"><h2>Carrier-note English translation / ترجمة ملاحظات الوكيل <span>'.(int)$translationPage['total'].'</span></h2><small>Successful translations are accepted automatically. Edit and save only when correction is needed.</small></div>';
+if ((int)$translationSummary->note_rows > 0) {
+    $translationCountLabel = $canReviewTranslations ? (string) (int)$translationPage['total'] : 'Restricted';
+    print '<section class="chinaplanetsp-rule-list chinaplanetsp-translation-review"><div class="chinaplanetsp-list-head"><h2>Carrier-note review / مراجعة ملاحظات الوكيل <span>'.dol_escape_htmltag($translationCountLabel).'</span></h2><small>'.($translationEnabled ? 'Successful translations are accepted automatically. Edit and save only when correction is needed.' : 'Read-only source and provenance review. Translation changes are disabled by release policy.').'</small></div>';
     if (!$canReviewTranslations) {
-        print '<div class="warning">Viewing the source or editing its translation requires both Import and View Cost rights, or administrator access.</div>';
+        print '<div class="warning">Viewing source notes and stored translation provenance requires both Import and View Cost rights, or administrator access. Translation changes are disabled for every user by release policy.</div>';
     } else {
         foreach ($translationPage['groups'] as $group) {
             $inconsistent = (int)$group->hash_count !== 1 || (int)$group->status_count !== 1;
@@ -122,13 +112,12 @@ if ($translationEnabled && (int)$translationSummary->note_rows > 0) {
             if ($inconsistent) print '<div class="error">Grouped source evidence is inconsistent. Do not publish this batch.</div>';
             print '<div class="chinaplanetsp-translation-grid"><section><h3>Original source / النص الأصلي</h3><div class="chinaplanetsp-source-note" lang="zh" dir="ltr">'.nl2br(dol_escape_htmltag($group->source_notes)).'</div>';
             if ((string)$group->source_notes_raw !== (string)$group->source_notes) print '<details><summary>Exact workbook cell / النص الخام</summary><pre>'.dol_escape_htmltag($group->source_notes_raw).'</pre></details>';
-            print '</section><form method="post"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.$id.'"><input type="hidden" name="note_page" value="'.(int)$translationPage['page'].'"><input type="hidden" name="source_row" value="'.(int)$group->source_row.'"><label><span>English translation / الترجمة الإنجليزية</span><textarea name="notes_en" rows="7" lang="en" dir="ltr" maxlength="12000">'.dol_escape_htmltag($group->notes_en).'</textarea></label>';
-            if (!empty($group->translation_error)) print '<small class="chinaplanetsp-translation-error">Translation service: '.dol_escape_htmltag($group->translation_error).'</small>';
-            if (!empty($group->translation_provider)) print '<small>Translation source: '.dol_escape_htmltag($group->translation_provider).(!empty($group->translation_model)?' · '.dol_escape_htmltag($group->translation_model):'').'</small>';
-            if (!$inconsistent) {
-                print '<div class="chinaplanetsp-translation-actions"><button class="button button-save" name="action" value="save_translation">Save English translation / حفظ الترجمة</button></div>';
-            }
-            print '</form></div></article>';
+            print '</section>';
+            print '<section><h3>Stored English/provenance / الإنجليزية والمصدر المحفوظ</h3><div class="chinaplanetsp-source-note" lang="en" dir="ltr">'.(!empty($group->notes_en) ? nl2br(dol_escape_htmltag($group->notes_en)) : '<em>No stored English translation.</em>').'</div>';
+            if (!empty($group->translation_error)) print '<small class="chinaplanetsp-translation-error">Stored translation result: '.dol_escape_htmltag($group->translation_error).'</small>';
+            if (!empty($group->translation_provider)) print '<small>Stored translation provenance: '.dol_escape_htmltag($group->translation_provider).(!empty($group->translation_model)?' · '.dol_escape_htmltag($group->translation_model):'').'</small>';
+            print '</section>';
+            print '</div></article>';
         }
         if ((int)$translationPage['pages'] > 1) {
             print '<nav class="chinaplanetsp-translation-pages" aria-label="Translation pages">';

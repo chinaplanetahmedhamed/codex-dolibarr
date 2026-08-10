@@ -60,5 +60,5 @@ if (strpos($sopEdit, "define('CSRFCHECK_WITH_TOKEN', 1)") === false || strpos($s
 $api = file_get_contents($root.'/custom/chinaplanetshippingprices/api/class/api_chinaplanetshippingprices.class.php');
 if (strpos($api, '), false, 100)') === false) throw new RuntimeException('API must force customer-safe output.');
 $translator = file_get_contents($root.'/custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php');
-if (strpos($translator, 'CURLOPT_RESOLVE') === false || strpos($translator, 'MAX_RESPONSE_BYTES = 65536') === false) throw new RuntimeException('M041 translation SSRF/resource boundary missing.');
+if (strpos($translator, 'return false;') === false || strpos($translator, 'curl_') !== false || strpos($translator, 'getenv(') !== false || strpos($translator, 'https://') !== false) throw new RuntimeException('M046 translation hard-disable/provider-removal boundary missing.');
 print "OK shipping prices structure and privacy boundaries\n";

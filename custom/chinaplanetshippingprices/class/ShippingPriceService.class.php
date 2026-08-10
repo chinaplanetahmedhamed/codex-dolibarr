@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/ShippingNoteTranslationService.class.php';
+
 class ShippingPriceService
 {
     private $db;
@@ -396,7 +398,7 @@ class ShippingPriceService
         foreach ($components as $component) $included[] = $component['label'];
         $excluded = array('Origin and destination local charges unless explicitly listed', 'Customs duties, taxes and services not explicitly listed');
         $hasM041Provenance = property_exists($row, 'source_notes') && $row->source_notes !== null;
-        $translationEnabled = !empty($GLOBALS['conf']->global->CHINAPLANETSP_AUTO_TRANSLATION_ENABLED);
+        $translationEnabled = ShippingNoteTranslationService::automaticTranslationEnabled();
         $publicNotes = !$hasM041Provenance
             ? $row->public_notes
             : ($translationEnabled && (string) $row->translation_status === 'approved' ? $row->public_notes : '');

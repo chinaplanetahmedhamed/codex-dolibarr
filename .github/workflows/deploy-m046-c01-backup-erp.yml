@@ -1,0 +1,204 @@
+name: Deploy M046-C01 translation policy correction to backup-erp
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type DEPLOY_M046_C01_TO_BACKUP_ERP
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-erp-deployment
+  cancel-in-progress: false
+
+env:
+  RUNTIME_COMMIT: 15c19dda5842be992e6926db473878042a0a96d5
+  RELEASE_MISSION: M046-C01-R1
+  ARTIFACT_NAME: m046-c01-15c19dd.tar.gz
+  ARTIFACT_SHA: 79982ab606c958da9c7193c08464156c4e7e18f07d4ce5b65ba7b5af39164596
+  DEPLOY_HOST: 31.97.158.178
+  DEPLOY_USER: codex-deploy
+  DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m046-c01-translation-policy
+  REMOTE_INBOX: /home/codex-deploy/staging-inbox
+
+jobs:
+  deploy:
+    name: Validate and deploy M046-C01 on backup-erp only
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 25
+
+    steps:
+      - name: Require exact staging confirmation
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = 'DEPLOY_M046_C01_TO_BACKUP_ERP'
+
+      - name: Check out the workflow-trigger commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify pinned source and release contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = 'refs/heads/main'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "$RUNTIME_COMMIT" HEAD
+          test "$(sha256sum deploy/releases/m046-c01-runtime-files.txt | awk '{print $1}')" = '69d754158a34b54dbf3186a2ba69c7a9a2c958a5f43b3e0605462cc470c7f798'
+          test "$(sha256sum deploy/releases/m046-c01-support-files.txt | awk '{print $1}')" = '6c64b2f9441a1a3fdbb8950f295209f973c34c7e788d05b7303a5c5c7e4ec47b'
+          test "$(sha256sum deploy/tools/chinaplanetos_backup_erp_m046_c01_translation_policy.sh | awk '{print $1}')" = '2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa'
+          test "$(sha256sum deploy/tools/install_backup_erp_m046_c01_helper.sh | awk '{print $1}')" = 'f2ba74352883d8ab8b8477e1dba927adc0e4d8c6831cb6f0884030ae21676884'
+          test "$(sha256sum deploy/tools/build_m046_c01_artifact.sh | awk '{print $1}')" = '7b66b8da8fc6650a6525689462f47eb0b1854dbafb14f2543cca48edc02089b6'
+          test "$(sha256sum deploy/config/codex-deploy-backup-erp-m046-c01.sudoers | awk '{print $1}')" = 'a44d291dcc7a3a417c98aff42421b88d51212f97b7ef26406a7adba14a98633b'
+          test "$(sha256sum deploy/tests/test_m046_c01_staging_helper.sh | awk '{print $1}')" = 'ac9e607043fa6005c4099db4b2e79c0ed6b0506b67c6a57623e044194a17c577'
+          test "$(sha256sum deploy/tests/test_m046_c01_release_contract.sh | awk '{print $1}')" = '125e2990537a5a2078a9ba4642ef77c267d5f056cece6cf77496d740bbf957d9'
+          php deploy/tests/test_m041_shipping_note_translation.php
+          php deploy/tests/test_m041_shipping_note_translation_source.php
+          php deploy/tests/test_m041_shipping_note_translation_runtime.php
+          php deploy/tests/test_m041_translation_provider.php
+          php deploy/tests/test_m044_c03_note_review_ui.php
+          php deploy/tests/test_m044_c04_free_auto_translation.php
+          php deploy/tests/test_m044_c04_free_provider.php
+          php deploy/tests/test_m046_c01_translation_policy.php
+          php deploy/tests/test_m046_c01_setup_route.php
+          php deploy/tests/test_m046_c01_call_sites.php
+          php deploy/tests/test_m034_shipping_price_publication_state.php
+          php deploy/tests/test_shipping_prices_upload_csrf.php
+          bash -n deploy/tools/chinaplanetos_backup_erp_m046_c01_translation_policy.sh
+          bash -n deploy/tools/install_backup_erp_m046_c01_helper.sh
+          bash -n deploy/tools/build_m046_c01_artifact.sh
+          bash deploy/tests/test_m046_c01_release_contract.sh
+
+      - name: Build and verify deterministic correction artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m046-c01"
+          artifact="$RUNNER_TEMP/m046-c01/$ARTIFACT_NAME"
+          bash deploy/tools/build_m046_c01_artifact.sh "$artifact"
+          test "$(sha256sum "$artifact" | awk '{print $1}')" = "$ARTIFACT_SHA"
+          M046_C01_TEST_ARTIFACT="$artifact" M046_C01_TEST_TMP_ROOT=/tmp bash deploy/tests/test_m046_c01_staging_helper.sh
+          chmod 0644 "$artifact"
+          echo "path=$artifact" >>"$GITHUB_OUTPUT"
+
+      - name: Generate fresh one-use request IDs
+        id: request
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          stamp=$(date -u '+%Y%m%dT%H%M%SZ')
+          apply_suffix=$(printf '%012x' "$((GITHUB_RUN_ID % 281474976710655))")
+          rollback_suffix=$(printf '%012x' "$(((GITHUB_RUN_ID + 1) % 281474976710655))")
+          echo "apply=m046-c01-$stamp-$apply_suffix" >>"$GITHUB_OUTPUT"
+          echo "rollback=m046-c01-$stamp-$rollback_suffix" >>"$GITHUB_OUTPUT"
+
+      - name: Configure restricted staging SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" >"$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" >"$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Verify separately installed staging helper
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          remote_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$DEPLOY_HELPER'")
+          remote_sha=${remote_output%% *}
+          test "$remote_sha" = '2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa'
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER status"
+
+      - name: Upload pinned staging artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${ssh_opts[@]}" '${{ steps.artifact.outputs.path }}' "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME'"
+
+      - name: Compare staging files read-only
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER compare"
+
+      - name: Run restricted staging preflight read-only
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
+
+      - name: Apply with exact backups and automatic restore
+        id: apply
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          output=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply '${{ steps.request.outputs.apply }}'")
+          printf '%s\n' "$output"
+          if grep -Fq 'M046_C01_STAGING_APPLY=PASS' <<<"$output"; then
+            echo 'did_mutate=true' >>"$GITHUB_OUTPUT"
+          elif grep -Fq 'M046_C01_STAGING_APPLY=NOOP_ALREADY_MATCHING' <<<"$output"; then
+            echo 'did_mutate=false' >>"$GITHUB_OUTPUT"
+          else
+            echo 'Unrecognized staging apply result' >&2
+            exit 1
+          fi
+
+      - name: Reconcile staging after every apply attempt
+        id: reconcile
+        if: ${{ always() && steps.apply.outcome != 'skipped' }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          status_output=''
+          if status_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER status"); then printf '%s\n' "$status_output"; fi
+          if verify_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify"); then
+            printf '%s\n' "$verify_output"
+            echo 'verified=true' >>"$GITHUB_OUTPUT"
+            echo 'needs_rollback=false' >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo 'verified=false' >>"$GITHUB_OUTPUT"
+          if grep -Fq 'STATE_STATUS=DEPLOYED' <<<"$status_output"; then
+            echo 'needs_rollback=true' >>"$GITHUB_OUTPUT"
+            echo 'Reconciliation found a deployed but unverified staging state' >&2
+          else
+            echo 'needs_rollback=false' >>"$GITHUB_OUTPUT"
+            echo 'Reconciliation did not find a deployed staging state' >&2
+          fi
+          exit 1
+
+      - name: Roll back any deployed state that reconciliation cannot verify
+        if: ${{ always() && steps.reconcile.outputs.needs_rollback == 'true' }}
+        shell: bash
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER rollback '${{ steps.request.outputs.rollback }}'"
+
+      - name: Remove only the correction-owned inbox artifact
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
+            ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" "rm -f -- '$REMOTE_INBOX/$ARTIFACT_NAME'"
+          fi
+
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        shell: bash
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"

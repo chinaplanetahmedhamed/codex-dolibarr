@@ -30,11 +30,11 @@ $batchContracts = array(
     "array('save_translation','reset_translation','auto_translate')",
     'CSRFCHECK_WITH_TOKEN',
     'pending_rows',
-    'Carrier-note English translation',
-    'name="source_row"',
-    'name="notes_en"',
-    'value="save_translation"',
+    'Carrier-note review',
     'if ((int)$batch->status !== 2 && $canPublish)',
+    'Read-only source and provenance review',
+    '$canReviewTranslations ? $reviewService->listGroups',
+    'Stored English/provenance',
 );
 foreach ($batchContracts as $contract) {
     if (strpos($batch, $contract) === false) {
@@ -44,11 +44,10 @@ foreach ($batchContracts as $contract) {
 
 $serviceContracts = array(
     'class ShippingNoteReviewService',
-    "array('save_translation','approve_translation','reset_translation')",
-    'FOR UPDATE',
-    'translation_status',
-    'fk_user_translation_review',
+    'Carrier-note translation is disabled by release policy.',
+    'requires a separately approved Mission.',
     'listGroups',
+    'COUNT(DISTINCT source_row)',
 );
 foreach ($serviceContracts as $contract) {
     if (strpos($service, $contract) === false) {
@@ -69,4 +68,4 @@ foreach ($cssContracts as $contract) {
     }
 }
 
-echo "M044_C03_NOTE_REVIEW_UI=PASS page=PASS service=PASS css=PASS publish_gate=PASS\n";
+echo "M044_C03_NOTE_REVIEW_UI=PASS page=PASS service=PASS css=PASS publish_gate=PASS disabled_review=READ_ONLY\n";
