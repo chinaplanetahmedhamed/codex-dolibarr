@@ -1,0 +1,3 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m046-translation-policy compare
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m046-translation-policy preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m046-translation-policy status

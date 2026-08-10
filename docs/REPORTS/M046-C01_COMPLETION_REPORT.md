@@ -3,14 +3,14 @@
 ## Report control
 
 - **Mission:** M046-C01 — Translation enablement and setup CSRF boundary
-- **Report status:** DEVELOPER_REPORTED — STAGING_PENDING
+- **Report status:** STAGING_ACCEPTED — PRODUCTION_PREFLIGHT_APPROVED
 - **Implementation owner:** Agent 007
 - **Branch:** `codex/m046-c01-translation-policy`
 - **Base commit:** `2404ba03f10fadd503fc3dbbea67ad9f8a87e6fa`
 - **Runtime result commit:** `15c19dda5842be992e6926db473878042a0a96d5`
 - **Release-assets head before this report:** `e0af5ff16f235fb91226882428e4cc3afa02afba`
-- **Environment used:** local development, a disposable local Dolibarr database, and approved canonical `backup-erp` release preflight
-- **Staging touched:** Yes — restricted helper/sudoers installed; runtime apply not started
+- **Environment used:** local development, a disposable local Dolibarr database, approved canonical `backup-erp`, and production-preflight asset review
+- **Staging touched:** Yes — restricted deployment and authenticated acceptance passed
 - **Production touched:** No
 
 ## Business outcome
@@ -54,6 +54,17 @@ six runtime files are deployment targets.
 | Helper test SHA-256 | `ac9e607043fa6005c4099db4b2e79c0ed6b0506b67c6a57623e044194a17c577` |
 | Release-contract test SHA-256 | `c672c1a87b00703982a641a5b601ac9f9deede26ed988b359fd74e43e276e1d2` |
 
+The production-preflight release pin uses the same runtime commit and artifact.
+Its separate production helper is pinned to
+`0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58`,
+the preflight-only sudoers policy to
+`18a7dfd57efe44ea961ec45af13c589b090eb4c626145b11ea03bc5bb58fe17d`,
+and the installer to
+`d76cf5f024f879090ce869fa5f7af967a3e8034f4050cf6d27b7f8a089ca0b38`.
+The sudoers policy exposes only `status`, `compare`, and `preflight`. These
+commands do not write to the ERP container; candidate execution remains behind
+the separately gated apply command.
+
 ## Verification evidence
 
 | Verification | Result |
@@ -74,40 +85,37 @@ six runtime files are deployment targets.
 | GitHub run `31391700862` apply | STOPPED before request creation with `REQUEST_ID_TIME_INVALID`; runtime remained `NOT_DEPLOYED` |
 | Normalized request timestamp on backup-ERP GNU `date` | PASS with `YYYY-MM-DDTHH:MM:SSZ` |
 | `git diff --check` | PASS |
+| GitHub staging run `31393168404` | PASS; apply, verification, and acceptance completed on `backup-erp` |
+| Production helper destructive local harness | PASS; production identity pins and rollback safety verified without production access |
+| Production preflight sudo contract | PASS; exactly 3 commands and no apply/verify/rollback grant |
 
 ## Data and environment boundary
 
-- Canonical `backup-erp` was accessed under Ahmed's exact staging approval.
-  The first pinned helper and sudoers rule were installed, and compare/preflight
-  passed. The runtime apply stopped before request creation because GNU `date`
-  rejected the compact request timestamp.
-- No staging runtime file, database row, application configuration, module
-  state, business record, batch, quotation, order, payment, shipment, or
-  document was changed. Helper status remained `NOT_DEPLOYED`.
-- Production was not accessed or changed.
+- Canonical `backup-erp` was deployed under Ahmed's exact staging approval.
+  GitHub run `31393168404` passed deployment, verification, and authenticated
+  staging acceptance for the six runtime files.
+- The staging deployment did not change database rows, application
+  configuration, module state, business records, batches, quotations, orders,
+  payments, shipments, or documents.
+- Production preparation is a separate gate. At this report revision,
+  production had not yet been accessed or changed.
 - The real local integration test used synthetic fixture data in a disposable
   database. It verified cleanup and confirmed the temporary database was absent
   after completion.
 - No carrier note was sent to any external translation provider.
 
-## Rollback and staging boundary
+## Rollback and production boundary
 
-The restricted staging helper is the only approved apply path for this
-candidate. It creates request-scoped backups, verifies owner/group/mode and file
-hashes, applies under a lock, automatically restores on apply or verification
-failure, and supports explicit rollback. The corrected helper normalizes the
-compact request ID into ISO-8601 for GNU `date` while retaining the BSD fallback.
-Its installer accepts only the exact first-installed helper SHA or the corrected
-SHA and upgrades atomically.
-
-No helper upgrade or new `backup-erp` apply may occur until Ahmed approves the
-corrected helper and installer SHAs. Production remains forbidden until staging
-runtime and authenticated acceptance pass and a separate exact production
-approval is given.
+The production helper retains request-scoped backup, lock, replay, verification,
+automatic restore, and rollback logic for a later apply gate. During production
+preparation, however, the installed sudoers rule exposes only `status`,
+`compare`, and `preflight`. The workflow cannot invoke a runtime apply, verify,
+or rollback command. Any production apply requires a separately approved helper
+surface upgrade after compare/preflight evidence is reviewed.
 
 ## Architect disposition
 
-- **Decision:** HELPER_CORRECTION_READY_FOR_GIT_REVIEW
+- **Decision:** PRODUCTION_PREFLIGHT_ASSETS_READY_FOR_GIT_REVIEW
 - **Local implementation:** PASS
-- **Staging:** HELPER_UPGRADE_APPROVAL_PENDING; runtime `NOT_DEPLOYED`
-- **Production:** FORBIDDEN
+- **Staging:** PASS; runtime commit `15c19dda5842be992e6926db473878042a0a96d5`
+- **Production:** PREFLIGHT PREPARATION APPROVED; APPLY FORBIDDEN
