@@ -19,7 +19,7 @@ for file in "$helper" "$installer" "$sudoers" "$workflow" "$runtime_manifest" "$
 done
 
 bash -n "$helper" "$installer"
-[[ $(sha256 "$helper") == '0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58' ]] || die 'HELPER_HASH_INVALID'
+[[ $(sha256 "$helper") == 'a351c5653d8a66e9f7a65db579bf9ce21b5a49d4c082d04dcc48cb0312475926' ]] || die 'HELPER_HASH_INVALID'
 [[ $(sha256 "$sudoers") == '18a7dfd57efe44ea961ec45af13c589b090eb4c626145b11ea03bc5bb58fe17d' ]] || die 'SUDOERS_HASH_INVALID'
 [[ $(sha256 "$runtime_manifest") == '69d754158a34b54dbf3186a2ba69c7a9a2c958a5f43b3e0605462cc470c7f798' ]] || die 'RUNTIME_MANIFEST_HASH_INVALID'
 [[ $(sha256 "$support_manifest") == '6c64b2f9441a1a3fdbb8950f295209f973c34c7e788d05b7303a5c5c7e4ec47b' ]] || die 'SUPPORT_MANIFEST_HASH_INVALID'
@@ -30,6 +30,7 @@ grep -Fq "readonly ARTIFACT_SHA='79982ab606c958da9c7193c08464156c4e7e18f07d4ce5b
 grep -Fq "readonly TARGET_CONTAINER='vision_erp'" "$helper" || die 'PRODUCTION_CONTAINER_PIN_INVALID'
 grep -Fq "readonly TARGET_VOLUME='vision-os_dolibarr_custom'" "$helper" || die 'PRODUCTION_VOLUME_PIN_INVALID'
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz'" "$helper" || die 'PRODUCTION_HTTP_PIN_INVALID'
+grep -Fq "== 'true|vision-os|dolibarr'" "$helper" || die 'PRODUCTION_SERVICE_IDENTITY_PIN_INVALID'
 if grep -Eq 'backup-erp|erp-staging|18088|11025|18025' "$helper"; then die 'STAGING_IDENTIFIER_PRESENT'; fi
 compare_body=$(sed -n '/^command_compare()/,/^}/p' "$helper")
 preflight_body=$(sed -n '/^command_preflight()/,/^}/p' "$helper")
@@ -37,7 +38,9 @@ if grep -Eq 'candidate_checks|runtime_policy_check|docker cp|docker exec.*(mkdir
 grep -Fq 'stored_policy_row_check' <<<"$compare_body" || die 'COMPARE_POLICY_ROW_CHECK_MISSING'
 grep -Fq 'stored_policy_row_check' <<<"$preflight_body" || die 'PREFLIGHT_POLICY_ROW_CHECK_MISSING'
 
-grep -Fq "readonly HELPER_SHA='0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58'" "$installer" || die 'INSTALLER_HELPER_PIN_INVALID'
+grep -Fq "readonly HELPER_SHA='a351c5653d8a66e9f7a65db579bf9ce21b5a49d4c082d04dcc48cb0312475926'" "$installer" || die 'INSTALLER_HELPER_PIN_INVALID'
+grep -Fq "readonly PREVIOUS_HELPER_SHA='0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58'" "$installer" || die 'INSTALLER_PREVIOUS_HELPER_PIN_INVALID'
+grep -Fq '[[ "$existing_helper_sha" == "$HELPER_SHA" || "$existing_helper_sha" == "$PREVIOUS_HELPER_SHA" ]]' "$installer" || die 'INSTALLER_UPGRADE_SCOPE_INVALID'
 grep -Fq "readonly SUDOERS_SHA='18a7dfd57efe44ea961ec45af13c589b090eb4c626145b11ea03bc5bb58fe17d'" "$installer" || die 'INSTALLER_SUDOERS_PIN_INVALID'
 grep -Fq "readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m046-translation-policy'" "$installer" || die 'INSTALLER_TARGET_INVALID'
 grep -Fq "readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m046-preflight'" "$installer" || die 'INSTALLER_SUDOERS_TARGET_INVALID'
@@ -53,7 +56,7 @@ grep -Fq 'environment: erp-production' "$workflow" || die 'WORKFLOW_ENVIRONMENT_
 grep -Fq 'phase:' "$workflow" || die 'WORKFLOW_PHASE_GATE_MISSING'
 grep -Fq "inputs.phase == 'preflight'" "$workflow" || die 'WORKFLOW_PREFLIGHT_PHASE_GATE_MISSING'
 grep -Fq 'Upload and verify pinned helper installation assets' "$workflow" || die 'WORKFLOW_BOOTSTRAP_UPLOAD_MISSING'
-grep -Fq 'd76cf5f024f879090ce869fa5f7af967a3e8034f4050cf6d27b7f8a089ca0b38' "$workflow" || die 'WORKFLOW_INSTALLER_PIN_INVALID'
+grep -Fq '98842a872bdbabf0e117c8a5b3921342fa04c36f0f4ecfd1e7847e3752bdcbe1' "$workflow" || die 'WORKFLOW_INSTALLER_PIN_INVALID'
 for command in compare preflight status; do
   grep -Fq "sudo -n \$DEPLOY_HELPER $command" "$workflow" || die 'WORKFLOW_COMMAND_MISSING'
 done
