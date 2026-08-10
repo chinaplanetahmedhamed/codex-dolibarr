@@ -240,8 +240,9 @@ cleanup() {
 trap cleanup EXIT
 
 request_epoch() {
-  local stamp=$1
-  date -u -d "$stamp" '+%s' 2>/dev/null || date -j -u -f '%Y%m%dT%H%M%SZ' "$stamp" '+%s' 2>/dev/null
+  local stamp=$1 normalized
+  normalized="${stamp:0:4}-${stamp:4:2}-${stamp:6:2}T${stamp:9:2}:${stamp:11:2}:${stamp:13:2}Z"
+  date -u -d "$normalized" '+%s' 2>/dev/null || date -j -u -f '%Y%m%dT%H%M%SZ' "$stamp" '+%s' 2>/dev/null
 }
 validate_request_id() {
   REQUEST_ID=$1

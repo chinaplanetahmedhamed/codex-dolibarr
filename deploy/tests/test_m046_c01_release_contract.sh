@@ -14,8 +14,8 @@ die() { echo "M046_C01_RELEASE_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
 
 bash -n "$helper"; bash -n "$installer"; bash -n "$builder"
-[[ $(sha256 "$helper") == '2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa' ]] || die 'HELPER_HASH_INVALID'
-[[ $(sha256 "$installer") == 'f2ba74352883d8ab8b8477e1dba927adc0e4d8c6831cb6f0884030ae21676884' ]] || die 'INSTALLER_HASH_INVALID'
+[[ $(sha256 "$helper") == '2546a927e27c3b0fcf1d4957c0b8864fd1359a177250fcc980bdd2f0bc50ea1f' ]] || die 'HELPER_HASH_INVALID'
+[[ $(sha256 "$installer") == '124eacc1316e11b96a428842bd71183dece8088dc9118c7f172286bb5c9a2704' ]] || die 'INSTALLER_HASH_INVALID'
 [[ $(sha256 "$builder") == '7b66b8da8fc6650a6525689462f47eb0b1854dbafb14f2543cca48edc02089b6' ]] || die 'BUILDER_HASH_INVALID'
 [[ $(sha256 "$sudoers") == 'a44d291dcc7a3a417c98aff42421b88d51212f97b7ef26406a7adba14a98633b' ]] || die 'SUDOERS_HASH_INVALID'
 [[ $(sha256 "$runtime_manifest") == '69d754158a34b54dbf3186a2ba69c7a9a2c958a5f43b3e0605462cc470c7f798' ]] || die 'RUNTIME_MANIFEST_HASH_INVALID'
@@ -48,7 +48,12 @@ grep -Fq 'install -m 0644 "$CANDIDATE_ROOT/${RUNTIME_FILES[$index]}"' "$helper" 
 if grep -Fq 'LIVE_PRE_ROLLBACK_INVALID' "$helper"; then die 'EMERGENCY_ROLLBACK_BLOCKED_BY_LIVE_CHECK'; fi
 grep -Fq 'M046_C01_TRANSLATION_SERVICE_PATH' "$helper" || die 'CANDIDATE_POLICY_PATH_ABSENT'
 
-grep -Fq "readonly HELPER_SHA='2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa'" "$installer" || die 'INSTALLER_HELPER_PIN_INVALID'
+grep -Fq "readonly HELPER_SHA='2546a927e27c3b0fcf1d4957c0b8864fd1359a177250fcc980bdd2f0bc50ea1f'" "$installer" || die 'INSTALLER_HELPER_PIN_INVALID'
+grep -Fq "readonly PREVIOUS_HELPER_SHA='2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa'" "$installer" || die 'INSTALLER_PREVIOUS_HELPER_PIN_INVALID'
+grep -Fq '[[ "$existing_helper_sha" == "$HELPER_SHA" || "$existing_helper_sha" == "$PREVIOUS_HELPER_SHA" ]]' "$installer" || die 'INSTALLER_UPGRADE_SCOPE_INVALID'
+grep -Fq 'normalized="${stamp:0:4}-${stamp:4:2}-${stamp:6:2}T${stamp:9:2}:${stamp:11:2}:${stamp:13:2}Z"' "$helper" || die 'REQUEST_TIME_NORMALIZATION_ABSENT'
+grep -Fq 'date -u -d "$normalized"' "$helper" || die 'GNU_DATE_NORMALIZED_INPUT_ABSENT'
+if grep -Fq 'date -u -d "$stamp"' "$helper"; then die 'GNU_DATE_RAW_COMPACT_INPUT_PRESENT'; fi
 grep -Fq "readonly SUDOERS_SHA='a44d291dcc7a3a417c98aff42421b88d51212f97b7ef26406a7adba14a98633b'" "$installer" || die 'INSTALLER_SUDOERS_PIN_INVALID'
 grep -Fq '/var/lib/chinaplanetos-m046-c01-staging/requests' "$installer" || die 'REQUEST_ROOT_INSTALL_ABSENT'
 grep -Fq 'OLD_M044_HELPER_PRESERVED=YES' "$installer" || die 'OLD_HELPER_PRESERVATION_ABSENT'

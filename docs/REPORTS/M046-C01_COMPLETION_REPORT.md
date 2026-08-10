@@ -9,8 +9,8 @@
 - **Base commit:** `2404ba03f10fadd503fc3dbbea67ad9f8a87e6fa`
 - **Runtime result commit:** `15c19dda5842be992e6926db473878042a0a96d5`
 - **Release-assets head before this report:** `e0af5ff16f235fb91226882428e4cc3afa02afba`
-- **Environment used:** local development and a disposable local Dolibarr database
-- **Staging touched:** No
+- **Environment used:** local development, a disposable local Dolibarr database, and approved canonical `backup-erp` release preflight
+- **Staging touched:** Yes — restricted helper/sudoers installed; runtime apply not started
 - **Production touched:** No
 
 ## Business outcome
@@ -46,12 +46,13 @@ six runtime files are deployment targets.
 | Archive format | Deterministic USTAR; mtime 1980-01-01; uid/gid 0; mode 0644; no PAX/xattr |
 | Runtime manifest SHA-256 | `69d754158a34b54dbf3186a2ba69c7a9a2c958a5f43b3e0605462cc470c7f798` |
 | Support manifest SHA-256 | `6c64b2f9441a1a3fdbb8950f295209f973c34c7e788d05b7303a5c5c7e4ec47b` |
-| Restricted helper SHA-256 | `2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa` |
-| Helper installer SHA-256 | `f2ba74352883d8ab8b8477e1dba927adc0e4d8c6831cb6f0884030ae21676884` |
+| Restricted helper SHA-256 | `2546a927e27c3b0fcf1d4957c0b8864fd1359a177250fcc980bdd2f0bc50ea1f` |
+| Previous installed helper SHA-256 | `2b47bbb8e19a8a9869d5410fbe1122d30b089b66c41c0535e96e670b3df686fa` |
+| Helper installer SHA-256 | `124eacc1316e11b96a428842bd71183dece8088dc9118c7f172286bb5c9a2704` |
 | Artifact builder SHA-256 | `7b66b8da8fc6650a6525689462f47eb0b1854dbafb14f2543cca48edc02089b6` |
 | Sudoers policy SHA-256 | `a44d291dcc7a3a417c98aff42421b88d51212f97b7ef26406a7adba14a98633b` |
 | Helper test SHA-256 | `ac9e607043fa6005c4099db4b2e79c0ed6b0506b67c6a57623e044194a17c577` |
-| Release-contract test SHA-256 | `125e2990537a5a2078a9ba4642ef77c267d5f056cece6cf77496d740bbf957d9` |
+| Release-contract test SHA-256 | `c672c1a87b00703982a641a5b601ac9f9deede26ed988b359fd74e43e276e1d2` |
 
 ## Verification evidence
 
@@ -69,14 +70,21 @@ six runtime files are deployment targets.
 | Release contract | PASS; 6 runtime, 19 support, 27 artifact members |
 | Deterministic artifact build | PASS; SHA-256 matched the pinned value |
 | Restricted staging-helper destructive harness | PASS; locks, replay, backups, fail-closed verification, auto/manual rollback |
+| GitHub run `31391700862` helper/contract/artifact/compare/preflight | PASS |
+| GitHub run `31391700862` apply | STOPPED before request creation with `REQUEST_ID_TIME_INVALID`; runtime remained `NOT_DEPLOYED` |
+| Normalized request timestamp on backup-ERP GNU `date` | PASS with `YYYY-MM-DDTHH:MM:SSZ` |
 | `git diff --check` | PASS |
 
 ## Data and environment boundary
 
-- No staging or production host was accessed.
-- No production or staging file, database row, configuration, module state,
-  business record, batch, quotation, order, payment, shipment, or document was
-  changed.
+- Canonical `backup-erp` was accessed under Ahmed's exact staging approval.
+  The first pinned helper and sudoers rule were installed, and compare/preflight
+  passed. The runtime apply stopped before request creation because GNU `date`
+  rejected the compact request timestamp.
+- No staging runtime file, database row, application configuration, module
+  state, business record, batch, quotation, order, payment, shipment, or
+  document was changed. Helper status remained `NOT_DEPLOYED`.
+- Production was not accessed or changed.
 - The real local integration test used synthetic fixture data in a disposable
   database. It verified cleanup and confirmed the temporary database was absent
   after completion.
@@ -87,17 +95,19 @@ six runtime files are deployment targets.
 The restricted staging helper is the only approved apply path for this
 candidate. It creates request-scoped backups, verifies owner/group/mode and file
 hashes, applies under a lock, automatically restores on apply or verification
-failure, and supports explicit rollback. The helper installation remains a
-separate privileged staging action.
+failure, and supports explicit rollback. The corrected helper normalizes the
+compact request ID into ISO-8601 for GNU `date` while retaining the BSD fallback.
+Its installer accepts only the exact first-installed helper SHA or the corrected
+SHA and upgrades atomically.
 
-No `backup-erp` mutation may occur until Ahmed approves the complete pinned
-staging contract. Production remains forbidden until staging runtime and
-authenticated acceptance pass and a separate exact production approval is
-given.
+No helper upgrade or new `backup-erp` apply may occur until Ahmed approves the
+corrected helper and installer SHAs. Production remains forbidden until staging
+runtime and authenticated acceptance pass and a separate exact production
+approval is given.
 
 ## Architect disposition
 
-- **Decision:** READY_FOR_GIT_REVIEW
+- **Decision:** HELPER_CORRECTION_READY_FOR_GIT_REVIEW
 - **Local implementation:** PASS
-- **Staging:** PENDING_EXACT_APPROVAL
+- **Staging:** HELPER_UPGRADE_APPROVAL_PENDING; runtime `NOT_DEPLOYED`
 - **Production:** FORBIDDEN
