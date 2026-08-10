@@ -148,9 +148,9 @@ jobs:
           helper_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$REMOTE_INBOX/chinaplanetos_production_m046_translation_policy.sh'")
           sudoers_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$REMOTE_INBOX/codex-deploy-production-m046-preflight.sudoers'")
           installer_output=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$REMOTE_INBOX/install_production_m046_helper.sh'")
-          test "${helper_output%% *}" = '0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58'
+          test "${helper_output%% *}" = 'a351c5653d8a66e9f7a65db579bf9ce21b5a49d4c082d04dcc48cb0312475926'
           test "${sudoers_output%% *}" = '18a7dfd57efe44ea961ec45af13c589b090eb4c626145b11ea03bc5bb58fe17d'
-          test "${installer_output%% *}" = 'd76cf5f024f879090ce869fa5f7af967a3e8034f4050cf6d27b7f8a089ca0b38'
+          test "${installer_output%% *}" = '98842a872bdbabf0e117c8a5b3921342fa04c36f0f4ecfd1e7847e3752bdcbe1'
 
       - name: Verify separately installed production helper and restricted sudo surface
         if: ${{ inputs.phase == 'preflight' }}

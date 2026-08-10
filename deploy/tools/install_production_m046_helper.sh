@@ -6,7 +6,8 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_production_m046_translation_policy.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-production-m046-preflight.sudoers"
-readonly HELPER_SHA='0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58'
+readonly HELPER_SHA='a351c5653d8a66e9f7a65db579bf9ce21b5a49d4c082d04dcc48cb0312475926'
+readonly PREVIOUS_HELPER_SHA='0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58'
 readonly SUDOERS_SHA='18a7dfd57efe44ea961ec45af13c589b090eb4c626145b11ea03bc5bb58fe17d'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m046-translation-policy'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m046-preflight'
@@ -38,7 +39,13 @@ visudo -cf "$private_sudoers" >/dev/null || die 'SUDOERS_PARSE_FAILED'
 if [[ -e "$TARGET_HELPER" || -L "$TARGET_HELPER" ]]; then
   [[ -f "$TARGET_HELPER" && ! -L "$TARGET_HELPER" && $(stat -c '%U:%G %a' "$TARGET_HELPER") == 'root:root 755' ]] || die 'EXISTING_HELPER_INVALID'
   existing_helper_sha=$(sha256 "$TARGET_HELPER")
-  [[ "$existing_helper_sha" == "$HELPER_SHA" ]] || die 'EXISTING_HELPER_HASH_UNEXPECTED'
+  [[ "$existing_helper_sha" == "$HELPER_SHA" || "$existing_helper_sha" == "$PREVIOUS_HELPER_SHA" ]] || die 'EXISTING_HELPER_HASH_UNEXPECTED'
+  if [[ "$existing_helper_sha" == "$PREVIOUS_HELPER_SHA" ]]; then
+    temporary_helper="${TARGET_HELPER}.tmp.$$"
+    install -o root -g root -m 0755 "$private_helper" "$temporary_helper"
+    [[ $(sha256 "$temporary_helper") == "$HELPER_SHA" ]] || die 'UPGRADED_HELPER_HASH_INVALID'
+    mv -f "$temporary_helper" "$TARGET_HELPER"
+  fi
 else
   temporary_helper="${TARGET_HELPER}.tmp.$$"
   install -o root -g root -m 0755 "$private_helper" "$temporary_helper"

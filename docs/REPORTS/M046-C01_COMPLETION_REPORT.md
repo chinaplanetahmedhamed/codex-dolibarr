@@ -56,11 +56,15 @@ six runtime files are deployment targets.
 
 The production-preflight release pin uses the same runtime commit and artifact.
 Its separate production helper is pinned to
+`a351c5653d8a66e9f7a65db579bf9ce21b5a49d4c082d04dcc48cb0312475926`,
+with the previously installed helper pinned to
 `0324870d9bdcfe8659508cb702f3ddbcc7c8ca27d854504d738e3fb1d29bad58`,
 the preflight-only sudoers policy to
 `18a7dfd57efe44ea961ec45af13c589b090eb4c626145b11ea03bc5bb58fe17d`,
 and the installer to
-`d76cf5f024f879090ce869fa5f7af967a3e8034f4050cf6d27b7f8a089ca0b38`.
+`98842a872bdbabf0e117c8a5b3921342fa04c36f0f4ecfd1e7847e3752bdcbe1`.
+The production identity gate matches the observed Compose identity
+`true|vision-os|dolibarr` for `vision_erp`.
 The sudoers policy exposes only `status`, `compare`, and `preflight`. These
 commands do not write to the ERP container; candidate execution remains behind
 the separately gated apply command.
