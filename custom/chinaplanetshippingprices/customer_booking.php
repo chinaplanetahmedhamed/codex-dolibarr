@@ -1,12 +1,13 @@
 <?php
 
 require_once __DIR__.'/class/CustomerShippingBookingService.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/CustomerShippingOperationGateway.class.php';
 
 $viewLang = GETPOST('view_lang', 'alpha') === 'en' ? 'en' : 'ar';
 $rtl = $viewLang === 'ar';
 $t = function ($ar, $en) use ($rtl) { return $rtl ? $ar : $en; };
 $esc = function ($value) { return dol_escape_htmltag((string) $value); };
-$bookingService = new CustomerShippingBookingService($db);
+$bookingService = new CustomerShippingBookingService($db, null, null, new CustomerShippingOperationGateway($db));
 $bookingResult = null;
 $pageError = '';
 
