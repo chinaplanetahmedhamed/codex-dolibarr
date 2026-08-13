@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-13 — M055 website-request email and WhatsApp replies
+
+- Added a staff-only email composer to Website Requests, with the recipient reread from the durable request, sender taken from Dolibarr mail configuration, explicit send confirmation, dual permission checks and CSRF protection.
+- Logged outgoing messages in the Dolibarr Agenda and used standard proposal tracking when a request is linked to a quotation so later email replies can be associated with it.
+- Added a validated `wa.me` action that opens a protected new tab and prepares a locale-aware draft with the request reference; it never auto-sends or uses WhatsApp/Meta credentials.
+- Added Arabic, English and Chinese copy, responsive phone behavior and focused source/security/normalization tests.
+- Local source only; no React, Customer Portal, Mobile App, schema, configuration, mailbox, staging, production or business-data change occurred.
+
 ## 2026-08-13 — M054 project-to-Kanban sync ownership
 
 - Moved the project/card synchronization implementation to the CP Kanban module that owns its cards and columns.

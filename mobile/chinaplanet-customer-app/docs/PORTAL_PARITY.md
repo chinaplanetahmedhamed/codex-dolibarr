@@ -297,3 +297,14 @@ For every relevant change:
 - أثر التصميم والمصطلحات: لا تغيير.
 - التحقق على الهاتف: غير مطلوب؛ لا تغيير مرئي. اختبار المصدر الخاص بمنع الكتابة للعميل بقي ضمن تغطية M010 حتى شرط CSS baseline غير المتعلق بالمهمة.
 - الحالة: `ADMIN_SOURCE_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
+
+### 2026-08-13 — M055 الرد على طلبات الموقع بالبريد وWhatsApp
+
+- تغيير المصدر: أضيف داخل تفاصيل طلب الموقع محرر بريد للموظف وزر WhatsApp يعتمد على البريد والهاتف المحفوظين في الطلب؛ لا يتغير عقد استقبال الطلب من الموقع.
+- ERP الإداري: `IMPLEMENTED_AND_SOURCE_VERIFIED_LOCAL`؛ المستلم ثابت من الخادم، والمرسل من إعداد Dolibarr، والإرسال محمي بصلاحيتي تعديل الطلب والبريد وCSRF، ويسجل حدثًا في Agenda. عند وجود عرض سعر يستخدم تتبع العرض القياسي.
+- بوابة العميل: `NOT_APPLICABLE`؛ لا تغيير في المسارات أو الإسقاط أو واجهة العميل.
+- تطبيق الهاتف: `NOT_APPLICABLE`؛ لا تغيير في `/api/mobile/v1` أو أي شاشة أصلية.
+- اعتماد API والبيانات: لا API أو schema جديد. رابط WhatsApp يُنشأ فقط لرقم دولي صحيح ويفتح تبويبًا منفصلًا دون إرسال تلقائي أو بيانات اعتماد Meta.
+- أثر التصميم والمصطلحات: أضيفت تسميات عربية وإنجليزية وصينية وحالات عدم توفر، وتتكدس الأزرار ونموذج البريد بعرض كامل تحت `700px`.
+- التحقق على الهاتف: `SOURCE_CONTRACT_PASS`؛ قبول متصفح فعلي عند `390px` ينتظر موافقة staging مستقلة.
+- الحالة: `ADMIN_LOCAL_SOURCE_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
