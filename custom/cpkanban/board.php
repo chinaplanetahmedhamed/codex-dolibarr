@@ -13,7 +13,7 @@ require_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
 require_once __DIR__.'/class/cpkanbancard.class.php';
 require_once __DIR__.'/class/cpkanbancolumn.class.php';
 require_once __DIR__.'/lib/cpkanban.lib.php';
-require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/projectsync.lib.php';
+require_once __DIR__.'/lib/projectsync.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 

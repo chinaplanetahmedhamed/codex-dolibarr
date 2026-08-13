@@ -286,3 +286,14 @@ For every relevant change:
 - أثر التصميم والمصطلحات: الرسالة المعتمدة توضح أن الترجمة متوقفة بسياسة الإصدار، وأن المراجعة الداخلية للقراءة فقط، وأن ملاحظات المصدر لا تظهر للعملاء ولا تمنع نشر الأسعار.
 - التحقق على الهاتف: `SOURCE_CONTRACT_ONLY` لصفحة الإدارة؛ قبول المتصفح المحلي/المرحلي عند `390px` مؤجل إلى بوابة staging المنفصلة وغير المصرح بها في هذه المهمة.
 - الحالة: `LOCAL_RUNTIME_AND_TESTS_VERIFIED`, `RELEASE_ASSETS_PENDING`, `ADMIN_ONLY`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `PUBLIC_REACT_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
+
+### 2026-08-13 — M054 ملكية مزامنة المشاريع مع Kanban
+
+- تغيير المصدر: نُقل تنفيذ مزامنة المشروع وبطاقة Kanban إلى وحدة CP Kanban المالكة، مع إبقاء مسار Customer Center القديم كغلاف توافق فقط.
+- ERP الإداري: `SOURCE_VERIFIED_BEHAVIOR_UNCHANGED`؛ لا تغيير في المسارات أو الأعمدة أو الحالات أو الصلاحيات أو واجهة المستخدم.
+- بوابة العميل: `NOT_APPLICABLE` وظيفيًا؛ لا تغيير في الإسقاط أو التنقل أو العرض للعميل، وتظل المزامنة التلقائية الكتابية متوقفة للمستخدم الخارجي.
+- تطبيق الهاتف: `NOT_APPLICABLE`؛ لا تغيير في `/api/mobile/v1` أو أي شاشة أو عقد بيانات أصلي.
+- اعتماد API والبيانات: لا API أو schema أو سجل أعمال جديد، وبقيت شروط الكيان والعميل في التنفيذ المنقول.
+- أثر التصميم والمصطلحات: لا تغيير.
+- التحقق على الهاتف: غير مطلوب؛ لا تغيير مرئي. اختبار المصدر الخاص بمنع الكتابة للعميل بقي ضمن تغطية M010 حتى شرط CSS baseline غير المتعلق بالمهمة.
+- الحالة: `ADMIN_SOURCE_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
