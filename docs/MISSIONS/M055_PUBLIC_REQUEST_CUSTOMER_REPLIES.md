@@ -4,7 +4,7 @@
 
 - **Mission ID:** M055
 - **Type:** FEATURE / ADMIN_WORKFLOW
-- **Status:** APPROVED_PRODUCTION_DEPLOYMENT
+- **Status:** LIVE_VALIDATED
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — “link this to the website coming request ... send email directly ... phone number can open new window for whatsapp”
 - **Approval date:** 2026-08-13
@@ -46,5 +46,7 @@ Let authorized staff contact the person behind a public website request without 
 - [x] Arabic, English and Chinese labels and responsive source rules are present.
 - [x] Focused PHP syntax, source/security and phone-normalization tests pass locally.
 - [x] Checksum-pinned deployment, candidate tests, live file verification, HTTPS health and anonymous-login boundary passed on canonical staging.
-- [ ] Authenticated desktop and 390px staging acceptance; the available staging browser session stopped at the login boundary.
-- [ ] Real mailbox send/reply acceptance from this new screen; no synthetic message was sent without an authenticated staging session.
+- [x] Ahmed accepted the working staging behavior on 2026-08-14.
+- [x] The exact staging-accepted six-file runtime was deployed to production after compare and preflight passed; independent verify and status report `DEPLOYED`.
+- [x] Authenticated production desktop and 390px acceptance passed for the request list, email/WhatsApp actions and email composer, with no page-wide mobile overflow.
+- [ ] A real production send/reply is intentionally left to Ahmed's actual-work check; deployment validation did not send to a customer.

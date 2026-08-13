@@ -7,7 +7,8 @@
 - Added a validated `wa.me` action that opens a protected new tab and prepares a locale-aware draft with the request reference; it never auto-sends or uses WhatsApp/Meta credentials.
 - Added Arabic, English and Chinese copy, responsive phone behavior and focused source/security/normalization tests.
 - Deployed the exact six-file M055 runtime from commit `991011e8db9a95f0fa98ce5d518d09fca551f4bc` to canonical `backup-erp` through the checksum-pinned fail-closed helper; compare, preflight, code backup, apply, independent verify, HTTPS health and anonymous-login boundary passed.
-- No React, Customer Portal, Mobile App, schema, database, configuration, mailbox, customer message, production or business-data change occurred. Authenticated desktop/390px and synthetic Mailpit send/reply acceptance remain pending a staging login session.
+- After Ahmed accepted staging and explicitly approved the live release, deployed the identical artifact to `erp.visiontrading.biz`; production M045 baseline verify/compare, M055 compare, preflight, backup, apply, independent verify, HTTPS and authenticated desktop/390px acceptance all passed.
+- No React, Customer Portal, Mobile App, schema, database, configuration, mailbox, documents, Compose, proxy, DNS or business-data change occurred. No deployment-test message was sent to a customer; Ahmed retains the actual-work send/reply check.
 
 ## 2026-08-13 — M054 project-to-Kanban sync ownership
 

@@ -2,7 +2,7 @@
 
 ## Verdict
 
-`STAGING_ACCEPTED_BY_AHMED / PRODUCTION_DEPLOYMENT_APPROVED / PRODUCTION_PREFLIGHT_IN_PROGRESS`.
+`LIVE_DEPLOYED / AUTOMATED_VERIFY_PASS / AUTHENTICATED_DESKTOP_AND_390PX_PASS`.
 
 The Website Requests detail screen now has an in-Dolibarr email reply composer and a WhatsApp action. The customer email and phone remain server-owned request data; the browser cannot post a replacement recipient, WhatsApp never auto-sends, and no credential is present in source.
 
@@ -37,15 +37,24 @@ The Website Requests detail screen now has an in-Dolibarr email reply composer a
 - HTTPS and anonymous-login boundary: `PASS`; the staging homepage and Website Requests route returned healthy login responses.
 - Authenticated browser desktop and 390px: `PENDING_STAGING_LOGIN`; the available browser session was not authenticated to `backup-erp`.
 - Real SMTP/IMAP send/reply through the new UI: `PENDING_AUTHENTICATED_SYNTHETIC_ACCEPTANCE`; no customer message or business record was created.
-- Database changed: `NO`. Production accessed: `NO`.
+- Staging database changed: `NO`; production was not accessed during the staging phase.
+- Production baseline: existing M045 production `status`, `verify` and exact nine-file `compare` passed before M055 preparation.
+- Production M055 compare and preflight: `PASS`; the six files matched the approved M045 baseline or expected absence, and candidate lint/contract tests passed in `vision_erp`.
+- Production apply and independent verify: `PASS` for the exact staging-accepted commit and artifact. State is `DEPLOYED` at `2026-08-13T21:23:24Z`.
+- Production code backup: `m055-before-991011e-20260813T212322Z.tar.gz`, SHA-256 `6cec25d97fe3e4f7917c6aad721834bd7f886c6dfe0c152216160d2342812f8e`; prestate SHA-256 `d6d0dd01a116a834e37bd5dd04a1f0ea0463f9551065186c457289044357bcce`.
+- Production HTTPS homepage and Website Requests route: `PASS`.
+- Authenticated live desktop acceptance: `PASS`; request list/detail, `Reply by email`, protected `Open WhatsApp`, configured sender and fixed-recipient composer are present.
+- Authenticated live 390px acceptance: `PASS`; document/body width equals `390px`, subject, message and send control render without horizontal overflow.
+- Customer communication during deployment validation: `NO`; the send control was not activated.
+- Production database, configuration, mailbox, documents, Compose, proxy, DNS and business records changed by deployment: `NO`.
 
 ## Surface parity
 
-- Admin ERP: `DEPLOYED_AND_AUTOMATED_VERIFIED_ON_BACKUP_ERP_STAGING`.
+- Admin ERP: `LIVE_DEPLOYED_AND_AUTHENTICATED_VERIFIED`.
 - Customer Portal: `NOT_APPLICABLE`; no route, projection or UI changed.
 - Native Mobile App: `NOT_APPLICABLE`; no API or screen changed.
 - Public React/Node/WordPress: `NOT_APPLICABLE`; the existing request contract already supplies email, phone and country code.
 
 ## Boundaries and next gate
 
-Ahmed confirmed staging is working and separately approved pushing M055 live on 2026-08-14. Production scope is frozen to the exact staging-accepted artifact and six runtime files, with code-only backup, fail-closed compare/preflight/apply/verify and automatic rollback. No database, configuration, mailbox or business-data change is authorized.
+M055 is live on `erp.visiontrading.biz`. The remaining operational check is Ahmed sending a normal reply to a selected real customer and confirming that the incoming reply is collected into Dolibarr. That action is business communication and was intentionally not performed during deployment validation.
