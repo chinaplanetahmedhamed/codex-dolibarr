@@ -74,6 +74,7 @@ readonly LOCK_FILE="${STATE_ROOT}/m056.lock"
 
 CANDIDATE_ROOT=''; CANDIDATE_REMOTE=''; ARTIFACT_COPY=''
 CODE_BACKUP=''; CODE_BACKUP_SHA=''; PRESTATE_FILE=''; PRESTATE_SHA=''; MUTATED=0
+REAPPLY_BACKUP=''; REAPPLY_SHA=''; ROLLBACK_MUTATED=0
 
 die() { echo "M056_STAGING_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
@@ -94,16 +95,26 @@ restore_prior() {
     esac
     local target="$TARGET_ROOT/$rel" tmp="${TARGET_ROOT}/${rel}.m056-restore.$$"
     case "$state" in
-      ABSENT) [[ "$target" == "$TARGET_ROOT/"* ]] || return 1; rm -f "$target" ;;
-      PRESENT) tar -xOf "$CODE_BACKUP" "$rel" >"$tmp" || return 1; [[ $(sha256 "$tmp") == "$expected_sha" ]] || return 1; chown "$owner:$group" "$tmp" || return 1; chmod "$mode" "$tmp" || return 1; mv -f "$tmp" "$target" || return 1 ;;
+      ABSENT) [[ "$target" == "$TARGET_ROOT/"* ]] || return 1; rm -f "$target"; sync -f "$(dirname "$target")" || return 1 ;;
+      PRESENT) tar -xOf "$CODE_BACKUP" "$rel" >"$tmp" || return 1; [[ $(sha256 "$tmp") == "$expected_sha" ]] || return 1; chown "$owner:$group" "$tmp" || return 1; chmod "$mode" "$tmp" || return 1; sync -f "$tmp" || return 1; mv -f "$tmp" "$target" || return 1; sync -f "$(dirname "$target")" || return 1 ;;
       *) return 1 ;;
     esac
   done <"$PRESTATE_FILE"
 }
 
+restore_reapply() {
+  [[ -f "$REAPPLY_BACKUP" && ! -L "$REAPPLY_BACKUP" && $(sha256 "$REAPPLY_BACKUP") == "$REAPPLY_SHA" ]] || return 1
+  tar -xzpf "$REAPPLY_BACKUP" -C "$TARGET_ROOT" || return 1
+  sync -f "$TARGET_ROOT" || return 1
+}
+
 cleanup() {
   local rc=$?; trap - EXIT
-  if [[ $MUTATED -eq 1 ]]; then if restore_prior; then echo 'M056_STAGING_AUTO_ROLLBACK=PASS' >&2; else echo 'M056_STAGING_AUTO_ROLLBACK=FAIL' >&2; fi; fi
+  if [[ $ROLLBACK_MUTATED -eq 1 ]]; then
+    if restore_reapply && live_checks; then echo 'M056_STAGING_ROLLBACK_REAPPLY=PASS' >&2; else echo 'M056_STAGING_ROLLBACK_REAPPLY=FAIL' >&2; fi
+  elif [[ $MUTATED -eq 1 ]]; then
+    if restore_prior; then echo 'M056_STAGING_AUTO_ROLLBACK=PASS' >&2; else echo 'M056_STAGING_AUTO_ROLLBACK=FAIL' >&2; fi
+  fi
   cleanup_paths; exit "$rc"
 }
 trap cleanup EXIT
@@ -122,12 +133,24 @@ check_environment() {
   [[ $(docker port "$TARGET_CONTAINER" 80/tcp 2>/dev/null) == '127.0.0.1:18088' ]] || die 'ERP_PORT_MISMATCH'
   [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$DB_CONTAINER" 2>/dev/null) == 'true|erp-staging|mariadb' ]] || die 'DB_IDENTITY_MISMATCH'
   [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$MAILPIT_CONTAINER" 2>/dev/null) == 'true|erp-staging|mailpit' ]] || die 'MAILPIT_IDENTITY_MISMATCH'
-  [[ $(docker port "$MAILPIT_CONTAINER" 1025/tcp 2>/dev/null) =~ ^127\.0\.0\.1:1102[56]$ ]] || die 'SMTP_PORT_MISMATCH'
-  [[ $(docker port "$MAILPIT_CONTAINER" 8025/tcp 2>/dev/null) =~ ^127\.0\.0\.1:1802[56]$ ]] || die 'MAILPIT_PORT_MISMATCH'
+  [[ $(docker port "$MAILPIT_CONTAINER" 1025/tcp 2>/dev/null) == '127.0.0.1:11025' ]] || die 'SMTP_PORT_MISMATCH'
+  [[ $(docker port "$MAILPIT_CONTAINER" 8025/tcp 2>/dev/null) == '127.0.0.1:18025' ]] || die 'MAILPIT_PORT_MISMATCH'
   [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || die 'ERP_HTTP_UNHEALTHY'
   [[ -d "$INBOX" && ! -L "$INBOX" && $(stat -c '%U:%G %a' "$INBOX") == 'codex-deploy:codex-deploy 700' ]] || die 'INBOX_METADATA_INVALID'
   [[ -d "$BACKUP_ROOT" && ! -L "$BACKUP_ROOT" && $(stat -c '%U:%G %a' "$BACKUP_ROOT") == 'root:root 700' ]] || die 'BACKUP_ROOT_INVALID'
   [[ -d "$STATE_ROOT" && ! -L "$STATE_ROOT" && $(stat -c '%U:%G %a' "$STATE_ROOT") == 'root:root 700' ]] || die 'STATE_ROOT_INVALID'
+}
+
+require_disk_space() {
+  local target available_kib required_bytes required_kib artifact_bytes current_bytes=0 rel path
+  artifact_bytes=$(stat -c '%s' "$ARTIFACT")
+  for rel in "${TARGET_FILES[@]}"; do path="$TARGET_ROOT/$rel"; if [[ -f "$path" && ! -L "$path" ]]; then current_bytes=$((current_bytes + $(stat -c '%s' "$path"))); fi; done
+  required_bytes=$((67108864 + (artifact_bytes * 4) + (current_bytes * 6)))
+  required_kib=$(((required_bytes + 1023) / 1024))
+  for target in "$BACKUP_ROOT" "$TARGET_ROOT" "$STATE_ROOT"; do
+    available_kib=$(df -Pk "$target" | awk 'NR==2 {print $4}')
+    [[ "$available_kib" =~ ^[0-9]+$ && "$available_kib" -ge "$required_kib" ]] || die 'INSUFFICIENT_DISK_SPACE'
+  done
 }
 
 validate_artifact() {
@@ -184,12 +207,26 @@ create_backup() {
   backup_list=$(mktemp); : >"$PRESTATE_FILE"
   for rel in "${TARGET_FILES[@]}"; do target="$TARGET_ROOT/$rel"; if [[ -e "$target" || -L "$target" ]]; then [[ -f "$target" && ! -L "$target" ]] || die 'TARGET_FILE_INVALID'; printf '%s|PRESENT|%s|%s|%s|%s\n' "$rel" "$(sha256 "$target")" "$(stat -c '%U' "$target")" "$(stat -c '%G' "$target")" "$(stat -c '%a' "$target")" >>"$PRESTATE_FILE"; printf '%s\n' "$rel" >>"$backup_list"; else printf '%s|ABSENT|none|none|none|none\n' "$rel" >>"$PRESTATE_FILE"; fi; done
   tar -czpf "$CODE_BACKUP" -C "$TARGET_ROOT" --files-from "$backup_list"; rm -f "$backup_list"; chmod 0600 "$CODE_BACKUP" "$PRESTATE_FILE"
+  sync -f "$CODE_BACKUP"; sync -f "$PRESTATE_FILE"; sync -f "$BACKUP_ROOT"
   CODE_BACKUP_SHA=$(sha256 "$CODE_BACKUP"); PRESTATE_SHA=$(sha256 "$PRESTATE_FILE"); [[ -s "$CODE_BACKUP" && -s "$PRESTATE_FILE" ]] || die 'BACKUP_EMPTY'
 }
 
 apply_files() {
   local index rel target_rel target tmp
-  for index in "${!RUNTIME_FILES[@]}"; do rel=${RUNTIME_FILES[$index]}; target_rel=${TARGET_FILES[$index]}; target="$TARGET_ROOT/$target_rel"; tmp="${TARGET_ROOT}/${target_rel}.m056.$$"; install -d -o www-data -g www-data -m 0755 "$(dirname "$target")"; install -o www-data -g www-data -m 0644 "$CANDIDATE_ROOT/$rel" "$tmp"; [[ $(sha256 "$tmp") == "${RUNTIME_SHAS[$index]}" ]] || die 'TEMP_FILE_HASH_MISMATCH'; mv -f "$tmp" "$target"; done
+  for index in "${!RUNTIME_FILES[@]}"; do rel=${RUNTIME_FILES[$index]}; target_rel=${TARGET_FILES[$index]}; target="$TARGET_ROOT/$target_rel"; tmp="${TARGET_ROOT}/${target_rel}.m056.$$"; install -d -o www-data -g www-data -m 0755 "$(dirname "$target")"; install -o www-data -g www-data -m 0644 "$CANDIDATE_ROOT/$rel" "$tmp"; [[ $(sha256 "$tmp") == "${RUNTIME_SHAS[$index]}" ]] || die 'TEMP_FILE_HASH_MISMATCH'; sync -f "$tmp"; mv -f "$tmp" "$target"; sync -f "$(dirname "$target")"; done
+}
+
+prior_checks() {
+  local rel state expected_sha owner group mode target
+  while IFS='|' read -r rel state expected_sha owner group mode; do
+    target="$TARGET_ROOT/$rel"
+    case "$state" in
+      ABSENT) [[ ! -e "$target" && ! -L "$target" ]] || return 1 ;;
+      PRESENT) [[ -f "$target" && ! -L "$target" && $(sha256 "$target") == "$expected_sha" ]] || return 1; [[ $(stat -c '%U:%G %a' "$target") == "$owner:$group $mode" ]] || return 1; if [[ "$rel" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "/var/www/html/custom/$rel" >/dev/null || return 1; fi ;;
+      *) return 1 ;;
+    esac
+  done <"$PRESTATE_FILE"
+  [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || return 1
 }
 
 live_checks() {
@@ -204,21 +241,30 @@ live_checks() {
 }
 
 save_state() {
-  printf '%s\n' "STATE_RELEASE=$RELEASE" 'STATE_STATUS=DEPLOYED' "STATE_RUNTIME_COMMIT=$RUNTIME_COMMIT" "STATE_ARTIFACT_SHA=$ARTIFACT_SHA" "STATE_CODE_BACKUP=$CODE_BACKUP" "STATE_CODE_BACKUP_SHA=$CODE_BACKUP_SHA" "STATE_PRESTATE_FILE=$PRESTATE_FILE" "STATE_PRESTATE_SHA=$PRESTATE_SHA" "STATE_DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >"$STATE_FILE"; chmod 0600 "$STATE_FILE"
+  save_state_status 'DEPLOYED'
+}
+
+save_state_status() {
+  local status="$1" temporary
+  [[ "$status" == 'DEPLOYED' || "$status" == 'ROLLED_BACK' ]] || return 1
+  temporary=$(mktemp "${STATE_ROOT}/m056.state.XXXXXX")
+  printf '%s\n' "STATE_RELEASE=$RELEASE" "STATE_STATUS=$status" "STATE_RUNTIME_COMMIT=$RUNTIME_COMMIT" "STATE_ARTIFACT_SHA=$ARTIFACT_SHA" "STATE_CODE_BACKUP=$CODE_BACKUP" "STATE_CODE_BACKUP_SHA=$CODE_BACKUP_SHA" "STATE_PRESTATE_FILE=$PRESTATE_FILE" "STATE_PRESTATE_SHA=$PRESTATE_SHA" "STATE_DEPLOYED_AT=${STATE_DEPLOYED_AT:-$(date -u '+%Y-%m-%dT%H:%M:%SZ')}" >"$temporary"
+  chmod 0600 "$temporary"; sync -f "$temporary"; mv -f "$temporary" "$STATE_FILE"; sync -f "$STATE_ROOT"
 }
 
 load_state() {
   [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" && $(stat -c '%U:%G %a' "$STATE_FILE") == 'root:root 600' ]] || die 'STATE_INVALID'
   source "$STATE_FILE"
   [[ "$STATE_RELEASE" == "$RELEASE" && "$STATE_RUNTIME_COMMIT" == "$RUNTIME_COMMIT" && "$STATE_ARTIFACT_SHA" == "$ARTIFACT_SHA" ]] || die 'STATE_MISMATCH'
+  [[ "$STATE_STATUS" == 'DEPLOYED' || "$STATE_STATUS" == 'ROLLED_BACK' ]] || die 'STATE_STATUS_INVALID'
   CODE_BACKUP=$STATE_CODE_BACKUP; CODE_BACKUP_SHA=$STATE_CODE_BACKUP_SHA; PRESTATE_FILE=$STATE_PRESTATE_FILE; PRESTATE_SHA=$STATE_PRESTATE_SHA
 }
 
 command_compare() { check_environment; validate_artifact; candidate_checks; compare_files; echo "M056_STAGING_COMPARE=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
-command_preflight() { check_environment; validate_artifact; candidate_checks; compare_files; echo "M056_STAGING_PREFLIGHT=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
-command_apply() { exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment; validate_artifact; candidate_checks; if [[ -f "$STATE_FILE" ]]; then load_state; if live_checks; then echo "M056_STAGING_APPLY=NOOP_ALREADY_APPLIED RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; return; fi; fi; compare_files; create_backup; MUTATED=1; apply_files; live_checks || die 'LIVE_CHECK_FAILED'; MUTATED=0; save_state; echo "M056_STAGING_APPLY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
-command_verify() { check_environment; validate_artifact; candidate_checks; load_state; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M056_STAGING_VERIFY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
-command_rollback() { exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment; validate_artifact; load_state; local reapply="${BACKUP_ROOT}/m056-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"; tar -czpf "$reapply" -C "$TARGET_ROOT" "${TARGET_FILES[@]}"; chmod 0600 "$reapply"; restore_prior || die 'CODE_RESTORE_FAILED'; [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || die 'ROLLBACK_HTTP_FAILED'; sed -i 's/^STATE_STATUS=.*/STATE_STATUS=ROLLED_BACK/' "$STATE_FILE"; echo "M056_STAGING_ROLLBACK=PASS REAPPLY=$reapply REAPPLY_SHA=$(sha256 "$reapply") DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
+command_preflight() { check_environment; validate_artifact; require_disk_space; candidate_checks; compare_files; echo "M056_STAGING_PREFLIGHT=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
+command_apply() { exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment; validate_artifact; require_disk_space; candidate_checks; if [[ -f "$STATE_FILE" ]]; then load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; if live_checks; then echo "M056_STAGING_APPLY=NOOP_ALREADY_APPLIED RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; return; fi; fi; compare_files; create_backup; MUTATED=1; apply_files; live_checks || die 'LIVE_CHECK_FAILED'; save_state; MUTATED=0; echo "M056_STAGING_APPLY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
+command_verify() { check_environment; validate_artifact; candidate_checks; load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M056_STAGING_VERIFY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
+command_rollback() { exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment; validate_artifact; require_disk_space; candidate_checks; load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; REAPPLY_BACKUP="${BACKUP_ROOT}/m056-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"; tar -czpf "$REAPPLY_BACKUP" -C "$TARGET_ROOT" "${TARGET_FILES[@]}"; chmod 0600 "$REAPPLY_BACKUP"; sync -f "$REAPPLY_BACKUP"; sync -f "$BACKUP_ROOT"; REAPPLY_SHA=$(sha256 "$REAPPLY_BACKUP"); [[ -s "$REAPPLY_BACKUP" ]] || die 'REAPPLY_BACKUP_EMPTY'; ROLLBACK_MUTATED=1; restore_prior || die 'CODE_RESTORE_FAILED'; prior_checks || die 'ROLLBACK_VERIFY_FAILED'; save_state_status 'ROLLED_BACK'; ROLLBACK_MUTATED=0; echo "M056_STAGING_ROLLBACK=PASS REAPPLY=$REAPPLY_BACKUP REAPPLY_SHA=$REAPPLY_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
 command_status() { if [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]]; then grep -E '^STATE_(RELEASE|STATUS|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|PRESTATE_FILE|PRESTATE_SHA|DEPLOYED_AT)=' "$STATE_FILE"; else echo 'M056_STAGING_STATUS=NOT_DEPLOYED'; fi; }
 
 require_root "$@"
