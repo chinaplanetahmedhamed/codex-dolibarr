@@ -4,7 +4,7 @@
 
 - **Mission ID:** M055
 - **Type:** FEATURE / ADMIN_WORKFLOW
-- **Status:** APPROVED_STAGING_DEPLOYMENT
+- **Status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — “link this to the website coming request ... send email directly ... phone number can open new window for whatsapp”
 - **Approval date:** 2026-08-13
@@ -43,5 +43,6 @@ Let authorized staff contact the person behind a public website request without 
 - [x] A valid stored phone opens `wa.me` in a new protected browser tab; invalid numbers do not create a link.
 - [x] Arabic, English and Chinese labels and responsive source rules are present.
 - [x] Focused PHP syntax, source/security and phone-normalization tests pass locally.
-- [ ] Authenticated desktop and 390px staging acceptance after separate staging approval.
-- [ ] Real mailbox send/reply acceptance from this new screen after separate staging approval.
+- [x] Checksum-pinned deployment, candidate tests, live file verification, HTTPS health and anonymous-login boundary passed on canonical staging.
+- [ ] Authenticated desktop and 390px staging acceptance; the available staging browser session stopped at the login boundary.
+- [ ] Real mailbox send/reply acceptance from this new screen; no synthetic message was sent without an authenticated staging session.

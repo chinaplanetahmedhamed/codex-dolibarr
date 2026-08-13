@@ -154,7 +154,7 @@ validate_artifact() {
   local listing types expected actual index
   listing=$(mktemp); types=$(mktemp); expected=$(mktemp); actual=$(mktemp)
   tar -tzf "$ARTIFACT_COPY" >"$listing" || die 'ARTIFACT_TAR_INVALID'
-  [[ $(wc -l <"$listing") -eq 19 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
+  [[ $(wc -l <"$listing") -eq 22 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
   [[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/\._/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
   [[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
   tar -tvzf "$ARTIFACT_COPY" >"$types" || die 'ARTIFACT_LIST_FAILED'

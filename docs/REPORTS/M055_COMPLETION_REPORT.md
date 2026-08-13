@@ -2,7 +2,7 @@
 
 ## Verdict
 
-`DEVELOPER_REPORTED / LOCAL_SOURCE_AND_FOCUSED_TESTS_PASS / STAGING_ACCEPTANCE_PENDING`.
+`STAGING_DEPLOYED / AUTOMATED_VERIFY_PASS / AUTHENTICATED_UI_ACCEPTANCE_PENDING`.
 
 The Website Requests detail screen now has an in-Dolibarr email reply composer and a WhatsApp action. The customer email and phone remain server-owned request data; the browser cannot post a replacement recipient, WhatsApp never auto-sends, and no credential is present in source.
 
@@ -31,16 +31,21 @@ The Website Requests detail screen now has an in-Dolibarr email reply composer a
 - `git diff --check`: `PASS`.
 - Legacy M045 quotation source regression: `PASS`.
 - Database-backed multilingual Operations suite: `NOT_RUN`; the configured local MariaDB runtime was unavailable, and no database start or mutation was authorized or inferred.
-- Authenticated browser desktop and 390px: `PENDING_STAGING_APPROVAL`; source contains responsive stacking rules but no runtime acceptance is inferred.
-- Real SMTP/IMAP send/reply through the new UI: `PENDING_STAGING_APPROVAL`; existing mailbox configuration is not changed by this source mission.
+- Canonical staging compare and preflight: `PASS`; all six target files matched the pinned M045 baseline or approved absence before apply, and candidate lint/contract tests passed.
+- Canonical staging apply and independent verify: `PASS` for runtime commit `991011e8db9a95f0fa98ce5d518d09fca551f4bc` and artifact SHA-256 `983541e2a3f4f0200ba1aeab891efc68226dfe0a34c1f9672b0f4e036a6c3a68`.
+- Code backup: `m055-before-991011e-20260813T204755Z.tar.gz`, SHA-256 `f8b5338b89279f8ab45a04333b60fc2a0d66a1337a3e92a6b594a110fe530b57`; prestate SHA-256 `d6d0dd01a116a834e37bd5dd04a1f0ea0463f9551065186c457289044357bcce`.
+- HTTPS and anonymous-login boundary: `PASS`; the staging homepage and Website Requests route returned healthy login responses.
+- Authenticated browser desktop and 390px: `PENDING_STAGING_LOGIN`; the available browser session was not authenticated to `backup-erp`.
+- Real SMTP/IMAP send/reply through the new UI: `PENDING_AUTHENTICATED_SYNTHETIC_ACCEPTANCE`; no customer message or business record was created.
+- Database changed: `NO`. Production accessed: `NO`.
 
 ## Surface parity
 
-- Admin ERP: `IMPLEMENTED_AND_SOURCE_VERIFIED_LOCAL`.
+- Admin ERP: `DEPLOYED_AND_AUTOMATED_VERIFIED_ON_BACKUP_ERP_STAGING`.
 - Customer Portal: `NOT_APPLICABLE`; no route, projection or UI changed.
 - Native Mobile App: `NOT_APPLICABLE`; no API or screen changed.
 - Public React/Node/WordPress: `NOT_APPLICABLE`; the existing request contract already supplies email, phone and country code.
 
 ## Boundaries and next gate
 
-Ahmed approved deployment to canonical `backup-erp` staging on 2026-08-13. The staging release must remain checksum-pinned, code-only and limited to the M055 runtime/test allowlist. Production remains forbidden until staging is accepted and Ahmed gives exact production approval.
+M055 is deployed to canonical `backup-erp` staging through the checksum-pinned, code-only helper. The remaining gate is authenticated desktop/390px inspection plus a synthetic Mailpit send/reply test. Production remains forbidden until that staging acceptance is complete and Ahmed gives exact production approval.
