@@ -6,7 +6,8 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m056_shipment_status_email.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-backup-erp-m056.sudoers"
-readonly HELPER_SHA='665897112d43a30a3b05fd8a4f595677f561406e1eaa17aaf9efad46d9632b96'
+readonly HELPER_SHA='26d5800b38e3be086e4b78659715fc7f2f01a55bbe8a3740c253367942a79fea'
+readonly PREVIOUS_HELPER_SHA='665897112d43a30a3b05fd8a4f595677f561406e1eaa17aaf9efad46d9632b96'
 readonly SUDOERS_SHA='fa12971aac242c1feeb428bed644e9ca0a20c485f76a1cfcc2ede0050ce3195a'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-backup-erp-m056-shipment-status-email'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-backup-erp-m056'
@@ -35,8 +36,10 @@ visudo -cf "$private_sudoers" >/dev/null || die 'SUDOERS_PARSE_FAILED'
 
 if [[ -e "$TARGET_HELPER" || -L "$TARGET_HELPER" ]]; then
   [[ -f "$TARGET_HELPER" && ! -L "$TARGET_HELPER" && $(stat -c '%U:%G %a' "$TARGET_HELPER") == 'root:root 755' ]] || die 'EXISTING_HELPER_INVALID'
-  [[ $(sha256 "$TARGET_HELPER") == "$HELPER_SHA" ]] || die 'EXISTING_HELPER_HASH_UNEXPECTED'
-else
+  existing_helper_sha=$(sha256 "$TARGET_HELPER")
+  [[ "$existing_helper_sha" == "$HELPER_SHA" || "$existing_helper_sha" == "$PREVIOUS_HELPER_SHA" ]] || die 'EXISTING_HELPER_HASH_UNEXPECTED'
+fi
+if [[ ! -e "$TARGET_HELPER" || $(sha256 "$TARGET_HELPER") != "$HELPER_SHA" ]]; then
   temporary_helper="${TARGET_HELPER}.tmp.$$"; install -o root -g root -m 0755 "$private_helper" "$temporary_helper"; [[ $(sha256 "$temporary_helper") == "$HELPER_SHA" ]] || die 'INSTALLED_HELPER_HASH_INVALID'; mv -f "$temporary_helper" "$TARGET_HELPER"
 fi
 

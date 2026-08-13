@@ -8,15 +8,15 @@ sudoers="$root/deploy/config/codex-deploy-backup-erp-m056.sudoers"
 
 bash -n "$helper"; bash -n "$installer"
 grep -Fq "readonly RELEASE='M056'" "$helper"
-grep -Fq "readonly RUNTIME_COMMIT='7a1303c7622ff4514cbf7a7cc6fa5ccb8766f476'" "$helper"
-grep -Fq "readonly ARTIFACT_SHA='eca33c6cedc6085f3ff2aeebba96bf083a3ee845fab360c85c2874cf62bb4d1e'" "$helper"
+grep -Fq "readonly RUNTIME_COMMIT='2646d0b3f1fb8b47c45325b2aedec7695a2ad73f'" "$helper"
+grep -Fq "readonly ARTIFACT_SHA='55c5e18fbb382327a5432243f344246c9d2a08042fb6abf6d563740cb6077074'" "$helper"
 grep -Fq "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'" "$helper"
 grep -Fq "readonly TARGET_VOLUME='erp-staging_erp-staging_custom'" "$helper"
 grep -Fq "readonly STATE_ROOT='/var/lib/chinaplanetos-m056-staging'" "$helper"
 grep -Fq 'FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO' "$helper"
-grep -Fq "readonly HELPER_SHA='665897112d43a30a3b05fd8a4f595677f561406e1eaa17aaf9efad46d9632b96'" "$installer"
+grep -Fq "readonly HELPER_SHA='26d5800b38e3be086e4b78659715fc7f2f01a55bbe8a3740c253367942a79fea'" "$installer"
 grep -Fq "readonly SUDOERS_SHA='fa12971aac242c1feeb428bed644e9ca0a20c485f76a1cfcc2ede0050ce3195a'" "$installer"
-[[ $(sha256sum "$helper" | awk '{print $1}') == '665897112d43a30a3b05fd8a4f595677f561406e1eaa17aaf9efad46d9632b96' ]]
+[[ $(sha256sum "$helper" | awk '{print $1}') == '26d5800b38e3be086e4b78659715fc7f2f01a55bbe8a3740c253367942a79fea' ]]
 [[ $(sha256sum "$sudoers" | awk '{print $1}') == 'fa12971aac242c1feeb428bed644e9ca0a20c485f76a1cfcc2ede0050ce3195a' ]]
 
 if grep -Eq 'vision_erp|vision_db|vision-os_dolibarr_custom|https://erp\.visiontrading\.biz|production-(apply|verify|rollback)' "$helper" "$installer"; then echo 'M056_HELPER_TEST=FAIL REASON=PRODUCTION_IDENTIFIER' >&2; exit 1; fi

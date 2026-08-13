@@ -4,9 +4,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M056'
-readonly RUNTIME_COMMIT='7a1303c7622ff4514cbf7a7cc6fa5ccb8766f476'
-readonly SHORT_COMMIT='7a1303c'
-readonly ARTIFACT_SHA='eca33c6cedc6085f3ff2aeebba96bf083a3ee845fab360c85c2874cf62bb4d1e'
+readonly RUNTIME_COMMIT='2646d0b3f1fb8b47c45325b2aedec7695a2ad73f'
+readonly SHORT_COMMIT='2646d0b'
+readonly ARTIFACT_SHA='55c5e18fbb382327a5432243f344246c9d2a08042fb6abf6d563740cb6077074'
 readonly RUNTIME_MANIFEST_SHA='a83d2658f859ae2ff2cf2e67104ffb29cf2a1749001f4848e2046bfe2c90938f'
 readonly SUPPORT_MANIFEST_SHA='a5b2567ee99cac08f4a141e55cf1cda1591e9e6e04520ff4fc3d90cf37fab9e7'
 
@@ -22,7 +22,7 @@ readonly -a RUNTIME_FILES=(
   'custom/chinaplanetlogistics/lib/shipment_customer.lib.php'
 )
 readonly -a RUNTIME_SHAS=(
-  '0d4442b78a10121fb71d070c8457d4dbe4384590a822f671b644f3b1a9846a36'
+  'ba3282b2b1f8d6fdd8f6aa6daeeff9fa96f03b85174663fc0df2db10cc2bff4d'
   'e497738f6480a336c7573b3cfc53da2e41a95ebefb1bb8c2a2ae01f487509ef8'
   'da81d62b2d4aa2081abba356e8c0a18faff36d395b6c9d3a159f6d46866718a3'
   'f2617da31963b4ebed45e7f81f6c85fc5de7fd2c1af69590c861c898ca2927d6'
@@ -31,7 +31,7 @@ readonly -a RUNTIME_SHAS=(
   'c9413816f8e08dd68accab133bca11919103c4c64e4ebcb8d8f6436f1465d51e'
 )
 readonly -a BASELINE_SHAS=(
-  'ec5f1ba5743a860eb5c93fbf142bf1e19bfae63a5755e83eaf6c838a29444744'
+  '96ed3bacb97292fee7d0ba8df73be99bab5a4089d6d10156545b3a18d3ab7227'
   'ABSENT'
   'a223391dcbf6242db4faa264192fad07c0580457d23cb14617ffb11a3ebed093'
   '200014bbf96659200078a84c884e4880bae908c15071497ce9fcc5a07fce00b1'

@@ -89,6 +89,7 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 - Create and verify a code backup before apply. Do not change the database, Dolibarr configuration, module state, documents, Compose, proxy, DNS, ports or customer business records.
 - Use Mailpit only for any later synthetic delivery acceptance. Do not send a staging notification to a real customer.
 - Production remains forbidden and requires a separate exact approval after staging acceptance.
+- Staging preflight detected that `card.php` already contained the exact documented `851c231` 200MB staff-upload correction. M056 preserves that behavior in the release candidate instead of reverting it.
 
 ## Review and approval record
 

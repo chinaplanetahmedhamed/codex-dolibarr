@@ -8,7 +8,7 @@
 - **Implementation owner:** Agent 007 Central
 - **Branch:** `codex/m056-shipment-status-email`
 - **Base commit:** `281cdcc955378fdb674fb21a46e129f529e8f5e1` (M055 live record)
-- **Result commit:** `546262ae63bb9dd0bc31d5383a507fc78884a1d3` (implementation); checksum-pinned staging package preparation follows
+- **Result commit:** `2646d0b3f1fb8b47c45325b2aedec7695a2ad73f` (M056 implementation plus preserved staging 200MB upload correction)
 - **Environment used:** Local source and focused tests; canonical `backup-erp` staging approved
 - **Production touched:** No
 
@@ -21,6 +21,7 @@ Authorized staff can select an email notification while editing a shipment. Afte
 - **Completed:** Explicit edit-form option; permission, CSRF, entity and customer boundaries; real-status-change gate; server-owned recipient/sender; Arabic/Chinese/English content; customer-safe allowlist; post-commit send; Agenda history; focused tests and parity documentation.
 - **Not completed:** Authenticated browser and synthetic Mailpit checks remain staging acceptance work.
 - **Scope deviations:** None.
+- **Staging baseline reconciliation:** Initial compare stopped before apply because staging `card.php` matched documented commit `851c231` rather than the older source baseline. The release candidate was corrected to retain its single 200MB staff-upload argument while adding M056; no staging runtime was changed during this reconciliation.
 
 ## Files changed
 
