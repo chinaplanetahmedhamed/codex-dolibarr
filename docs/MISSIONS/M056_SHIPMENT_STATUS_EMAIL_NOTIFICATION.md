@@ -4,7 +4,7 @@
 
 - **Mission ID:** M056
 - **Type:** IMPLEMENTATION
-- **Status:** STAGING_APPROVED
+- **Status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
 - **Architect owner:** Agent 007 Central
 - **Implementation owner:** Agent 007 Central
 - **Required reviewers:** Shipping, Customer Portal, Security, QA
@@ -89,7 +89,9 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 - Create and verify a code backup before apply. Do not change the database, Dolibarr configuration, module state, documents, Compose, proxy, DNS, ports or customer business records.
 - Use Mailpit only for any later synthetic delivery acceptance. Do not send a staging notification to a real customer.
 - Production remains forbidden and requires a separate exact approval after staging acceptance.
-- Staging preflight detected that `card.php` already contained the exact documented `851c231` 200MB staff-upload correction. M056 preserves that behavior in the release candidate instead of reverting it.
+- Staging preflight detected that `card.php` already contained the exact documented `851c231` 200MB staff-upload correction. M056 preserves the complete two-file dependency (`card.php` and `portal.lib.php`) instead of reverting it.
+- Deployed runtime commit `606b54c852230b0674b0745084e107487cf3161d`; artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`.
+- Compare, candidate tests, preflight, backup, apply, independent verify, status, HTTPS health and anonymous-login boundary passed. Database/configuration/business records were unchanged and production was not accessed.
 
 ## Review and approval record
 

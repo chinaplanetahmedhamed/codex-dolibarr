@@ -4,12 +4,12 @@
 
 - **Mission:** M056 — Shipment status email notification
 - **Mission status received:** APPROVED
-- **Report status:** DEVELOPER_REPORTED
+- **Report status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
 - **Implementation owner:** Agent 007 Central
 - **Branch:** `codex/m056-shipment-status-email`
 - **Base commit:** `281cdcc955378fdb674fb21a46e129f529e8f5e1` (M055 live record)
 - **Result commit:** `606b54c852230b0674b0745084e107487cf3161d` (M056 implementation plus dependency-closed preserved staging 200MB upload correction)
-- **Environment used:** Local source and focused tests; canonical `backup-erp` staging approved
+- **Environment used:** Local source/focused tests and canonical `backup-erp` staging
 - **Production touched:** No
 
 ## Business outcome
@@ -59,8 +59,11 @@ Authorized staff can select an email notification while editing a shipment. Afte
 | Existing M055 focused regressions | Continue to pass | Contact service and 15-check source contract passed | PASS |
 | Shipment lifecycle regressions | Existing statuses, timeline, collaboration, free-time and shell remain valid | M004, M011, M023, M024, free-time and unified-shell suites passed | PASS |
 | Git whitespace check | No errors | Passed | PASS |
-| Authenticated admin desktop/390px | Correct edit row and result states | Not run; staging deployment pending | PENDING_STAGING |
-| Synthetic Mailpit send | One captured mail and Agenda event without customer delivery | Not run; staging deployment pending | PENDING_STAGING |
+| Dependency-closed staging package | Exact 8 runtime + 4 support files | Artifact `19943d703d...` rebuilt byte-for-byte; Security and QA PASS | PASS |
+| Staging compare/preflight/apply/verify | Exact baseline, backup, hashes, candidate/live checks | All passed for runtime `606b54c`; state `DEPLOYED` | PASS |
+| HTTPS and anonymous shipment boundary | Healthy ERP and authenticated-only card | HTTP 200 and login boundary PASS | PASS |
+| Authenticated admin desktop/390px | Correct edit row and result states | Not run; staging staff session required | PENDING_STAGING_LOGIN |
+| Synthetic Mailpit send | One captured mail and Agenda event without customer delivery | Not run; requires a selected synthetic staging shipment | PENDING_SYNTHETIC_ACCEPTANCE |
 
 ## Security and customer-isolation review
 
@@ -78,13 +81,13 @@ Authorized staff can select an email notification while editing a shipment. Afte
 
 ## Deployment boundary
 
-- Local/staging actions performed: Local source implementation and focused tests complete; Ahmed approved canonical `backup-erp` staging deployment on 2026-08-14.
+- Local/staging actions performed: Deployed exact dependency-closed eight-file runtime to canonical `backup-erp`; compare, preflight, backup, apply, verify, status, HTTPS and anonymous-login boundary passed.
 - Production actions: None.
 - Production readiness is not approval to deploy.
 
 ## Rollback instructions
 
-Restore the M056 application and language files to base commit `281cdcc955378fdb674fb21a46e129f529e8f5e1` through a reviewed release rollback. Remove only the M056 test/document files from source if abandoning the feature. No schema rollback exists. Keep any already-created Agenda/email history as an immutable communication record.
+Run the restricted helper command `/usr/local/sbin/chinaplanetos-backup-erp-m056-shipment-status-email rollback`. It restores the exact prestate from `/root/backup-erp-code-backups/m056-before-606b54c-20260813T233252Z.tar.gz` (SHA-256 `74c918efce926b7d38b2b471d44d33b806e3079f598d5fe8f3df327e87337112`) using prestate SHA-256 `f303f6339a2e5e7c5fa3a50aaf11df38676cddee6926d46ff1e5a696b450f8aa`. No schema rollback exists. Keep any already-created Agenda/email history as an immutable communication record.
 
 ## Review record
 
@@ -99,7 +102,7 @@ Restore the M056 application and language files to base commit `281cdcc955378fdb
 
 ## Architect disposition
 
-- **Decision:** ARCHITECT_ACCEPTED
-- **Reason:** Approved local scope is complete, all corrected tests pass, and Shipping/Portal, Security and QA independent reviews pass.
+- **Decision:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
+- **Reason:** Approved staging scope is deployed from the dependency-closed, checksum-pinned package; automated runtime verification and independent reviews pass.
 - **Documentation updated:** Mission, completion report, changelog, parity record.
-- **Final mission status:** DEVELOPER_REPORTED
+- **Final mission status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS; authenticated UI and synthetic Mailpit acceptance pending

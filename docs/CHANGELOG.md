@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-14 — M056 shipment status email notification
+
+- Added an explicit staff-controlled email option for committed, customer-visible shipment status changes, with server-resolved recipient/sender, Arabic/English/Chinese customer-safe content, authenticated shipment link and Dolibarr Agenda history.
+- Preserved operational shipment truth when SMTP or Agenda fails and added a permission/CSRF-protected retry for only the latest entity/customer-scoped public status event.
+- Reconciled staging's documented 200MB shipment upload correction as a complete two-file dependency and added a focused dependency contract test.
+- Deployed the exact eight-file runtime from `606b54c852230b0674b0745084e107487cf3161d` to canonical `backup-erp`; artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`. Compare, preflight, backup, apply, independent verify, HTTPS health and anonymous-login boundary passed.
+- No schema, database, configuration, module state, documents, business record, customer message, Compose, proxy, DNS or production change occurred. Authenticated desktop/390px and synthetic Mailpit acceptance remain pending.
+
 ## 2026-08-13 — M055 website-request email and WhatsApp replies
 
 - Added a staff-only email composer to Website Requests, with the recipient reread from the durable request, sender taken from Dolibarr mail configuration, explicit send confirmation, dual permission checks and CSRF protection.
