@@ -1,5 +1,12 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-13 — M047 clean baseline and refactoring preparation
+
+- Created a clean Dolibarr branch/worktree from current `origin/main` without resetting or modifying the diverged permanent worktree.
+- Preserved Ahmed's local canonical-path documentation commit on the clean branch and added durable Agent instructions, Mission scope and refactoring-baseline evidence.
+- Recorded React, Dolibarr, Git, test and restricted runtime evidence while keeping all branches, worktrees, databases, configuration, documents and business records unchanged.
+- Production and staging received read-only health/status/compare checks only; no apply, deployment or runtime mutation occurred.
+
 ## 2026-08-08 — M044-C01 Shipping Prices import dependency correction
 
 - Restored the authenticated Shipping Prices import page on canonical `backup-erp` by adding the one missing, source-matched `ShippingNoteTranslationService.class.php` dependency.

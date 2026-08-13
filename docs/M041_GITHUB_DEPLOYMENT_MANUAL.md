@@ -49,7 +49,7 @@
 يتم هذا مرة واحدة فقط. من Mac، داخل المستودع الرسمي:
 
 ```bash
-cd /Users/mac/Documents/dev/dolibarr/dolibarr-Dev/git-work/codex-dolibarr
+cd /Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr
 scp -i /Users/mac/.ssh/codex_vision_deploy \
   deploy/tools/chinaplanetos_m041_delivery.sh \
   deploy/tools/chinaplanetos_m041_ssh_dispatch.sh \
