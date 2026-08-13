@@ -4,15 +4,16 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M056'
-readonly RUNTIME_COMMIT='2646d0b3f1fb8b47c45325b2aedec7695a2ad73f'
-readonly SHORT_COMMIT='2646d0b'
-readonly ARTIFACT_SHA='55c5e18fbb382327a5432243f344246c9d2a08042fb6abf6d563740cb6077074'
-readonly RUNTIME_MANIFEST_SHA='a83d2658f859ae2ff2cf2e67104ffb29cf2a1749001f4848e2046bfe2c90938f'
-readonly SUPPORT_MANIFEST_SHA='a5b2567ee99cac08f4a141e55cf1cda1591e9e6e04520ff4fc3d90cf37fab9e7'
+readonly RUNTIME_COMMIT='606b54c852230b0674b0745084e107487cf3161d'
+readonly SHORT_COMMIT='606b54c'
+readonly ARTIFACT_SHA='19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592'
+readonly RUNTIME_MANIFEST_SHA='4053af9e8ef3350579c5c20eedad640f6c7639be807736c5ec787b1461b77519'
+readonly SUPPORT_MANIFEST_SHA='116a20849c26578efae649c1e4003713d132258c9a842b9ec355efdda259c26a'
 
 readonly RUNTIME_MANIFEST='deploy/releases/m056-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m056-support-files.txt'
 readonly -a RUNTIME_FILES=(
+  'custom/chinaplanetcustomercenter/lib/portal.lib.php'
   'custom/chinaplanetlogistics/card.php'
   'custom/chinaplanetlogistics/class/ShipmentStatusEmailService.class.php'
   'custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php'
@@ -22,6 +23,7 @@ readonly -a RUNTIME_FILES=(
   'custom/chinaplanetlogistics/lib/shipment_customer.lib.php'
 )
 readonly -a RUNTIME_SHAS=(
+  'c1ed927d103517af8a1873fa6f508b7b3f56bafbcb869d9e1231bf7343b16448'
   'ba3282b2b1f8d6fdd8f6aa6daeeff9fa96f03b85174663fc0df2db10cc2bff4d'
   'e497738f6480a336c7573b3cfc53da2e41a95ebefb1bb8c2a2ae01f487509ef8'
   'da81d62b2d4aa2081abba356e8c0a18faff36d395b6c9d3a159f6d46866718a3'
@@ -31,6 +33,7 @@ readonly -a RUNTIME_SHAS=(
   'c9413816f8e08dd68accab133bca11919103c4c64e4ebcb8d8f6436f1465d51e'
 )
 readonly -a BASELINE_SHAS=(
+  'c1ed927d103517af8a1873fa6f508b7b3f56bafbcb869d9e1231bf7343b16448'
   '96ed3bacb97292fee7d0ba8df73be99bab5a4089d6d10156545b3a18d3ab7227'
   'ABSENT'
   'a223391dcbf6242db4faa264192fad07c0580457d23cb14617ffb11a3ebed093'
@@ -40,6 +43,7 @@ readonly -a BASELINE_SHAS=(
   '87ffcaffc3b493695a2945d0988fbdf69f70e477570a1539aaecc7ee30e23f7b'
 )
 readonly -a TARGET_FILES=(
+  'chinaplanetcustomercenter/lib/portal.lib.php'
   'chinaplanetlogistics/card.php'
   'chinaplanetlogistics/class/ShipmentStatusEmailService.class.php'
   'chinaplanetlogistics/class/chinaplanetlogistics.class.php'
@@ -49,11 +53,13 @@ readonly -a TARGET_FILES=(
   'chinaplanetlogistics/lib/shipment_customer.lib.php'
 )
 readonly -a SUPPORT_FILES=(
+  'deploy/tests/test_m056_shipment_upload_dependency.php'
   'deploy/tests/test_m056_shipment_status_email_service.php'
   'deploy/tests/test_m056_shipment_status_email_source.php'
   'deploy/tests/test_m056_shipment_update_commit.php'
 )
 readonly -a SUPPORT_SHAS=(
+  'ce815022a1e74514cc6bf1253ade4eb7ee566116746e96a693b4e66fa1de2934'
   '46beae6741f7654acebca9ab51da28f3f45a37e84178aacd18a19fbbd152931d'
   '78d55e8e5de7eec25e234534ce41431961f93d6cf1864e0b09cfa02e12aaabe0'
   '2c88f8f4e266071db187059a9b3a11237678381172eeace06ee366ca7128519e'
@@ -90,7 +96,7 @@ restore_prior() {
   [[ -f "$PRESTATE_FILE" && ! -L "$PRESTATE_FILE" && $(sha256 "$PRESTATE_FILE") == "$PRESTATE_SHA" ]] || return 1
   while IFS='|' read -r rel state expected_sha owner group mode; do
     case "$rel" in
-      chinaplanetlogistics/card.php|chinaplanetlogistics/class/ShipmentStatusEmailService.class.php|chinaplanetlogistics/class/chinaplanetlogistics.class.php|chinaplanetlogistics/langs/ar_SA/chinaplanetlogistics.lang|chinaplanetlogistics/langs/en_US/chinaplanetlogistics.lang|chinaplanetlogistics/langs/zh_CN/chinaplanetlogistics.lang|chinaplanetlogistics/lib/shipment_customer.lib.php) ;;
+      chinaplanetcustomercenter/lib/portal.lib.php|chinaplanetlogistics/card.php|chinaplanetlogistics/class/ShipmentStatusEmailService.class.php|chinaplanetlogistics/class/chinaplanetlogistics.class.php|chinaplanetlogistics/langs/ar_SA/chinaplanetlogistics.lang|chinaplanetlogistics/langs/en_US/chinaplanetlogistics.lang|chinaplanetlogistics/langs/zh_CN/chinaplanetlogistics.lang|chinaplanetlogistics/lib/shipment_customer.lib.php) ;;
       *) return 1 ;;
     esac
     local target="$TARGET_ROOT/$rel" tmp="${TARGET_ROOT}/${rel}.m056-restore.$$"
@@ -161,7 +167,7 @@ validate_artifact() {
   local listing types expected actual index
   listing=$(mktemp); types=$(mktemp); expected=$(mktemp); actual=$(mktemp)
   tar -tzf "$ARTIFACT_COPY" >"$listing" || die 'ARTIFACT_TAR_INVALID'
-  [[ $(wc -l <"$listing") -eq 23 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
+  [[ $(wc -l <"$listing") -eq 27 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
   [[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/\._/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
   [[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
   tar -tvzf "$ARTIFACT_COPY" >"$types" || die 'ARTIFACT_LIST_FAILED'
@@ -183,7 +189,7 @@ validate_artifact() {
 
 candidate_checks() {
   CANDIDATE_REMOTE="/tmp/m056-candidate-$$"; docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE"
-  docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/class" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/langs/ar_SA" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/langs/en_US" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/langs/zh_CN" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/lib" "$CANDIDATE_REMOTE/deploy/tests"
+  docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE/custom/chinaplanetcustomercenter/lib" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/class" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/langs/ar_SA" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/langs/en_US" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/langs/zh_CN" "$CANDIDATE_REMOTE/custom/chinaplanetlogistics/lib" "$CANDIDATE_REMOTE/deploy/tests"
   local rel
   for rel in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do docker cp "$CANDIDATE_ROOT/$rel" "$TARGET_CONTAINER:$CANDIDATE_REMOTE/$rel"; done
   for rel in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do if [[ "$rel" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$rel" >/dev/null || die 'CANDIDATE_PHP_LINT_FAILED'; fi; done
@@ -261,9 +267,9 @@ load_state() {
 }
 
 command_compare() { check_environment; validate_artifact; candidate_checks; compare_files; echo "M056_STAGING_COMPARE=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
-command_preflight() { check_environment; validate_artifact; require_disk_space; candidate_checks; compare_files; echo "M056_STAGING_PREFLIGHT=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
-command_apply() { exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment; validate_artifact; require_disk_space; candidate_checks; if [[ -f "$STATE_FILE" ]]; then load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; if live_checks; then echo "M056_STAGING_APPLY=NOOP_ALREADY_APPLIED RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; return; fi; fi; compare_files; create_backup; MUTATED=1; apply_files; live_checks || die 'LIVE_CHECK_FAILED'; save_state; MUTATED=0; echo "M056_STAGING_APPLY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
-command_verify() { check_environment; validate_artifact; candidate_checks; load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M056_STAGING_VERIFY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=7 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
+command_preflight() { check_environment; validate_artifact; require_disk_space; candidate_checks; compare_files; echo "M056_STAGING_PREFLIGHT=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=8 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
+command_apply() { exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment; validate_artifact; require_disk_space; candidate_checks; if [[ -f "$STATE_FILE" ]]; then load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; if live_checks; then echo "M056_STAGING_APPLY=NOOP_ALREADY_APPLIED RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; return; fi; fi; compare_files; create_backup; MUTATED=1; apply_files; live_checks || die 'LIVE_CHECK_FAILED'; save_state; MUTATED=0; echo "M056_STAGING_APPLY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA FILES=8 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
+command_verify() { check_environment; validate_artifact; candidate_checks; load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M056_STAGING_VERIFY=PASS RELEASE=$RELEASE COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=8 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
 command_rollback() { exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment; validate_artifact; require_disk_space; candidate_checks; load_state; [[ "$STATE_STATUS" == 'DEPLOYED' ]] || die 'STATE_NOT_DEPLOYED'; REAPPLY_BACKUP="${BACKUP_ROOT}/m056-reapply-${SHORT_COMMIT}-$(date -u '+%Y%m%dT%H%M%SZ').tar.gz"; tar -czpf "$REAPPLY_BACKUP" -C "$TARGET_ROOT" "${TARGET_FILES[@]}"; chmod 0600 "$REAPPLY_BACKUP"; sync -f "$REAPPLY_BACKUP"; sync -f "$BACKUP_ROOT"; REAPPLY_SHA=$(sha256 "$REAPPLY_BACKUP"); [[ -s "$REAPPLY_BACKUP" ]] || die 'REAPPLY_BACKUP_EMPTY'; ROLLBACK_MUTATED=1; restore_prior || die 'CODE_RESTORE_FAILED'; prior_checks || die 'ROLLBACK_VERIFY_FAILED'; save_state_status 'ROLLED_BACK'; ROLLBACK_MUTATED=0; echo "M056_STAGING_ROLLBACK=PASS REAPPLY=$REAPPLY_BACKUP REAPPLY_SHA=$REAPPLY_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
 command_status() { if [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]]; then grep -E '^STATE_(RELEASE|STATUS|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|PRESTATE_FILE|PRESTATE_SHA|DEPLOYED_AT)=' "$STATE_FILE"; else echo 'M056_STAGING_STATUS=NOT_DEPLOYED'; fi; }
 

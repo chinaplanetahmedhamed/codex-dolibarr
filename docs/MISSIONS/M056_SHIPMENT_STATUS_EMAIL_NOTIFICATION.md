@@ -84,7 +84,7 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 
 ## Staging deployment gate
 
-- Deploy only the exact seven-file runtime allowlist in `deploy/releases/m056-runtime-files.txt` to canonical `erp-staging` / `backup-erp.visiontrading.biz`.
+- Deploy only the exact eight-file dependency-closed runtime allowlist in `deploy/releases/m056-runtime-files.txt` to canonical `erp-staging` / `backup-erp.visiontrading.biz`.
 - Use a checksum-pinned, fail-closed M056 helper with compare, preflight, apply, verify, rollback and status commands.
 - Create and verify a code backup before apply. Do not change the database, Dolibarr configuration, module state, documents, Compose, proxy, DNS, ports or customer business records.
 - Use Mailpit only for any later synthetic delivery acceptance. Do not send a staging notification to a real customer.
