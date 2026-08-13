@@ -50,6 +50,13 @@
 - Added this completion report.
 - Updated `docs/CHANGELOG.md`.
 
+### Unified and management workspace
+
+- Updated `/Users/mac/Documents/dev/chinaplanet-OS/AGENTS.md` with the 2026-08-13 baseline and Draft PR stopping point.
+- Updated `/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/docs/STATUS.md` so its current block supersedes the retained historical 2026-07 action lists.
+- Updated `/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/skills/chinaplanetos-vps-operations/references/current-state.md` with the latest read-only runtime verification and M047 source state.
+- These management files are outside the application repository and were not deployed.
+
 ## Runtime and release evidence
 
 - React production and staging both reported `deploySha=e8b253d5cc8e3ce766d2da43dc55d2cd67b0637d`.
