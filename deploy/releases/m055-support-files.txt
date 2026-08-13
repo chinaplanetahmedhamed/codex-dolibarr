@@ -1,0 +1,2 @@
+deploy/tests/test_m055_public_request_contact_service.php
+deploy/tests/test_m055_public_request_customer_replies_source.php

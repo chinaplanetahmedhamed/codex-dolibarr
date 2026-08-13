@@ -1,0 +1,6 @@
+custom/chinaplanetoperations/class/PublicRequestContactService.class.php
+custom/chinaplanetoperations/css/operations.css
+custom/chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang
+custom/chinaplanetoperations/langs/en_US/chinaplanetoperations.lang
+custom/chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang
+custom/chinaplanetoperations/operations/public_requests.php

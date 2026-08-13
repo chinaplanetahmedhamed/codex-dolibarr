@@ -1,6 +1,6 @@
 <?php
 
-$root = dirname(__DIR__, 2);
+$root = getenv('M055_DOL_DOCUMENT_ROOT') ?: dirname(__DIR__, 2);
 $page = file_get_contents($root.'/custom/chinaplanetoperations/operations/public_requests.php');
 $service = file_get_contents($root.'/custom/chinaplanetoperations/class/PublicRequestContactService.class.php');
 $css = file_get_contents($root.'/custom/chinaplanetoperations/css/operations.css');

@@ -6,7 +6,8 @@ mkdir($tmp.'/comm/action/class', 0700, true);
 file_put_contents($tmp.'/core/class/CMailFile.class.php', "<?php class CMailFile {}\n");
 file_put_contents($tmp.'/comm/action/class/actioncomm.class.php', "<?php class ActionComm {}\n");
 define('DOL_DOCUMENT_ROOT', $tmp);
-require dirname(__DIR__, 2).'/custom/chinaplanetoperations/class/PublicRequestContactService.class.php';
+$sourceRoot = getenv('M055_DOL_DOCUMENT_ROOT') ?: dirname(__DIR__, 2);
+require $sourceRoot.'/custom/chinaplanetoperations/class/PublicRequestContactService.class.php';
 
 $cases = array(
     array('Egypt international digits', '201226156863', 'EG', '201226156863'),
