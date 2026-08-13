@@ -6,6 +6,7 @@ $assert = function ($condition, $message) { if(!$condition) throw new RuntimeExc
 try {
     $page=$read('custom/chinaplanetshippingprices/customer_booking.php');
     $booking=$read('custom/chinaplanetshippingprices/class/CustomerShippingBookingService.class.php');
+    $operationGateway=$read('custom/chinaplanetoperations/class/CustomerShippingOperationGateway.class.php');
     $prices=$read('custom/chinaplanetshippingprices/class/ShippingPriceService.class.php');
     $schema=$read('custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_booking.sql');
     $css=$read('custom/chinaplanetshippingprices/css/customer_booking.css');
@@ -17,7 +18,9 @@ try {
     foreach(array('supplier_cost','cost_price','base_margin','source_sheet','source_row','batch_ref','rule_id','internal_notes','note_private') as$forbidden)$assert(strpos($page,$forbidden)===false,'customer page leak token '.$forbidden);
     $assert(strpos($booking,"\$posted['fk_soc']")===false&&strpos($booking,"\$posted['entity']")===false,'client authority accepted');
     $assert(strpos($booking,"'source_channel'=>'customer_rate_booking'")!==false,'bounded operations channel absent');
-    $assert(strpos($booking,"addImmutableSection(\$operationId, 'customer_rate'")!==false,'immutable rate section absent');
+    $assert(strpos($booking,'OperationsService')===false&&strpos($booking,'custom/chinaplanetoperations')===false,'booking service still hard-depends on operations');
+    $assert(strpos($booking,'CustomerShippingOperationGatewayInterface')!==false&&strpos($booking,'createBookingOperation')!==false,'booking operation gateway injection absent');
+    $assert(strpos($operationGateway,"addImmutableSection(\$operationId, 'customer_rate'")!==false,'immutable rate section absent from operations gateway');
     $assert(strpos($schema,'UNIQUE KEY uk_chinaplanetsp_booking_key (entity, fk_soc, idempotency_key)')!==false,'idempotency unique key absent');
     $assert(strpos($schema,'UNIQUE KEY uk_chinaplanetsp_booking_operation (entity, fk_operation)')!==false,'one-operation invariant absent');
     $assert(strpos($prices,'customerEligibilitySql')!==false&&strpos($prices,'valid_from')!==false&&strpos($prices,'valid_to')!==false,'validity predicate absent');

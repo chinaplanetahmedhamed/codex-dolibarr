@@ -10,6 +10,7 @@ require $_SERVER['DOCUMENT_ROOT'].'/master.inc.php';
 require_once $_SERVER['DOCUMENT_ROOT'].'/user/class/user.class.php';
 require_once $_SERVER['DOCUMENT_ROOT'].'/custom/chinaplanetshippingprices/class/ShippingPriceService.class.php';
 require_once $_SERVER['DOCUMENT_ROOT'].'/custom/chinaplanetshippingprices/class/CustomerShippingBookingService.class.php';
+require_once $_SERVER['DOCUMENT_ROOT'].'/custom/chinaplanetoperations/class/CustomerShippingOperationGateway.class.php';
 global $db, $conf;
 
 function m035Fail($message) { throw new RuntimeException($message); }
@@ -51,7 +52,7 @@ try {
         'hs_code'=>'TEST-0000','shipper'=>'Synthetic test shipper','consignee'=>'Synthetic test consignee','notify_party'=>'','customer_instruction'=>'M035 automated local test','accept_terms'=>1,
         'entity'=>999,'fk_soc'=>999,'price'=>'0.01','currency'=>'CNY','forwarder'=>'MUST_NOT_PERSIST',
     );
-    $bookings = new CustomerShippingBookingService($db); $created = $bookings->submit($customer, $posted);
+    $bookings = new CustomerShippingBookingService($db, null, $prices, new CustomerShippingOperationGateway($db)); $created = $bookings->submit($customer, $posted);
     if (empty($created['id']) || empty($created['reference'])) m035Fail('CREATE_FAILED');
     $createdBooking=(int)$created['id'];
     $res=$db->query("SELECT fk_operation,fk_soc,snapshot_json FROM ".MAIN_DB_PREFIX."chinaplanetsp_booking WHERE entity=".(int)$conf->entity." AND rowid=".$createdBooking);$row=$res?$db->fetch_object($res):null;if(!$row)m035Fail('BOOKING_ROW_MISSING');$createdOperation=(int)$row->fk_operation;

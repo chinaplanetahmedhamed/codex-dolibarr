@@ -1,21 +1,24 @@
 <?php
 
 require_once __DIR__.'/ShippingPriceService.class.php';
-require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/OperationsService.class.php';
+require_once __DIR__.'/CustomerShippingOperationGatewayInterface.class.php';
 
 class CustomerShippingBookingService
 {
     private $db;
     private $entity;
     private $prices;
-    private $operations;
+    private $operationGateway;
 
-    public function __construct($db, $entity = null)
+    public function __construct($db, $entity = null, $prices = null, $operationGateway = null)
     {
         $this->db = $db;
         $this->entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
-        $this->prices = new ShippingPriceService($db, $this->entity);
-        $this->operations = new OperationsService($db);
+        $this->prices = $prices ?: new ShippingPriceService($db, $this->entity);
+        if (!($operationGateway instanceof CustomerShippingOperationGatewayInterface)) {
+            throw new InvalidArgumentException('A customer shipping operation gateway is required.');
+        }
+        $this->operationGateway = $operationGateway;
     }
 
     public function submit($user, array $posted)
@@ -109,8 +112,7 @@ class CustomerShippingBookingService
                 $this->db->rollback();
                 return $this->resolveRetry($existing, $requestHash);
             }
-            $operationId = $this->operations->create($operationData, (int) $user->id, false);
-            $this->operations->addImmutableSection($operationId, 'customer_rate', $snapshot, (int) $user->id);
+            $operationId = $this->operationGateway->createBookingOperation($operationData, $snapshot, (int) $user->id);
             $sql = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetsp_booking(entity,fk_soc,fk_rate,fk_operation,idempotency_key,request_hash,rate_fingerprint,input_json,snapshot_json,terms_hash,status,fk_user_creat,date_acceptance,date_creation) VALUES(".
                 $this->entity.",".$socid.",".$rateId.",".$operationId.",'".$this->db->escape($idempotencyKey)."','".$requestHash."','".$rate['fingerprint']."','".$this->db->escape(json_encode($input, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))."','".$this->db->escape(json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))."','".$termsHash."','received',".(int) $user->id.",'".$this->db->idate(dol_now())."','".$this->db->idate(dol_now())."')";
             if (!$this->db->query($sql)) throw new RuntimeException($this->db->lasterror());
