@@ -43,4 +43,4 @@ The Website Requests detail screen now has an in-Dolibarr email reply composer a
 
 ## Boundaries and next gate
 
-No database, module state, configuration, mailbox, business record, staging or production environment was changed. The next permitted step is a separately approved staging release and authenticated acceptance using a synthetic customer address/number. Production remains forbidden until staging is accepted and Ahmed gives exact production approval.
+Ahmed approved deployment to canonical `backup-erp` staging on 2026-08-13. The staging release must remain checksum-pinned, code-only and limited to the M055 runtime/test allowlist. Production remains forbidden until staging is accepted and Ahmed gives exact production approval.

@@ -4,12 +4,13 @@
 
 - **Mission ID:** M055
 - **Type:** FEATURE / ADMIN_WORKFLOW
-- **Status:** APPROVED_LOCAL_IMPLEMENTATION
+- **Status:** APPROVED_STAGING_DEPLOYMENT
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — “link this to the website coming request ... send email directly ... phone number can open new window for whatsapp”
 - **Approval date:** 2026-08-13
-- **Target:** local Dolibarr source only
-- **Staging / production:** not approved
+- **Staging approval:** Ahmed Hamed — “Deploy M055 to backup-erp staging” — 2026-08-13
+- **Target:** canonical `backup-erp.visiontrading.biz` / `erp-staging` only
+- **Production:** not approved and forbidden
 
 ## Objective
 
@@ -30,7 +31,8 @@ Let authorized staff contact the person behind a public website request without 
 - No React, Node, WordPress, Customer Portal, native Mobile App, schema, mailbox, email-collector, credential, customer-data, quotation-state, order, invoice, payment or accounting change.
 - No attachment sending in this first increment.
 - No WhatsApp Business API, Meta credential or automated WhatsApp send.
-- No staging or production deployment without a separate exact approval.
+- Staging deployment is authorized only through a checksum-pinned, fail-closed M055 helper against canonical `erp-staging`.
+- Production deployment remains forbidden without a separate exact approval after staging acceptance.
 
 ## Acceptance
 
