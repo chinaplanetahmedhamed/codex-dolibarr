@@ -527,6 +527,7 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     }
 
     print '<nav class="cpl-detail-actions" aria-label="'.$langs->trans('CPLShipmentActions').'">';
+    if ($canwrite && !empty($context['cansendshipmentemail'])) print '<form method="post" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="resend_status_email"><button type="submit"><span class="fas fa-envelope" aria-hidden="true"></span> '.$langs->trans('CPLResendLatestStatusEmail').'</button></form>';
     if ($canwrite) print '<a href="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'?id='.(int)$shipment->id.'&amp;action=edit">'.$langs->trans('Modify').'</a>';
     if ($candelete) print '<a class="danger" href="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'?id='.(int)$shipment->id.'&amp;action=confirm_delete&amp;token='.urlencode(newToken()).'">'.$langs->trans('Delete').'</a>';
     if (!empty($context['modal'])) print '<button type="button" data-cpl-back-project data-cpl-back-url="'.dol_escape_htmltag(isset($context['projecturl']) ? $context['projecturl'] : '').'">'.$langs->trans('CPLBackToProject').'</button>';

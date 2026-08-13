@@ -197,3 +197,9 @@
 - Made Financial Center the main Finance landing and promoted the allocation action inside it.
 - Restored the shared admin layout on Reports list/detail and every linked Shipping SOP management page.
 - Local only; no Git push or ERP deployment performed.
+# 2026-08-14 — M056 shipment status email notification
+
+- Added an explicit, permission-gated shipment-status email option to the existing logistics edit form.
+- Email is sent only after a committed, customer-visible status change; the recipient is resolved server-side from the entity-scoped customer and content follows the customer's default Arabic, Chinese, or English language.
+- Reused Dolibarr SMTP and Agenda history without core edits or schema changes. Email failure never rolls back shipment status.
+- Local implementation only. Staging and production were not changed.

@@ -21,6 +21,7 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 require_once __DIR__.'/../chinaplanetcustomercenter/lib/portal.lib.php';
 require_once __DIR__.'/../chinaplanetcustomercenter/lib/admin_shell.lib.php';
 require_once __DIR__.'/class/chinaplanetlogistics.class.php';
+require_once __DIR__.'/class/ShipmentStatusEmailService.class.php';
 
 $langs->loadLangs(array("companies", "orders", "projects", "sendings", "other", "chinaplanetlogistics@chinaplanetlogistics", "chinaplanetcustomercenter@chinaplanetcustomercenter"));
 
@@ -45,9 +46,11 @@ if ($id > 0) {
 // Customer security boundary: external users can only view shipments linked to their own third party.
 $is_external_customer = (!empty($user->socid) && empty($user->admin));
 $is_modal = ($is_external_customer && GETPOSTINT('modal') === 1);
+$cansendshipmentemail = !$is_external_customer && (!empty($user->admin) || !getDolGlobalString('MAIN_USE_ADVANCED_PERMS') || $user->hasRight('expedition', 'shipping_advance', 'send'));
 if ($is_external_customer) {
     $canwrite = false;
     $candelete = false;
+    $cansendshipmentemail = false;
     if ($id > 0) {
         if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
             if ($is_modal) {
@@ -164,18 +167,56 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
     $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
     $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
+    $sendStatusEmail = GETPOSTINT('send_status_email') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
     $resu = $object->update($user);
     if ($resu >= 0) {
-        setEventMessages('Shipment updated successfully.', null, 'mesgs');
+        setEventMessages($langs->trans('CPLShipmentUpdated'), null, 'mesgs');
+        if ($sendStatusEmail && !$cansendshipmentemail) {
+            setEventMessages($langs->trans('CPLStatusEmailPermissionDenied'), null, 'warnings');
+        } elseif ($sendStatusEmail && empty($object->audit_customer_visible)) {
+            setEventMessages($langs->trans('CPLStatusEmailNotPublic'), null, 'warnings');
+        } elseif ($sendStatusEmail && empty($object->last_status_change)) {
+            setEventMessages($langs->trans('CPLStatusEmailNoStatusChange'), null, 'warnings');
+        } elseif ($sendStatusEmail) {
+            try {
+                $emailService = new ShipmentStatusEmailService($db);
+                $emailResult = $emailService->send($object, $object->last_status_change['from'], $object->last_status_change['to'], $object->audit_reason_public, $user);
+                setEventMessages($langs->trans('CPLStatusEmailSent', $emailResult['recipient']), null, 'mesgs');
+                if (empty($emailResult['history_recorded'])) setEventMessages($langs->trans('CPLStatusEmailHistoryWarning'), null, 'warnings');
+            } catch (ShipmentStatusEmailException $e) {
+                setEventMessages($langs->trans($e->getMessage()), null, 'warnings');
+            } catch (Throwable $e) {
+                dol_syslog('Unexpected shipment status email failure for shipment '.((int) $object->id).': '.$e->getMessage(), LOG_ERR);
+                setEventMessages($langs->trans('CPLStatusEmailSendFailed'), null, 'warnings');
+            }
+        }
         header("Location: ".$_SERVER['PHP_SELF']."?id=".$id);
         exit;
     } else {
         setEventMessages($object->error, $object->errors, 'errors');
         $action = 'edit';
     }
+}
+
+// Retry the latest committed customer-visible status email without rewriting the shipment.
+if ($action === 'resend_status_email' && $id > 0 && $canwrite && $is_post) {
+    if (!$cansendshipmentemail || empty($object->id)) accessforbidden();
+    try {
+        $emailService = new ShipmentStatusEmailService($db);
+        $emailResult = $emailService->resendLatest($object, $user);
+        setEventMessages($langs->trans('CPLStatusEmailSent', $emailResult['recipient']), null, 'mesgs');
+        if (empty($emailResult['history_recorded'])) setEventMessages($langs->trans('CPLStatusEmailHistoryWarning'), null, 'warnings');
+    } catch (ShipmentStatusEmailException $e) {
+        setEventMessages($langs->trans($e->getMessage()), null, 'warnings');
+    } catch (Throwable $e) {
+        dol_syslog('Unexpected shipment status email retry failure for shipment '.((int) $object->id).': '.$e->getMessage(), LOG_ERR);
+        setEventMessages($langs->trans('CPLStatusEmailSendFailed'), null, 'warnings');
+    }
+    header('Location: '.$_SERVER['PHP_SELF'].'?id='.(int) $id);
+    exit;
 }
 
 // ADD REPEATABLE TRANSSHIPMENT EVENT (internal logistics writers only)
@@ -442,6 +483,12 @@ if ($action == 'create' || $action == 'edit') {
     print '</td></tr>';
     print '<tr><td>'.$langs->trans('CPLPublicUpdateReason').'</td><td><input type="text" name="audit_reason_public" maxlength="1000" style="width:95%"></td></tr>';
     print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1" checked></td></tr>';
+    if ($action === 'edit') {
+        print '<tr><td>'.$langs->trans('CPLSendStatusEmail').'</td><td>';
+        if ($cansendshipmentemail) print '<label><input type="checkbox" name="send_status_email" value="1"> '.$langs->trans('CPLSendStatusEmailHelp').'</label>';
+        else print '<span class="opacitymedium">'.$langs->trans('CPLSendStatusEmailUnavailable').'</span>';
+        print '</td></tr>';
+    }
 
     print '<tr><td>Internal Notes / ملاحظات داخلية</td><td>';
     print '<textarea name="notes" rows="3" style="width:95%;">'.dol_escape_htmltag($object->notes).'</textarea>';
@@ -494,7 +541,7 @@ if ($action == 'create' || $action == 'edit') {
 
     if ($is_external_customer) ob_start();
     cpl_render_shipment_command_center($db, $object, array(
-        'external'=>$is_external_customer, 'modal'=>$is_modal, 'canwrite'=>$canwrite, 'candelete'=>$candelete,
+        'external'=>$is_external_customer, 'modal'=>$is_modal, 'canwrite'=>$canwrite, 'candelete'=>$candelete, 'cansendshipmentemail'=>$cansendshipmentemail,
         'customer_name'=>$customer_name, 'project_label'=>$project_label, 'listurl'=>$listurl,
         'projecturl'=>$object->fk_project > 0 ? dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int)$object->fk_project : dol_buildpath('/chinaplanetcustomercenter/projects.php', 1),
     ));
