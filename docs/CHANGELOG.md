@@ -1,5 +1,12 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-13 — M054 project-to-Kanban sync ownership
+
+- Moved the project/card synchronization implementation to the CP Kanban module that owns its cards and columns.
+- Kept the historical Customer Center include path as a thin compatibility wrapper and updated first-party call sites to the canonical owner.
+- Added source characterization for ownership, compatibility, entity scope and unchanged function contracts.
+- Local source only; no database, configuration, module state, route, UI, business-data, staging, React, or production change occurred.
+
 ## 2026-08-13 — M047 clean baseline and refactoring preparation
 
 - Created a clean Dolibarr branch/worktree from current `origin/main` without resetting or modifying the diverged permanent worktree.

@@ -2,7 +2,7 @@
 
 require_once DOL_DOCUMENT_ROOT.'/core/triggers/dolibarrtriggers.class.php';
 require_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
-require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/projectsync.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/cpkanban/lib/projectsync.lib.php';
 
 class InterfaceChinaPlanetCustomerCenterCustomerProjectSync extends DolibarrTriggers
 {

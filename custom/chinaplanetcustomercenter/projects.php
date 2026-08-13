@@ -5,7 +5,7 @@ require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
 
 require_once __DIR__.'/lib/portal.lib.php';
-require_once __DIR__.'/lib/projectsync.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/cpkanban/lib/projectsync.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/cpkanban/class/cpkanbancard.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
