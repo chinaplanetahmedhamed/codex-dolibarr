@@ -4,15 +4,16 @@
 
 - **Mission ID:** M056
 - **Type:** IMPLEMENTATION
-- **Status:** ARCHITECT_ACCEPTED
+- **Status:** STAGING_APPROVED
 - **Architect owner:** Agent 007 Central
 - **Implementation owner:** Agent 007 Central
 - **Required reviewers:** Shipping, Customer Portal, Security, QA
 - **Dependencies:** M011 customer-safe shipment events; M055 configured Dolibarr outbound email
-- **Target environment:** Local development
+- **Target environment:** Local development and canonical `backup-erp` staging
 - **Production:** Forbidden
 - **Ahmed approval:** APPROVED — “ok, do it”
 - **Approval date:** 2026-08-14
+- **Staging approval:** Ahmed Hamed — “Deploy M056 to backup-erp staging” — 2026-08-14
 
 ## Business objective
 
@@ -39,7 +40,7 @@ Allow authorized logistics staff to notify the shipment customer by email when, 
 
 ## Out of scope
 
-- Staging or production deployment.
+- Production deployment.
 - Automatic email for ETA-only, ATD-only, ATA-only, document, gallery, or transshipment updates.
 - WhatsApp automation, inbound email collector changes, attachments, bulk notifications, automatic queues, or schema changes.
 - Customer portal or mobile UI changes; their existing timeline continues to consume the same committed status event.
@@ -80,6 +81,14 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 - **Risks:** Wrong or missing master-data email, duplicate operator saves, SMTP failure, unsafe content leakage.
 - **Controls:** Server-owned recipient, actual status-change proof, explicit checkbox, post-commit send, customer-safe field allowlist, Agenda record.
 - **Rollback:** Restore the M056 application files to the M055 commit. Existing shipment and Agenda history remain intact; no schema rollback is needed.
+
+## Staging deployment gate
+
+- Deploy only the exact seven-file runtime allowlist in `deploy/releases/m056-runtime-files.txt` to canonical `erp-staging` / `backup-erp.visiontrading.biz`.
+- Use a checksum-pinned, fail-closed M056 helper with compare, preflight, apply, verify, rollback and status commands.
+- Create and verify a code backup before apply. Do not change the database, Dolibarr configuration, module state, documents, Compose, proxy, DNS, ports or customer business records.
+- Use Mailpit only for any later synthetic delivery acceptance. Do not send a staging notification to a real customer.
+- Production remains forbidden and requires a separate exact approval after staging acceptance.
 
 ## Review and approval record
 

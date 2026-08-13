@@ -1,0 +1,7 @@
+custom/chinaplanetlogistics/card.php
+custom/chinaplanetlogistics/class/ShipmentStatusEmailService.class.php
+custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php
+custom/chinaplanetlogistics/langs/ar_SA/chinaplanetlogistics.lang
+custom/chinaplanetlogistics/langs/en_US/chinaplanetlogistics.lang
+custom/chinaplanetlogistics/langs/zh_CN/chinaplanetlogistics.lang
+custom/chinaplanetlogistics/lib/shipment_customer.lib.php

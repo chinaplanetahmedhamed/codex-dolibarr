@@ -8,8 +8,8 @@
 - **Implementation owner:** Agent 007 Central
 - **Branch:** `codex/m056-shipment-status-email`
 - **Base commit:** `281cdcc955378fdb674fb21a46e129f529e8f5e1` (M055 live record)
-- **Result commit:** Uncommitted review state
-- **Environment used:** Local source and focused tests
+- **Result commit:** `546262ae63bb9dd0bc31d5383a507fc78884a1d3` (implementation); checksum-pinned staging package preparation follows
+- **Environment used:** Local source and focused tests; canonical `backup-erp` staging approved
 - **Production touched:** No
 
 ## Business outcome
@@ -19,7 +19,7 @@ Authorized staff can select an email notification while editing a shipment. Afte
 ## Scope reconciliation
 
 - **Completed:** Explicit edit-form option; permission, CSRF, entity and customer boundaries; real-status-change gate; server-owned recipient/sender; Arabic/Chinese/English content; customer-safe allowlist; post-commit send; Agenda history; focused tests and parity documentation.
-- **Not completed:** Authenticated browser and real SMTP checks require a separately approved staging deployment.
+- **Not completed:** Authenticated browser and synthetic Mailpit checks remain staging acceptance work.
 - **Scope deviations:** None.
 
 ## Files changed
@@ -58,8 +58,8 @@ Authorized staff can select an email notification while editing a shipment. Afte
 | Existing M055 focused regressions | Continue to pass | Contact service and 15-check source contract passed | PASS |
 | Shipment lifecycle regressions | Existing statuses, timeline, collaboration, free-time and shell remain valid | M004, M011, M023, M024, free-time and unified-shell suites passed | PASS |
 | Git whitespace check | No errors | Passed | PASS |
-| Authenticated admin desktop/390px | Correct edit row and result states | Not run; staging not approved | PENDING_STAGING |
-| Real SMTP send | One real mail and Agenda event | Not run; no business communication in local tests | PENDING_STAGING |
+| Authenticated admin desktop/390px | Correct edit row and result states | Not run; staging deployment pending | PENDING_STAGING |
+| Synthetic Mailpit send | One captured mail and Agenda event without customer delivery | Not run; staging deployment pending | PENDING_STAGING |
 
 ## Security and customer-isolation review
 
@@ -77,7 +77,7 @@ Authorized staff can select an email notification while editing a shipment. Afte
 
 ## Deployment boundary
 
-- Local/staging actions performed: Local source implementation and focused tests only.
+- Local/staging actions performed: Local source implementation and focused tests complete; Ahmed approved canonical `backup-erp` staging deployment on 2026-08-14.
 - Production actions: None.
 - Production readiness is not approval to deploy.
 
