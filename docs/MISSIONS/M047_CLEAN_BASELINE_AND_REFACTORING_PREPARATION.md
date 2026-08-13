@@ -4,7 +4,7 @@
 
 - **Mission ID:** M047
 - **Type:** RELEASE_PREPARATION
-- **Status:** APPROVED / IN_PROGRESS
+- **Status:** COMPLETED
 - **Architect owner:** Agent 007 / ChinaPlanetOS Architect
 - **Implementation owner:** Agent 007
 - **Required reviewers:** QA by evidence; Security not required because no runtime, secret, permission, schema or business-data change is allowed
@@ -112,10 +112,10 @@ No permission, customer visibility, supplier visibility, entity ownership, authe
 |---|---|---|---|---|
 | Domain | Agent 007 | PASS | 2026-08-13 | No business behavior change |
 | Security | Agent 007 scope check | NOT_REQUIRED | 2026-08-13 | No security boundary or runtime mutation |
-| QA | Agent 007 | IN_PROGRESS | 2026-08-13 | Final Git and test evidence required |
+| QA | Agent 007 | PASS | 2026-08-13 | React 52/52 tests plus build; Dolibarr 236 PHP lint, 77 Bash syntax and 12/12 focused tests |
 | Architect | Agent 007 | PASS | 2026-08-13 | Scope frozen to baseline cleanup |
 | Ahmed | Ahmed | APPROVED | 2026-08-13 | “ok do it” |
 
 ## Completion report contract
 
-Create `docs/REPORTS/M047_COMPLETION_REPORT.md` covering both repository branches, every file move/change, Git evidence, runtime evidence, tests, no-impact statement, rollback and draft PR links.
+Completed in `docs/REPORTS/M047_COMPLETION_REPORT.md`, with both draft PRs, file moves, Git evidence, runtime evidence, tests, no-impact statement and rollback recorded.
