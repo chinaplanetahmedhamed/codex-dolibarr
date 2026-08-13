@@ -1,3 +1,4 @@
+custom/chinaplanetcustomercenter/lib/portal.lib.php
 custom/chinaplanetlogistics/card.php
 custom/chinaplanetlogistics/class/ShipmentStatusEmailService.class.php
 custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php

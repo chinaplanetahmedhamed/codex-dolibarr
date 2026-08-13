@@ -1,3 +1,4 @@
+deploy/tests/test_m056_shipment_upload_dependency.php
 deploy/tests/test_m056_shipment_status_email_service.php
 deploy/tests/test_m056_shipment_status_email_source.php
 deploy/tests/test_m056_shipment_update_commit.php
