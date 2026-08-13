@@ -4,13 +4,14 @@
 
 - **Mission ID:** M055
 - **Type:** FEATURE / ADMIN_WORKFLOW
-- **Status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
+- **Status:** APPROVED_PRODUCTION_DEPLOYMENT
 - **Owner:** Agent 007
 - **Approved by:** Ahmed Hamed — “link this to the website coming request ... send email directly ... phone number can open new window for whatsapp”
 - **Approval date:** 2026-08-13
 - **Staging approval:** Ahmed Hamed — “Deploy M055 to backup-erp staging” — 2026-08-13
-- **Target:** canonical `backup-erp.visiontrading.biz` / `erp-staging` only
-- **Production:** not approved and forbidden
+- **Staging acceptance:** Ahmed Hamed — “ok it working now” — 2026-08-14
+- **Production approval:** Ahmed Hamed — “need to push to live” — 2026-08-14
+- **Production target:** `erp.visiontrading.biz` / `vision_erp`, exact staging-accepted six-file runtime only
 
 ## Objective
 
@@ -31,8 +32,9 @@ Let authorized staff contact the person behind a public website request without 
 - No React, Node, WordPress, Customer Portal, native Mobile App, schema, mailbox, email-collector, credential, customer-data, quotation-state, order, invoice, payment or accounting change.
 - No attachment sending in this first increment.
 - No WhatsApp Business API, Meta credential or automated WhatsApp send.
-- Staging deployment is authorized only through a checksum-pinned, fail-closed M055 helper against canonical `erp-staging`.
-- Production deployment remains forbidden without a separate exact approval after staging acceptance.
+- Staging deployment is authorized only through the checksum-pinned, fail-closed M055 staging helper against canonical `erp-staging`.
+- Production deployment is authorized only for the exact staging-accepted artifact SHA-256 `983541e2a3f4f0200ba1aeab891efc68226dfe0a34c1f9672b0f4e036a6c3a68`, six-file runtime allowlist, production code backup, compare, preflight, apply, verify and rollback if validation fails.
+- No production database, configuration, mailbox, documents, Compose, proxy, DNS, customer records or other runtime files may change.
 
 ## Acceptance
 

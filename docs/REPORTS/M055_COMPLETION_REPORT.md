@@ -2,7 +2,7 @@
 
 ## Verdict
 
-`STAGING_DEPLOYED / AUTOMATED_VERIFY_PASS / AUTHENTICATED_UI_ACCEPTANCE_PENDING`.
+`STAGING_ACCEPTED_BY_AHMED / PRODUCTION_DEPLOYMENT_APPROVED / PRODUCTION_PREFLIGHT_IN_PROGRESS`.
 
 The Website Requests detail screen now has an in-Dolibarr email reply composer and a WhatsApp action. The customer email and phone remain server-owned request data; the browser cannot post a replacement recipient, WhatsApp never auto-sends, and no credential is present in source.
 
@@ -48,4 +48,4 @@ The Website Requests detail screen now has an in-Dolibarr email reply composer a
 
 ## Boundaries and next gate
 
-M055 is deployed to canonical `backup-erp` staging through the checksum-pinned, code-only helper. The remaining gate is authenticated desktop/390px inspection plus a synthetic Mailpit send/reply test. Production remains forbidden until that staging acceptance is complete and Ahmed gives exact production approval.
+Ahmed confirmed staging is working and separately approved pushing M055 live on 2026-08-14. Production scope is frozen to the exact staging-accepted artifact and six runtime files, with code-only backup, fail-closed compare/preflight/apply/verify and automatic rollback. No database, configuration, mailbox or business-data change is authorized.
