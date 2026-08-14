@@ -317,5 +317,5 @@ For every relevant change:
 - تطبيق الهاتف: `BEHAVIOR_UNCHANGED`؛ لا تغيير في `/api/mobile/v1` أو الشاشة الأصلية، وتستمر الحالة الحالية في استهلاك نفس بيانات الشحنة. الإشعار هنا Email فقط وليس Push.
 - اعتماد API والبيانات: لا API أو schema جديد. البريد يحتوي allowlist من مرجع الشحنة والحالة السابقة والجديدة وETA وسبب التحديث العام ورابط المتابعة؛ لا يحتوي ملاحظات داخلية أو تكلفة أو هامش أو مورد أو ملفات.
 - أثر التصميم والمصطلحات: صف إضافي صغير في نموذج تعديل الإدارة فقط: `Send email notification / إرسال إشعار بالبريد`. لا تغيير مرئي في البوابة أو التطبيق.
-- التحقق على الهاتف: `SOURCE_ONLY` للإدارة؛ لم تُجرَ معاينة متصفح فعلية محلية. staging والإنتاج غير مصرح بهما في M056 المحلية.
-- الحالة: `ADMIN_LOCAL_SOURCE_VERIFIED`, `PORTAL_BEHAVIOR_UNCHANGED`, `MOBILE_BEHAVIOR_UNCHANGED`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
+- التحقق على الهاتف: `STAGING_390PX_PASS` للإدارة؛ ظهر خيار البريد وزر التحديث دون تجاوز أفقي. محاولة الإرسال التجريبية حفظت الحالة وأظهرت فشل البريد وإعادة المحاولة بأمان، لكن إعداد PHP mail في staging منع إثبات Mailpit/Agenda/الرابط.
+- الحالة: `ADMIN_STAGING_UI_VERIFIED`, `PORTAL_BEHAVIOR_UNCHANGED`, `MOBILE_BEHAVIOR_UNCHANGED`, `STAGING_SMTP_BLOCKED_SAFE`, `PRODUCTION_RELEASE_APPROVED_PENDING_DEPLOYMENT`.

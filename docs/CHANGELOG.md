@@ -6,7 +6,8 @@
 - Preserved operational shipment truth when SMTP or Agenda fails and added a permission/CSRF-protected retry for only the latest entity/customer-scoped public status event.
 - Reconciled staging's documented 200MB shipment upload correction as a complete two-file dependency and added a focused dependency contract test.
 - Deployed the exact eight-file runtime from `606b54c852230b0674b0745084e107487cf3161d` to canonical `backup-erp`; artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`. Compare, preflight, backup, apply, independent verify, HTTPS health and anonymous-login boundary passed.
-- No schema, database, configuration, module state, documents, business record, customer message, Compose, proxy, DNS or production change occurred. Authenticated desktop/390px and synthetic Mailpit acceptance remain pending.
+- Authenticated desktop/390px UI passed. A synthetic status transition committed safely, but staging email failed before Mailpit because Dolibarr staging uses PHP mail; no notification or email Agenda row was created and the retry action appeared.
+- Ahmed declined changing staging mail settings and explicitly directed the same exact M056 artifact to production for actual-work acceptance. The production-only checksum-pinned helper, installer, six-command sudoers rule, and local contract passed independent Security and QA review; no production file has been changed yet.
 
 ## 2026-08-13 — M055 website-request email and WhatsApp replies
 

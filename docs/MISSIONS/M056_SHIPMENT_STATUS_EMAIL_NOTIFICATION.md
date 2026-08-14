@@ -4,16 +4,17 @@
 
 - **Mission ID:** M056
 - **Type:** IMPLEMENTATION
-- **Status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
+- **Status:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL
 - **Architect owner:** Agent 007 Central
 - **Implementation owner:** Agent 007 Central
 - **Required reviewers:** Shipping, Customer Portal, Security, QA
 - **Dependencies:** M011 customer-safe shipment events; M055 configured Dolibarr outbound email
-- **Target environment:** Local development and canonical `backup-erp` staging
-- **Production:** Forbidden
+- **Target environment:** Local development, canonical `backup-erp` staging, and exact approved production release
+- **Production:** Explicitly approved by Ahmed for M056; helper review/install and fail-closed gates remain required before apply
 - **Ahmed approval:** APPROVED — “ok, do it”
 - **Approval date:** 2026-08-14
 - **Staging approval:** Ahmed Hamed — “Deploy M056 to backup-erp staging” — 2026-08-14
+- **Production approval:** Ahmed Hamed — “no, publish to live erp, i will test there” — 2026-08-14
 
 ## Business objective
 
@@ -40,7 +41,7 @@ Allow authorized logistics staff to notify the shipment customer by email when, 
 
 ## Out of scope
 
-- Production deployment.
+- Production configuration, database, documents, module state, Compose, proxy, DNS, or mailbox changes.
 - Automatic email for ETA-only, ATD-only, ATA-only, document, gallery, or transshipment updates.
 - WhatsApp automation, inbound email collector changes, attachments, bulk notifications, automatic queues, or schema changes.
 - Customer portal or mobile UI changes; their existing timeline continues to consume the same committed status event.
@@ -88,10 +89,20 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 - Use a checksum-pinned, fail-closed M056 helper with compare, preflight, apply, verify, rollback and status commands.
 - Create and verify a code backup before apply. Do not change the database, Dolibarr configuration, module state, documents, Compose, proxy, DNS, ports or customer business records.
 - Use Mailpit only for any later synthetic delivery acceptance. Do not send a staging notification to a real customer.
-- Production remains forbidden and requires a separate exact approval after staging acceptance.
+- The authenticated edit row passed desktop and `390px` browser inspection with no horizontal overflow.
+- A synthetic staging status transition from Arrived Port to Under Customs committed correctly, while the email failed safely because staging Dolibarr uses PHP mail instead of Mailpit SMTP. Mailpit remained at zero messages, no shipment-email Agenda row was created, and the bounded retry action appeared.
+- Ahmed declined the staging mail-configuration correction and separately approved the exact M056 production release, retaining the real-customer send as his production acceptance step.
 - Staging preflight detected that `card.php` already contained the exact documented `851c231` 200MB staff-upload correction. M056 preserves the complete two-file dependency (`card.php` and `portal.lib.php`) instead of reverting it.
 - Deployed runtime commit `606b54c852230b0674b0745084e107487cf3161d`; artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`.
 - Compare, candidate tests, preflight, backup, apply, independent verify, status, HTTPS health and anonymous-login boundary passed. Database/configuration/business records were unchanged and production was not accessed.
+
+## Production deployment gate
+
+- Reuse the byte-identical staging artifact for runtime commit `606b54c852230b0674b0745084e107487cf3161d`, SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`, with the same exact eight runtime and four support files.
+- Compare production only against the recorded M055 source baseline before apply; stop on any unexpected absence or SHA drift.
+- Use `/usr/local/sbin/chinaplanetos-production-m056-shipment-status-email` with only compare, preflight, apply, verify, rollback, and status commands.
+- Require an exact code backup, prestate metadata, disk-space checks, fsync, atomic replacement, candidate/live tests, HTTP/login-boundary checks, durable state, and automatic rollback/reapply protection.
+- Do not change the database, Dolibarr configuration, module state, documents, mailbox, Compose, proxy, DNS, ports, or business records during deployment.
 
 ## Review and approval record
 
@@ -99,7 +110,7 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 |---|---|---|---|---|
 | Shipping | Independent source review | PASS | 2026-08-14 | Corrected status, retry and permission flow verified |
 | Customer Portal | Agent 007 parity review | PASS | 2026-08-14 | Existing committed status projection unchanged |
-| Security | Independent source review | PASS | 2026-08-14 | Commit, CRLF, permissions, scoped retry and privacy verified |
-| QA | Independent local review | PASS | 2026-08-14 | Behavioral M056 and shipment regression suites passed; staging pending |
+| Security | Independent source and production-helper review | PASS | 2026-08-14 | Runtime privacy plus production scope, pins, durability, rollback and six-command sudo surface verified |
+| QA | Independent runtime and production-package review | PASS | 2026-08-14 | Byte-identical artifact, all baselines, hashes, lint, contracts and rollback/state behavior passed |
 | Architect | Agent 007 Central | APPROVED | 2026-08-14 | Narrow no-schema local mission |
 | Ahmed | Ahmed Hamed | APPROVED | 2026-08-14 | “ok, do it” |

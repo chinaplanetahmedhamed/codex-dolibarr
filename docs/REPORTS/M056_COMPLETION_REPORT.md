@@ -4,12 +4,12 @@
 
 - **Mission:** M056 — Shipment status email notification
 - **Mission status received:** APPROVED
-- **Report status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
+- **Report status:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL
 - **Implementation owner:** Agent 007 Central
 - **Branch:** `codex/m056-shipment-status-email`
 - **Base commit:** `281cdcc955378fdb674fb21a46e129f529e8f5e1` (M055 live record)
 - **Result commit:** `606b54c852230b0674b0745084e107487cf3161d` (M056 implementation plus dependency-closed preserved staging 200MB upload correction)
-- **Environment used:** Local source/focused tests and canonical `backup-erp` staging
+- **Environment used:** Local source/focused tests, canonical `backup-erp` staging, and read-only production preparation
 - **Production touched:** No
 
 ## Business outcome
@@ -19,8 +19,8 @@ Authorized staff can select an email notification while editing a shipment. Afte
 ## Scope reconciliation
 
 - **Completed:** Explicit edit-form option; permission, CSRF, entity and customer boundaries; real-status-change gate; server-owned recipient/sender; Arabic/Chinese/English content; customer-safe allowlist; post-commit send; Agenda history; focused tests and parity documentation.
-- **Not completed:** Authenticated browser and synthetic Mailpit checks remain staging acceptance work.
-- **Scope deviations:** None.
+- **Not completed:** Production helper review/install, compare, preflight, apply, verify, and Ahmed's actual-work email acceptance.
+- **Scope deviations:** Ahmed declined a staging SMTP configuration correction after the synthetic send failed safely and directed M056 to production for actual-work testing.
 - **Staging baseline reconciliation:** Initial compare stopped before apply because staging `card.php` matched documented commit `851c231` rather than the older source baseline. The release candidate now retains the full two-file 200MB staff-upload dependency (`card.php` plus `portal.lib.php`) while adding M056, with a focused dependency test; no staging runtime was changed during this reconciliation.
 
 ## Files changed
@@ -40,6 +40,10 @@ Authorized staff can select an email notification while editing a shipment. Afte
 | Added | `docs/REPORTS/M056_COMPLETION_REPORT.md` | Delivery evidence and boundaries |
 | Modified | `docs/CHANGELOG.md` | Local feature record |
 | Modified | `mobile/chinaplanet-customer-app/docs/PORTAL_PARITY.md` | Admin/portal/mobile parity impact |
+| Added | `deploy/tools/chinaplanetos_production_m056_shipment_status_email.sh` | Checksum-pinned production compare/preflight/apply/verify/rollback/status helper |
+| Added | `deploy/tools/install_production_m056_helper.sh` | Checksum-locked root installer for the restricted helper and sudoers rule |
+| Added | `deploy/config/codex-deploy-production-m056.sudoers` | Six exact production helper commands for `codex-deploy` |
+| Added | `deploy/tests/test_m056_production_helper.sh` | Production scope, pin, rollback, and durability contract |
 
 ## Database, accounting, configuration, and permissions
 
@@ -62,8 +66,10 @@ Authorized staff can select an email notification while editing a shipment. Afte
 | Dependency-closed staging package | Exact 8 runtime + 4 support files | Artifact `19943d703d...` rebuilt byte-for-byte; Security and QA PASS | PASS |
 | Staging compare/preflight/apply/verify | Exact baseline, backup, hashes, candidate/live checks | All passed for runtime `606b54c`; state `DEPLOYED` | PASS |
 | HTTPS and anonymous shipment boundary | Healthy ERP and authenticated-only card | HTTP 200 and login boundary PASS | PASS |
-| Authenticated admin desktop/390px | Correct edit row and result states | Not run; staging staff session required | PENDING_STAGING_LOGIN |
-| Synthetic Mailpit send | One captured mail and Agenda event without customer delivery | Not run; requires a selected synthetic staging shipment | PENDING_SYNTHETIC_ACCEPTANCE |
+| Authenticated admin desktop/390px | Correct edit row and result states | Checkbox and Update action present; no horizontal overflow at `1728px` or `390px` | PASS |
+| Synthetic staging send | Safe committed transition and deterministic mail/Agenda result | Status committed; PHP-mail transport failed; retry shown; Mailpit `0`; no email Agenda row | FAIL_SAFE_CONFIGURATION_BLOCK |
+| Production artifact rebuild | Byte-identical exact staging artifact | SHA-256 `19943d703d...`; `cmp` pass; 27 archive members | PASS |
+| Production helper contract | Production-only target, six commands, baseline pins, durability and rollback | Local contract plus independent Security and QA reviews passed | PASS |
 
 ## Security and customer-isolation review
 
@@ -77,13 +83,13 @@ Authorized staff can select an email notification while editing a shipment. Afte
 - Customer third-party records without a valid main email receive no notification and show a staff warning.
 - Agenda history is best-effort after a successful SMTP send; a history failure is visible but cannot retract the delivered mail.
 - Retry is manual and bounded to the latest customer-visible status event. There is no automatic queue or delivery receipt.
-- Staging acceptance must verify actual recipient selection, localized content, SMTP, Agenda history, authenticated link, desktop and 390px UI before any production proposal.
+- Staging did not prove successful SMTP/Agenda/link delivery because its Dolibarr mail method is PHP mail rather than internal Mailpit SMTP. Ahmed explicitly chose production actual-work acceptance instead of changing staging configuration.
 
 ## Deployment boundary
 
 - Local/staging actions performed: Deployed exact dependency-closed eight-file runtime to canonical `backup-erp`; compare, preflight, backup, apply, verify, status, HTTPS and anonymous-login boundary passed.
-- Production actions: None.
-- Production readiness is not approval to deploy.
+- Production actions: Public HTTPS health was read-only and passed. No helper was installed and no production file was changed.
+- Production approval is recorded, but installation/apply remains gated by independent helper review and the restricted production workflow.
 
 ## Rollback instructions
 
@@ -95,14 +101,14 @@ Run the restricted helper command `/usr/local/sbin/chinaplanetos-backup-erp-m056
 |---|---|---|---|---|
 | Shipping | Independent source review | PASS | 2026-08-14 | Corrected status, retry and permission flow verified |
 | Customer Portal | Agent 007 parity review | PASS | 2026-08-14 | Existing committed status projection unchanged |
-| Security | Independent source review | PASS | 2026-08-14 | Commit, CRLF header, permissions, scoped retry and privacy verified |
-| QA | Independent local review | PASS | 2026-08-14 | M056 behavioral and shipment regression suites passed |
+| Security | Independent source and production-helper review | PASS | 2026-08-14 | Production target, allowlist, hashes, durability, rollback and fixed sudo surface verified |
+| QA | Independent runtime and production-package review | PASS | 2026-08-14 | Artifact byte identity, baselines, hashes, lint, tests, state and rollback passed |
 | Architect | Agent 007 Central | ARCHITECT_ACCEPTED | 2026-08-14 | Local mission accepted; separate staging gate required |
 | Ahmed | Ahmed Hamed | APPROVED_IMPLEMENTATION | 2026-08-14 | “ok, do it” |
 
 ## Architect disposition
 
-- **Decision:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS
-- **Reason:** Approved staging scope is deployed from the dependency-closed, checksum-pinned package; automated runtime verification and independent reviews pass.
+- **Decision:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL
+- **Reason:** Ahmed explicitly directed M056 to live ERP for actual-work testing after declining a staging mail configuration correction; the byte-identical artifact and production-only helper passed independent Security and QA release review.
 - **Documentation updated:** Mission, completion report, changelog, parity record.
-- **Final mission status:** STAGING_DEPLOYED_AUTOMATED_VERIFY_PASS; authenticated UI and synthetic Mailpit acceptance pending
+- **Final mission status:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL; install only remains the next gate and apply remains separate
