@@ -4,7 +4,7 @@
 
 - **Mission ID:** M056
 - **Type:** IMPLEMENTATION
-- **Status:** PRODUCTION_PREFLIGHT_PASS_AWAITING_APPLY
+- **Status:** PRODUCTION_DEPLOYED_AWAITING_AHMED_ACCEPTANCE
 - **Architect owner:** Agent 007 Central
 - **Implementation owner:** Agent 007 Central
 - **Required reviewers:** Shipping, Customer Portal, Security, QA
@@ -107,6 +107,8 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 - Independent post-install status is `M056_PRODUCTION_STATUS=NOT_DEPLOYED`. No compare, preflight, apply, verify, rollback, runtime mutation, database change, or customer email was performed under the helper-install approval.
 - Ahmed separately confirmed the production compare and preflight gate. The restricted helper matched all eight target files to the recorded M055 production baseline, validated the exact artifact/runtime commit and candidate checks, and returned `M056_PRODUCTION_COMPARE=PASS` followed by `M056_PRODUCTION_PREFLIGHT=PASS` with `DATABASE_CHANGED=NO`.
 - Independent status after preflight remains `M056_PRODUCTION_STATUS=NOT_DEPLOYED`. Apply, verify and rollback did not run; production runtime and data remain unchanged pending a separate final apply approval.
+- Ahmed separately confirmed production apply and verify. The restricted helper created and verified code backup `/root/chinaplanetos-production-code-backups/m056-before-606b54c-20260814T112029Z.tar.gz` (SHA-256 `9263cb70a8d8b02c3a7c31c23bc7dd8b8c1376fb77510d7fc391116a6fe6c917`) and prestate `/root/chinaplanetos-production-code-backups/m056-before-606b54c-20260814T112029Z.prestate` (SHA-256 `5389c77ee3e29fe8a9f581ca64fb1dc92199ec9f71df0accccb269465e3da7ca`).
+- Apply and independent verify passed for the exact eight-file runtime commit/artifact with `DATABASE_CHANGED=NO`; durable status is `STATE_STATUS=DEPLOYED` at `2026-08-14T11:20:30Z`. Ahmed retains the actual-work email/Agenda/link acceptance.
 
 ## Review and approval record
 

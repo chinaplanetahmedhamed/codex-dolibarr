@@ -4,13 +4,13 @@
 
 - **Mission:** M056 — Shipment status email notification
 - **Mission status received:** APPROVED
-- **Report status:** PRODUCTION_PREFLIGHT_PASS_AWAITING_APPLY
+- **Report status:** PRODUCTION_DEPLOYED_AWAITING_AHMED_ACCEPTANCE
 - **Implementation owner:** Agent 007 Central
 - **Branch:** `codex/m056-shipment-status-email`
 - **Base commit:** `281cdcc955378fdb674fb21a46e129f529e8f5e1` (M055 live record)
 - **Result commit:** `606b54c852230b0674b0745084e107487cf3161d` (M056 implementation plus dependency-closed preserved staging 200MB upload correction)
-- **Environment used:** Local source/focused tests, canonical `backup-erp` staging, production artifact upload, restricted helper installation, and read-only production compare/preflight
-- **Production touched:** Deployment tooling only; ERP runtime not changed
+- **Environment used:** Local source/focused tests, canonical `backup-erp` staging, and checksum-pinned production deployment
+- **Production touched:** Yes; exact eight-file M056 application runtime only
 
 ## Business outcome
 
@@ -19,7 +19,7 @@ Authorized staff can select an email notification while editing a shipment. Afte
 ## Scope reconciliation
 
 - **Completed:** Explicit edit-form option; permission, CSRF, entity and customer boundaries; real-status-change gate; server-owned recipient/sender; Arabic/Chinese/English content; customer-safe allowlist; post-commit send; Agenda history; focused tests and parity documentation.
-- **Not completed:** Production apply, verify, and Ahmed's actual-work email acceptance.
+- **Not completed:** Ahmed's actual-work email, Agenda and authenticated-link acceptance.
 - **Scope deviations:** Ahmed declined a staging SMTP configuration correction after the synthetic send failed safely and directed M056 to production for actual-work testing.
 - **Staging baseline reconciliation:** Initial compare stopped before apply because staging `card.php` matched documented commit `851c231` rather than the older source baseline. The release candidate now retains the full two-file 200MB staff-upload dependency (`card.php` plus `portal.lib.php`) while adding M056, with a focused dependency test; no staging runtime was changed during this reconciliation.
 
@@ -72,6 +72,7 @@ Authorized staff can select an email notification while editing a shipment. Afte
 | Production helper contract | Production-only target, six commands, baseline pins, durability and rollback | Local contract plus independent Security and QA reviews passed | PASS |
 | Production helper installation | Exact root-owned helper and six fixed commands; runtime remains untouched | Helper SHA-256 `6798f0d8...`, `root:root 0755`, six-command sudo policy, status `NOT_DEPLOYED` | PASS |
 | Production compare and preflight | Exact M055 baseline, artifact/candidate checks and eight-file scope | Compare and preflight PASS for `606b54c` / `19943d703d...`; `DATABASE_CHANGED=NO` | PASS |
+| Production apply and verify | Backup/prestate, atomic eight-file apply, live validation and durable state | Apply/verify PASS; state `DEPLOYED`; exact backup/prestate hashes recorded; `DATABASE_CHANGED=NO` | PASS |
 
 ## Security and customer-isolation review
 
@@ -86,16 +87,19 @@ Authorized staff can select an email notification while editing a shipment. Afte
 - Agenda history is best-effort after a successful SMTP send; a history failure is visible but cannot retract the delivered mail.
 - Retry is manual and bounded to the latest customer-visible status event. There is no automatic queue or delivery receipt.
 - Staging did not prove successful SMTP/Agenda/link delivery because its Dolibarr mail method is PHP mail rather than internal Mailpit SMTP. Ahmed explicitly chose production actual-work acceptance instead of changing staging configuration.
+- Production deployment verification proves the runtime package, hashes, PHP/contracts and HTTP/login boundary, but does not itself prove a real customer email delivery or linked Agenda event. Ahmed retains that actual-work acceptance.
 
 ## Deployment boundary
 
 - Local/staging actions performed: Deployed exact dependency-closed eight-file runtime to canonical `backup-erp`; compare, preflight, backup, apply, verify, status, HTTPS and anonymous-login boundary passed.
 - Production actions: Uploaded the exact artifact and checksum-pinned helper tooling, installed only `/usr/local/sbin/chinaplanetos-production-m056-shipment-status-email` plus its six-command sudo policy, and independently verified the helper checksum, metadata, permissions and `NOT_DEPLOYED` state.
-- Production compare and preflight passed through the restricted helper. Independent status remained `NOT_DEPLOYED`; production ERP runtime, database, configuration, mailbox, documents, module state, Compose, proxy, DNS, ports and business records remain unchanged. Apply remains a separate gate.
+- Production compare, preflight, checksum-pinned backup, eight-file apply, independent verify and durable status all passed for runtime commit `606b54c852230b0674b0745084e107487cf3161d` and artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`.
+- State is `DEPLOYED`. Database, configuration, mailbox, documents, module state, Compose, proxy, DNS, ports and business records were not changed by deployment. No validation email was sent by the deployment workflow.
 
 ## Rollback instructions
 
-Run the restricted helper command `/usr/local/sbin/chinaplanetos-backup-erp-m056-shipment-status-email rollback`. It restores the exact prestate from `/root/backup-erp-code-backups/m056-before-606b54c-20260813T233252Z.tar.gz` (SHA-256 `74c918efce926b7d38b2b471d44d33b806e3079f598d5fe8f3df327e87337112`) using prestate SHA-256 `f303f6339a2e5e7c5fa3a50aaf11df38676cddee6926d46ff1e5a696b450f8aa`. No schema rollback exists. Keep any already-created Agenda/email history as an immutable communication record.
+- **Production:** Run the restricted helper command `/usr/local/sbin/chinaplanetos-production-m056-shipment-status-email rollback`. It restores `/root/chinaplanetos-production-code-backups/m056-before-606b54c-20260814T112029Z.tar.gz` (SHA-256 `9263cb70a8d8b02c3a7c31c23bc7dd8b8c1376fb77510d7fc391116a6fe6c917`) using prestate SHA-256 `5389c77ee3e29fe8a9f581ca64fb1dc92199ec9f71df0accccb269465e3da7ca` and verifies the restored runtime.
+- **Staging:** Run `/usr/local/sbin/chinaplanetos-backup-erp-m056-shipment-status-email rollback` to restore its recorded prestate. No schema rollback exists. Keep any already-created Agenda/email history as an immutable communication record.
 
 ## Review record
 
@@ -110,7 +114,7 @@ Run the restricted helper command `/usr/local/sbin/chinaplanetos-backup-erp-m056
 
 ## Architect disposition
 
-- **Decision:** PRODUCTION_PREFLIGHT_PASS_AWAITING_APPLY
-- **Reason:** Ahmed separately confirmed production compare/preflight; both passed against the exact approved M055 baseline and M056 artifact, and independent status remained `NOT_DEPLOYED`.
+- **Decision:** PRODUCTION_DEPLOYED_AWAITING_AHMED_ACCEPTANCE
+- **Reason:** Ahmed separately confirmed production apply/verify; checksum-pinned backup, exact eight-file apply, independent verify and durable `DEPLOYED` status passed with no database change.
 - **Documentation updated:** Mission, completion report, changelog, parity record.
-- **Final mission status:** PRODUCTION_PREFLIGHT_PASS_AWAITING_APPLY; final apply/verify remains separately approval-gated
+- **Final mission status:** PRODUCTION_DEPLOYED_AWAITING_AHMED_ACCEPTANCE; Ahmed's actual-work email/Agenda/link check remains
