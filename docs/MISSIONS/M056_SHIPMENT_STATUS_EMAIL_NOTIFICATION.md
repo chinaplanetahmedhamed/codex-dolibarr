@@ -4,7 +4,7 @@
 
 - **Mission ID:** M056
 - **Type:** IMPLEMENTATION
-- **Status:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL
+- **Status:** PRODUCTION_HELPER_INSTALLED_AWAITING_COMPARE
 - **Architect owner:** Agent 007 Central
 - **Implementation owner:** Agent 007 Central
 - **Required reviewers:** Shipping, Customer Portal, Security, QA
@@ -103,6 +103,8 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 - Use `/usr/local/sbin/chinaplanetos-production-m056-shipment-status-email` with only compare, preflight, apply, verify, rollback, and status commands.
 - Require an exact code backup, prestate metadata, disk-space checks, fsync, atomic replacement, candidate/live tests, HTTP/login-boundary checks, durable state, and automatic rollback/reapply protection.
 - Do not change the database, Dolibarr configuration, module state, documents, mailbox, Compose, proxy, DNS, ports, or business records during deployment.
+- Ahmed confirmed upload and installation of the production helper on `31.97.158.178`. The exact artifact and tooling were uploaded with matching server-side SHA-256 values. The installed helper is `root:root 0755`, SHA-256 `6798f0d893b6a6b2683832f96962cb19cfc5565825c1bc2e058b7efeab531a16`, and the restricted account exposes only the reviewed compare/preflight/apply/verify/rollback/status commands for this helper.
+- Independent post-install status is `M056_PRODUCTION_STATUS=NOT_DEPLOYED`. No compare, preflight, apply, verify, rollback, runtime mutation, database change, or customer email was performed under the helper-install approval.
 
 ## Review and approval record
 

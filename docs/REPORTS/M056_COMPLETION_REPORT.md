@@ -4,13 +4,13 @@
 
 - **Mission:** M056 — Shipment status email notification
 - **Mission status received:** APPROVED
-- **Report status:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL
+- **Report status:** PRODUCTION_HELPER_INSTALLED_AWAITING_COMPARE
 - **Implementation owner:** Agent 007 Central
 - **Branch:** `codex/m056-shipment-status-email`
 - **Base commit:** `281cdcc955378fdb674fb21a46e129f529e8f5e1` (M055 live record)
 - **Result commit:** `606b54c852230b0674b0745084e107487cf3161d` (M056 implementation plus dependency-closed preserved staging 200MB upload correction)
-- **Environment used:** Local source/focused tests, canonical `backup-erp` staging, and read-only production preparation
-- **Production touched:** No
+- **Environment used:** Local source/focused tests, canonical `backup-erp` staging, production artifact upload, and restricted helper installation/verification
+- **Production touched:** Deployment tooling only; ERP runtime not changed
 
 ## Business outcome
 
@@ -19,7 +19,7 @@ Authorized staff can select an email notification while editing a shipment. Afte
 ## Scope reconciliation
 
 - **Completed:** Explicit edit-form option; permission, CSRF, entity and customer boundaries; real-status-change gate; server-owned recipient/sender; Arabic/Chinese/English content; customer-safe allowlist; post-commit send; Agenda history; focused tests and parity documentation.
-- **Not completed:** Production helper review/install, compare, preflight, apply, verify, and Ahmed's actual-work email acceptance.
+- **Not completed:** Production compare, preflight, apply, verify, and Ahmed's actual-work email acceptance.
 - **Scope deviations:** Ahmed declined a staging SMTP configuration correction after the synthetic send failed safely and directed M056 to production for actual-work testing.
 - **Staging baseline reconciliation:** Initial compare stopped before apply because staging `card.php` matched documented commit `851c231` rather than the older source baseline. The release candidate now retains the full two-file 200MB staff-upload dependency (`card.php` plus `portal.lib.php`) while adding M056, with a focused dependency test; no staging runtime was changed during this reconciliation.
 
@@ -70,6 +70,7 @@ Authorized staff can select an email notification while editing a shipment. Afte
 | Synthetic staging send | Safe committed transition and deterministic mail/Agenda result | Status committed; PHP-mail transport failed; retry shown; Mailpit `0`; no email Agenda row | FAIL_SAFE_CONFIGURATION_BLOCK |
 | Production artifact rebuild | Byte-identical exact staging artifact | SHA-256 `19943d703d...`; `cmp` pass; 27 archive members | PASS |
 | Production helper contract | Production-only target, six commands, baseline pins, durability and rollback | Local contract plus independent Security and QA reviews passed | PASS |
+| Production helper installation | Exact root-owned helper and six fixed commands; runtime remains untouched | Helper SHA-256 `6798f0d8...`, `root:root 0755`, six-command sudo policy, status `NOT_DEPLOYED` | PASS |
 
 ## Security and customer-isolation review
 
@@ -88,8 +89,8 @@ Authorized staff can select an email notification while editing a shipment. Afte
 ## Deployment boundary
 
 - Local/staging actions performed: Deployed exact dependency-closed eight-file runtime to canonical `backup-erp`; compare, preflight, backup, apply, verify, status, HTTPS and anonymous-login boundary passed.
-- Production actions: Public HTTPS health was read-only and passed. No helper was installed and no production file was changed.
-- Production approval is recorded, but installation/apply remains gated by independent helper review and the restricted production workflow.
+- Production actions: Uploaded the exact artifact and checksum-pinned helper tooling, installed only `/usr/local/sbin/chinaplanetos-production-m056-shipment-status-email` plus its six-command sudo policy, and independently verified the helper checksum, metadata, permissions and `NOT_DEPLOYED` state.
+- Production ERP runtime, database, configuration, mailbox, documents, module state, Compose, proxy, DNS, ports and business records remain unchanged. Compare/preflight and apply remain separate gates.
 
 ## Rollback instructions
 
@@ -108,7 +109,7 @@ Run the restricted helper command `/usr/local/sbin/chinaplanetos-backup-erp-m056
 
 ## Architect disposition
 
-- **Decision:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL
-- **Reason:** Ahmed explicitly directed M056 to live ERP for actual-work testing after declining a staging mail configuration correction; the byte-identical artifact and production-only helper passed independent Security and QA release review.
+- **Decision:** PRODUCTION_HELPER_INSTALLED_AWAITING_COMPARE
+- **Reason:** Ahmed explicitly confirmed the exact production helper upload/install. Independent verification matched the reviewed helper checksum and six-command policy, while status remained `NOT_DEPLOYED`.
 - **Documentation updated:** Mission, completion report, changelog, parity record.
-- **Final mission status:** PRODUCTION_HELPER_REVIEW_PASS_AWAITING_INSTALL; install only remains the next gate and apply remains separate
+- **Final mission status:** PRODUCTION_HELPER_INSTALLED_AWAITING_COMPARE; compare/preflight remains the next read-only gate and apply remains separate
