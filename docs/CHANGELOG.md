@@ -8,6 +8,7 @@
 - Deployed the exact eight-file runtime from `606b54c852230b0674b0745084e107487cf3161d` to canonical `backup-erp`; artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`. Compare, preflight, backup, apply, independent verify, HTTPS health and anonymous-login boundary passed.
 - Authenticated desktop/390px UI passed. A synthetic status transition committed safely, but staging email failed before Mailpit because Dolibarr staging uses PHP mail; no notification or email Agenda row was created and the retry action appeared.
 - Ahmed declined changing staging mail settings and explicitly directed the same exact M056 artifact to production for actual-work acceptance. The exact artifact/tooling upload and checksum-locked helper installation passed: helper SHA-256 `6798f0d893b6a6b2683832f96962cb19cfc5565825c1bc2e058b7efeab531a16`, `root:root 0755`, six fixed sudo commands, and status `NOT_DEPLOYED`. Production ERP runtime and data remain unchanged; compare/preflight and apply remain separately gated.
+- After Ahmed's separate confirmation, production compare and preflight passed for the exact M055 baseline, runtime commit `606b54c852230b0674b0745084e107487cf3161d`, eight-file scope and artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`. Independent status remained `NOT_DEPLOYED`; apply was not run and the production runtime/data remained unchanged.
 
 ## 2026-08-13 — M055 website-request email and WhatsApp replies
 

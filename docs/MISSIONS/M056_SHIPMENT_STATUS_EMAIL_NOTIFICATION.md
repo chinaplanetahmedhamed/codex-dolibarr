@@ -4,7 +4,7 @@
 
 - **Mission ID:** M056
 - **Type:** IMPLEMENTATION
-- **Status:** PRODUCTION_HELPER_INSTALLED_AWAITING_COMPARE
+- **Status:** PRODUCTION_PREFLIGHT_PASS_AWAITING_APPLY
 - **Architect owner:** Agent 007 Central
 - **Implementation owner:** Agent 007 Central
 - **Required reviewers:** Shipping, Customer Portal, Security, QA
@@ -105,6 +105,8 @@ Email failure is intentionally outside the shipment transaction so an SMTP outag
 - Do not change the database, Dolibarr configuration, module state, documents, mailbox, Compose, proxy, DNS, ports, or business records during deployment.
 - Ahmed confirmed upload and installation of the production helper on `31.97.158.178`. The exact artifact and tooling were uploaded with matching server-side SHA-256 values. The installed helper is `root:root 0755`, SHA-256 `6798f0d893b6a6b2683832f96962cb19cfc5565825c1bc2e058b7efeab531a16`, and the restricted account exposes only the reviewed compare/preflight/apply/verify/rollback/status commands for this helper.
 - Independent post-install status is `M056_PRODUCTION_STATUS=NOT_DEPLOYED`. No compare, preflight, apply, verify, rollback, runtime mutation, database change, or customer email was performed under the helper-install approval.
+- Ahmed separately confirmed the production compare and preflight gate. The restricted helper matched all eight target files to the recorded M055 production baseline, validated the exact artifact/runtime commit and candidate checks, and returned `M056_PRODUCTION_COMPARE=PASS` followed by `M056_PRODUCTION_PREFLIGHT=PASS` with `DATABASE_CHANGED=NO`.
+- Independent status after preflight remains `M056_PRODUCTION_STATUS=NOT_DEPLOYED`. Apply, verify and rollback did not run; production runtime and data remain unchanged pending a separate final apply approval.
 
 ## Review and approval record
 
