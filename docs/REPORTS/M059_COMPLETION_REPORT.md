@@ -23,6 +23,8 @@ Administrators can add, rename, recolor, activate/deactivate and reorder work co
 
 Ahmed's first live Move-to attempt exposed `Unexpected token '<'` because the local Dolibarr shell publishes an empty `document.baseURI`. The browser's `form.action` property consequently resolved to an empty string, so the AJAX POST returned the board HTML instead of the JSON action route. The correction now resolves the literal form `action` against `window.location.href`, enforces same-origin, requests JSON explicitly and converts any non-JSON response to the localized bounded failure state. The same safe resolver covers AJAX file uploads. After the runtime file backup and local apply, the authenticated page resolved the move endpoint exactly to `/custom/chinaplanetoperations/tasks/action.php`; the dialog opened cleanly with no console errors and no business row was changed during verification.
 
+A second local acceptance correction covers Dolibarr's standard entity-zero superadministrator and Trello-style administrator movement. The central active-user gate now accepts an entity-zero actor only when both the current Dolibarr actor and its active internal database row are administrators; entity-zero non-admin, wrong-entity and external actors remain denied. Administrators may now drag or use **Move to** from any incomplete stage directly to any active configured stage, including **Done**; worker and supervisor lifecycle restrictions remain unchanged. Isolated regressions prove the real entity-zero administrator predicate and direct `To Do → Done` completion (`progress=100`). The locally loaded board exposes Done as an allowed target and no business card was moved during verification.
+
 ## Schema, migration and lifecycle
 
 - Added exact-entity `cpo_task_stage` rows with bigint primary key, immutable `(entity, code)`, localized labels, validated color, behavior, protected/system flags, position, active state and optimistic version.
@@ -64,6 +66,8 @@ Ahmed's first live Move-to attempt exposed `Unexpected token '<'` because the lo
 | Authenticated menu/current state, board, New Task and Manage Columns | PASS — `admin-agent` |
 | Authenticated desktop/390/360 English responsive behavior | PASS |
 | Empty-`baseURI` AJAX move/upload endpoint regression | PASS — exact same-origin action URL and safe non-JSON handling |
+| Entity-zero Dolibarr superadministrator authorization regression | PASS — verified dual actor/database administrator predicate |
+| Administrator direct move to Done | PASS — target exposed and server sets completion to 100% |
 | Full authenticated AR/EN/ZH role and fault matrix | PENDING — mandatory before release |
 
 No synthetic test row remains in the isolated database after cleanup. The active local database contains 14 tasks, 21 activities, six seeded stages, zero null stage references and zero wrong-entity stage references.
@@ -89,3 +93,5 @@ No synthetic test row remains in the isolated database after cleanup. The active
 Restore the verified local database, runtime module and data backups above. Normal code rollback must first disable `fk_stage`-dependent menu/routes/readiness, then leave the additive schema inert without deleting task, stage, activity or file evidence.
 
 For the local acceptance correction only, restore `/private/tmp/m059-c01-qEWyc8/internal_tasks.js.before` (SHA-256 `986859b240ec0efe9d694b5ac6fd46b7e72cb08b305054de4b6913fcdb57ab95`) to the runtime JavaScript path.
+
+For the administrator-access/direct-Done correction only, restore `/private/tmp/m059-admin-access-tipQxF/InternalTaskAuthorizationService.class.php.before` (SHA-256 `32d4eafd4a2a581d0b0a6a1323fac6802ef8066594f9e07e125631b4480acf3e`) and `/private/tmp/m059-admin-access-tipQxF/InternalTaskService.class.php.before` (SHA-256 `cb7bb3fa2ab68df0d46d3d4601b7737fbe04d93ec3cd6149fcea92cee533befc`) to their runtime class paths.

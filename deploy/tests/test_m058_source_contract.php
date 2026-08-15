@@ -17,6 +17,7 @@ m058check(strpos($auth,"cpo_task_team_manager")!==false&&strpos($auth,"usergroup
 m058check(substr_count($auth,'u.entity=')>=2&&strpos($auth,'gu.entity=u.entity')!==false&&strpos($service,' AND u.entity=')!==false&&strpos($service,'validInternalUser')!==false,'authorization and user selectors require exact active entity');
 m058check(strpos($auth,'fk_soc IS NULL')===false&&strpos($service,'fk_soc IS NULL')===false&&substr_count($auth,'COALESCE(')>=5&&substr_count($service,'COALESCE(')>=5,'internal user selectors accept Dolibarr null or zero third-party linkage');
 m058check(strpos($auth,'(int) $this->actor->entity > 0')!==false,'zero-valued Dolibarr user object entity defers to exact database entity validation');
+m058check(strpos($auth,'$rowEntity === 0 && (int) $row->admin === 1 && !empty($this->actor->admin)')!==false,'verified Dolibarr entity-zero super administrator may enter the active entity board');
 m058check(strpos($auth,'if (!empty($this->actor->admin)) return true')===false,'Dolibarr admin does not bypass high-risk action rights');
 m058check(strpos($service,'version=version+1')!==false&&strpos($service,' AND version=')!==false,'task mutations use optimistic CAS');
 m058check(strpos($service,'if (!$this->db->begin())')!==false&&strpos($service,'if (!$this->db->commit())')!==false&&strpos($asset,'if(!$this->db->begin())')!==false&&strpos($asset,'if(!$this->db->commit())')!==false,'task and asset transactions fail closed');

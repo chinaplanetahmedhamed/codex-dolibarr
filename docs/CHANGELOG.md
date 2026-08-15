@@ -8,6 +8,7 @@
 - Added an administrator Manage Columns page for adding, renaming, recoloring, activating/deactivating and work-segment reordering with in-use/protected blocking.
 - Backed up and activated module `2.6.0` in the Ahmed-approved local Dolibarr runtime. The authenticated Team Tasks menu/current state, board, New Task, Manage Columns and desktop/390/360 English responsive checks passed.
 - Corrected the first local Move-to acceptance failure caused by Dolibarr's empty base URI: AJAX actions now resolve the literal same-origin form route against the current page and reject non-JSON responses with localized safe feedback instead of exposing a JSON parser error.
+- Corrected local administrator acceptance: a verified active internal Dolibarr entity-zero superadministrator can open the entity board, while entity-zero non-admin, wrong-entity and external actors remain denied. Administrators can now move any incomplete card directly to any active column, including Done; worker/supervisor workflow restrictions are unchanged.
 - Preserved all 14 existing local tasks and all CP Kanban data. Customer Center, mobile, staging and production were not changed; the complete authenticated AR/EN/ZH role/fault matrix remains a pre-release gate.
 
 ## 2026-08-14 — M058 secure internal work Kanban Phase 1

@@ -268,7 +268,13 @@ class InternalTaskService
             if (!$targetStage || (int)$targetStage['active'] !== 1 || (string)$targetStage['behavior'] === 'legacy') throw new InternalTaskAccessException('Task access denied.');
             $from = (string)$task['status'];
             $behavior = (string)$targetStage['behavior'];
-            $allowed = array(
+            $administrator = $this->auth->isAdministrator();
+            $allowed = $administrator ? array(
+                'todo'=>array('work','waiting','review','done'),
+                'in_progress'=>array('work','waiting','review','done'),
+                'waiting'=>array('work','waiting','review','done'),
+                'review'=>array('work','waiting','review','done'),
+            ) : array(
                 'todo'=>array('work'),
                 'in_progress'=>array('work','waiting','review'),
                 'waiting'=>array('work','review'),
@@ -409,7 +415,12 @@ class InternalTaskService
         $manager = $this->auth->canManageTask($task);
         $worker = $this->auth->canUpdateOwnTask($task);
         if (!$manager && !$worker) return array();
-        $allowed = array(
+        $allowed = $this->auth->isAdministrator() ? array(
+            'todo'=>array('work','waiting','review','done'),
+            'in_progress'=>array('work','waiting','review','done'),
+            'waiting'=>array('work','waiting','review','done'),
+            'review'=>array('work','waiting','review','done'),
+        ) : array(
             'todo'=>array('work'),
             'in_progress'=>array('work','waiting','review'),
             'waiting'=>array('work','review'),

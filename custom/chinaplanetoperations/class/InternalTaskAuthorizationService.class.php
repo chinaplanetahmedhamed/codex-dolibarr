@@ -34,10 +34,14 @@ class InternalTaskAuthorizationService
         if (isset($this->actor->entity) && (int) $this->actor->entity > 0 && (int) $this->actor->entity !== $this->entity) return false;
         if (!empty($this->actor->socid) || !empty($this->actor->fk_soc)) return false;
         if (isset($this->actor->statut) && (int) $this->actor->statut !== 1) return false;
-        $sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.$this->actorId();
-        $sql .= ' AND entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 LIMIT 1';
+        $sql = 'SELECT rowid, entity, admin FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.$this->actorId();
+        $sql .= ' AND statut=1 AND COALESCE(fk_soc,0)=0 LIMIT 1';
         $res = $this->db->query($sql);
-        return $res && (bool) $this->db->fetch_object($res);
+        $row = $res ? $this->db->fetch_object($res) : null;
+        if (!$row) return false;
+        $rowEntity = (int) $row->entity;
+        if ($rowEntity === $this->entity) return true;
+        return $rowEntity === 0 && (int) $row->admin === 1 && !empty($this->actor->admin);
     }
 
     public function hasRight($right)
