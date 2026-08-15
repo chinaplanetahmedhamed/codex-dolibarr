@@ -60,14 +60,14 @@ class InternalTaskAuthorizationService
     public function availableViews()
     {
         $views = array();
+        if ($this->isAdministrator()) $views[] = 'all';
+        if ($this->hasRight('task_manage_team') || $this->isAdministrator()) $views[] = 'team';
         if ($this->hasRight('task_read_own') || $this->isAdministrator()) $views[] = 'my';
         if ($this->hasRight('task_manage_team') || $this->isAdministrator()) {
-            $views[] = 'team';
             $views[] = 'unassigned';
             $views[] = 'archive';
         }
         if ($this->isAdministrator()) {
-            $views[] = 'all';
             $views[] = 'unclassified';
             $views[] = 'grants';
         }
@@ -79,9 +79,9 @@ class InternalTaskAuthorizationService
         $view = strtolower(trim((string) $view));
         $available = $this->availableViews();
         if (in_array($view, $available, true)) return $view;
+        if ($this->isAdministrator() && in_array('all', $available, true)) return 'all';
+        if ($this->hasRight('task_manage_team') && in_array('team', $available, true)) return 'team';
         if (in_array('my', $available, true)) return 'my';
-        if (in_array('team', $available, true)) return 'team';
-        if (in_array('all', $available, true)) return 'all';
         throw new InternalTaskAccessException('Task access denied.');
     }
 

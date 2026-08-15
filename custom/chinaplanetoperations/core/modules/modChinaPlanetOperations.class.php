@@ -13,7 +13,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.5.0';
+        $this->version = '2.6.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
@@ -94,12 +94,21 @@ class modChinaPlanetOperations extends DolibarrModules
             'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")', 'user'=>0,
         );
         $this->menu[$r++] = array(
-            'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
-            'titre'=>'InternalTaskBoard', 'mainmenu'=>'chinaplanetoperations', 'leftmenu'=>'operations_tasks',
+            'fk_menu'=>'0', 'type'=>'top',
+            'titre'=>'TeamTasks', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'0',
             'url'=>'/custom/chinaplanetoperations/tasks/board.php',
             'langs'=>'chinaplanetoperations@chinaplanetoperations',
-            'position'=>106, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
-            'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","task_read_own") || $user->hasRight("chinaplanetoperations","task_manage_team") || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+            'position'=>92, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_read_own") || $user->hasRight("chinaplanetoperations","task_manage_team") || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+            'picto'=>'fa-clipboard-check',
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanettasks', 'type'=>'left',
+            'titre'=>'InternalTaskManageColumns', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'operations_task_columns',
+            'url'=>'/custom/chinaplanetoperations/tasks/stages.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>100, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
         );
         $this->menu[$r++] = array(
             'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
@@ -141,7 +150,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $migration = new InternalTaskMigration($this->db);
         foreach (InternalTaskMigration::rightCodes() as $rightId => $rightCode) {
             if ($migration->rightCollision($rightId)) {
-                $this->error = 'M058 right ID collision: '.(int) $rightId;
+                $this->error = 'M059 right ID collision: '.(int) $rightId;
                 return -1;
             }
         }

@@ -7,6 +7,7 @@ CREATE TABLE llx_cpo_task (
   description mediumtext NULL,
   fk_user_assign integer NULL,
   fk_usergroup integer NULL,
+  fk_stage bigint NULL,
   fk_user_creat integer NOT NULL,
   fk_user_modif integer NULL,
   priority varchar(12) NOT NULL DEFAULT 'normal',
@@ -28,5 +29,6 @@ CREATE TABLE llx_cpo_task (
   KEY idx_cpo_task_owner (entity, fk_user_assign, status),
   KEY idx_cpo_task_own_board (entity, fk_user_assign, date_archived, status, position),
   KEY idx_cpo_task_team_board (entity, fk_usergroup, date_archived, status, position),
+  KEY idx_cpo_task_stage_tasks (entity, fk_stage, date_archived, status, position),
   KEY idx_cpo_task_operation (entity, fk_operation)
 ) ENGINE=innodb;

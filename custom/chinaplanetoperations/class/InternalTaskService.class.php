@@ -2,10 +2,9 @@
 
 require_once __DIR__.'/InternalTaskMigration.class.php';
 require_once __DIR__.'/InternalTaskAuthorizationService.class.php';
+require_once __DIR__.'/InternalTaskStageService.class.php';
 
-class InternalTaskConflictException extends RuntimeException
-{
-}
+if (!class_exists('InternalTaskConflictException')) { class InternalTaskConflictException extends RuntimeException {} }
 
 /** Authoritative Phase 1 service for cpo_task. */
 class InternalTaskService
@@ -22,6 +21,9 @@ class InternalTaskService
     /** @var InternalTaskAuthorizationService */
     private $auth;
 
+    /** @var InternalTaskStageService */
+    private $stages;
+
     public function __construct($db, $actor = null, $entity = null)
     {
         global $conf;
@@ -29,6 +31,7 @@ class InternalTaskService
         $this->actor = is_object($actor) ? $actor : (isset($GLOBALS['user']) && is_object($GLOBALS['user']) ? $GLOBALS['user'] : new stdClass());
         $this->entity = $entity === null ? (int) $conf->entity : (int) $entity;
         $this->auth = new InternalTaskAuthorizationService($db, $this->actor, $this->entity);
+        $this->stages = new InternalTaskStageService($db, $this->actor, $this->entity);
     }
 
     public static function boardStatuses()
@@ -54,6 +57,11 @@ class InternalTaskService
     public function authorization()
     {
         return $this->auth;
+    }
+
+    public function stageService()
+    {
+        return $this->stages;
     }
 
     public function ensureReady()
@@ -88,7 +96,7 @@ class InternalTaskService
         }
         $sql = $this->taskProjectionSql();
         $sql .= ' WHERE '.implode(' AND ', $where);
-        $sql .= " ORDER BY FIELD(t.priority,'urgent','high','normal','low'),t.date_deadline IS NULL,t.date_deadline,t.position,t.rowid LIMIT 500";
+        $sql .= " ORDER BY FIELD(s.behavior,'todo','work','waiting','review','done','legacy'),s.position,FIELD(t.priority,'urgent','high','normal','low'),t.date_deadline IS NULL,t.date_deadline,t.position,t.rowid LIMIT 500";
         return $this->rows($sql);
     }
 
@@ -172,8 +180,10 @@ class InternalTaskService
                 }
             }
             $ref = $this->nextRef();
-            $sql = 'INSERT INTO '.MAIN_DB_PREFIX.'cpo_task(entity,ref,fk_operation,title,description,fk_user_assign,fk_usergroup,fk_user_creat,fk_user_modif,priority,status,progress,waiting_reason,waiting_on,date_followup,date_deadline,date_completed,date_archived,private_note,position,version,date_creation) VALUES(';
-            $sql .= $this->entity.','.$this->q($ref).','.($operationId > 0 ? $operationId : 'NULL').','.$this->q($title).','.$this->q($description).','.($assigneeId > 0 ? $assigneeId : 'NULL').','.($teamId > 0 ? $teamId : 'NULL').','.$actorId.','.$actorId.','.$this->q($priority).",'todo',0,NULL,NULL,NULL,".$deadline.',NULL,NULL,NULL,0,1,'.$this->q($this->now()).')';
+            $todoStage = $this->stages->systemStage('todo', true);
+            if (!$todoStage) throw new RuntimeException('Internal task board is not ready.');
+            $sql = 'INSERT INTO '.MAIN_DB_PREFIX.'cpo_task(entity,ref,fk_operation,title,description,fk_user_assign,fk_usergroup,fk_stage,fk_user_creat,fk_user_modif,priority,status,progress,waiting_reason,waiting_on,date_followup,date_deadline,date_completed,date_archived,private_note,position,version,date_creation) VALUES(';
+            $sql .= $this->entity.','.$this->q($ref).','.($operationId > 0 ? $operationId : 'NULL').','.$this->q($title).','.$this->q($description).','.($assigneeId > 0 ? $assigneeId : 'NULL').','.($teamId > 0 ? $teamId : 'NULL').','.(int)$todoStage['rowid'].','.$actorId.','.$actorId.','.$this->q($priority).",'todo',0,NULL,NULL,NULL,".$deadline.',NULL,NULL,NULL,0,1,'.$this->q($this->now()).')';
             if (!$this->db->query($sql)) throw new RuntimeException('Unable to create task.');
             $taskId = (int) $this->db->last_insert_id(MAIN_DB_PREFIX.'cpo_task');
             $this->log($operationId, $taskId, 'task_created', 'todo', $actorId);
@@ -218,62 +228,84 @@ class InternalTaskService
     public function transition($taskId, $expectedVersion, $target, array $data = array())
     {
         $target = strtolower(trim((string) $target));
+        if ($target !== 'cancelled') {
+            $behavior = $target === 'in_progress' ? 'work' : $target;
+            if (!in_array($behavior, array('work','waiting','review','done'), true)) throw new RuntimeException('Task transition is not allowed.');
+            $stage = $this->stages->systemStage($behavior, false);
+            if (!$stage) throw new RuntimeException('Internal task board is not ready.');
+            return $this->moveToStage($taskId, $expectedVersion, (int)$stage['rowid'], $data);
+        }
         $this->beginTransaction();
         try {
+            $task = $this->getTask($taskId, true);
+            if (!$task || !$this->auth->canArchiveTask($task)) throw new InternalTaskAccessException('Task access denied.');
+            $from = (string) $task['status'];
+            if (!in_array($from, array('todo','in_progress','waiting','review'), true)) throw new InternalTaskAccessException('Task access denied.');
+            $reason = $this->boundedText(isset($data['reason']) ? $data['reason'] : '', 500, true);
+            $sql = 'UPDATE '.MAIN_DB_PREFIX."cpo_task SET status='cancelled',fk_user_modif=".$this->auth->actorId().',version=version+1';
+            $sql .= ' WHERE entity='.$this->entity.' AND rowid='.(int) $taskId.' AND version='.(int) $expectedVersion;
+            $this->cas($sql);
+            $this->log((int) $task['fk_operation'], (int) $taskId, 'task_cancelled', 'cancelled: '.$reason, $this->auth->actorId());
+            $this->commitTransaction();
+            return (int) $expectedVersion + 1;
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
+    }
+
+    public function moveToStage($taskId, $expectedVersion, $targetStageId, array $data = array())
+    {
+        $this->beginTransaction();
+        try {
+            // Task authorization deliberately happens before a supplied stage is resolved.
             $task = $this->getTask($taskId, true);
             if (!$task) throw new InternalTaskAccessException('Task access denied.');
             $manager = $this->auth->canManageTask($task);
             $worker = $this->auth->canUpdateOwnTask($task);
-            $from = (string) $task['status'];
-            $progress = (int) $task['progress'];
+            if (!$manager && !$worker) throw new InternalTaskAccessException('Task access denied.');
+            $targetStage = $this->stages->lockStage($targetStageId);
+            if (!$targetStage || (int)$targetStage['active'] !== 1 || (string)$targetStage['behavior'] === 'legacy') throw new InternalTaskAccessException('Task access denied.');
+            $from = (string)$task['status'];
+            $behavior = (string)$targetStage['behavior'];
+            $allowed = array(
+                'todo'=>array('work'),
+                'in_progress'=>array('work','waiting','review'),
+                'waiting'=>array('work','review'),
+                'review'=>$manager ? array('work','done') : array(),
+            );
+            if (empty($allowed[$from]) || !in_array($behavior, $allowed[$from], true)) throw new RuntimeException('Task transition is not allowed.');
+            if ((int)$task['fk_stage'] === (int)$targetStageId) throw new RuntimeException('Task is already in this stage.');
+            $status = $behavior === 'work' ? 'in_progress' : $behavior;
+            $progress = (int)$task['progress'];
             $completed = 'NULL';
             $waitingReason = 'NULL';
             $waitingOn = 'NULL';
             $followup = 'NULL';
             $action = 'task_moved';
-            $activityMessage = $target;
-
-            if ($target === 'cancelled') {
-                if (!$this->auth->canArchiveTask($task) || !in_array($from, array('todo','in_progress','waiting','review'), true)) throw new InternalTaskAccessException('Task access denied.');
-                $reason = $this->boundedText(isset($data['reason']) ? $data['reason'] : '', 500, true);
-                $action = 'task_cancelled';
-                $activityMessage = 'cancelled: '.$reason;
-            } else {
-                if (!$manager && !$worker) throw new InternalTaskAccessException('Task access denied.');
-                $allowed = array(
-                    'todo' => array('in_progress'),
-                    'in_progress' => array('waiting','review'),
-                    'waiting' => array('in_progress','review'),
-                    'review' => $manager ? array('done','in_progress') : array(),
-                );
-                if (empty($allowed[$from]) || !in_array($target, $allowed[$from], true)) throw new RuntimeException('Task transition is not allowed.');
-                if ($target === 'waiting') {
-                    $party = isset($data['waiting_on']) ? strtolower(trim((string) $data['waiting_on'])) : '';
-                    if (!in_array($party, self::waitingParties(), true)) throw new RuntimeException('Waiting party is required.');
-                    $reason = $this->boundedText(isset($data['waiting_reason']) ? $data['waiting_reason'] : '', 2000, true);
-                    $date = $this->dateOrNull(isset($data['date_followup']) ? $data['date_followup'] : '');
-                    if ($date === 'NULL') throw new RuntimeException('Follow-up date is required.');
-                    $waitingReason = $this->q($reason);
-                    $waitingOn = $this->q($party);
-                    $followup = $date;
-                }
-                if ($from === 'review' && $target === 'in_progress') {
-                    $reason = $this->boundedText(isset($data['reason']) ? $data['reason'] : '', 500, true);
-                    $action = 'task_returned';
-                    $activityMessage = 'in_progress: '.$reason;
-                }
-                if ($target === 'done') {
-                    $progress = 100;
-                    $completed = $this->q($this->now());
-                    $action = 'task_completed';
-                }
+            $suffix = '';
+            if ($behavior === 'waiting') {
+                $party = strtolower(trim((string)(isset($data['waiting_on']) ? $data['waiting_on'] : '')));
+                if (!in_array($party, self::waitingParties(), true)) throw new RuntimeException('Waiting party is required.');
+                $reason = $this->boundedText(isset($data['waiting_reason']) ? $data['waiting_reason'] : '', 2000, true);
+                $date = $this->dateOrNull(isset($data['date_followup']) ? $data['date_followup'] : '');
+                if ($date === 'NULL') throw new RuntimeException('Follow-up date is required.');
+                $waitingReason = $this->q($reason); $waitingOn = $this->q($party); $followup = $date;
+                $suffix = ': '.$reason;
             }
-            $sql = 'UPDATE '.MAIN_DB_PREFIX.'cpo_task SET status='.$this->q($target).',progress='.$progress.',waiting_reason='.$waitingReason.',waiting_on='.$waitingOn.',date_followup='.$followup.',date_completed='.$completed.',fk_user_modif='.$this->auth->actorId().',version=version+1';
-            $sql .= ' WHERE entity='.$this->entity.' AND rowid='.(int) $taskId.' AND version='.(int) $expectedVersion;
+            if ($from === 'review' && $behavior === 'work') {
+                $reason = $this->boundedText(isset($data['reason']) ? $data['reason'] : '', 500, true);
+                $action = 'task_returned'; $suffix = ': '.$reason;
+            }
+            if ($behavior === 'done') { $progress=100; $completed=$this->q($this->now()); $action='task_completed'; }
+            $fromCode = !empty($task['stage_code']) ? (string)$task['stage_code'] : (string)$task['status'];
+            $message = $fromCode.' > '.(string)$targetStage['code'].$suffix;
+            $sql = 'UPDATE '.MAIN_DB_PREFIX.'cpo_task SET fk_stage='.(int)$targetStageId.',status='.$this->q($status).',progress='.$progress.',waiting_reason='.$waitingReason.',waiting_on='.$waitingOn.',date_followup='.$followup.',date_completed='.$completed.',fk_user_modif='.$this->auth->actorId().',version=version+1';
+            $sql .= ' WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion;
             $this->cas($sql);
-            $this->log((int) $task['fk_operation'], (int) $taskId, $action, $activityMessage, $this->auth->actorId());
+            $this->log((int)$task['fk_operation'], (int)$taskId, $action, $message, $this->auth->actorId());
             $this->commitTransaction();
-            return (int) $expectedVersion + 1;
+            return (int)$expectedVersion + 1;
         } catch (Throwable $e) {
             $this->db->rollback();
             throw $e;
@@ -371,6 +403,27 @@ class InternalTaskService
         return isset($map[$task['status']]) ? $map[$task['status']] : array();
     }
 
+    public function availableStageTargets(array $task)
+    {
+        if (!empty($task['date_archived']) || in_array($task['status'], array('done','cancelled','deleted'), true)) return array();
+        $manager = $this->auth->canManageTask($task);
+        $worker = $this->auth->canUpdateOwnTask($task);
+        if (!$manager && !$worker) return array();
+        $allowed = array(
+            'todo'=>array('work'),
+            'in_progress'=>array('work','waiting','review'),
+            'waiting'=>array('work','review'),
+            'review'=>$manager ? array('work','done') : array(),
+        );
+        $behaviors = isset($allowed[$task['status']]) ? $allowed[$task['status']] : array();
+        $out = array();
+        foreach ($this->stages->listStages(false) as $stage) {
+            if (!in_array($stage['behavior'], $behaviors, true) || (int)$stage['rowid'] === (int)$task['fk_stage']) continue;
+            $out[] = $stage;
+        }
+        return $out;
+    }
+
     public function teamOptions($managedOnly = false)
     {
         if (!$this->auth->canOpenBoard()) return array();
@@ -441,7 +494,7 @@ class InternalTaskService
     public function openCount()
     {
         if (!$this->auth->canOpenBoard()) return 0;
-        $view = in_array('my', $this->auth->availableViews(), true) ? 'my' : (in_array('team', $this->auth->availableViews(), true) ? 'team' : 'all');
+        $view = $this->auth->normalizeView('');
         $sql = 'SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX.'cpo_task t WHERE t.entity='.$this->entity;
         $sql .= " AND t.status NOT IN ('done','cancelled','deleted') AND t.date_archived IS NULL AND ".$this->auth->visibilitySql('t', $view);
         $res = $this->db->query($sql);
@@ -451,10 +504,11 @@ class InternalTaskService
 
     private function taskProjectionSql()
     {
-        return 'SELECT t.*,o.ref operation_ref,o.title operation_title,u.login owner_login,u.firstname owner_firstname,u.lastname owner_lastname,g.nom team_name,'
+        return 'SELECT t.*,s.code stage_code,s.behavior stage_behavior,s.color stage_color,s.position stage_position,s.active stage_active,s.label_en stage_label_en,s.label_ar stage_label_ar,s.label_zh stage_label_zh,o.ref operation_ref,o.title operation_title,u.login owner_login,u.firstname owner_firstname,u.lastname owner_lastname,g.nom team_name,'
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX."cpo_task_asset ac WHERE ac.entity=t.entity AND ac.fk_task=t.rowid AND ac.status='active') asset_count,"
             .'(SELECT ca.rowid FROM '.MAIN_DB_PREFIX."cpo_task_asset ca WHERE ca.entity=t.entity AND ca.fk_task=t.rowid AND ca.status='active' AND ca.is_cover=1 ORDER BY ca.version_no DESC,ca.rowid DESC LIMIT 1) cover_asset_id"
             .' FROM '.MAIN_DB_PREFIX.'cpo_task t'
+            .' INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_stage s ON s.rowid=t.fk_stage AND s.entity=t.entity'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'cpo_operation o ON o.rowid=t.fk_operation AND o.entity=t.entity'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND u.entity=t.entity AND u.statut=1 AND COALESCE(u.fk_soc,0)=0'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=t.fk_usergroup AND g.entity=t.entity';
