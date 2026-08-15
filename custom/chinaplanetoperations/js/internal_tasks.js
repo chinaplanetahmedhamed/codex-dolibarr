@@ -74,12 +74,19 @@
   [].slice.call(document.querySelectorAll('[style*="--cpo-stage-color"]')).forEach(function(node){var color=getComputedStyle(node).getPropertyValue('--cpo-stage-color').trim();if(/^#[0-9a-f]{6}$/i.test(color)){var r=parseInt(color.slice(1,3),16),g=parseInt(color.slice(3,5),16),b=parseInt(color.slice(5,7),16);var luminance=(0.2126*r+0.7152*g+0.0722*b)/255;node.style.setProperty('--cpo-stage-foreground',luminance>0.56?'#102A43':'#FFFFFF');}});
   var live = document.querySelector('[data-task-live]');
   function announce(message) { if (live) live.textContent = message || ''; }
+  function formActionUrl(form) {
+    var raw = form.getAttribute('action') || '';
+    var endpoint = new URL(raw || window.location.href, window.location.href);
+    if (endpoint.origin !== window.location.origin) throw new Error(taskUi.failed || '');
+    return endpoint.toString();
+  }
   function postForm(form, onSuccess) {
     if (!window.fetch || !window.FormData) return false;
     var submit = form.querySelector('button[type="submit"]'); var status = form.querySelector('.cpo-dialog-status');
     form.setAttribute('aria-busy', 'true'); if (submit) submit.disabled = true; if (status) status.value = taskUi.moving || '';
-    fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-      .then(function (response) { return response.json().then(function (payload) { return { response: response, payload: payload }; }); })
+    var endpoint; try { endpoint = formActionUrl(form); } catch (endpointError) { form.setAttribute('aria-busy', 'false'); if (submit) submit.disabled = false; if (status) status.value = endpointError.message || taskUi.failed || ''; announce(endpointError.message || taskUi.failed); return true; }
+    fetch(endpoint, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' })
+      .then(function (response) { return response.text().then(function (body) { var payload; try { payload = JSON.parse(body); } catch (invalidJson) { throw new Error(taskUi.failed || ''); } return { response: response, payload: payload }; }); })
       .then(function (result) {
         if (!result.response.ok || !result.payload.ok) throw new Error(result.payload.message || taskUi.failed || '');
         if (status) status.value = result.payload.message || taskUi.moved || ''; announce(taskUi.moved || result.payload.message); onSuccess(result.payload);
@@ -135,7 +142,8 @@
       event.preventDefault(); submit.disabled = true; file.disabled = true; form.setAttribute('aria-busy','true'); status.value = messages.uploading||submit.textContent.trim();
       var request = new XMLHttpRequest();
       function ready(message){form.setAttribute('aria-busy','false');submit.disabled=false;file.disabled=false;status.value=message;}
-      request.open('POST', form.action, true); request.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+      var endpoint;try{endpoint=formActionUrl(form);}catch(endpointError){ready(endpointError.message||messages.failed||'');return;}
+      request.open('POST', endpoint, true); request.setRequestHeader('X-Requested-With', 'XMLHttpRequest');request.setRequestHeader('Accept','application/json');
       request.timeout=60000;
       request.upload.addEventListener('progress', function (progress) {
         if (progress.lengthComputable) status.value = submit.textContent.trim() + ' ' + Math.round(progress.loaded / progress.total * 100) + '%';

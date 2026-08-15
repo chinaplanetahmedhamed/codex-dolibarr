@@ -19,6 +19,10 @@ Authorized managers can create a task from a prominent native dialog. A primary 
 
 Administrators can add, rename, recolor, activate/deactivate and reorder work columns from **Manage Columns**. Protected workflow stages remain fixed, in-use stages cannot be deactivated, and waiting/review/done behavior continues through the M058 lifecycle service. No CP Kanban table, route or source file is reused.
 
+### Local acceptance correction
+
+Ahmed's first live Move-to attempt exposed `Unexpected token '<'` because the local Dolibarr shell publishes an empty `document.baseURI`. The browser's `form.action` property consequently resolved to an empty string, so the AJAX POST returned the board HTML instead of the JSON action route. The correction now resolves the literal form `action` against `window.location.href`, enforces same-origin, requests JSON explicitly and converts any non-JSON response to the localized bounded failure state. The same safe resolver covers AJAX file uploads. After the runtime file backup and local apply, the authenticated page resolved the move endpoint exactly to `/custom/chinaplanetoperations/tasks/action.php`; the dialog opened cleanly with no console errors and no business row was changed during verification.
+
 ## Schema, migration and lifecycle
 
 - Added exact-entity `cpo_task_stage` rows with bigint primary key, immutable `(entity, code)`, localized labels, validated color, behavior, protected/system flags, position, active state and optimistic version.
@@ -59,6 +63,7 @@ Administrators can add, rename, recolor, activate/deactivate and reorder work co
 | M036/M045/M054/M055/unified-shell/shipping-shell regressions | PASS |
 | Authenticated menu/current state, board, New Task and Manage Columns | PASS — `admin-agent` |
 | Authenticated desktop/390/360 English responsive behavior | PASS |
+| Empty-`baseURI` AJAX move/upload endpoint regression | PASS — exact same-origin action URL and safe non-JSON handling |
 | Full authenticated AR/EN/ZH role and fault matrix | PENDING — mandatory before release |
 
 No synthetic test row remains in the isolated database after cleanup. The active local database contains 14 tasks, 21 activities, six seeded stages, zero null stage references and zero wrong-entity stage references.
@@ -82,3 +87,5 @@ No synthetic test row remains in the isolated database after cleanup. The active
 ## Rollback
 
 Restore the verified local database, runtime module and data backups above. Normal code rollback must first disable `fk_stage`-dependent menu/routes/readiness, then leave the additive schema inert without deleting task, stage, activity or file evidence.
+
+For the local acceptance correction only, restore `/private/tmp/m059-c01-qEWyc8/internal_tasks.js.before` (SHA-256 `986859b240ec0efe9d694b5ac6fd46b7e72cb08b305054de4b6913fcdb57ab95`) to the runtime JavaScript path.

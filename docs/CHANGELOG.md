@@ -7,6 +7,7 @@
 - Added administrator drag handles plus the same server-authorized keyboard/touch Move-to dialog for every role; waiting, review, done, archive and delete rules remain owned by the M058 lifecycle service.
 - Added an administrator Manage Columns page for adding, renaming, recoloring, activating/deactivating and work-segment reordering with in-use/protected blocking.
 - Backed up and activated module `2.6.0` in the Ahmed-approved local Dolibarr runtime. The authenticated Team Tasks menu/current state, board, New Task, Manage Columns and desktop/390/360 English responsive checks passed.
+- Corrected the first local Move-to acceptance failure caused by Dolibarr's empty base URI: AJAX actions now resolve the literal same-origin form route against the current page and reject non-JSON responses with localized safe feedback instead of exposing a JSON parser error.
 - Preserved all 14 existing local tasks and all CP Kanban data. Customer Center, mobile, staging and production were not changed; the complete authenticated AR/EN/ZH role/fault matrix remains a pre-release gate.
 
 ## 2026-08-14 — M058 secure internal work Kanban Phase 1
