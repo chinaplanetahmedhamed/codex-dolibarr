@@ -1,5 +1,17 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-08-14 — M058 secure internal work Kanban Phase 1
+
+- Source change: adds a staff-only Dolibarr task board, team-scoped supervision, controlled workflow and private task assets under `chinaplanetoperations`.
+- Admin ERP: `IMPLEMENTED_LOCAL_SOURCE_AND_SYNTHETIC_DB`; authorization, migration, task workflow, stale-write, adversarial-file and responsive source contracts passed on an isolated restored database.
+- Customer Portal: `NOT_APPLICABLE_UNCHANGED`; no Customer Center route, task projection, customer status, document or permission changed.
+- Mobile App: `NOT_APPLICABLE_UNCHANGED`; `/api/mobile/v1`, app source and customer-visible data contracts did not change.
+- API/data dependency: no public/customer/mobile API. `cpo_task` remains internal truth; task assets have no customer/forwarder visibility field or public link.
+- Design/terminology impact: Admin-only Arabic/English/Chinese board with derived RTL/LTR and one-stage phone navigation; no customer/mobile terminology change.
+- Phone verification: deterministic source/UI contract passed for 390px and 360px layout rules; authenticated real-browser acceptance is not claimed in this local source report.
+- Status: `ADMIN_LOCAL_IMPLEMENTED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: conduct separately approved authenticated runtime/browser acceptance before any release; never expose internal tasks or files to portal/mobile surfaces.
+
 ## 2026-08-06 — M044 Palestine shipping-country normalization
 
 - Source change: Shipping Prices importer and public/staff country label normalize Ashdod and Haifa from `IL` to `PS`.

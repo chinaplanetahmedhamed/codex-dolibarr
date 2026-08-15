@@ -1,5 +1,14 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-14 — M058 secure internal work Kanban Phase 1
+
+- Added an entity-scoped internal worker board with My Tasks, explicit supervisor-team grants, administrator views, Unassigned/Unclassified/Archive handling, card detail, progress, waiting, review, completion, cancellation, archive, restore and exceptional soft-delete workflows.
+- Added least-privilege rights `500516`–`500522`, all disabled by default for non-admin users, and one server-side authorization boundary reused by board, card, counts, Operations projections, actions, history and file streams.
+- Added additive/idempotent task team, waiting, version, supervisor-grant and task-asset schema; legacy and generated tasks without an explicit team remain administrator-only Unclassified work.
+- Added internal-only images/files with strict allowlists and quotas, image normalization, OOXML/PDF/text validation, random private storage, versions, cover selection/removal, authenticated preview/download and no customer visibility state.
+- Added Arabic, English and Chinese UI plus responsive single-stage phone navigation, semantic keyboard/touch actions, focused source/runtime/adversarial-file/UI tests, and parity documentation.
+- Local source and restored synthetic database only. The original local runtime/database, Customer Center, mobile API/app, CP Kanban, projects, orders, shipments, finance, staging and production were not changed; no Git push or deployment occurred.
+
 ## 2026-08-14 — M056 shipment status email notification
 
 - Added an explicit staff-controlled email option for committed, customer-visible shipment status changes, with server-resolved recipient/sender, Arabic/English/Chinese customer-safe content, authenticated shipment link and Dolibarr Agenda history.
