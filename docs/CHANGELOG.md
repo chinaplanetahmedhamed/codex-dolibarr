@@ -7,7 +7,8 @@
 - Added additive/idempotent task team, waiting, version, supervisor-grant and task-asset schema; legacy and generated tasks without an explicit team remain administrator-only Unclassified work.
 - Added internal-only images/files with strict allowlists and quotas, image normalization, OOXML/PDF/text validation, random private storage, versions, cover selection/removal, authenticated preview/download and no customer visibility state.
 - Added Arabic, English and Chinese UI plus responsive single-stage phone navigation, semantic keyboard/touch actions, focused source/runtime/adversarial-file/UI tests, and parity documentation.
-- Local source and restored synthetic database only. The original local runtime/database, Customer Center, mobile API/app, CP Kanban, projects, orders, shipments, finance, staging and production were not changed; no Git push or deployment occurred.
+- After Ahmed's separate local-run approval, backed up and activated M058 in the local Dolibarr 23.0.3 runtime, preserving all 13 existing tasks. Corrected internal-user compatibility for Dolibarr accounts that represent no third party as `fk_soc=0` and expose a zero-valued user-object entity; exact database entity validation and external-user denial remain enforced. Authenticated `admin-agent` board access passed in the local browser.
+- Customer Center, mobile API/app, CP Kanban, projects, orders, shipments, finance, staging and production were not changed; no Git push or remote deployment occurred.
 
 ## 2026-08-14 — M056 shipment status email notification
 

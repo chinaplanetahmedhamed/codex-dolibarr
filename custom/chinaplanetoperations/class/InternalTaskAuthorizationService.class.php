@@ -31,11 +31,11 @@ class InternalTaskAuthorizationService
     public function isInternalActive()
     {
         if ($this->actorId() <= 0) return false;
-        if (isset($this->actor->entity) && (int) $this->actor->entity !== $this->entity) return false;
+        if (isset($this->actor->entity) && (int) $this->actor->entity > 0 && (int) $this->actor->entity !== $this->entity) return false;
         if (!empty($this->actor->socid) || !empty($this->actor->fk_soc)) return false;
         if (isset($this->actor->statut) && (int) $this->actor->statut !== 1) return false;
         $sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.$this->actorId();
-        $sql .= ' AND entity='.$this->entity.' AND statut=1 AND fk_soc IS NULL LIMIT 1';
+        $sql .= ' AND entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 LIMIT 1';
         $res = $this->db->query($sql);
         return $res && (bool) $this->db->fetch_object($res);
     }
@@ -142,7 +142,7 @@ class InternalTaskAuthorizationService
         if ($teamId <= 0 || !$this->isInternalActive()) return false;
         $sql = 'SELECT tm.rowid FROM '.MAIN_DB_PREFIX.'cpo_task_team_manager tm';
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=tm.fk_usergroup AND g.entity=tm.entity';
-        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=tm.fk_user AND u.entity=tm.entity AND u.statut=1 AND u.fk_soc IS NULL';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=tm.fk_user AND u.entity=tm.entity AND u.statut=1 AND COALESCE(u.fk_soc,0)=0';
         $sql .= ' WHERE tm.entity='.$this->entity.' AND tm.fk_user='.(int) $this->actorId().' AND tm.fk_usergroup='.$teamId.' AND tm.status=1';
         $res = $this->db->query($sql);
         return $res && (bool) $this->db->fetch_object($res);
@@ -156,7 +156,7 @@ class InternalTaskAuthorizationService
         $sql = 'SELECT u.rowid FROM '.MAIN_DB_PREFIX.'user u';
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity=u.entity';
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
-        $sql .= ' WHERE u.rowid='.$userId.' AND u.entity='.$this->entity.' AND u.statut=1 AND u.fk_soc IS NULL';
+        $sql .= ' WHERE u.rowid='.$userId.' AND u.entity='.$this->entity.' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0';
         $sql .= ' AND g.rowid='.$teamId.' AND g.entity='.$this->entity.' LIMIT 1';
         $res = $this->db->query($sql);
         return $res && (bool) $this->db->fetch_object($res);
@@ -226,7 +226,7 @@ class InternalTaskAuthorizationService
             .' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'user cpo_ou'
             .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user cpo_ogu ON cpo_ogu.fk_user=cpo_ou.rowid AND cpo_ogu.entity=cpo_ou.entity'
             .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup cpo_og ON cpo_og.rowid=cpo_ogu.fk_usergroup AND cpo_og.entity=cpo_ogu.entity'
-            .' WHERE cpo_ou.rowid='.$userId.' AND cpo_ou.entity='.$this->entity.' AND cpo_ou.statut=1 AND cpo_ou.fk_soc IS NULL'
+            .' WHERE cpo_ou.rowid='.$userId.' AND cpo_ou.entity='.$this->entity.' AND cpo_ou.statut=1 AND COALESCE(cpo_ou.fk_soc,0)=0'
             .' AND cpo_ogu.fk_usergroup='.$alias.'.fk_usergroup)';
     }
 
@@ -235,7 +235,7 @@ class InternalTaskAuthorizationService
         $userId = $this->actorId();
         return $alias.'.fk_usergroup IS NOT NULL AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'cpo_task_team_manager cpo_tm'
             .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup cpo_tg ON cpo_tg.rowid=cpo_tm.fk_usergroup AND cpo_tg.entity=cpo_tm.entity'
-            .' INNER JOIN '.MAIN_DB_PREFIX.'user cpo_tu ON cpo_tu.rowid=cpo_tm.fk_user AND cpo_tu.entity=cpo_tm.entity AND cpo_tu.statut=1 AND cpo_tu.fk_soc IS NULL'
+            .' INNER JOIN '.MAIN_DB_PREFIX.'user cpo_tu ON cpo_tu.rowid=cpo_tm.fk_user AND cpo_tu.entity=cpo_tm.entity AND cpo_tu.statut=1 AND COALESCE(cpo_tu.fk_soc,0)=0'
             .' WHERE cpo_tm.entity='.$this->entity.' AND cpo_tm.fk_user='.$userId
             .' AND cpo_tm.fk_usergroup='.$alias.'.fk_usergroup AND cpo_tm.status=1)';
     }

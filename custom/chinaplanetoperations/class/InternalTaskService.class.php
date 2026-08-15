@@ -389,7 +389,7 @@ class InternalTaskService
         $sql = 'SELECT u.rowid,u.login,u.firstname,u.lastname FROM '.MAIN_DB_PREFIX.'user u';
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity=u.entity';
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
-        $sql .= ' WHERE g.rowid='.$teamId.' AND u.entity='.$this->entity.' AND u.statut=1 AND u.fk_soc IS NULL ORDER BY u.firstname,u.lastname,u.login';
+        $sql .= ' WHERE g.rowid='.$teamId.' AND u.entity='.$this->entity.' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0 ORDER BY u.firstname,u.lastname,u.login';
         return $this->rows($sql);
     }
 
@@ -398,7 +398,7 @@ class InternalTaskService
         if (!$this->auth->isAdministrator()) throw new InternalTaskAccessException('Task access denied.');
         $sql = 'SELECT tm.*,g.nom team_name,u.login,u.firstname,u.lastname FROM '.MAIN_DB_PREFIX.'cpo_task_team_manager tm';
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=tm.fk_usergroup AND g.entity=tm.entity';
-        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=tm.fk_user AND u.entity=tm.entity AND u.statut=1 AND u.fk_soc IS NULL';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=tm.fk_user AND u.entity=tm.entity AND u.statut=1 AND COALESCE(u.fk_soc,0)=0';
         $sql .= ' WHERE tm.entity='.$this->entity.' ORDER BY tm.status DESC,g.nom,u.login';
         return $this->rows($sql);
     }
@@ -434,7 +434,7 @@ class InternalTaskService
     public function internalUsers()
     {
         if (!$this->auth->isAdministrator()) return array();
-        $sql = 'SELECT rowid,login,firstname,lastname FROM '.MAIN_DB_PREFIX.'user WHERE entity='.$this->entity.' AND statut=1 AND fk_soc IS NULL ORDER BY firstname,lastname,login';
+        $sql = 'SELECT rowid,login,firstname,lastname FROM '.MAIN_DB_PREFIX.'user WHERE entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login';
         return $this->rows($sql);
     }
 
@@ -456,7 +456,7 @@ class InternalTaskService
             .'(SELECT ca.rowid FROM '.MAIN_DB_PREFIX."cpo_task_asset ca WHERE ca.entity=t.entity AND ca.fk_task=t.rowid AND ca.status='active' AND ca.is_cover=1 ORDER BY ca.version_no DESC,ca.rowid DESC LIMIT 1) cover_asset_id"
             .' FROM '.MAIN_DB_PREFIX.'cpo_task t'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'cpo_operation o ON o.rowid=t.fk_operation AND o.entity=t.entity'
-            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND u.entity=t.entity AND u.statut=1 AND u.fk_soc IS NULL'
+            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND u.entity=t.entity AND u.statut=1 AND COALESCE(u.fk_soc,0)=0'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=t.fk_usergroup AND g.entity=t.entity';
     }
 
@@ -470,7 +470,7 @@ class InternalTaskService
 
     private function validInternalUser($userId)
     {
-        $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.(int) $userId.' AND entity='.$this->entity.' AND statut=1 AND fk_soc IS NULL LIMIT 1');
+        $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.(int) $userId.' AND entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 LIMIT 1');
         return $res && (bool) $this->db->fetch_object($res);
     }
 
