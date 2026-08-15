@@ -1,5 +1,14 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-15 — M059 internal task navigation and configurable work stages
+
+- Added one direct Team Tasks Dolibarr menu entry with role-aware All/Team/My defaults and a prominent New Task dialog that requires an authorized primary team and expected result.
+- Added exact-entity configurable work stages with localized names, accessible colors, protected lifecycle columns, optimistic versions, audit activity and deterministic legacy-terminal fallback.
+- Added administrator drag handles plus the same server-authorized keyboard/touch Move-to dialog for every role; waiting, review, done, archive and delete rules remain owned by the M058 lifecycle service.
+- Added an administrator Manage Columns page for adding, renaming, recoloring, activating/deactivating and work-segment reordering with in-use/protected blocking.
+- Backed up and activated module `2.6.0` in the Ahmed-approved local Dolibarr runtime. The authenticated Team Tasks menu/current state, board, New Task, Manage Columns and desktop/390/360 English responsive checks passed.
+- Preserved all 14 existing local tasks and all CP Kanban data. Customer Center, mobile, staging and production were not changed; the complete authenticated AR/EN/ZH role/fault matrix remains a pre-release gate.
+
 ## 2026-08-14 — M058 secure internal work Kanban Phase 1
 
 - Added an entity-scoped internal worker board with My Tasks, explicit supervisor-team grants, administrator views, Unassigned/Unclassified/Archive handling, card detail, progress, waiting, review, completion, cancellation, archive, restore and exceptional soft-delete workflows.
