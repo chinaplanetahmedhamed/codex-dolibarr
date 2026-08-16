@@ -10,6 +10,8 @@
 - Backed up, restored and activated module `2.7.0` in Ahmed's approved local Dolibarr runtime. Seven additive tables and disabled-by-default rights `500523`/`500524` were installed; all 14 tasks, 29 activities and 12/44 CP Kanban columns/cards were preserved.
 - Authenticated local English desktop, 390×844 and 360px board/card/drawer checks passed visually, including immediate comment insertion/redaction and counter reset. The full AR/ZH and worker/supervisor fault matrix remains a release gate.
 - Corrected a real Dolibarr runtime incompatibility found during browser acceptance: collaboration CAS updates now pass the update result to Dolibarr's `affected_rows`, fixing immediate comment redaction and the equivalent checklist/reorder/label update paths.
+- Corrected local attachment-size handling: the PHP 8.3 runtime now accepts the module's 50 MB document ceiling (`upload_max_filesize=50M`, `post_max_size=64M`), while the card rejects oversized files before transmission with localized AR/EN/ZH limits (10 MB for images/text, 50 MB for PDF/Office) instead of a generic upload failure.
+- The first image uploaded to a task now becomes its card cover automatically, so the Kanban card displays a thumbnail immediately; administrators can still replace, clear or choose another cover. The already-uploaded local acceptance image was set as the current cover and verified on card `CP-TK-2026-000014`.
 - Customer Center, mobile, public APIs, staging and production were not changed; no outbound message or Git push occurred.
 
 ## 2026-08-15 — M059 internal task navigation and configurable work stages

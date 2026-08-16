@@ -55,6 +55,8 @@
 - Isolated MySQL runtime suite: `M060_RUNTIME=PASS`, covering rights collisions/rerun, role gates, hidden-task reads, replay/conflict, redaction, mentions/notifications/revocation, inactive lifecycle, reorder stale protection, label fingerprints/duplicates, text controls and activity privacy.
 - Real Dolibarr acceptance as `admin-agent`: board and shell-free drawer opened; comment add and immediate administrator redaction passed without closing the drawer; comment counter reset passed; desktop, 390×844 and 360×844 layouts passed visually.
 - A real-runtime incompatibility found during acceptance was corrected: Dolibarr's `affected_rows` requires the query result argument. All five collaboration CAS update paths now pass the result, with a source regression assertion.
+- A local PHP/M060 size mismatch found during user acceptance was corrected: PHP now uses `upload_max_filesize=50M` and `post_max_size=64M`; the source presents and enforces localized preflight limits of 10 MB for images/text and 50 MB for PDF/Office before network upload. The previous PHP configuration is backed up at `/private/tmp/php.ini.m060-upload-before`.
+- Card-thumbnail acceptance passed: the first active image is assigned as the cover atomically during upload, later images do not replace it, and manual cover selection remains available. The existing local image on `CP-TK-2026-000014` was selected as cover and the board rendered authenticated preview asset `1` as the card thumbnail.
 - Independent final reviews: Internal Operations PASS; Security/source PASS.
 
 ## Backup and rollback

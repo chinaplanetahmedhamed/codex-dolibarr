@@ -93,7 +93,16 @@ class InternalTaskAssetService
             $this->ensureDirectory($dir, 0700);
             $target = $dir.'/'.$stored;
             if (file_exists($target) || is_link($target)) throw new RuntimeException('Task storage target already exists.');
-            $cover = $parent && (int)$parent->is_cover === 1 && $meta['type'] === 'image' ? 1 : 0;
+            $cover = 0;
+            if ($meta['type'] === 'image') {
+                if ($parent && (int)$parent->is_cover === 1) {
+                    $cover = 1;
+                } elseif (!$parent) {
+                    $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_task_asset WHERE entity='.$this->entity.' AND fk_task='.(int)$taskId." AND asset_type='image' AND status='active' ORDER BY rowid LIMIT 1 FOR UPDATE");
+                    if (!$res) throw new RuntimeException('Unable to check task cover.');
+                    $cover = $this->db->fetch_object($res) ? 0 : 1;
+                }
+            }
             $sql = 'INSERT INTO '.MAIN_DB_PREFIX.'cpo_task_asset(entity,fk_task,asset_ref,parent_asset_id,asset_type,original_name,stored_name,extension,mime_type,file_size,sha256,version_no,is_cover,status,fk_user_creat,fk_user_modif,date_creation) VALUES(';
             $sql .= $this->entity.','.(int)$taskId.','.$this->q($assetRef).','.($parent?(int)$parent->rowid:'NULL').','.$this->q($meta['type']).','.$this->q($meta['name']).','.$this->q($stored).','.$this->q($meta['extension']).','.$this->q($meta['mime']).','.(int)$meta['size'].','.$this->q($meta['sha256']).','.$version.','.$cover.",'quarantine',".$this->auth->actorId().','.$this->auth->actorId().','.$this->q($this->now()).')';
             if (!$this->db->query($sql)) throw new RuntimeException('Unable to save task file metadata.');
