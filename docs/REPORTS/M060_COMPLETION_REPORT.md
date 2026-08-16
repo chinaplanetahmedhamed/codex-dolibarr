@@ -89,3 +89,15 @@
 - Module descriptor, seven SQL schemas, task board/card/asset plus collaboration/inbox/label routes.
 - Internal task CSS/JavaScript and AR/EN/ZH language files.
 - M058/M059/M060 contracts and runtime tests, change log and mobile parity documentation.
+
+## Backup-ERP package preparation — 2026-08-16
+
+- Approved gate: prepare the cumulative M058–M060 package and deployment helpers, then run `compare` and `preflight` on `backup-erp` only. `apply` and all live/production access were explicitly excluded.
+- Frozen runtime commit: `579f17e319dc7ac0255e8ea2bb6594eec7aa01d1`; deployed comparison baseline: M056 `606b54c852230b0674b0745084e107487cf3161d`.
+- Artifact: `m060-internal-tasks-579f17e.tar.gz`, 50 allowlisted members, SHA-256 `b8612e76a39da740c5bb9daada75c242c73946016984d01b2d6c2ce6d3927357`.
+- Read-only helper SHA-256: `438d6423c99e96a884729235428c72fb001b204fafff84c356abaafd8295054f`; installer SHA-256: `3d145eb7e8d006be1900b9ae6b8af04a3ebd3de2a898df2159e20a7cfef6d77f`; sudoers SHA-256: `6998e29aca8b3b6822ff6e31d33c0f0e659b10f8c5617ee3bc59dbbe16bec0fa`.
+- The helper and sudoers expose only `compare`, `preflight`, and `status`. There is no `apply`, `verify`, or `rollback` command in this approved helper, and its output declares `APPLY_AVAILABLE=NO` and `PRODUCTION_ACCESSED=NO`.
+- Local release contract, PHP/shell syntax, all bundled M058/M059/M060 static contracts, artifact membership and byte-for-byte content verification passed. Packaging commit: `87e604e`.
+- The four pinned files were uploaded to `/home/codex-deploy/staging-inbox` on the backup host and their remote ownership, mode and SHA-256 values matched the local sources.
+- `compare` and `preflight` have not run because the new checksum-pinned helper is not yet installed by root and does not appear in restricted `sudo -n -l`. No ERP runtime file, database, schema, module state, container or configuration changed. Live/production was not accessed during this gate.
+- Required continuation: a server administrator runs the exact uploaded installer once; restricted verification then runs `status`, `compare`, and `preflight` only. Any `apply` requires a separately reviewed mutating helper and a new explicit approval.
