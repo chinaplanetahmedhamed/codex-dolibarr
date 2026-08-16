@@ -94,8 +94,8 @@
 
 - Approved gate: prepare the cumulative M058–M060 package and deployment helpers, then run `compare` and `preflight` on `backup-erp` only. `apply` and all live/production access were explicitly excluded.
 - Frozen runtime commit: `579f17e319dc7ac0255e8ea2bb6594eec7aa01d1`; deployed comparison baseline: M056 `606b54c852230b0674b0745084e107487cf3161d`.
-- Artifact: `m060-internal-tasks-579f17e.tar.gz`, 50 allowlisted members, SHA-256 `b8612e76a39da740c5bb9daada75c242c73946016984d01b2d6c2ce6d3927357`.
-- Read-only helper SHA-256: `438d6423c99e96a884729235428c72fb001b204fafff84c356abaafd8295054f`; installer SHA-256: `3d145eb7e8d006be1900b9ae6b8af04a3ebd3de2a898df2159e20a7cfef6d77f`; sudoers SHA-256: `6998e29aca8b3b6822ff6e31d33c0f0e659b10f8c5617ee3bc59dbbe16bec0fa`.
+- Artifact: `m060-internal-tasks-579f17e.tar.gz`, 50 allowlisted members, initially SHA-256 `b8612e76a39da740c5bb9daada75c242c73946016984d01b2d6c2ce6d3927357`; the backup-PHP compatibility correction supersedes it with SHA-256 `169b6f3b6923fc9e86a85b1d1d49afd0c17458b3c128001bc620284152e8868c`.
+- Initial read-only helper SHA-256: `438d6423c99e96a884729235428c72fb001b204fafff84c356abaafd8295054f`. The backup-PHP compatibility correction supersedes it with helper SHA-256 `665aeb461c0873045ab90699d4b9b626553498b11dbcf3e3012baaeae720eb78` and installer SHA-256 `3c5e50f1ccfcfba67e24ff3305e43838baccc6d88808550571d13b3a486ce181`; sudoers remains SHA-256 `6998e29aca8b3b6822ff6e31d33c0f0e659b10f8c5617ee3bc59dbbe16bec0fa`.
 - The helper and sudoers expose only `compare`, `preflight`, and `status`. There is no `apply`, `verify`, or `rollback` command in this approved helper, and its output declares `APPLY_AVAILABLE=NO` and `PRODUCTION_ACCESSED=NO`.
 - Local release contract, PHP/shell syntax, all bundled M058/M059/M060 static contracts, artifact membership and byte-for-byte content verification passed. Packaging commit: `87e604e`.
 - The four pinned files were uploaded to `/home/codex-deploy/staging-inbox` on the backup host and their remote ownership, mode and SHA-256 values matched the local sources.
