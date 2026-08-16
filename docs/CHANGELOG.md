@@ -1,5 +1,17 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-15 — M060 internal task card collaboration
+
+- Added task-scoped plain-text comments, authorized mentions and a recipient-only in-app notification inbox with request-key replay protection, stable cursor pagination and administrator logical redaction.
+- Added named ordered checklists with item completion, rename, soft remove/restore and keyboard/touch Move up/down controls; collaboration never changes task progress, status, stage or task version.
+- Added reusable administrator-managed Arabic/English/Chinese labels, multi-label assignment, retired-label history and board filters with AND semantics.
+- Upgraded private task assets with drag/drop, local raster clipboard paste, a sequential multi-file queue, authenticated image lightbox and card cover/media handling through the existing validator.
+- Added accessible card-front label chips and visible-task checklist/comment/asset counters, while retaining exact worker/team/entity isolation.
+- Backed up, restored and activated module `2.7.0` in Ahmed's approved local Dolibarr runtime. Seven additive tables and disabled-by-default rights `500523`/`500524` were installed; all 14 tasks, 29 activities and 12/44 CP Kanban columns/cards were preserved.
+- Authenticated local English desktop, 390×844 and 360px board/card/drawer checks passed visually, including immediate comment insertion/redaction and counter reset. The full AR/ZH and worker/supervisor fault matrix remains a release gate.
+- Corrected a real Dolibarr runtime incompatibility found during browser acceptance: collaboration CAS updates now pass the update result to Dolibarr's `affected_rows`, fixing immediate comment redaction and the equivalent checklist/reorder/label update paths.
+- Customer Center, mobile, public APIs, staging and production were not changed; no outbound message or Git push occurred.
+
 ## 2026-08-15 — M059 internal task navigation and configurable work stages
 
 - Added one direct Team Tasks Dolibarr menu entry with role-aware All/Team/My defaults and a prominent New Task dialog that requires an authorized primary team and expected result.

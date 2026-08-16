@@ -56,6 +56,16 @@ class InternalTaskAuthorizationService
         return $this->isInternalActive() && (!empty($this->actor->admin) || $this->hasRight('task_admin'));
     }
 
+    /** Verified Dolibarr administrator; excludes a task_admin rights-only user. */
+    public function isDolibarrAdministrator()
+    {
+        if (!$this->isInternalActive() || empty($this->actor->admin)) return false;
+        $sql = 'SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.$this->actorId();
+        $sql .= ' AND statut=1 AND admin=1 AND COALESCE(fk_soc,0)=0 AND (entity='.$this->entity.' OR entity=0) LIMIT 1';
+        $res = $this->db->query($sql);
+        return $res && (bool) $this->db->fetch_object($res);
+    }
+
     public function canOpenBoard()
     {
         return $this->isAdministrator() || $this->hasRight('task_read_own') || $this->hasRight('task_manage_team');

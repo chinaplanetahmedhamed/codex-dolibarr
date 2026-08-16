@@ -1,5 +1,17 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-08-15 — M060 internal task card collaboration
+
+- Source change: extends the staff-only Dolibarr task card with comments, authorized mentions, internal notifications, checklists, reusable labels, private drag/drop/paste assets, image lightbox and safe board counters.
+- Admin ERP: `IMPLEMENTED_AND_AUTHENTICATED_LOCAL`; source/runtime tests and authenticated English desktop/390×844/360 checks passed for board, direct card, shell-free drawer, New Task, Manage Labels and Notifications without horizontal overflow or console errors.
+- Customer Portal: `NOT_APPLICABLE_UNCHANGED`; no Customer Center route, customer task projection, permission, file, status or notification changed.
+- Mobile App: `NOT_APPLICABLE_UNCHANGED`; `/api/mobile/v1`, native screens and customer-visible contracts did not change.
+- API/data dependency: no public/customer/mobile API. All M060 rows are exact-entity internal records behind the existing task-read boundary; private comments, users, labels, filenames and counts are never projected to customer surfaces.
+- Design/terminology impact: Admin-only Arabic/English/Chinese sections and responsive keyboard/touch controls; no customer/mobile wording or design change.
+- Phone verification: authenticated admin web passed at 390×844 and 360px with one board column, full-screen task dialogs, 44px controls and no page-wide overflow. Native mobile acceptance is not applicable.
+- Status: `ADMIN_LOCAL_RUNTIME_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: complete the separately gated authenticated AR/ZH worker/supervisor and fault/concurrency matrix before any release; never expose internal collaboration to portal/mobile surfaces.
+
 ## 2026-08-14 — M058 secure internal work Kanban Phase 1
 
 - Source change: adds a staff-only Dolibarr task board, team-scoped supervision, controlled workflow and private task assets under `chinaplanetoperations`.

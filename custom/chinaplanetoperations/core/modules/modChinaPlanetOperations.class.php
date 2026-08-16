@@ -13,7 +13,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.6.0';
+        $this->version = '2.7.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
@@ -48,6 +48,8 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500520, 'Cancel, archive and restore scoped internal tasks', 'task_archive'),
             array(500521, 'Soft delete archived internal tasks', 'task_delete'),
             array(500522, 'Administer internal task board and team grants', 'task_admin'),
+            array(500523, 'Comment on readable internal tasks', 'task_comment'),
+            array(500524, 'Manage checklists on scoped internal tasks', 'task_checklist'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;
@@ -111,6 +113,22 @@ class modChinaPlanetOperations extends DolibarrModules
             'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
         );
         $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanettasks', 'type'=>'left',
+            'titre'=>'InternalTaskNotifications', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'operations_task_notifications',
+            'url'=>'/custom/chinaplanetoperations/tasks/inbox.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>101, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_read_own") || $user->hasRight("chinaplanetoperations","task_manage_team") || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanettasks', 'type'=>'left',
+            'titre'=>'InternalTaskManageLabels', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'operations_task_labels',
+            'url'=>'/custom/chinaplanetoperations/tasks/labels.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>102, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
             'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
             'titre'=>'InternalTaskTeamGrants', 'mainmenu'=>'chinaplanetoperations', 'leftmenu'=>'operations_task_grants',
             'url'=>'/custom/chinaplanetoperations/tasks/team_admin.php',
@@ -150,7 +168,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $migration = new InternalTaskMigration($this->db);
         foreach (InternalTaskMigration::rightCodes() as $rightId => $rightCode) {
             if ($migration->rightCollision($rightId)) {
-                $this->error = 'M059 right ID collision: '.(int) $rightId;
+                $this->error = 'Internal task right ID collision: '.(int) $rightId;
                 return -1;
             }
         }

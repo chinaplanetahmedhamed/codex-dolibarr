@@ -10,7 +10,7 @@ $migration=file_get_contents($root.'/custom/chinaplanetoperations/class/Internal
 $action=file_get_contents($root.'/custom/chinaplanetoperations/tasks/action.php');
 $assetRoute=file_get_contents($root.'/custom/chinaplanetoperations/tasks/asset.php');
 $operations=file_get_contents($root.'/custom/chinaplanetoperations/class/OperationsService.class.php');
-m058check(strpos($descriptor,"'2.6.0'")!==false,'module version includes M059 2.6.0');
+m058check(strpos($descriptor,"'2.6.0'")!==false||strpos($descriptor,"'2.7.0'")!==false,'module version includes M059 2.6.0 or later');
 foreach(range(500516,500522) as $id)m058check(strpos($descriptor,'array('.$id.',')!==false,'right '.$id.' is defined');
 m058check(strpos($descriptor,'$definition[2] === \'read\' ? 1 : 0')!==false&&strpos($descriptor,"'task_read_own' ? 1")===false,'new rights default disabled');
 m058check(strpos($auth,"cpo_task_team_manager")!==false&&strpos($auth,"usergroup_user")!==false,'authorization checks grants and active membership');

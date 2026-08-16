@@ -94,6 +94,13 @@ class InternalTaskService
             $query = '%'.trim((string) $filters['q']).'%';
             $where[] = '(t.ref LIKE '.$this->q($query).' OR t.title LIKE '.$this->q($query).')';
         }
+        if (!empty($filters['label_ids']) && is_array($filters['label_ids'])) {
+            $labelIds = array_values(array_unique(array_filter(array_map('intval', $filters['label_ids']))));
+            if (count($labelIds) > 20) throw new RuntimeException('Too many label filters.');
+            foreach ($labelIds as $labelId) {
+                $where[] = 'EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'cpo_task_label_link cpo_lf WHERE cpo_lf.entity=t.entity AND cpo_lf.fk_task=t.rowid AND cpo_lf.fk_label='.(int) $labelId.')';
+            }
+        }
         $sql = $this->taskProjectionSql();
         $sql .= ' WHERE '.implode(' AND ', $where);
         $sql .= " ORDER BY FIELD(s.behavior,'todo','work','waiting','review','done','legacy'),s.position,FIELD(t.priority,'urgent','high','normal','low'),t.date_deadline IS NULL,t.date_deadline,t.position,t.rowid LIMIT 500";
@@ -517,6 +524,10 @@ class InternalTaskService
     {
         return 'SELECT t.*,s.code stage_code,s.behavior stage_behavior,s.color stage_color,s.position stage_position,s.active stage_active,s.label_en stage_label_en,s.label_ar stage_label_ar,s.label_zh stage_label_zh,o.ref operation_ref,o.title operation_title,u.login owner_login,u.firstname owner_firstname,u.lastname owner_lastname,g.nom team_name,'
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX."cpo_task_asset ac WHERE ac.entity=t.entity AND ac.fk_task=t.rowid AND ac.status='active') asset_count,"
+            .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_comment cc WHERE cc.entity=t.entity AND cc.fk_task=t.rowid) comment_count,'
+            .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_checklist ci WHERE ci.entity=t.entity AND ci.fk_task=t.rowid AND ci.active=1) checklist_count,'
+            .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_checklist_item ii INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_checklist ic ON ic.rowid=ii.fk_checklist AND ic.entity=ii.entity WHERE ic.entity=t.entity AND ic.fk_task=t.rowid AND ic.active=1 AND ii.active=1) checklist_item_count,'
+            .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_checklist_item ii INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_checklist ic ON ic.rowid=ii.fk_checklist AND ic.entity=ii.entity WHERE ic.entity=t.entity AND ic.fk_task=t.rowid AND ic.active=1 AND ii.active=1 AND ii.completed=1) checklist_done_count,'
             .'(SELECT ca.rowid FROM '.MAIN_DB_PREFIX."cpo_task_asset ca WHERE ca.entity=t.entity AND ca.fk_task=t.rowid AND ca.status='active' AND ca.is_cover=1 ORDER BY ca.version_no DESC,ca.rowid DESC LIMIT 1) cover_asset_id"
             .' FROM '.MAIN_DB_PREFIX.'cpo_task t'
             .' INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_stage s ON s.rowid=t.fk_stage AND s.entity=t.entity'
