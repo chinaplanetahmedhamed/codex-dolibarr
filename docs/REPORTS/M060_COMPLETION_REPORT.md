@@ -74,6 +74,15 @@
 - Before any release, run the complete authenticated Arabic/English/Chinese administrator, task-admin, supervisor and worker matrix; full upload/fault/concurrency cases; and the production release workflow under separate explicit approvals.
 - No Git push, pull request, staging deployment or production deployment is included.
 
+## Release-request read-only preflight — 2026-08-16
+
+- Ahmed requested deployment to both `backup-erp` and live ERP. The request authorized current read-only environment inspection; no artifact upload, helper installation, apply or schema/module mutation was performed.
+- Restricted SSH identity and public HTTPS checks passed. Existing restricted status reports both environments still deployed at M056 runtime commit `606b54c852230b0674b0745084e107487cf3161d`; both public roots returned HTTP 200.
+- The cumulative delta from that deployed M056 runtime to M060 commit `579f17e319dc7ac0255e8ea2bb6594eec7aa01d1` contains 38 `chinaplanetoperations` module files, including 11 SQL files and additive schema/rights/module-state work from M058–M060. It is not a PDF-only release.
+- `sudo -n -l` exposes no M060-specific staging or production helper. Existing generic/older Mission helpers are not authorized substitutes. The local M060 branch is not published to the private remote.
+- Result: `FAIL_SAFE_RELEASE_BLOCK`. Staging and production were accessed read-only; runtime files, databases, schemas, module state, configuration, documents, customer/business data, containers, proxy, DNS and ports were not changed. No rollback was required.
+- Next gate: freeze and independently review a dependency-closed cumulative M058–M060 artifact plus checksum-pinned staging/production helpers with code and full-database backups, migration/readiness verification and rollback. Run `backup-erp` compare/preflight first; apply and production remain separate approvals.
+
 ## Changed areas
 
 - ChinaPlanet Operations authorization, migration, task projection and collaboration services.
