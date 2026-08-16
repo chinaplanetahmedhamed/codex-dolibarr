@@ -6,6 +6,7 @@
 - Approved scope: local implementation only
 - Baseline: `dccd67a317191565542a4d197c08efc935b9e1aa`
 - Branch: `codex/m060-internal-task-collaboration`
+- Implementation commit: `5fdebad`
 - Local Dolibarr: 23.0.3 at `http://127.0.0.1:8088`
 - Result: `DEVELOPER_REPORTED_LOCAL`
 - Staging/production: not accessed
@@ -76,4 +77,3 @@
 - Module descriptor, seven SQL schemas, task board/card/asset plus collaboration/inbox/label routes.
 - Internal task CSS/JavaScript and AR/EN/ZH language files.
 - M058/M059/M060 contracts and runtime tests, change log and mobile parity documentation.
-
