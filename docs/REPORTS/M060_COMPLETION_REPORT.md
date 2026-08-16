@@ -101,3 +101,12 @@
 - The four pinned files were uploaded to `/home/codex-deploy/staging-inbox` on the backup host and their remote ownership, mode and SHA-256 values matched the local sources.
 - `compare` and `preflight` have not run because the new checksum-pinned helper is not yet installed by root and does not appear in restricted `sudo -n -l`. No ERP runtime file, database, schema, module state, container or configuration changed. Live/production was not accessed during this gate.
 - Required continuation: a server administrator runs the exact uploaded installer once; restricted verification then runs `status`, `compare`, and `preflight` only. Any `apply` requires a separately reviewed mutating helper and a new explicit approval.
+
+### Backup-ERP compare/preflight result
+
+- The corrected helper was installed with SHA-256 `665aeb461c0873045ab90699d4b9b626553498b11dbcf3e3012baaeae720eb78` and independently matched before execution.
+- `status` returned `PREFLIGHT_ONLY` with `APPLY_AVAILABLE=NO` and the corrected artifact SHA-256 `169b6f3b6923fc9e86a85b1d1d49afd0c17458b3c128001bc620284152e8868c`.
+- `compare` passed all 38 runtime paths against the deployed M056 baseline: existing files matched their exact M056 hashes, expected new files were absent, and `DRIFT_COUNT=0`.
+- Schema inspection returned `MIGRATION_REQUIRED`, the expected pre-apply state for additive M058–M060 tables, columns, indexes, rights and menu registration.
+- Final result: `M060_STAGING_PREFLIGHT=PASS`, with `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, and `PRODUCTION_ACCESSED=NO`.
+- No code, schema, module state, configuration, documents, business data, containers, proxy, DNS or ports were changed. The next gate is preparation and independent review of a mutating backup/apply/verify/rollback helper, followed by a new explicit backup-ERP apply approval.
