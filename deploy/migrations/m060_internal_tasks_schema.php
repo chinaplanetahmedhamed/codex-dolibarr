@@ -1,8 +1,16 @@
 <?php
 
-if (PHP_SAPI !== 'cli' || $argc !== 2 || !in_array($argv[1], array('check', 'apply'), true)) {
+if (PHP_SAPI !== 'cli' || $argc !== 2 || !in_array($argv[1], array('check', 'apply', 'disable'), true)) {
     fwrite(STDERR, "M060_SCHEMA=FAIL REASON=INVALID_COMMAND\n");
     exit(64);
+}
+
+if ($argv[1] !== 'check') {
+    $effectiveUid = function_exists('posix_geteuid') ? posix_geteuid() : -1;
+    if ($effectiveUid !== 0 || getenv('M060_DEPLOY_CONTEXT') !== 'm060-staging-579f17e-root-only') {
+        fwrite(STDERR, "M060_SCHEMA=FAIL REASON=DEPLOYMENT_CONTEXT_REQUIRED\n");
+        exit(66);
+    }
 }
 
 define('NOLOGIN', 1);
@@ -62,6 +70,22 @@ function m060MenusReady($db, $entity)
     return true;
 }
 
+function m060MenusDisabled($db, $entity)
+{
+    $urls = array(
+        '/custom/chinaplanetoperations/tasks/board.php',
+        '/custom/chinaplanetoperations/tasks/stages.php',
+        '/custom/chinaplanetoperations/tasks/inbox.php',
+        '/custom/chinaplanetoperations/tasks/labels.php',
+        '/custom/chinaplanetoperations/tasks/team_admin.php',
+    );
+    foreach ($urls as $url) {
+        $sql = 'SELECT COUNT(*) count_rows FROM '.MAIN_DB_PREFIX."menu WHERE entity=".(int) $entity." AND module='chinaplanetoperations' AND menu_handler='all' AND url='".$db->escape($url)."'";
+        if (m060Count($db, $sql) !== 0) return false;
+    }
+    return true;
+}
+
 function m060LoadAdministrator($db, $entity)
 {
     $res = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE entity='.(int) $entity.' AND statut=1 AND admin=1 AND COALESCE(fk_soc,0)=0 ORDER BY rowid LIMIT 1');
@@ -91,6 +115,28 @@ if ($argv[1] === 'check') {
     }
     echo "M060_SCHEMA_CHECK=MIGRATION_REQUIRED\n";
     exit(2);
+}
+
+if ($argv[1] === 'disable') {
+    $taskUrls = array(
+        '/custom/chinaplanetoperations/tasks/board.php',
+        '/custom/chinaplanetoperations/tasks/stages.php',
+        '/custom/chinaplanetoperations/tasks/inbox.php',
+        '/custom/chinaplanetoperations/tasks/labels.php',
+        '/custom/chinaplanetoperations/tasks/team_admin.php',
+    );
+    $quoted = array();
+    foreach ($taskUrls as $url) $quoted[] = "'".$db->escape($url)."'";
+    $db->begin();
+    $delete = 'DELETE FROM '.MAIN_DB_PREFIX."menu WHERE entity=".$entity." AND module='chinaplanetoperations' AND menu_handler='all' AND url IN (".implode(',', $quoted).')';
+    if (!$db->query($delete)) {
+        $db->rollback();
+        m060Fail('TASK_MENU_DISABLE_FAILED');
+    }
+    if ($db->commit() <= 0) m060Fail('TASK_MENU_DISABLE_COMMIT_FAILED');
+    if (!m060MenusDisabled($db, $entity)) m060Fail('TASK_MENU_DISABLE_VERIFY_FAILED');
+    echo "M060_SCHEMA_DISABLE=PASS DATA_RETAINED=YES\n";
+    exit(0);
 }
 
 $user = m060LoadAdministrator($db, $entity);
