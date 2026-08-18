@@ -7,7 +7,7 @@ if (PHP_SAPI !== 'cli' || $argc !== 2 || !in_array($argv[1], array('check', 'app
 
 if ($argv[1] !== 'check') {
     $effectiveUid = function_exists('posix_geteuid') ? posix_geteuid() : -1;
-    if ($effectiveUid !== 0 || getenv('M060_DEPLOY_CONTEXT') !== 'm060-staging-579f17e-root-only') {
+    if ($effectiveUid !== 0 || getenv('M060_DEPLOY_CONTEXT') !== 'm060-staging-95e6435-root-only') {
         fwrite(STDERR, "M060_SCHEMA=FAIL REASON=DEPLOYMENT_CONTEXT_REQUIRED\n");
         exit(66);
     }

@@ -6,8 +6,8 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m060_deploy.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-backup-erp-m060-deploy.sudoers"
-readonly HELPER_SHA='9f9e9ce0bac717935a3b366a6e3ea9f0ee8914a06f256ba9b0b8991191bf33a5'
-readonly PREVIOUS_HELPER_SHA='432899fe10b6910c638706cabaa11c732368337634aff56f8c94694280f26c61'
+readonly HELPER_SHA='f48957915462145f650df5af90db9107c56779cc3f8f98fb9934786105a3302b'
+readonly PREVIOUS_HELPER_SHA='9f9e9ce0bac717935a3b366a6e3ea9f0ee8914a06f256ba9b0b8991191bf33a5'
 readonly SUDOERS_SHA='b68a8abf54acc6070aab543733f94f36ace5a8745f2373f7706c2996ca55fa4c'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-backup-erp-m060-deploy'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-backup-erp-m060-deploy'
@@ -67,7 +67,7 @@ if [[ -e "$TARGET_HELPER" || -L "$TARGET_HELPER" ]]; then
   fi
 fi
 if [[ -e "$TARGET_SUDOERS" || -L "$TARGET_SUDOERS" ]]; then [[ -f "$TARGET_SUDOERS" && ! -L "$TARGET_SUDOERS" && $(stat -c '%U:%G %a' "$TARGET_SUDOERS") == 'root:root 440' && $(sha256 "$TARGET_SUDOERS") == "$SUDOERS_SHA" ]] || die 'EXISTING_SUDOERS_UNEXPECTED'; existing_sudoers=1; fi
-for root in /root/backup-erp-code-backups /root/backup-erp-db-backups /root/backup-erp-release-artifacts /var/lib/chinaplanetos-m060-deploy-staging /var/lib/chinaplanetos-m060-deploy-staging/requests; do
+for root in /root/backup-erp-code-backups /root/backup-erp-db-backups /root/backup-erp-release-artifacts /var/lib/chinaplanetos-m060-deploy-staging-r04 /var/lib/chinaplanetos-m060-deploy-staging-r04/requests; do
   if [[ -e "$root" || -L "$root" ]]; then [[ -d "$root" && ! -L "$root" && $(stat -c '%U:%G %a' "$root") == 'root:root 700' ]] || die 'PRIVATE_ROOT_INVALID'; else install -d -o root -g root -m 0700 "$root"; fi
 done
 
