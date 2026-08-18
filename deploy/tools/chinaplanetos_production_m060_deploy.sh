@@ -72,8 +72,8 @@ STALE_CANDIDATES=''
 
 die() { echo "M060_DEPLOY_FAIL=$1" >&2; exit 1; }
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
-mode_of() { if [[ $TEST_MODE -eq 1 ]]; then stat -f '%Lp' "$1"; else stat -c '%a' "$1"; fi; }
-owner_group_of() { if [[ $TEST_MODE -eq 1 ]]; then stat -f '%Su:%Sg' "$1"; else stat -c '%U:%G' "$1"; fi; }
+mode_of() { if [[ $TEST_MODE -eq 1 ]] && stat -f '%Lp' "$1" >/dev/null 2>&1; then stat -f '%Lp' "$1"; else stat -c '%a' "$1"; fi; }
+owner_group_of() { if [[ $TEST_MODE -eq 1 ]] && stat -f '%Su:%Sg' "$1" >/dev/null 2>&1; then stat -f '%Su:%Sg' "$1"; else stat -c '%U:%G' "$1"; fi; }
 fsync_path() { python3 - "$1" <<'PY'
 import os, pathlib, sys
 p=pathlib.Path(sys.argv[1]); flags=os.O_RDONLY | (getattr(os,'O_DIRECTORY',0) if p.is_dir() else 0); fd=os.open(str(p),flags)
@@ -96,7 +96,7 @@ safe_parent() {
   if [[ $missing -eq 0 ]]; then if [[ $TEST_MODE -eq 1 ]]; then [[ $(realpath "$parent") == "$parent" ]]; else [[ $(realpath -e "$parent") == "$parent" ]]; fi; fi
 }
 safe_target() { local target=$1 create_parent=${2:-0} module_root="$TARGET_ROOT/chinaplanetoperations"; [[ "$target" == "$module_root/"* ]] || return 1; safe_parent "$(dirname "$target")" "$create_parent" || return 1; [[ ! -L "$target" ]]; }
-parent_identity() { if [[ $TEST_MODE -eq 1 ]]; then stat -f '%d:%i' "$1"; else stat -c '%d:%i' "$1"; fi; }
+parent_identity() { if [[ $TEST_MODE -eq 1 ]] && stat -f '%d:%i' "$1" >/dev/null 2>&1; then stat -f '%d:%i' "$1"; else stat -c '%d:%i' "$1"; fi; }
 
 drop_validation_database() {
   [[ -z "$DB_VALIDATION_NAME" ]] && return 0
