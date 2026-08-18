@@ -167,7 +167,7 @@ class InternalTaskMigration
             'version'=>array('int','NO','1',null),
             'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
         );
-        if (!$this->columnsMatch($this->prefix.'cpo_task', $taskColumns)) return $this->notReady('CPO_TASK_COLUMNS');
+        if (!$this->columnsMatch($this->prefix.'cpo_task', $taskColumns)) return false;
         if (!$this->tableExists($this->prefix.'cpo_task_team_manager')) return $this->notReady('CPO_TASK_TEAM_MANAGER_MISSING');
         if (!$this->tableExists($this->prefix.'cpo_task_asset')) return $this->notReady('CPO_TASK_ASSET_MISSING');
         if (!$this->tableExists($this->prefix.'cpo_task_stage')) return $this->notReady('CPO_TASK_STAGE_MISSING');
@@ -421,11 +421,14 @@ class InternalTaskMigration
             $sql = "SELECT data_type,is_nullable,column_default,character_maximum_length,extra FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='".$this->db->escape($table)."' AND column_name='".$this->db->escape($column)."' LIMIT 1";
             $res = $this->db->query($sql);
             $row = $res ? $this->db->fetch_object($res) : null;
-            if (!$row || strtolower((string)$row->data_type)!==$specification[0] || (string)$row->is_nullable!==$specification[1]) return false;
+            $columnReason = 'COLUMN_'.preg_replace('/[^A-Z0-9_]/', '_', strtoupper($table.'_'.$column));
+            if (!$row) return $this->notReady($columnReason.'_MISSING');
+            if (strtolower((string)$row->data_type)!==$specification[0]) return $this->notReady($columnReason.'_TYPE');
+            if ((string)$row->is_nullable!==$specification[1]) return $this->notReady($columnReason.'_NULLABILITY');
             $actualDefault = $row->column_default === null ? null : (string)$row->column_default;
-            if (!$this->columnDefaultMatches($actualDefault, $specification[2])) return false;
-            if ($specification[3] !== null && (int)$row->character_maximum_length !== (int)$specification[3]) return false;
-            if (isset($specification[4]) && $specification[4] !== null && !$this->columnExtraMatches((string)$row->extra, (string)$specification[4])) return false;
+            if (!$this->columnDefaultMatches($actualDefault, $specification[2])) return $this->notReady($columnReason.'_DEFAULT');
+            if ($specification[3] !== null && (int)$row->character_maximum_length !== (int)$specification[3]) return $this->notReady($columnReason.'_LENGTH');
+            if (isset($specification[4]) && $specification[4] !== null && !$this->columnExtraMatches((string)$row->extra, (string)$specification[4])) return $this->notReady($columnReason.'_EXTRA');
         }
         return true;
     }
