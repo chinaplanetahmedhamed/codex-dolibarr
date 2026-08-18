@@ -54,6 +54,9 @@ function m060MigrationFailureReason($exception)
         'Internal task timestamp contains null values.' => 'TIMESTAMP_DATA_INVALID',
     );
     $message = $exception instanceof Throwable ? $exception->getMessage() : '';
+    if (preg_match('/^Internal task schema readiness check failed: ([A-Z0-9_]+)\.$/', $message, $matches)) {
+        return 'READINESS_FAILED_'.$matches[1];
+    }
     return isset($reasons[$message]) ? $reasons[$message] : 'MIGRATION_FAILED';
 }
 
@@ -130,7 +133,9 @@ if ($argv[1] === 'check') {
         echo "M060_SCHEMA_CHECK=READY\n";
         exit(0);
     }
-    echo "M060_SCHEMA_CHECK=MIGRATION_REQUIRED\n";
+    $reason = $migration->readinessReason();
+    if ($reason === 'READY') $reason = 'MENUS_NOT_READY';
+    echo "M060_SCHEMA_CHECK=MIGRATION_REQUIRED REASON=".$reason."\n";
     exit(2);
 }
 
@@ -193,5 +198,6 @@ try {
 }
 
 $migration = new InternalTaskMigration($db);
-if (!$migration->isReady(true) || !m060MenusReady($db, $entity)) m060Fail('READINESS_FAILED');
+if (!$migration->isReady(true)) m060Fail('READINESS_FAILED_'.$migration->readinessReason());
+if (!m060MenusReady($db, $entity)) m060Fail('READINESS_FAILED_MENUS_NOT_READY');
 echo "M060_SCHEMA_APPLY=PASS\n";

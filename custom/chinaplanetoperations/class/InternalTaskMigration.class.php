@@ -14,6 +14,9 @@ class InternalTaskMigration
     /** @var string */
     private $prefix;
 
+    /** @var string Bounded structural reason for the latest readiness result. */
+    private $readinessReason = 'NOT_CHECKED';
+
     public function __construct($db)
     {
         $this->db = $db;
@@ -143,14 +146,15 @@ class InternalTaskMigration
         $this->seedAndBackfillStages();
 
         if (!$this->isReady(false)) {
-            throw new RuntimeException('Internal task schema readiness check failed.');
+            throw new RuntimeException('Internal task schema readiness check failed: '.$this->readinessReason().'.');
         }
         return true;
     }
 
     public function isReady($requireRights = false)
     {
-        if (!function_exists('mb_check_encoding') || !function_exists('mb_strlen')) return false;
+        $this->readinessReason = 'UNKNOWN';
+        if (!function_exists('mb_check_encoding') || !function_exists('mb_strlen')) return $this->notReady('MBSTRING_REQUIRED');
         $taskColumns = array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),
             'fk_usergroup'=>array('int','YES',null,null),
@@ -163,38 +167,38 @@ class InternalTaskMigration
             'version'=>array('int','NO','1',null),
             'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
         );
-        if (!$this->columnsMatch($this->prefix.'cpo_task', $taskColumns)) return false;
-        if (!$this->tableExists($this->prefix.'cpo_task_team_manager')) return false;
-        if (!$this->tableExists($this->prefix.'cpo_task_asset')) return false;
-        if (!$this->tableExists($this->prefix.'cpo_task_stage')) return false;
-        foreach (self::collaborationTables() as $table) if (!$this->tableExists($this->prefix.$table)) return false;
-        if (!$this->tableExists($this->prefix.'cpo_activity')) return false;
-        foreach (array_merge(array('cpo_task','cpo_task_team_manager','cpo_task_asset','cpo_task_stage','cpo_activity'), self::collaborationTables()) as $table) if (!$this->tableEngineIsInnoDb($this->prefix.$table)) return false;
+        if (!$this->columnsMatch($this->prefix.'cpo_task', $taskColumns)) return $this->notReady('CPO_TASK_COLUMNS');
+        if (!$this->tableExists($this->prefix.'cpo_task_team_manager')) return $this->notReady('CPO_TASK_TEAM_MANAGER_MISSING');
+        if (!$this->tableExists($this->prefix.'cpo_task_asset')) return $this->notReady('CPO_TASK_ASSET_MISSING');
+        if (!$this->tableExists($this->prefix.'cpo_task_stage')) return $this->notReady('CPO_TASK_STAGE_MISSING');
+        foreach (self::collaborationTables() as $table) if (!$this->tableExists($this->prefix.$table)) return $this->notReady(strtoupper($table).'_MISSING');
+        if (!$this->tableExists($this->prefix.'cpo_activity')) return $this->notReady('CPO_ACTIVITY_MISSING');
+        foreach (array_merge(array('cpo_task','cpo_task_team_manager','cpo_task_asset','cpo_task_stage','cpo_activity'), self::collaborationTables()) as $table) if (!$this->tableEngineIsInnoDb($this->prefix.$table)) return $this->notReady(strtoupper($table).'_ENGINE');
         if (!$this->columnsMatch($this->prefix.'cpo_task_team_manager', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),
             'entity'=>array('int','NO','1',null),'fk_usergroup'=>array('int','NO',null,null),'fk_user'=>array('int','NO',null,null),
             'status'=>array('tinyint','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
-        ))) return false;
+        ))) return $this->notReady('CPO_TASK_TEAM_MANAGER_COLUMNS');
         if (!$this->columnsMatch($this->prefix.'cpo_task_asset', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),
             'entity'=>array('int','NO','1',null),'fk_task'=>array('bigint','NO',null,null),'asset_ref'=>array('varchar','NO',null,64),'parent_asset_id'=>array('bigint','YES',null,null),
             'asset_type'=>array('varchar','NO',null,16),'original_name'=>array('varchar','NO',null,255),'stored_name'=>array('varchar','NO',null,128),'extension'=>array('varchar','NO',null,16),
             'mime_type'=>array('varchar','NO',null,128),'file_size'=>array('bigint','NO',null,null),'sha256'=>array('char','NO',null,64),'version_no'=>array('int','NO','1',null),
             'is_cover'=>array('tinyint','NO','0',null),'status'=>array('varchar','NO','active',16),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
-        ))) return false;
+        ))) return $this->notReady('CPO_TASK_ASSET_COLUMNS');
         if (!$this->columnsMatch($this->prefix.'cpo_task_stage', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'code'=>array('varchar','NO',null,64),
             'label_en'=>array('varchar','NO',null,255),'label_ar'=>array('varchar','NO',null,255),'label_zh'=>array('varchar','NO',null,255),'color'=>array('varchar','NO','#2980b9',9),
             'position'=>array('int','NO','0',null),'behavior'=>array('varchar','NO',null,16),'is_system'=>array('tinyint','NO','0',null),'active'=>array('tinyint','NO','1',null),
             'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
-        ))) return false;
+        ))) return $this->notReady('CPO_TASK_STAGE_COLUMNS');
         if (!$this->columnsMatch($this->prefix.'cpo_activity', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),
             'entity'=>array('int','NO','1',null),'fk_operation'=>array('bigint','YES',null,null),'fk_task'=>array('bigint','YES',null,null),
             'action_code'=>array('varchar','NO',null,48),'message'=>array('text','YES',null,null),'visibility'=>array('varchar','NO','internal',16),
             'fk_user'=>array('int','NO',null,null),'date_action'=>array('datetime','NO',null,null),
-        ))) return false;
-        if (!$this->collaborationSchemaReady()) return false;
+        ))) return $this->notReady('CPO_ACTIVITY_COLUMNS');
+        if (!$this->collaborationSchemaReady()) return $this->notReady('COLLABORATION_SCHEMA');
         $indexes = array(
             $this->prefix.'cpo_task'=>array('PRIMARY'=>array('rowid',0),'idx_cpo_task_own_board'=>array('entity,fk_user_assign,date_archived,status,position',1),'idx_cpo_task_team_board'=>array('entity,fk_usergroup,date_archived,status,position',1),'idx_cpo_task_stage_tasks'=>array('entity,fk_stage,date_archived,status,position',1)),
             $this->prefix.'cpo_task_team_manager'=>array('PRIMARY'=>array('rowid',0),'uk_cpo_task_team_manager'=>array('entity,fk_usergroup,fk_user',0),'idx_cpo_task_manager_user'=>array('entity,fk_user,status',1),'idx_cpo_task_manager_team'=>array('entity,fk_usergroup,status',1)),
@@ -202,14 +206,26 @@ class InternalTaskMigration
             $this->prefix.'cpo_task_stage'=>array('PRIMARY'=>array('rowid',0),'uk_cpo_task_stage_code'=>array('entity,code',0),'idx_cpo_task_stage_board'=>array('entity,active,position,rowid',1)),
             $this->prefix.'cpo_activity'=>array('PRIMARY'=>array('rowid',0),'idx_cpo_activity_task'=>array('entity,fk_task,date_action',1)),
         );
-        foreach ($indexes as $table=>$definitions) foreach ($definitions as $name=>$definition) if (!$this->indexMatches($table,$name,$definition[0],$definition[1])) return false;
-        if (!$this->stageDataReady()) return false;
-        if (!$this->collaborationDataReady()) return false;
+        foreach ($indexes as $table=>$definitions) foreach ($definitions as $name=>$definition) if (!$this->indexMatches($table,$name,$definition[0],$definition[1])) return $this->notReady('INDEX_'.strtoupper($name));
+        if (!$this->stageDataReady()) return $this->notReady('STAGE_DATA');
+        if (!$this->collaborationDataReady()) return $this->notReady('COLLABORATION_DATA');
         foreach (array_keys(self::rightCodes()) as $rightId) {
-            if ($this->rightCollision($rightId)) return false;
+            if ($this->rightCollision($rightId)) return $this->notReady('RIGHT_COLLISION_'.$rightId);
         }
-        if ($requireRights && !$this->rightsReady()) return false;
+        if ($requireRights && !$this->rightsReady()) return $this->notReady('RIGHTS_NOT_READY');
+        $this->readinessReason = 'READY';
         return true;
+    }
+
+    public function readinessReason()
+    {
+        return $this->readinessReason;
+    }
+
+    private function notReady($reason)
+    {
+        $this->readinessReason = preg_replace('/[^A-Z0-9_]/', '_', strtoupper((string) $reason));
+        return false;
     }
 
     public function rightsReady()
