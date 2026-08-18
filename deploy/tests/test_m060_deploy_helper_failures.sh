@@ -2,7 +2,11 @@
 set -Eeuo pipefail
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
-test_root=$(mktemp -d /private/tmp/m060-deploy-helper-test.XXXXXX)
+if [[ -d /private/tmp ]]; then
+  test_root=$(mktemp -d /private/tmp/m060-deploy-helper-test.XXXXXX)
+else
+  test_root=$(mktemp -d /tmp/m060-deploy-helper-test.XXXXXX)
+fi
 trap 'rm -rf "$test_root"' EXIT
 for dir in inbox target code-backups db-backups state state/requests state/container-root artifacts bin; do mkdir -p "$test_root/$dir"; done
 helper_source=${M060_DEPLOY_HELPER_SOURCE:-$repo_root/deploy/tools/chinaplanetos_backup_erp_m060_deploy.sh}
