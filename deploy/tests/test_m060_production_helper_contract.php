@@ -30,6 +30,7 @@ m060ProductionAssert(strpos($helper, "ARTIFACT_SHA='e438730431f759c581a0b361fab5
 m060ProductionAssert(strpos($helper, 'erp-staging') === false && strpos($helper, 'backup-erp') === false, 'STAGING_IDENTIFIER');
 m060ProductionAssert(strpos($helper, 'restore_database_immediate') === false, 'FULL_DB_REWIND');
 m060ProductionAssert(strpos($helper, 'database_fingerprint') !== false && strpos($helper, 'CHECKSUM TABLE') !== false, 'RESTORE_REHEARSAL');
+m060ProductionAssert(strpos($helper, 'TABLE_NAME,TABLE_TYPE') !== false && strpos($helper, '[ "$kind" = "BASE TABLE" ]') !== false, 'VIEW_SCHEMA_WITHOUT_VIEW_EXECUTION');
 m060ProductionAssert(strpos($helper, 'recover_apply') !== false && strpos($helper, 'recover_rollback') !== false, 'RECOVERY_PATHS');
 m060ProductionAssert(strpos($helper, 'PRODUCTION_ACCESSED=YES') !== false, 'PRODUCTION_AUDIT');
 m060ProductionAssert(substr_count($sudoers, "\n") === 6, 'SUDOERS_COMMAND_COUNT');
