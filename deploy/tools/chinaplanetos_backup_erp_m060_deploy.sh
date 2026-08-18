@@ -4,11 +4,11 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M058-M060-R06'
+readonly RELEASE='M058-M060-R06A'
 readonly RUNTIME_COMMIT='26b4c7417d300b3254f0509830d8b5e7bf92e4a8'
 readonly BASELINE_COMMIT='606b54c852230b0674b0745084e107487cf3161d'
 readonly SHORT_COMMIT='26b4c74'
-readonly ARTIFACT_SHA='d2eb62d018d9837db03f56c6ce6ec620c9de9a17ecde762431de0fe6512cc361'
+readonly ARTIFACT_SHA='614426aa99287aefc0c4adeca4af60c4b136fc6507b7b09a421230a89fcc550b'
 readonly RUNTIME_MANIFEST_SHA='827a221538c3f947cc1b4f81290f99ebd98b3c163b0c03bc66bfb4359676b05f'
 readonly SUPPORT_MANIFEST_SHA='0064bd27cefa7edb4d5c51d1dc60edbb1727f0d16c4be0aacdcaeba59807dce5'
 readonly BASELINE_MANIFEST_SHA='5e6be92fda17e7554c0d0d403d97abd51ec3d3a56bc49d2b0428b0cdd672e1f3'
@@ -52,7 +52,7 @@ else
   TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
   BACKUP_ROOT='/root/backup-erp-code-backups'
   DB_BACKUP_ROOT='/root/backup-erp-db-backups'
-  STATE_ROOT='/var/lib/chinaplanetos-m060-deploy-staging-r06'
+  STATE_ROOT='/var/lib/chinaplanetos-m060-deploy-staging-r06a'
   ARTIFACT_ROOT='/root/backup-erp-release-artifacts'
 fi
 readonly TEST_MODE INBOX TARGET_ROOT BACKUP_ROOT DB_BACKUP_ROOT STATE_ROOT ARTIFACT_ROOT
