@@ -4,11 +4,11 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M058-M060-R05'
-readonly RUNTIME_COMMIT='ec137734097c43d2b1e9022774de0459b45ba871'
+readonly RELEASE='M058-M060-R06'
+readonly RUNTIME_COMMIT='26b4c7417d300b3254f0509830d8b5e7bf92e4a8'
 readonly BASELINE_COMMIT='606b54c852230b0674b0745084e107487cf3161d'
-readonly SHORT_COMMIT='ec13773'
-readonly ARTIFACT_SHA='51818d2002d46afdc30c3518bc2c2f94867275c7f4708d840b1d7c30e81b1cdf'
+readonly SHORT_COMMIT='26b4c74'
+readonly ARTIFACT_SHA='d2eb62d018d9837db03f56c6ce6ec620c9de9a17ecde762431de0fe6512cc361'
 readonly RUNTIME_MANIFEST_SHA='827a221538c3f947cc1b4f81290f99ebd98b3c163b0c03bc66bfb4359676b05f'
 readonly SUPPORT_MANIFEST_SHA='0064bd27cefa7edb4d5c51d1dc60edbb1727f0d16c4be0aacdcaeba59807dce5'
 readonly BASELINE_MANIFEST_SHA='5e6be92fda17e7554c0d0d403d97abd51ec3d3a56bc49d2b0428b0cdd672e1f3'
@@ -17,7 +17,7 @@ readonly SUPPORT_MANIFEST='deploy/releases/m060-support-files.txt'
 readonly BASELINE_MANIFEST='deploy/releases/m060-m056-baseline.sha256'
 readonly MIGRATION='deploy/migrations/m060_internal_tasks_schema.php'
 readonly ARTIFACT_NAME="m060-internal-tasks-deploy-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m060-staging-ec13773-root-only'
+readonly DEPLOY_CONTEXT='m060-staging-26b4c74-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
@@ -52,7 +52,7 @@ else
   TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
   BACKUP_ROOT='/root/backup-erp-code-backups'
   DB_BACKUP_ROOT='/root/backup-erp-db-backups'
-  STATE_ROOT='/var/lib/chinaplanetos-m060-deploy-staging-r05'
+  STATE_ROOT='/var/lib/chinaplanetos-m060-deploy-staging-r06'
   ARTIFACT_ROOT='/root/backup-erp-release-artifacts'
 fi
 readonly TEST_MODE INBOX TARGET_ROOT BACKUP_ROOT DB_BACKUP_ROOT STATE_ROOT ARTIFACT_ROOT
@@ -282,7 +282,7 @@ candidate_checks() {
   for rel in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do if [[ "$rel" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$rel" >/dev/null || die 'CANDIDATE_LINT_FAILED'; fi; done
   for rel in "${STATIC_TESTS[@]}"; do docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$rel" >/dev/null || die 'CANDIDATE_TEST_FAILED'; done
 }
-schema_prestate() { [[ $TEST_MODE -eq 1 ]] && { SCHEMA_PRESTATE='MIGRATION_REQUIRED'; return; }; local out rc; set +e; out=$(docker exec -e M060_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" check 2>&1); rc=$?; set -e; if [[ $rc -eq 0 && "$out" == 'M060_SCHEMA_CHECK=READY' ]]; then SCHEMA_PRESTATE=READY; elif [[ $rc -eq 2 && "$out" == 'M060_SCHEMA_CHECK=MIGRATION_REQUIRED' ]]; then SCHEMA_PRESTATE=MIGRATION_REQUIRED; else echo "$out" >&2; die 'SCHEMA_PRESTATE_DRIFT'; fi; }
+schema_prestate() { [[ $TEST_MODE -eq 1 ]] && { SCHEMA_PRESTATE='MIGRATION_REQUIRED'; return; }; local out rc; set +e; out=$(docker exec -e M060_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" check 2>&1); rc=$?; set -e; if [[ $rc -eq 0 && "$out" == 'M060_SCHEMA_CHECK=READY' ]]; then SCHEMA_PRESTATE=READY; elif [[ $rc -eq 2 && "$out" =~ ^M060_SCHEMA_CHECK=MIGRATION_REQUIRED\ REASON=[A-Z0-9_]+$ ]]; then SCHEMA_PRESTATE=MIGRATION_REQUIRED; echo "$out"; else echo "$out" >&2; die 'SCHEMA_PRESTATE_DRIFT'; fi; }
 compare_files() { local rel target release_hash target_hash baseline state; DRIFT_COUNT=0; for rel in "${RUNTIME_FILES[@]}"; do target="$TARGET_ROOT/${rel#custom/}"; release_hash=$(sha256 "$CANDIDATE_ROOT/$rel"); baseline=$(awk -v p="$rel" '$2==p {print $1}' "$CANDIDATE_ROOT/$BASELINE_MANIFEST"); [[ -n "$baseline" ]] || die 'BASELINE_PATH_MISSING'; if [[ ! -e "$target" && ! -L "$target" ]]; then if [[ "$baseline" == ABSENT ]]; then state=BASELINE_ABSENT; else state=DRIFT_ABSENT; ((DRIFT_COUNT+=1)); fi; else [[ -f "$target" && ! -L "$target" ]] || die 'TARGET_FILE_INVALID'; target_hash=$(sha256 "$target"); if [[ "$target_hash" == "$release_hash" ]]; then state=CURRENT; elif [[ "$baseline" != ABSENT && "$target_hash" == "$baseline" ]]; then state=BASELINE_M056; else state=DRIFT; ((DRIFT_COUNT+=1)); fi; fi; echo "M060_DEPLOY_COMPARE FILE=$rel STATE=$state BASELINE_SHA=$baseline RELEASE_SHA=$release_hash"; done; }
 
 create_code_backup() {
