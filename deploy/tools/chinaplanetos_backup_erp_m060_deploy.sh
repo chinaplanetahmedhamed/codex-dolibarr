@@ -17,7 +17,7 @@ readonly SUPPORT_MANIFEST='deploy/releases/m060-support-files.txt'
 readonly BASELINE_MANIFEST='deploy/releases/m060-m056-baseline.sha256'
 readonly MIGRATION='deploy/migrations/m060_internal_tasks_schema.php'
 readonly ARTIFACT_NAME="m060-internal-tasks-deploy-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m060-staging-4cb98b3-root-only'
+readonly DEPLOY_CONTEXT='m060-staging-ec13773-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
@@ -108,7 +108,7 @@ drop_validation_database() {
 }
 
 cleanup_paths() {
-  if [[ $TEST_MODE -eq 0 && -n "$CANDIDATE_REMOTE" && "$CANDIDATE_REMOTE" == /root/m060-deploy-candidate.* ]]; then docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || return 1; fi
+  if [[ $TEST_MODE -eq 0 && -n "$CANDIDATE_REMOTE" && "$CANDIDATE_REMOTE" == /root/m060-deploy-candidate.* ]]; then docker exec -u 0:0 "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || return 1; fi
   if [[ -n "$CANDIDATE_ROOT" ]]; then case "$CANDIDATE_ROOT" in /root/m060-deploy-candidate.*|/tmp/m060-deploy-helper-test.*/state/candidate.*|/private/tmp/m060-deploy-helper-test.*/state/candidate.*) [[ -d "$CANDIDATE_ROOT" ]] && rm -rf "$CANDIDATE_ROOT" ;; esac; fi
   if [[ -n "$ARTIFACT_COPY" ]]; then case "$ARTIFACT_COPY" in /root/m060-deploy-artifact.*|/tmp/m060-deploy-helper-test.*/state/artifact.*|/private/tmp/m060-deploy-helper-test.*/state/artifact.*) [[ -f "$ARTIFACT_COPY" ]] && rm -f "$ARTIFACT_COPY" ;; esac; fi
 }
@@ -131,8 +131,8 @@ prestate_matches() {
   while IFS='|' read -r rel state expected owner group mode; do target="$TARGET_ROOT/$rel"; safe_target "$target" 0 || return 1; case "$state" in ABSENT) [[ ! -e "$target" && ! -L "$target" ]] || return 1 ;; PRESENT) [[ -f "$target" && ! -L "$target" && $(sha256 "$target") == "$expected" ]] || return 1; [[ $TEST_MODE -eq 1 || $(owner_group_of "$target") == "$owner:$group" ]] || return 1; [[ $(mode_of "$target") == "$mode" ]] || return 1 ;; *) return 1 ;; esac; done <"$PRESTATE_FILE"
 }
 
-disable_schema() { [[ $TEST_MODE -eq 1 ]] && return 0; docker exec -e M060_DOL_DOCUMENT_ROOT=/var/www/html -e M060_DEPLOY_CONTEXT="$DEPLOY_CONTEXT" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" disable >/dev/null; }
-apply_schema() { [[ $TEST_MODE -eq 1 ]] && return 0; docker exec -e M060_DOL_DOCUMENT_ROOT=/var/www/html -e M060_DEPLOY_CONTEXT="$DEPLOY_CONTEXT" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" apply >/dev/null; }
+disable_schema() { [[ $TEST_MODE -eq 1 ]] && return 0; docker exec -u 0:0 -e M060_DOL_DOCUMENT_ROOT=/var/www/html -e M060_DEPLOY_CONTEXT="$DEPLOY_CONTEXT" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" disable >/dev/null; }
+apply_schema() { [[ $TEST_MODE -eq 1 ]] && return 0; docker exec -u 0:0 -e M060_DOL_DOCUMENT_ROOT=/var/www/html -e M060_DEPLOY_CONTEXT="$DEPLOY_CONTEXT" "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" apply >/dev/null; }
 
 reapply_release() {
   validate_backup_file "$REAPPLY_CODE" "$REAPPLY_CODE_SHA" || return 1
@@ -304,7 +304,20 @@ command_compare() { check_environment; prepare_inbox_candidate; schema_prestate;
 command_preflight() { check_environment; prepare_inbox_candidate; schema_prestate; compare_files; [[ $DRIFT_COUNT -eq 0 ]] || die 'BASELINE_DRIFT'; echo "M060_DEPLOY_PREFLIGHT=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
 command_apply() {
   exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment 1; clear_stale_candidates || die 'STALE_CANDIDATE_CLEANUP_FAILED'
-  if [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]]; then load_state; if [[ "$STATE_STATUS" == PENDING_* ]]; then reconcile_pending || die 'PENDING_RECONCILE_FAILED'; return; fi; finalize_terminal_request_from_state || die 'TERMINAL_AUDIT_RECONCILE_FAILED'; [[ "$STATE_STATUS" == 'ROLLED_BACK_SCHEMA_RETAINED' || "$STATE_STATUS" == 'APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED' || "$STATE_STATUS" == 'APPLY_FAILED_NO_MUTATION' ]] || die 'STATE_NOT_APPLYABLE'; fi
+  if [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]]; then
+    load_state
+    if [[ "$STATE_STATUS" == PENDING_* ]]; then reconcile_pending || die 'PENDING_RECONCILE_FAILED'; return; fi
+    finalize_terminal_request_from_state || die 'TERMINAL_AUDIT_RECONCILE_FAILED'
+    if [[ "$STATE_STATUS" == 'APPLY_FAILED_RECOVERY_REQUIRED' ]]; then
+      prepare_retained_candidate
+      CODE_MUTATED=1; SCHEMA_MUTATED=1
+      recover_apply || die 'RECOVERY_RETRY_FAILED'
+      CODE_MUTATED=0; SCHEMA_MUTATED=0
+      echo 'M060_DEPLOY_RECONCILE=PASS RESULT=AUTO_ROLLED_BACK_SCHEMA_RETAINED'
+      return
+    fi
+    [[ "$STATE_STATUS" == 'ROLLED_BACK_SCHEMA_RETAINED' || "$STATE_STATUS" == 'APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED' || "$STATE_STATUS" == 'APPLY_FAILED_NO_MUTATION' ]] || die 'STATE_NOT_APPLYABLE'
+  fi
   prepare_inbox_candidate; schema_prestate; compare_files; [[ $DRIFT_COUNT -eq 0 && "$SCHEMA_PRESTATE" == MIGRATION_REQUIRED ]] || die 'APPLY_PRESTATE_INVALID'
   new_request_id; begin_request; retain_artifact; save_state 'PENDING_APPLY_PREPARE'; create_code_backup; create_database_backup; validate_database_backup; save_state 'PENDING_APPLY'
   CODE_MUTATED=1; apply_code; SCHEMA_MUTATED=1; apply_schema; live_checks || die 'LIVE_CHECK_FAILED'; save_state 'DEPLOYED'; finish_request 'APPLIED'; CODE_MUTATED=0; SCHEMA_MUTATED=0

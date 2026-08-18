@@ -30,12 +30,14 @@ m060DeployAssert(strpos($helper, 'recover_rollback') !== false && strpos($helper
 m060DeployAssert(strpos($helper, 'RETAINED_ARTIFACT') !== false && strpos($helper, 'prepare_retained_candidate') !== false, 'SELF_CONTAINED_ROLLBACK');
 m060DeployAssert(strpos($helper, 'mktemp -d /root/m060-deploy-candidate.XXXXXX') !== false && strpos($helper, 'chmod 0700') !== false, 'PRIVATE_CONTAINER_CANDIDATE');
 m060DeployAssert(strpos($helper, "RELEASE='M058-M060-R08'") !== false && strpos($helper, "RUNTIME_COMMIT='4cb98b36eedfe932097f66822f48837b423d2337'") !== false, 'R08_RELEASE_PIN');
-m060DeployAssert(strpos($helper, "DEPLOY_CONTEXT='m060-staging-4cb98b3-root-only'") !== false, 'MUTATOR_CONTEXT');
+m060DeployAssert(strpos($helper, "DEPLOY_CONTEXT='m060-staging-ec13773-root-only'") !== false, 'MUTATOR_CONTEXT');
+m060DeployAssert(substr_count($helper, 'docker exec -u 0:0 -e M060_DOL_DOCUMENT_ROOT=/var/www/html') >= 2, 'MUTATOR_ROOT_IDENTITY');
 m060DeployAssert(strpos($helper, "STATE_ROOT='/var/lib/chinaplanetos-m060-deploy-staging-r08'") !== false, 'R08_STATE_ISOLATION');
 m060DeployAssert(strpos($helper, 'REQUEST_STATUS=PENDING') !== false && strpos($helper, 'append_audit') !== false, 'DURABLE_AUDIT');
 m060DeployAssert(strpos($helper, 'REQUEST_STARTED=0') !== false && strpos($helper, 'PENDING_APPLY_PREPARE') !== false && strpos($helper, 'reconcile_pending') !== false, 'PENDING_RECONCILIATION');
 m060DeployAssert(strpos($helper, 'finish_request \'APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED\' || return 1') !== false, 'TERMINAL_AUDIT_FAIL_CLOSED');
 m060DeployAssert(strpos($helper, 'finalize_terminal_request_from_state') !== false && strpos($helper, 'APPLIED_RECOVERED_TERMINAL_AUDIT') !== false, 'FINAL_STATE_AUDIT_RECONCILIATION');
+m060DeployAssert(strpos($helper, 'if [[ "$STATE_STATUS" == \'APPLY_FAILED_RECOVERY_REQUIRED\' ]]') !== false && strpos($helper, "die 'RECOVERY_RETRY_FAILED'") !== false, 'RECOVERY_REQUIRED_RETRY');
 m060DeployAssert(strpos($helper, 'if [[ "$REQUEST_ACTION" == rollback ]]; then save_state DEPLOYED') !== false, 'ROLLBACK_NO_MUTATION_STATE');
 m060DeployAssert(strpos($helper, 'check_environment 1; clear_stale_candidates') !== false && strpos($helper, "== 'root:root 700'") !== false, 'STALE_RESTART_GATE');
 m060DeployAssert(strpos($helper, 'command_status()') !== false && strpos($helper, 'load_state; REQUEST_STARTED=0; grep') !== false, 'STATUS_READ_ONLY');
@@ -50,7 +52,7 @@ foreach (array('compare', 'preflight', 'apply', 'verify', 'rollback', 'status') 
 }
 m060DeployAssert(strpos($installer, 'GLOBAL_SUDOERS_PRECHECK_FAILED') < strpos($installer, 'mv "$sudoers_stage" "$TARGET_SUDOERS"'), 'INSTALL_PRECHECK_ORDER');
 m060DeployAssert(strpos($installer, 'installed_sudoers') !== false && strpos($installer, 'INSTALL_COMPLETE') !== false, 'INSTALL_TRANSACTION');
-m060DeployAssert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='b9972b9e33486fa42db0cb83d63bb942a64508579aace1584f0df834b4cd0309'") !== false, 'INSTALL_PREVIOUS_HELPER_PIN');
+m060DeployAssert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='4d68a911ef10e3a8b0a1c9c385b6be97e88f535cf5483bb27c6cf9ff7ec86e25'") !== false, 'INSTALL_PREVIOUS_HELPER_PIN');
 m060DeployAssert(strpos($installer, 'helper_replaced') !== false && strpos($installer, 'PREVIOUS_HELPER_BACKUP_INVALID') !== false, 'INSTALL_UPGRADE_TRANSACTION');
 m060DeployAssert(strpos($installer, 'DEPLOY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO') !== false, 'INSTALL_BOUNDARY');
 preg_match("/readonly HELPER_SHA='([0-9a-f]{64})'/", $installer, $helperMatch);
