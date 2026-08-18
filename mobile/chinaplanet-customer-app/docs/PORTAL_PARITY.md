@@ -1,5 +1,29 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-08-15 — M060 internal task card collaboration
+
+- Source change: extends the staff-only Dolibarr task card with comments, authorized mentions, internal notifications, checklists, reusable labels, private drag/drop/paste assets, image lightbox and safe board counters.
+- Admin ERP: `IMPLEMENTED_AND_AUTHENTICATED_LOCAL`; source/runtime tests and authenticated English desktop/390×844/360 checks passed for board, direct card, shell-free drawer, New Task, Manage Labels and Notifications without horizontal overflow or console errors.
+- Customer Portal: `NOT_APPLICABLE_UNCHANGED`; no Customer Center route, customer task projection, permission, file, status or notification changed.
+- Mobile App: `NOT_APPLICABLE_UNCHANGED`; `/api/mobile/v1`, native screens and customer-visible contracts did not change.
+- API/data dependency: no public/customer/mobile API. All M060 rows are exact-entity internal records behind the existing task-read boundary; private comments, users, labels, filenames and counts are never projected to customer surfaces.
+- Design/terminology impact: Admin-only Arabic/English/Chinese sections and responsive keyboard/touch controls; no customer/mobile wording or design change.
+- Phone verification: authenticated admin web passed at 390×844 and 360px with one board column, full-screen task dialogs, 44px controls and no page-wide overflow. Native mobile acceptance is not applicable.
+- Status: `ADMIN_LOCAL_RUNTIME_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: complete the separately gated authenticated AR/ZH worker/supervisor and fault/concurrency matrix before any release; never expose internal collaboration to portal/mobile surfaces.
+
+## 2026-08-14 — M058 secure internal work Kanban Phase 1
+
+- Source change: adds a staff-only Dolibarr task board, team-scoped supervision, controlled workflow and private task assets under `chinaplanetoperations`.
+- Admin ERP: `IMPLEMENTED_LOCAL_SOURCE_AND_SYNTHETIC_DB`; authorization, migration, task workflow, stale-write, adversarial-file and responsive source contracts passed on an isolated restored database.
+- Customer Portal: `NOT_APPLICABLE_UNCHANGED`; no Customer Center route, task projection, customer status, document or permission changed.
+- Mobile App: `NOT_APPLICABLE_UNCHANGED`; `/api/mobile/v1`, app source and customer-visible data contracts did not change.
+- API/data dependency: no public/customer/mobile API. `cpo_task` remains internal truth; task assets have no customer/forwarder visibility field or public link.
+- Design/terminology impact: Admin-only Arabic/English/Chinese board with derived RTL/LTR and one-stage phone navigation; no customer/mobile terminology change.
+- Phone verification: deterministic source/UI contract passed for 390px and 360px layout rules; authenticated real-browser acceptance is not claimed in this local source report.
+- Status: `ADMIN_LOCAL_IMPLEMENTED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: conduct separately approved authenticated runtime/browser acceptance before any release; never expose internal tasks or files to portal/mobile surfaces.
+
 ## 2026-08-06 — M044 Palestine shipping-country normalization
 
 - Source change: Shipping Prices importer and public/staff country label normalize Ashdod and Haifa from `IL` to `PS`.
@@ -297,3 +321,25 @@ For every relevant change:
 - أثر التصميم والمصطلحات: لا تغيير.
 - التحقق على الهاتف: غير مطلوب؛ لا تغيير مرئي. اختبار المصدر الخاص بمنع الكتابة للعميل بقي ضمن تغطية M010 حتى شرط CSS baseline غير المتعلق بالمهمة.
 - الحالة: `ADMIN_SOURCE_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
+
+### 2026-08-13 — M055 الرد على طلبات الموقع بالبريد وWhatsApp
+
+- تغيير المصدر: أضيف داخل تفاصيل طلب الموقع محرر بريد للموظف وزر WhatsApp يعتمد على البريد والهاتف المحفوظين في الطلب؛ لا يتغير عقد استقبال الطلب من الموقع.
+- ERP الإداري: `IMPLEMENTED_AND_SOURCE_VERIFIED_LOCAL`؛ المستلم ثابت من الخادم، والمرسل من إعداد Dolibarr، والإرسال محمي بصلاحيتي تعديل الطلب والبريد وCSRF، ويسجل حدثًا في Agenda. عند وجود عرض سعر يستخدم تتبع العرض القياسي.
+- بوابة العميل: `NOT_APPLICABLE`؛ لا تغيير في المسارات أو الإسقاط أو واجهة العميل.
+- تطبيق الهاتف: `NOT_APPLICABLE`؛ لا تغيير في `/api/mobile/v1` أو أي شاشة أصلية.
+- اعتماد API والبيانات: لا API أو schema جديد. رابط WhatsApp يُنشأ فقط لرقم دولي صحيح ويفتح تبويبًا منفصلًا دون إرسال تلقائي أو بيانات اعتماد Meta.
+- أثر التصميم والمصطلحات: أضيفت تسميات عربية وإنجليزية وصينية وحالات عدم توفر، وتتكدس الأزرار ونموذج البريد بعرض كامل تحت `700px`.
+- التحقق على الهاتف: `SOURCE_CONTRACT_PASS`؛ قبول متصفح فعلي عند `390px` ينتظر موافقة staging مستقلة.
+- الحالة: `ADMIN_LOCAL_SOURCE_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
+
+### 2026-08-14 — M056 إشعار العميل بالبريد عند تغيير حالة الشحنة
+
+- تغيير المصدر: أضيف خيار صريح للموظف داخل تعديل الشحنة لإرسال بريد بعد الحفظ فقط عندما تتغير الحالة فعليًا ويكون التحديث منشورًا للعميل. يُقرأ المستلم من البريد الرئيسي للعميل داخل نفس الكيان، ويُستخدم مرسل Dolibarr المضبوط، ويُسجل النجاح في Agenda.
+- ERP الإداري: `LOCAL_IMPLEMENTED_AND_SOURCE_VERIFIED`؛ الإرسال يتطلب صلاحية تعديل China Planet Logistics وصلاحية Dolibarr القياسية لإرسال الشحنات، ولا يظهر للعميل الخارجي. فشل البريد لا يعيد حالة الشحنة للخلف ويظهر تحذيرًا للموظف.
+- بوابة العميل: `BEHAVIOR_UNCHANGED`؛ تستمر في عرض حدث الحالة نفسه الذي حُفظ قبل محاولة البريد. رابط البريد يقود إلى بطاقة الشحنة الموثقة الموجودة، مع استمرار فحص `entity/fk_soc` في الصفحة.
+- تطبيق الهاتف: `BEHAVIOR_UNCHANGED`؛ لا تغيير في `/api/mobile/v1` أو الشاشة الأصلية، وتستمر الحالة الحالية في استهلاك نفس بيانات الشحنة. الإشعار هنا Email فقط وليس Push.
+- اعتماد API والبيانات: لا API أو schema جديد. البريد يحتوي allowlist من مرجع الشحنة والحالة السابقة والجديدة وETA وسبب التحديث العام ورابط المتابعة؛ لا يحتوي ملاحظات داخلية أو تكلفة أو هامش أو مورد أو ملفات.
+- أثر التصميم والمصطلحات: صف إضافي صغير في نموذج تعديل الإدارة فقط: `Send email notification / إرسال إشعار بالبريد`. لا تغيير مرئي في البوابة أو التطبيق.
+- التحقق على الهاتف: `STAGING_390PX_PASS` للإدارة؛ ظهر خيار البريد وزر التحديث دون تجاوز أفقي. محاولة الإرسال التجريبية حفظت الحالة وأظهرت فشل البريد وإعادة المحاولة بأمان، لكن إعداد PHP mail في staging منع إثبات Mailpit/Agenda/الرابط.
+- الحالة: `ADMIN_STAGING_UI_VERIFIED`, `PORTAL_BEHAVIOR_UNCHANGED`, `MOBILE_BEHAVIOR_UNCHANGED`, `STAGING_SMTP_BLOCKED_SAFE`, `PRODUCTION_RELEASE_APPROVED_PENDING_DEPLOYMENT`.

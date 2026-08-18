@@ -46,6 +46,7 @@ class ChinaPlanetLogistics extends CommonObject
     public $audit_source_label = '';
     public $audit_reason_public = '';
     public $audit_customer_visible = 1;
+    public $last_status_change = null;
 
     public function __construct($db)
     {
@@ -194,6 +195,7 @@ class ChinaPlanetLogistics extends CommonObject
     // ── UPDATE ────────────────────────────────────────────────────────────
     public function update($user, $notrigger = 0)
     {
+        $this->last_status_change = null;
         if (!cpl_shipment_schema_ready($this->db)) {
             $this->error = 'Shipment command-center schema is not installed; audited shipment changes are blocked.';
             return -1;
@@ -250,6 +252,7 @@ class ChinaPlanetLogistics extends CommonObject
         $this->entity = $this->activeEntity();
         $events = array();
         if ((int) $old->fk_statut !== (int) $this->fk_statut) {
+            $this->last_status_change = array('from'=>(int) $old->fk_statut, 'to'=>(int) $this->fk_statut);
             $events[] = array('event_type'=>'status_changed','milestone_code'=>cpl_status_milestone($this->fk_statut),'status_from'=>(int)$old->fk_statut,'status_to'=>(int)$this->fk_statut);
         }
         $oldEta = $this->db->jdate($old->date_eta); $newEta = $this->date_eta;
@@ -272,7 +275,11 @@ class ChinaPlanetLogistics extends CommonObject
                 return -1;
             }
         }
-        $this->db->commit();
+        if (!$this->db->commit()) {
+            $this->last_status_change = null;
+            $this->error = 'Shipment update could not be committed.';
+            return -1;
+        }
         return 1;
     }
 

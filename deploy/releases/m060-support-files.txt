@@ -1,0 +1,9 @@
+deploy/migrations/m060_internal_tasks_schema.php
+deploy/tests/test_m058_asset_validation.php
+deploy/tests/test_m058_failure_contract.php
+deploy/tests/test_m058_source_contract.php
+deploy/tests/test_m058_ui_contract.php
+deploy/tests/test_m059_source_contract.php
+deploy/tests/test_m059_ui_contract.php
+deploy/tests/test_m060_source_contract.php
+deploy/tests/test_m060_ui_contract.php

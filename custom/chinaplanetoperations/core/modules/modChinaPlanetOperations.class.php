@@ -13,7 +13,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.4.0';
+        $this->version = '2.7.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
@@ -41,6 +41,15 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500513, 'Update public website intake requests', 'publicrequest_update'),
             array(500514, 'Promote public website requests to operations', 'publicrequest_promote'),
             array(500515, 'Prepare draft quotations from public website requests', 'publicrequest_quote'),
+            array(500516, 'Read own assigned internal tasks', 'task_read_own'),
+            array(500517, 'Update own assigned internal tasks', 'task_update_own'),
+            array(500518, 'Use secure internal task files', 'task_upload_own'),
+            array(500519, 'Manage explicitly granted internal task teams', 'task_manage_team'),
+            array(500520, 'Cancel, archive and restore scoped internal tasks', 'task_archive'),
+            array(500521, 'Soft delete archived internal tasks', 'task_delete'),
+            array(500522, 'Administer internal task board and team grants', 'task_admin'),
+            array(500523, 'Comment on readable internal tasks', 'task_comment'),
+            array(500524, 'Manage checklists on scoped internal tasks', 'task_checklist'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;
@@ -87,12 +96,45 @@ class modChinaPlanetOperations extends DolibarrModules
             'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")', 'user'=>0,
         );
         $this->menu[$r++] = array(
-            'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
-            'titre'=>'InternalTaskBoard', 'mainmenu'=>'chinaplanetoperations', 'leftmenu'=>'operations_tasks',
+            'fk_menu'=>'0', 'type'=>'top',
+            'titre'=>'TeamTasks', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'0',
             'url'=>'/custom/chinaplanetoperations/tasks/board.php',
             'langs'=>'chinaplanetoperations@chinaplanetoperations',
-            'position'=>106, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
-            'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")', 'user'=>0,
+            'position'=>92, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_read_own") || $user->hasRight("chinaplanetoperations","task_manage_team") || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+            'picto'=>'fa-clipboard-check',
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanettasks', 'type'=>'left',
+            'titre'=>'InternalTaskManageColumns', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'operations_task_columns',
+            'url'=>'/custom/chinaplanetoperations/tasks/stages.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>100, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanettasks', 'type'=>'left',
+            'titre'=>'InternalTaskNotifications', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'operations_task_notifications',
+            'url'=>'/custom/chinaplanetoperations/tasks/inbox.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>101, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_read_own") || $user->hasRight("chinaplanetoperations","task_manage_team") || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanettasks', 'type'=>'left',
+            'titre'=>'InternalTaskManageLabels', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'operations_task_labels',
+            'url'=>'/custom/chinaplanetoperations/tasks/labels.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>102, 'enabled'=>'$conf->chinaplanetoperations->enabled',
+            'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
+            'titre'=>'InternalTaskTeamGrants', 'mainmenu'=>'chinaplanetoperations', 'leftmenu'=>'operations_task_grants',
+            'url'=>'/custom/chinaplanetoperations/tasks/team_admin.php',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>107, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
+            'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
         );
         $this->menu[$r++] = array(
             'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
@@ -122,8 +164,22 @@ class modChinaPlanetOperations extends DolibarrModules
 
     public function init($options = '')
     {
+        require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/InternalTaskMigration.class.php';
+        $migration = new InternalTaskMigration($this->db);
+        foreach (InternalTaskMigration::rightCodes() as $rightId => $rightCode) {
+            if ($migration->rightCollision($rightId)) {
+                $this->error = 'Internal task right ID collision: '.(int) $rightId;
+                return -1;
+            }
+        }
         $result = $this->_load_tables('/chinaplanetoperations/sql/');
         if ($result <= 0) return $result;
+        try {
+            $migration->migrate();
+        } catch (Throwable $e) {
+            $this->error = 'Unable to install the internal task board: '.$e->getMessage();
+            return -1;
+        }
         require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';
         $defaults = array(
             'CHINAPLANETOPERATIONS_DEFAULT_CONTENT_LANG'=>'en_US',

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/InternalTaskService.class.php';
+
 class OperationsService
 {
     private $db;
@@ -24,7 +26,7 @@ class OperationsService
 
     public static function taskStatuses()
     {
-        return array('todo'=>0,'in_progress'=>50,'waiting'=>50,'review'=>85,'done'=>100,'cancelled'=>0);
+        return InternalTaskService::boardStatuses();
     }
 
     public static function shippingOrderBuckets()
@@ -235,38 +237,40 @@ class OperationsService
         return $stats;
     }
 
-    public function stats()
+    public function stats($actor = null)
     {
         $stats = array('active'=>0,'overdue'=>0,'waiting'=>0,'tasks'=>0);
         $res=$this->db->query("SELECT COUNT(*) active,SUM(date_deadline<NOW() AND stage NOT IN ('completed','cancelled')) overdue,SUM(stage IN ('waiting_information','waiting_external')) waiting FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".$this->entity." AND status=1");
         if($res&&($o=$this->db->fetch_object($res))){$stats['active']=(int)$o->active;$stats['overdue']=(int)$o->overdue;$stats['waiting']=(int)$o->waiting;}
-        $res=$this->db->query("SELECT COUNT(*) total FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".$this->entity." AND status NOT IN ('done','cancelled')"); if($res&&($o=$this->db->fetch_object($res)))$stats['tasks']=(int)$o->total;
+        try {$stats['tasks']=(new InternalTaskService($this->db,$actor))->openCount();} catch(Throwable $e) {$stats['tasks']=0;}
         return $stats;
     }
 
     public function createTask(array $data, $userId)
     {
-        $ref=$this->nextTaskRef(); $status=isset(self::taskStatuses()[$data['status']])?$data['status']:'todo';
-        $sql="INSERT INTO ".MAIN_DB_PREFIX."cpo_task(entity,ref,fk_operation,title,description,fk_user_assign,fk_user_creat,priority,status,progress,date_deadline,private_note,position,date_creation) VALUES(".$this->entity.",".$this->q($ref).",".$this->n($data,'fk_operation').",".$this->q($data['title']).",".$this->q($data['description']).",".$this->n($data,'fk_user_assign').",".(int)$userId.",".$this->q($data['priority']?:'normal').",".$this->q($status).",".(int)self::taskStatuses()[$status].",".$this->dateOrNull($data['date_deadline']).",".$this->q($data['private_note']).",0,".$this->q($this->now()).")";
-        if(!$this->db->query($sql))$this->fail(); $id=(int)$this->db->last_insert_id(MAIN_DB_PREFIX.'cpo_task'); $this->log((int)($data['fk_operation']??0),$id,'task_created',$data['title'],'internal',$userId); return $id;
+        $data['fk_user_creat']=(int)$userId;
+        return (new InternalTaskService($this->db))->createTask($data,false,true);
     }
 
-    public function moveTask($id,$status,$userId)
+    public function moveTask($id,$status,$userId,$version=0,array $data=array())
     {
-        if(!isset(self::taskStatuses()[$status]))throw new RuntimeException('Invalid task status');
-        $res=$this->db->query("SELECT fk_operation FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".$this->entity." AND rowid=".(int)$id);$task=$res?$this->db->fetch_object($res):null;if(!$task)throw new RuntimeException('Task not found');
-        $completed=$status==='done'?$this->q($this->now()):'NULL';
-        if(!$this->db->query("UPDATE ".MAIN_DB_PREFIX."cpo_task SET status=".$this->q($status).",progress=".(int)self::taskStatuses()[$status].",date_completed=".$completed." WHERE entity=".$this->entity." AND rowid=".(int)$id))$this->fail();
-        $this->log((int)$task->fk_operation,$id,'task_moved',$status,'internal',$userId); return true;
+        if((int)$version<=0)throw new InternalTaskConflictException('Task changed. Refresh and retry.');
+        return (new InternalTaskService($this->db))->transition($id,$version,$status,$data);
     }
 
     public function tasks($operationId=0)
     {
-        $where='t.entity='.$this->entity; if($operationId)$where.=' AND t.fk_operation='.(int)$operationId;
-        return $this->rows("SELECT t.*,o.ref operation_ref,o.title operation_title,u.login owner_login FROM ".MAIN_DB_PREFIX."cpo_task t LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=t.fk_operation AND o.entity=t.entity LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=t.fk_user_assign WHERE ".$where." ORDER BY t.position,t.date_deadline IS NULL,t.date_deadline,t.tms DESC");
+        $tasks=new InternalTaskService($this->db);
+        if(!$tasks->authorization()->canOpenBoard())return array();
+        return $operationId?$tasks->operationTasks($operationId):$tasks->listTasks(array('view'=>'my'));
     }
 
-    public function activities($operationId){return $this->rows("SELECT a.*,u.login FROM ".MAIN_DB_PREFIX."cpo_activity a LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=a.fk_user WHERE a.entity=".$this->entity." AND a.fk_operation=".(int)$operationId." ORDER BY a.date_action DESC,a.rowid DESC LIMIT 100");}
+    public function activities($operationId,$actor=null)
+    {
+        $tasks=new InternalTaskService($this->db,$actor);$auth=$tasks->authorization();
+        $taskScope=$auth->canOpenBoard()?"EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpo_task cpo_at WHERE cpo_at.entity=a.entity AND cpo_at.rowid=a.fk_task AND cpo_at.status<>'deleted' AND cpo_at.date_archived IS NULL AND ".$auth->readableSql('cpo_at').')':'1=0';
+        return $this->rows("SELECT a.*,u.login FROM ".MAIN_DB_PREFIX."cpo_activity a LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=a.fk_user AND u.entity=a.entity WHERE a.entity=".$this->entity." AND a.fk_operation=".(int)$operationId." AND a.action_code<>'task_create_request' AND (a.fk_task IS NULL OR ".$taskScope.") ORDER BY a.date_action DESC,a.rowid DESC LIMIT 100");
+    }
 
     public function saveMessageDraft($operationId,array $data,$userId)
     {
@@ -301,7 +305,8 @@ class OperationsService
             'order'=>array('Confirm customer requirements','Confirm supplier and quotation','Record payment terms','Follow production','Prepare packing list and invoice','Arrange QC/shipping'),
         );
         $items=isset($templates[$type])?$templates[$type]:array('Review requirements','Execute work','Supervisor review','Publish result');
-        foreach($items as $title)$this->createTask(array('fk_operation'=>$operationId,'title'=>$title,'description'=>'','fk_user_assign'=>$data['fk_user_assign']??0,'priority'=>$data['priority']??'normal','status'=>'todo','date_deadline'=>'','private_note'=>''),$userId);
+        $taskService=new InternalTaskService($this->db);
+        foreach($items as $title)$taskService->createTask(array('fk_operation'=>$operationId,'title'=>$title,'description'=>$title,'fk_usergroup'=>!empty($data['fk_usergroup'])?(int)$data['fk_usergroup']:0,'fk_user_assign'=>!empty($data['fk_usergroup'])?(int)($data['fk_user_assign']??0):0,'priority'=>$data['priority']??'normal','date_deadline'=>'','fk_user_creat'=>$userId),true,false);
     }
 
     private function shippingOrderBucket($stage, array $service)
@@ -379,7 +384,6 @@ class OperationsService
         $resql = $this->db->query($sql);
         if (!$resql || $this->db->num_rows($resql) !== 1) { $this->db->rollback(); throw new RuntimeException('Shipment, customer, and project must match.'); }
     }
-    private function nextTaskRef(){$year=date('Y');$like='CP-TK-'.$year.'-%';$res=$this->db->query("SELECT ref FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".$this->entity." AND ref LIKE ".$this->q($like)." ORDER BY ref DESC LIMIT 1");$o=$res?$this->db->fetch_object($res):null;$number=$o?(int)substr($o->ref,-6)+1:1;return 'CP-TK-'.$year.'-'.str_pad((string)$number,6,'0',STR_PAD_LEFT);}
     private function rows($sql){$out=array();$res=$this->db->query($sql);if(!$res)return $out;while($o=$this->db->fetch_object($res))$out[]=get_object_vars($o);return $out;}
     private function q($value){return "'".$this->db->escape((string)$value)."'";}
     private function n($data,$key){return !empty($data[$key])?(int)$data[$key]:'NULL';}

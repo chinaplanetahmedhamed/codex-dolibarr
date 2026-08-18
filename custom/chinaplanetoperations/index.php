@@ -9,7 +9,7 @@ $contentLang = cpo_content_language();
 $service = new OperationsSopService($db);
 $stats = $service->getStats();
 $operations = new OperationsService($db);
-$operationStats = $operations->stats();
+$operationStats = $operations->stats($user);
 $morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'));
 llxHeader('', $langs->trans('OperationsCenter'), '', '', 0, 0, array(), $morecss);
 ?>
@@ -23,7 +23,7 @@ llxHeader('', $langs->trans('OperationsCenter'), '', '', 0, 0, array(), $morecss
   </section>
   <section class="cpo-panel"><div class="cpo-panel-head"><h2><?php echo $langs->trans('OperationsDashboard'); ?></h2></div><div class="cpo-dashboard-links">
     <a href="operations/index.php"><strong><?php echo $langs->trans('OperationsRegister'); ?></strong><small><?php echo $langs->trans('OperationsRegisterHelp'); ?></small></a>
-    <a href="tasks/board.php"><strong><?php echo $langs->trans('InternalTaskBoard'); ?></strong><small><?php echo $langs->trans('TaskBoardHelp'); ?></small></a>
+    <?php if (cpo_task_can_open($db, $user)) { ?><a href="tasks/board.php"><strong><?php echo $langs->trans('InternalTaskBoard'); ?></strong><small><?php echo $langs->trans('TaskBoardHelp'); ?></small></a><?php } ?>
     <a href="sop/index.php?content_lang=<?php echo urlencode($contentLang); ?>"><strong><?php echo $langs->trans('MultilingualSopCenter'); ?></strong><small><?php echo $langs->trans('OpenSopLibrary'); ?></small></a>
     <?php if (cpo_can($user, 'category')) { ?><a href="sop/categories.php?content_lang=<?php echo urlencode($contentLang); ?>"><strong><?php echo $langs->trans('SopCategories'); ?></strong><small><?php echo $langs->trans('ManageCategories'); ?></small></a><?php } ?>
     <?php if (cpo_can($user, 'translation')) { ?><a href="admin/setup.php"><strong><?php echo $langs->trans('LanguageSettings'); ?></strong><small>AR · EN · ZH</small></a><?php } ?>

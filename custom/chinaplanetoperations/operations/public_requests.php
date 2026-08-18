@@ -5,6 +5,7 @@ require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/../lib/main.lib.php';
 require_once __DIR__.'/../class/PublicWebsiteRequestService.class.php';
 require_once __DIR__.'/../class/PublicRequestQuotationService.class.php';
+require_once __DIR__.'/../class/PublicRequestContactService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 function cpo_public_request_has_value($value)
@@ -92,8 +93,10 @@ cpo_require($user, 'publicrequest_read');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $service = new PublicWebsiteRequestService($db);
 $quotationService = new PublicRequestQuotationService($db);
+$contactService = new PublicRequestContactService($db);
 $action = GETPOST('action', 'aZ09');
 $id = GETPOSTINT('id');
+$compose = GETPOST('compose', 'aZ09');
 
 if ($action === 'save_quotation') {
     cpo_require($user, 'publicrequest_quote');
@@ -124,6 +127,19 @@ if ($action === 'update_status') {
         $service->updateStatus($id, GETPOST('status', 'alphanohtml'), GETPOST('internal_reason', 'restricthtml'), (int) $user->id);
         setEventMessages($langs->trans('PublicRequestUpdated'), null, 'mesgs');
     } catch (Throwable $e) { setEventMessages($e->getMessage(), null, 'errors'); }
+}
+if ($action === 'send_customer_email') {
+    cpo_require($user, 'publicrequest_update');
+    cpo_require($user, 'email_write');
+    $compose = 'email';
+    try {
+        $requestToContact = $service->get($id);
+        if (!$requestToContact) throw new PublicRequestContactException('public_request_not_found');
+        $sendResult = $contactService->sendEmail($requestToContact, GETPOST('email_subject', 'alphanohtml'), GETPOST('email_body', 'restricthtml'), $user);
+        setEventMessages($langs->trans('PublicCustomerEmailSent', $requestToContact['email']), null, 'mesgs');
+        if (empty($sendResult['history_recorded'])) setEventMessages($langs->trans('PublicCustomerEmailHistoryWarning'), null, 'warnings');
+        header('Location: public_requests.php?id='.(int) $id); exit;
+    } catch (Throwable $e) { setEventMessages($langs->trans($e->getMessage()), null, 'errors'); }
 }
 if ($action === 'promote') {
     cpo_require($user, 'publicrequest_promote');
@@ -169,6 +185,15 @@ $preparedQuoteLines = $catalogLines ? $quotationService->prepareLines($selected,
 $hasPackingGaps = false;
 foreach ($preparedQuoteLines as $preparedQuoteLine) if ((int) $preparedQuoteLine['units_per_carton'] < 1) { $hasPackingGaps = true; break; }
 $canQuote = $catalogLines && cpo_can($user, 'publicrequest_quote') && $user->hasRight('propal', 'creer') && $user->hasRight('product', 'read');
+$canContactByEmail = $selected && cpo_can($user, 'publicrequest_update') && cpo_can($user, 'email_write') && filter_var((string) $selected['email'], FILTER_VALIDATE_EMAIL);
+$whatsappUrl = $selected ? PublicRequestContactService::whatsappUrl($selected) : '';
+$canContactByWhatsApp = $whatsappUrl !== '' && cpo_can($user, 'publicrequest_update');
+$emailSubject = $selected ? PublicRequestContactService::defaultSubject($selected) : '';
+$emailBody = $selected ? PublicRequestContactService::defaultBody($selected) : '';
+if ($action === 'send_customer_email') {
+    $emailSubject = GETPOST('email_subject', 'alphanohtml');
+    $emailBody = GETPOST('email_body', 'restricthtml');
+}
 $morecss = array(
     cpo_asset('/custom/chinaplanetoperations/css/operations.css'),
     cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),
@@ -210,6 +235,10 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
           <?php echo cpo_public_request_field_html('email', $selected['email'], $langs); ?>
           <?php echo cpo_public_request_field_html('country_code', $selected['country_code'], $langs); ?>
         </div>
+        <div class="cpo-contact-actions">
+          <?php if($canContactByEmail){ ?><a class="button button-save" href="?id=<?php echo (int) $selected['rowid']; ?>&amp;compose=email#cpo-customer-email"><span class="fas fa-envelope" aria-hidden="true"></span> <?php echo $langs->trans('PublicReplyByEmail'); ?></a><?php } else { ?><span class="cpo-contact-unavailable"><span class="fas fa-envelope" aria-hidden="true"></span> <?php echo $langs->trans('PublicEmailUnavailable'); ?></span><?php } ?>
+          <?php if($canContactByWhatsApp){ ?><a class="button cpo-whatsapp-button" href="<?php echo dol_escape_htmltag($whatsappUrl); ?>" target="_blank" rel="noopener noreferrer"><span class="fab fa-whatsapp" aria-hidden="true"></span> <?php echo $langs->trans('PublicOpenWhatsApp'); ?><span class="fas fa-external-link-alt cpo-external-icon" aria-hidden="true"></span></a><?php } else { ?><span class="cpo-contact-unavailable"><span class="fab fa-whatsapp" aria-hidden="true"></span> <?php echo $langs->trans('PublicWhatsAppUnavailable'); ?></span><?php } ?>
+        </div>
       </article>
 
       <article class="cpo-request-block">
@@ -221,6 +250,21 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
         </div>
       </article>
     </div>
+
+    <?php if($compose === 'email' && $canContactByEmail){ ?>
+    <article class="cpo-request-block cpo-customer-email" id="cpo-customer-email">
+      <div class="cpo-customer-email-head"><span class="fas fa-reply" aria-hidden="true"></span><div><h3><?php echo $langs->trans('PublicReplyToCustomer'); ?></h3><p><?php echo $langs->trans('PublicReplyToCustomerHelp', $selected['email']); ?></p></div></div>
+      <form method="post">
+        <input type="hidden" name="token" value="<?php echo newToken(); ?>">
+        <input type="hidden" name="action" value="send_customer_email">
+        <input type="hidden" name="id" value="<?php echo (int) $selected['rowid']; ?>">
+        <div class="cpo-customer-email-meta"><span><small><?php echo $langs->trans('From'); ?></small><strong><?php echo dol_escape_htmltag((string) getDolGlobalString('MAIN_MAIL_EMAIL_FROM')); ?></strong></span><span><small><?php echo $langs->trans('MailTo'); ?></small><strong><?php echo dol_escape_htmltag($selected['email']); ?></strong></span></div>
+        <label><span><?php echo $langs->trans('MailTopic'); ?> *</span><input name="email_subject" maxlength="255" required value="<?php echo dol_escape_htmltag($emailSubject); ?>"></label>
+        <label><span><?php echo $langs->trans('Message'); ?> *</span><textarea name="email_body" rows="9" maxlength="20000" required><?php echo dol_escape_htmltag($emailBody); ?></textarea></label>
+        <div class="cpo-customer-email-actions"><p><span class="fas fa-shield-alt" aria-hidden="true"></span><?php echo $langs->trans(!empty($selected['fk_propal']) ? 'PublicEmailTrackedToQuotation' : 'PublicEmailTrackedToRequest'); ?></p><a class="button" href="?id=<?php echo (int) $selected['rowid']; ?>"><?php echo $langs->trans('Cancel'); ?></a><button class="button button-save" type="submit"><span class="fas fa-paper-plane" aria-hidden="true"></span> <?php echo $langs->trans('PublicSendCustomerEmail'); ?></button></div>
+      </form>
+    </article>
+    <?php } ?>
 
     <?php if(!empty($preparedQuoteLines)){
       $postedSources = (array) GETPOST('line_price_source', 'array:aZ09');

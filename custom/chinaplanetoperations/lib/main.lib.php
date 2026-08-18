@@ -10,6 +10,17 @@ function cpo_require($user, $right = 'read')
     if (!cpo_can($user, $right)) accessforbidden();
 }
 
+function cpo_task_can_open($db, $user)
+{
+    require_once __DIR__.'/../class/InternalTaskAuthorizationService.class.php';
+    return (new InternalTaskAuthorizationService($db, $user, (int) $GLOBALS['conf']->entity))->canOpenBoard();
+}
+
+function cpo_task_require($db, $user)
+{
+    if (!cpo_task_can_open($db, $user)) accessforbidden();
+}
+
 function cpo_content_language()
 {
     require_once __DIR__.'/../class/OperationsSopService.class.php';

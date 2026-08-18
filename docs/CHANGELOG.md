@@ -1,5 +1,62 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-15 — M060 internal task card collaboration
+
+- Added task-scoped plain-text comments, authorized mentions and a recipient-only in-app notification inbox with request-key replay protection, stable cursor pagination and administrator logical redaction.
+- Added named ordered checklists with item completion, rename, soft remove/restore and keyboard/touch Move up/down controls; collaboration never changes task progress, status, stage or task version.
+- Added reusable administrator-managed Arabic/English/Chinese labels, multi-label assignment, retired-label history and board filters with AND semantics.
+- Upgraded private task assets with drag/drop, local raster clipboard paste, a sequential multi-file queue, authenticated image lightbox and card cover/media handling through the existing validator.
+- Added accessible card-front label chips and visible-task checklist/comment/asset counters, while retaining exact worker/team/entity isolation.
+- Backed up, restored and activated module `2.7.0` in Ahmed's approved local Dolibarr runtime. Seven additive tables and disabled-by-default rights `500523`/`500524` were installed; all 14 tasks, 29 activities and 12/44 CP Kanban columns/cards were preserved.
+- Authenticated local English desktop, 390×844 and 360px board/card/drawer checks passed visually, including immediate comment insertion/redaction and counter reset. The full AR/ZH and worker/supervisor fault matrix remains a release gate.
+- Corrected a real Dolibarr runtime incompatibility found during browser acceptance: collaboration CAS updates now pass the update result to Dolibarr's `affected_rows`, fixing immediate comment redaction and the equivalent checklist/reorder/label update paths.
+- Corrected local attachment-size handling: the PHP 8.3 runtime now accepts the module's 50 MB document ceiling (`upload_max_filesize=50M`, `post_max_size=64M`), while the card rejects oversized files before transmission with localized AR/EN/ZH limits (10 MB for images/text, 50 MB for PDF/Office) instead of a generic upload failure.
+- The first image uploaded to a task now becomes its card cover automatically, so the Kanban card displays a thumbnail immediately; administrators can still replace, clear or choose another cover. The already-uploaded local acceptance image was set as the current cover and verified on card `CP-TK-2026-000014`.
+- Corrected valid Chrome/Skia PDF uploads whose declared compressed stream ends with a carriage-return data byte. The validator now honors the direct stream length for that byte while continuing to reject compressed JavaScript/actions and unsupported filter encodings; the exact locally rejected 551,428-byte PDF now passes validation.
+- Customer Center, mobile, public APIs, staging and production were not changed; no outbound message or Git push occurred.
+
+## 2026-08-15 — M059 internal task navigation and configurable work stages
+
+- Added one direct Team Tasks Dolibarr menu entry with role-aware All/Team/My defaults and a prominent New Task dialog that requires an authorized primary team and expected result.
+- Added exact-entity configurable work stages with localized names, accessible colors, protected lifecycle columns, optimistic versions, audit activity and deterministic legacy-terminal fallback.
+- Added administrator drag handles plus the same server-authorized keyboard/touch Move-to dialog for every role; waiting, review, done, archive and delete rules remain owned by the M058 lifecycle service.
+- Added an administrator Manage Columns page for adding, renaming, recoloring, activating/deactivating and work-segment reordering with in-use/protected blocking.
+- Backed up and activated module `2.6.0` in the Ahmed-approved local Dolibarr runtime. The authenticated Team Tasks menu/current state, board, New Task, Manage Columns and desktop/390/360 English responsive checks passed.
+- Corrected the first local Move-to acceptance failure caused by Dolibarr's empty base URI: AJAX actions now resolve the literal same-origin form route against the current page and reject non-JSON responses with localized safe feedback instead of exposing a JSON parser error.
+- Corrected local administrator acceptance: a verified active internal Dolibarr entity-zero superadministrator can open the entity board, while entity-zero non-admin, wrong-entity and external actors remain denied. Administrators can now move any incomplete card directly to any active column, including Done; worker/supervisor workflow restrictions are unchanged.
+- Preserved all 14 existing local tasks and all CP Kanban data. Customer Center, mobile, staging and production were not changed; the complete authenticated AR/EN/ZH role/fault matrix remains a pre-release gate.
+
+## 2026-08-14 — M058 secure internal work Kanban Phase 1
+
+- Added an entity-scoped internal worker board with My Tasks, explicit supervisor-team grants, administrator views, Unassigned/Unclassified/Archive handling, card detail, progress, waiting, review, completion, cancellation, archive, restore and exceptional soft-delete workflows.
+- Added least-privilege rights `500516`–`500522`, all disabled by default for non-admin users, and one server-side authorization boundary reused by board, card, counts, Operations projections, actions, history and file streams.
+- Added additive/idempotent task team, waiting, version, supervisor-grant and task-asset schema; legacy and generated tasks without an explicit team remain administrator-only Unclassified work.
+- Added internal-only images/files with strict allowlists and quotas, image normalization, OOXML/PDF/text validation, random private storage, versions, cover selection/removal, authenticated preview/download and no customer visibility state.
+- Added Arabic, English and Chinese UI plus responsive single-stage phone navigation, semantic keyboard/touch actions, focused source/runtime/adversarial-file/UI tests, and parity documentation.
+- After Ahmed's separate local-run approval, backed up and activated M058 in the local Dolibarr 23.0.3 runtime, preserving all 13 existing tasks. Corrected internal-user compatibility for Dolibarr accounts that represent no third party as `fk_soc=0` and expose a zero-valued user-object entity; exact database entity validation and external-user denial remain enforced. Authenticated `admin-agent` board access passed in the local browser.
+- Customer Center, mobile API/app, CP Kanban, projects, orders, shipments, finance, staging and production were not changed; no Git push or remote deployment occurred.
+
+## 2026-08-14 — M056 shipment status email notification
+
+- Added an explicit staff-controlled email option for committed, customer-visible shipment status changes, with server-resolved recipient/sender, Arabic/English/Chinese customer-safe content, authenticated shipment link and Dolibarr Agenda history.
+- Preserved operational shipment truth when SMTP or Agenda fails and added a permission/CSRF-protected retry for only the latest entity/customer-scoped public status event.
+- Reconciled staging's documented 200MB shipment upload correction as a complete two-file dependency and added a focused dependency contract test.
+- Deployed the exact eight-file runtime from `606b54c852230b0674b0745084e107487cf3161d` to canonical `backup-erp`; artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`. Compare, preflight, backup, apply, independent verify, HTTPS health and anonymous-login boundary passed.
+- Authenticated desktop/390px UI passed. A synthetic status transition committed safely, but staging email failed before Mailpit because Dolibarr staging uses PHP mail; no notification or email Agenda row was created and the retry action appeared.
+- Ahmed declined changing staging mail settings and explicitly directed the same exact M056 artifact to production for actual-work acceptance. The exact artifact/tooling upload and checksum-locked helper installation passed: helper SHA-256 `6798f0d893b6a6b2683832f96962cb19cfc5565825c1bc2e058b7efeab531a16`, `root:root 0755`, six fixed sudo commands, and status `NOT_DEPLOYED`. Production ERP runtime and data remain unchanged; compare/preflight and apply remain separately gated.
+- After Ahmed's separate confirmation, production compare and preflight passed for the exact M055 baseline, runtime commit `606b54c852230b0674b0745084e107487cf3161d`, eight-file scope and artifact SHA-256 `19943d703ddfc0866aa79ffb003a58e82780b824162d9ac08e872c46bad54592`. Independent status remained `NOT_DEPLOYED`; apply was not run and the production runtime/data remained unchanged.
+- After Ahmed's final apply/verify confirmation, the restricted helper created and verified backup `m056-before-606b54c-20260814T112029Z.tar.gz` (SHA-256 `9263cb70a8d8b02c3a7c31c23bc7dd8b8c1376fb77510d7fc391116a6fe6c917`), deployed the exact eight files, and passed independent verify. Durable production state is `DEPLOYED`; deployment changed no database, configuration, mailbox, documents, module state, Compose, proxy, DNS, ports or business records. Ahmed retains the actual-work customer email/Agenda/link check.
+
+## 2026-08-13 — M055 website-request email and WhatsApp replies
+
+- Added a staff-only email composer to Website Requests, with the recipient reread from the durable request, sender taken from Dolibarr mail configuration, explicit send confirmation, dual permission checks and CSRF protection.
+- Logged outgoing messages in the Dolibarr Agenda and used standard proposal tracking when a request is linked to a quotation so later email replies can be associated with it.
+- Added a validated `wa.me` action that opens a protected new tab and prepares a locale-aware draft with the request reference; it never auto-sends or uses WhatsApp/Meta credentials.
+- Added Arabic, English and Chinese copy, responsive phone behavior and focused source/security/normalization tests.
+- Deployed the exact six-file M055 runtime from commit `991011e8db9a95f0fa98ce5d518d09fca551f4bc` to canonical `backup-erp` through the checksum-pinned fail-closed helper; compare, preflight, code backup, apply, independent verify, HTTPS health and anonymous-login boundary passed.
+- After Ahmed accepted staging and explicitly approved the live release, deployed the identical artifact to `erp.visiontrading.biz`; production M045 baseline verify/compare, M055 compare, preflight, backup, apply, independent verify, HTTPS and authenticated desktop/390px acceptance all passed.
+- No React, Customer Portal, Mobile App, schema, database, configuration, mailbox, documents, Compose, proxy, DNS or business-data change occurred. No deployment-test message was sent to a customer; Ahmed retains the actual-work send/reply check.
+
 ## 2026-08-13 — M054 project-to-Kanban sync ownership
 
 - Moved the project/card synchronization implementation to the CP Kanban module that owns its cards and columns.
@@ -187,3 +244,9 @@
 - Made Financial Center the main Finance landing and promoted the allocation action inside it.
 - Restored the shared admin layout on Reports list/detail and every linked Shipping SOP management page.
 - Local only; no Git push or ERP deployment performed.
+# 2026-08-14 — M056 shipment status email notification
+
+- Added an explicit, permission-gated shipment-status email option to the existing logistics edit form.
+- Email is sent only after a committed, customer-visible status change; the recipient is resolved server-side from the entity-scoped customer and content follows the customer's default Arabic, Chinese, or English language.
+- Reused Dolibarr SMTP and Agenda history without core edits or schema changes. Email failure never rolls back shipment status.
+- Local implementation only. Staging and production were not changed.
