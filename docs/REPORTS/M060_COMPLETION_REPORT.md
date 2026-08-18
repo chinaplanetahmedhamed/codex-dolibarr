@@ -8,8 +8,8 @@
 - Branch: `codex/m060-internal-task-collaboration`
 - Implementation commit: `5fdebad`
 - Local Dolibarr: 23.0.3 at `http://127.0.0.1:8088`
-- Result: `DEVELOPER_REPORTED_LOCAL`
-- Staging/production: not accessed
+- Result: `DEPLOYED_BACKUP_AND_PRODUCTION`
+- Staging/production: R08 deployed and independently verified on both environments
 - Outbound messages: none
 
 ## Delivered capability
@@ -140,3 +140,13 @@
 - Ahmed approved the staging-only synthetic setup. Group `M060 QA Team` was created and existing internal staging user `M043 Staging Website Gateway` was added. Authenticated admin then confirmed Add Task appears, created `CP-TK-2026-000001` with that team and assignee, and used the real card drag handle to move it from To Do through In Progress to Done. No email or WhatsApp was sent and no production record was created during this acceptance.
 - At Ahmed's request, production delivery is now prepared through GitHub Actions. The production-only helper is fixed to `vision_erp`, `vision_db`, `vision-os_dolibarr_custom`, `vision-os_mariadb_data`, database `dolibarr_db`, and `https://erp.visiontrading.biz`; it accepts only the staging-accepted R08 artifact SHA-256 `e438730431f759c581a0b361fab5c9f370b7ab9acbf00f8b5b95bd46efec1d00`. The six-command sudo surface, transactional installer, exact helper/artifact pins, non-destructive recovery, executable failure suite, and M058-M060 regression gates pass locally. GitHub publication, root installation, production compare/preflight/apply/verify remain pending at this record point.
 - GitHub production run `32184380633` verified staging and passed live compare/preflight with zero release-file drift, then stopped during the isolated full-database restore rehearsal before code or schema mutation. A legacy production view cannot be executed in the disposable restored database, so the first helper finalized `APPLY_FAILED_NO_MUTATION`; M056 production verify and ERP HTTPS remained healthy. Helper-only correction SHA-256 `85a8ff487df35dd89e5d7c7c1cfdcd1e23e731f7fb85c0b95bb002bd9c0a1351` now fingerprints view definitions without executing views while retaining row counts and checksums for every base table. The same runtime artifact remains unchanged; corrected GitHub publication and installation are pending.
+
+## R08 production deployment — 2026-08-18
+
+- Corrected production helper SHA-256 `85a8ff487df35dd89e5d7c7c1cfdcd1e23e731f7fb85c0b95bb002bd9c0a1351` was independently verified as `root:root 0755`. Its sudo surface remains exactly the six fixed `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` commands.
+- GitHub Actions run [`32185174236`](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/32185174236) used the exact staging-accepted runtime commit `4cb98b36eedfe932097f66822f48837b423d2337` and artifact SHA-256 `e438730431f759c581a0b361fab5c9f370b7ab9acbf00f8b5b95bd46efec1d00`. Exact staging health, artifact download, production compare, preflight, protected apply, and verify all passed; rollback was not invoked.
+- Production request ID is `m060-20260818T205840Z-c695e4f80be3`. Code backup SHA-256 is `107abb6f0e76d9092364cf5816eb23d0cd5b905ea3a3c09b961c9903aa23c35d`; prestate SHA-256 is `5d384844265bba94cdec4f9ed82e556439e03d15de5abfa370d00a50f53deeb6`; full database backup SHA-256 is `d0b9be78e26da5dd93301a62f8c8dacb1df081614f79517f1bc146344e487404`.
+- Independent production helper verification returned `M060_DEPLOY_VERIFY=PASS`, `STATE_STATUS=DEPLOYED`, and `DATABASE_SCHEMA=READY`. Independent backup-ERP verification returned the same release, commit, artifact, deployment state, and schema readiness; its retained request is `m060-20260818T195027Z-fc218c5e4177`.
+- Both Team Tasks URLs returned HTTPS 200 and an anonymous fetch reached only the Dolibarr login boundary. No production task or other business record was created during release verification, and no email or WhatsApp was sent.
+- Operational links: `https://backup-erp.visiontrading.biz/custom/chinaplanetoperations/tasks/board.php` and `https://erp.visiontrading.biz/custom/chinaplanetoperations/tasks/board.php`.
+- Exact production rollback command is `sudo -n /usr/local/sbin/chinaplanetos-production-m060-deploy rollback`. It restores the verified code prestate and disables M060 routes while retaining additive data safely; it is not a full production database rewind.
