@@ -4,11 +4,11 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M058-M060-R07'
-readonly RUNTIME_COMMIT='0aaa5f3115cd0a5fed3ffc504156ebac65a3b260'
+readonly RELEASE='M058-M060-R08'
+readonly RUNTIME_COMMIT='4cb98b36eedfe932097f66822f48837b423d2337'
 readonly BASELINE_COMMIT='606b54c852230b0674b0745084e107487cf3161d'
-readonly SHORT_COMMIT='0aaa5f3'
-readonly ARTIFACT_SHA='30c8e46a84e120d9beac3cba1f2a057952d1824b20d6a4aff70d27de0c57185e'
+readonly SHORT_COMMIT='4cb98b3'
+readonly ARTIFACT_SHA='e438730431f759c581a0b361fab5c9f370b7ab9acbf00f8b5b95bd46efec1d00'
 readonly RUNTIME_MANIFEST_SHA='827a221538c3f947cc1b4f81290f99ebd98b3c163b0c03bc66bfb4359676b05f'
 readonly SUPPORT_MANIFEST_SHA='0064bd27cefa7edb4d5c51d1dc60edbb1727f0d16c4be0aacdcaeba59807dce5'
 readonly BASELINE_MANIFEST_SHA='5e6be92fda17e7554c0d0d403d97abd51ec3d3a56bc49d2b0428b0cdd672e1f3'
@@ -17,7 +17,7 @@ readonly SUPPORT_MANIFEST='deploy/releases/m060-support-files.txt'
 readonly BASELINE_MANIFEST='deploy/releases/m060-m056-baseline.sha256'
 readonly MIGRATION='deploy/migrations/m060_internal_tasks_schema.php'
 readonly ARTIFACT_NAME="m060-internal-tasks-deploy-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m060-staging-0aaa5f3-root-only'
+readonly DEPLOY_CONTEXT='m060-staging-4cb98b3-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
@@ -52,7 +52,7 @@ else
   TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
   BACKUP_ROOT='/root/backup-erp-code-backups'
   DB_BACKUP_ROOT='/root/backup-erp-db-backups'
-  STATE_ROOT='/var/lib/chinaplanetos-m060-deploy-staging-r07'
+  STATE_ROOT='/var/lib/chinaplanetos-m060-deploy-staging-r08'
   ARTIFACT_ROOT='/root/backup-erp-release-artifacts'
 fi
 readonly TEST_MODE INBOX TARGET_ROOT BACKUP_ROOT DB_BACKUP_ROOT STATE_ROOT ARTIFACT_ROOT
