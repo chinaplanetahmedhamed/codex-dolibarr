@@ -6,8 +6,8 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m060_deploy.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-backup-erp-m060-deploy.sudoers"
-readonly HELPER_SHA='4e006f19221b1a1427067d302de3a40bce68f57277b1067d6f520e63ea4fac64'
-readonly PREVIOUS_HELPER_SHA='fef8f45d32aed25d76a68c1e34dc7ee7174a88c29ae63c5a657777d49e7f6949'
+readonly HELPER_SHA='432899fe10b6910c638706cabaa11c732368337634aff56f8c94694280f26c61'
+readonly PREVIOUS_HELPER_SHA='4e006f19221b1a1427067d302de3a40bce68f57277b1067d6f520e63ea4fac64'
 readonly SUDOERS_SHA='b68a8abf54acc6070aab543733f94f36ace5a8745f2373f7706c2996ca55fa4c'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-backup-erp-m060-deploy'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-backup-erp-m060-deploy'
