@@ -41,13 +41,14 @@ m060DeployAssert(strpos($helper, 'ROLLBACK_FAILED_NO_MUTATION_RECOVERED_TERMINAL
 m060DeployAssert(strpos($helper, '"$target" == "$module_root/"*') !== false && strpos($helper, 'TARGET_PARENT_SWAPPED') !== false, 'EXACT_TARGET_BOUNDARY');
 m060DeployAssert(strpos($helper, 'mktemp "$parent/.m060-apply.XXXXXX"') !== false && strpos($helper, 'fsync_path "$(dirname "$dst")"') !== false, 'ATOMIC_FILE_METADATA');
 m060DeployAssert(strpos($helper, 'database_fingerprint') !== false && strpos($helper, 'CHECKSUM TABLE') !== false, 'FULL_RESTORE_REHEARSAL');
+m060DeployAssert(strpos($helper, 'print \"CHECKSUM=\" \$2') !== false, 'RESTORE_FINGERPRINT_DATABASE_INDEPENDENT');
 m060DeployAssert(substr_count($sudoers, "\n") === 6, 'SUDOERS_COMMAND_COUNT');
 foreach (array('compare', 'preflight', 'apply', 'verify', 'rollback', 'status') as $command) {
     m060DeployAssert(substr_count($sudoers, '/usr/local/sbin/chinaplanetos-backup-erp-m060-deploy '.$command) === 1, 'SUDOERS_'.$command);
 }
 m060DeployAssert(strpos($installer, 'GLOBAL_SUDOERS_PRECHECK_FAILED') < strpos($installer, 'mv "$sudoers_stage" "$TARGET_SUDOERS"'), 'INSTALL_PRECHECK_ORDER');
 m060DeployAssert(strpos($installer, 'installed_sudoers') !== false && strpos($installer, 'INSTALL_COMPLETE') !== false, 'INSTALL_TRANSACTION');
-m060DeployAssert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='4e006f19221b1a1427067d302de3a40bce68f57277b1067d6f520e63ea4fac64'") !== false, 'INSTALL_PREVIOUS_HELPER_PIN');
+m060DeployAssert(strpos($installer, "readonly PREVIOUS_HELPER_SHA='432899fe10b6910c638706cabaa11c732368337634aff56f8c94694280f26c61'") !== false, 'INSTALL_PREVIOUS_HELPER_PIN');
 m060DeployAssert(strpos($installer, 'helper_replaced') !== false && strpos($installer, 'PREVIOUS_HELPER_BACKUP_INVALID') !== false, 'INSTALL_UPGRADE_TRANSACTION');
 m060DeployAssert(strpos($installer, 'DEPLOY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO') !== false, 'INSTALL_BOUNDARY');
 preg_match("/readonly HELPER_SHA='([0-9a-f]{64})'/", $installer, $helperMatch);
