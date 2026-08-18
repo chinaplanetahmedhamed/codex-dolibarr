@@ -5,8 +5,12 @@ repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 test_root=$(mktemp -d /private/tmp/m060-deploy-helper-test.XXXXXX)
 trap 'rm -rf "$test_root"' EXIT
 for dir in inbox target code-backups db-backups state state/requests state/container-root artifacts bin; do mkdir -p "$test_root/$dir"; done
-helper="$test_root/chinaplanetos-backup-erp-m060-deploy.test"
-cp "$repo_root/deploy/tools/chinaplanetos_backup_erp_m060_deploy.sh" "$helper"
+helper_source=${M060_DEPLOY_HELPER_SOURCE:-$repo_root/deploy/tools/chinaplanetos_backup_erp_m060_deploy.sh}
+helper_basename=${M060_DEPLOY_HELPER_TEST_BASENAME:-chinaplanetos-backup-erp-m060-deploy.test}
+case "$helper_source" in "$repo_root"/deploy/tools/chinaplanetos_*_m060_deploy.sh) ;; *) echo 'M060_DEPLOY_FAILURES=FAIL REASON=HELPER_SOURCE_INVALID' >&2; exit 1;; esac
+case "$helper_basename" in chinaplanetos-backup-erp-m060-deploy.test|chinaplanetos-production-m060-deploy.test) ;; *) echo 'M060_DEPLOY_FAILURES=FAIL REASON=HELPER_BASENAME_INVALID' >&2; exit 1;; esac
+helper="$test_root/$helper_basename"
+cp "$helper_source" "$helper"
 chmod 0700 "$helper"
 
 export M060_DEPLOY_HELPER_TEST_MODE=1
