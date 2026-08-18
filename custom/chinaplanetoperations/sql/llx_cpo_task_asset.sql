@@ -17,7 +17,7 @@ CREATE TABLE llx_cpo_task_asset (
   fk_user_creat integer NOT NULL,
   fk_user_modif integer NULL,
   date_creation datetime NOT NULL,
-  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  tms timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_cpo_task_asset_stored (entity, stored_name),
   UNIQUE KEY uk_cpo_task_asset_version (entity, fk_task, asset_ref, version_no),
   KEY idx_cpo_task_asset_current (entity, fk_task, status, asset_ref, version_no),

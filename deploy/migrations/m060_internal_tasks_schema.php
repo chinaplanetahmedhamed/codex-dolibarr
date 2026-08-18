@@ -51,6 +51,7 @@ function m060MigrationFailureReason($exception)
         'Unable to inspect internal task schema.' => 'INSPECTION_FAILED',
         'Unable to inspect right definitions.' => 'RIGHT_INSPECTION_FAILED',
         'Unable to release internal task migration lock.' => 'LOCK_RELEASE_FAILED',
+        'Internal task timestamp contains null values.' => 'TIMESTAMP_DATA_INVALID',
     );
     $message = $exception instanceof Throwable ? $exception->getMessage() : '';
     return isset($reasons[$message]) ? $reasons[$message] : 'MIGRATION_FAILED';

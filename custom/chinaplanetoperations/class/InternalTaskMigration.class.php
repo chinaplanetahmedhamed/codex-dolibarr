@@ -127,6 +127,7 @@ class InternalTaskMigration
         );
 
         $this->createCollaborationTables();
+        $this->enforceTimestampNullability();
 
         $indexes = array(
             'idx_cpo_task_own_board' => '(entity,fk_user_assign,date_archived,status,position)',
@@ -160,7 +161,7 @@ class InternalTaskMigration
             'fk_user_modif'=>array('int','YES',null,null),
             'date_archived'=>array('datetime','YES',null,null),
             'version'=>array('int','NO','1',null),
-            'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null),
+            'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
         );
         if (!$this->columnsMatch($this->prefix.'cpo_task', $taskColumns)) return false;
         if (!$this->tableExists($this->prefix.'cpo_task_team_manager')) return false;
@@ -172,20 +173,20 @@ class InternalTaskMigration
         if (!$this->columnsMatch($this->prefix.'cpo_task_team_manager', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),
             'entity'=>array('int','NO','1',null),'fk_usergroup'=>array('int','NO',null,null),'fk_user'=>array('int','NO',null,null),
-            'status'=>array('tinyint','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null),
+            'status'=>array('tinyint','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
         ))) return false;
         if (!$this->columnsMatch($this->prefix.'cpo_task_asset', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),
             'entity'=>array('int','NO','1',null),'fk_task'=>array('bigint','NO',null,null),'asset_ref'=>array('varchar','NO',null,64),'parent_asset_id'=>array('bigint','YES',null,null),
             'asset_type'=>array('varchar','NO',null,16),'original_name'=>array('varchar','NO',null,255),'stored_name'=>array('varchar','NO',null,128),'extension'=>array('varchar','NO',null,16),
             'mime_type'=>array('varchar','NO',null,128),'file_size'=>array('bigint','NO',null,null),'sha256'=>array('char','NO',null,64),'version_no'=>array('int','NO','1',null),
-            'is_cover'=>array('tinyint','NO','0',null),'status'=>array('varchar','NO','active',16),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null),
+            'is_cover'=>array('tinyint','NO','0',null),'status'=>array('varchar','NO','active',16),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
         ))) return false;
         if (!$this->columnsMatch($this->prefix.'cpo_task_stage', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'code'=>array('varchar','NO',null,64),
             'label_en'=>array('varchar','NO',null,255),'label_ar'=>array('varchar','NO',null,255),'label_zh'=>array('varchar','NO',null,255),'color'=>array('varchar','NO','#2980b9',9),
             'position'=>array('int','NO','0',null),'behavior'=>array('varchar','NO',null,16),'is_system'=>array('tinyint','NO','0',null),'active'=>array('tinyint','NO','1',null),
-            'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null),
+            'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp'),
         ))) return false;
         if (!$this->columnsMatch($this->prefix.'cpo_activity', array(
             'rowid'=>array('bigint','NO',null,null,'auto_increment'),
@@ -278,12 +279,12 @@ class InternalTaskMigration
     private function collaborationSchemaReady()
     {
         $specs = array(
-            'cpo_task_comment'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_task'=>array('bigint','NO',null,null),'body'=>array('text','NO',null,null),'request_key'=>array('char','NO',null,36),'request_hash'=>array('char','NO',null,64),'visibility'=>array('varchar','NO','visible',16),'redaction_reason'=>array('varchar','YES',null,500),'fk_user_redact'=>array('int','YES',null,null),'date_redacted'=>array('datetime','YES',null,null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null)),
+            'cpo_task_comment'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_task'=>array('bigint','NO',null,null),'body'=>array('text','NO',null,null),'request_key'=>array('char','NO',null,36),'request_hash'=>array('char','NO',null,64),'visibility'=>array('varchar','NO','visible',16),'redaction_reason'=>array('varchar','YES',null,500),'fk_user_redact'=>array('int','YES',null,null),'date_redacted'=>array('datetime','YES',null,null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp')),
             'cpo_task_comment_mention'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_comment'=>array('bigint','NO',null,null),'fk_user'=>array('int','NO',null,null),'date_creation'=>array('datetime','NO',null,null)),
             'cpo_task_notification'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_user'=>array('int','NO',null,null),'fk_task'=>array('bigint','NO',null,null),'fk_comment'=>array('bigint','NO',null,null),'notification_type'=>array('varchar','NO','mention',32),'date_seen'=>array('datetime','YES',null,null),'date_creation'=>array('datetime','NO',null,null)),
-            'cpo_task_checklist'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_task'=>array('bigint','NO',null,null),'title'=>array('varchar','NO',null,255),'position'=>array('int','NO','0',null),'active'=>array('tinyint','NO','1',null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null)),
-            'cpo_task_checklist_item'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_checklist'=>array('bigint','NO',null,null),'label'=>array('varchar','NO',null,255),'position'=>array('int','NO','0',null),'completed'=>array('tinyint','NO','0',null),'fk_user_completed'=>array('int','YES',null,null),'date_completed'=>array('datetime','YES',null,null),'active'=>array('tinyint','NO','1',null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null)),
-            'cpo_task_label'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'code'=>array('varchar','NO',null,64),'label_en'=>array('varchar','NO',null,255),'label_ar'=>array('varchar','NO',null,255),'label_zh'=>array('varchar','NO',null,255),'color'=>array('char','NO','#2980B9',7),'active'=>array('tinyint','NO','1',null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,null)),
+            'cpo_task_checklist'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_task'=>array('bigint','NO',null,null),'title'=>array('varchar','NO',null,255),'position'=>array('int','NO','0',null),'active'=>array('tinyint','NO','1',null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp')),
+            'cpo_task_checklist_item'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_checklist'=>array('bigint','NO',null,null),'label'=>array('varchar','NO',null,255),'position'=>array('int','NO','0',null),'completed'=>array('tinyint','NO','0',null),'fk_user_completed'=>array('int','YES',null,null),'date_completed'=>array('datetime','YES',null,null),'active'=>array('tinyint','NO','1',null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp')),
+            'cpo_task_label'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'code'=>array('varchar','NO',null,64),'label_en'=>array('varchar','NO',null,255),'label_ar'=>array('varchar','NO',null,255),'label_zh'=>array('varchar','NO',null,255),'color'=>array('char','NO','#2980B9',7),'active'=>array('tinyint','NO','1',null),'version'=>array('int','NO','1',null),'fk_user_creat'=>array('int','NO',null,null),'fk_user_modif'=>array('int','YES',null,null),'date_creation'=>array('datetime','NO',null,null),'tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp')),
             'cpo_task_label_link'=>array('rowid'=>array('bigint','NO',null,null,'auto_increment'),'entity'=>array('int','NO','1',null),'fk_task'=>array('bigint','NO',null,null),'fk_label'=>array('bigint','NO',null,null),'fk_user_creat'=>array('int','NO',null,null),'date_creation'=>array('datetime','NO',null,null)),
         );
         foreach ($specs as $table=>$spec) if (!$this->columnsMatch($this->prefix.$table,$spec)) return false;
@@ -314,6 +315,18 @@ class InternalTaskMigration
         );
         foreach($checks as $sql) if($this->count($sql)!==0)return false;
         return true;
+    }
+
+    private function enforceTimestampNullability()
+    {
+        foreach (array('cpo_task', 'cpo_task_team_manager', 'cpo_task_asset') as $table) {
+            $qualified = $this->prefix.$table;
+            if ($this->columnsMatch($qualified, array('tms'=>array('timestamp','NO','CURRENT_TIMESTAMP',null,'on update current_timestamp')))) continue;
+            if ($this->count('SELECT COUNT(*) count_rows FROM '.$qualified.' WHERE tms IS NULL') !== 0) {
+                throw new RuntimeException('Internal task timestamp contains null values.');
+            }
+            $this->mustQuery('ALTER TABLE '.$qualified.' MODIFY COLUMN tms timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
+        }
     }
 
     private function seedAndBackfillStages()
@@ -396,7 +409,7 @@ class InternalTaskMigration
             $actualDefault = $row->column_default === null ? null : (string)$row->column_default;
             if (!$this->columnDefaultMatches($actualDefault, $specification[2])) return false;
             if ($specification[3] !== null && (int)$row->character_maximum_length !== (int)$specification[3]) return false;
-            if (isset($specification[4]) && $specification[4] !== null && strtolower((string)$row->extra)!==strtolower((string)$specification[4])) return false;
+            if (isset($specification[4]) && $specification[4] !== null && !$this->columnExtraMatches((string)$row->extra, (string)$specification[4])) return false;
         }
         return true;
     }
@@ -424,6 +437,14 @@ class InternalTaskMigration
             $actual = str_replace("''", "'", $actual);
         }
         return $actual === $expected;
+    }
+
+    private function columnExtraMatches($actual, $expected)
+    {
+        if (strtolower($expected) === 'on update current_timestamp') {
+            return preg_match('/^on update CURRENT_TIMESTAMP(?:\(\))?$/iD', $actual) === 1;
+        }
+        return strtolower($actual) === strtolower($expected);
     }
 
     private function indexMatches($table,$index,$columns,$nonUnique)

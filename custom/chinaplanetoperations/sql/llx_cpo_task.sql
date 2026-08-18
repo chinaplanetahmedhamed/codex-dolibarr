@@ -23,7 +23,7 @@ CREATE TABLE llx_cpo_task (
   position integer NOT NULL DEFAULT 0,
   version integer NOT NULL DEFAULT 1,
   date_creation datetime NOT NULL,
-  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  tms timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_cpo_task_ref (entity, ref),
   KEY idx_cpo_task_board (entity, status, position),
   KEY idx_cpo_task_owner (entity, fk_user_assign, status),
