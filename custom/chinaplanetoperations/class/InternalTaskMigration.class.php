@@ -394,11 +394,36 @@ class InternalTaskMigration
             $row = $res ? $this->db->fetch_object($res) : null;
             if (!$row || strtolower((string)$row->data_type)!==$specification[0] || (string)$row->is_nullable!==$specification[1]) return false;
             $actualDefault = $row->column_default === null ? null : (string)$row->column_default;
-            if ($actualDefault !== $specification[2]) return false;
+            if (!$this->columnDefaultMatches($actualDefault, $specification[2])) return false;
             if ($specification[3] !== null && (int)$row->character_maximum_length !== (int)$specification[3]) return false;
             if (isset($specification[4]) && $specification[4] !== null && strtolower((string)$row->extra)!==strtolower((string)$specification[4])) return false;
         }
         return true;
+    }
+
+    /**
+     * MariaDB 10.2.7+ exposes literal defaults quoted in
+     * information_schema while older MySQL-compatible runtimes return the
+     * same literal without quotes.  Normalize only those two documented
+     * representations and the optional CURRENT_TIMESTAMP parentheses; all
+     * other expressions stay fail-closed.
+     */
+    private function columnDefaultMatches($actual, $expected)
+    {
+        if ($expected === null) return $actual === null;
+        if ($actual === null) return false;
+
+        $actual = (string) $actual;
+        $expected = (string) $expected;
+        if ($expected === 'CURRENT_TIMESTAMP') {
+            return preg_match('/^CURRENT_TIMESTAMP(?:\(\))?$/iD', $actual) === 1;
+        }
+
+        if (strlen($actual) >= 2 && $actual[0] === "'" && substr($actual, -1) === "'") {
+            $actual = substr($actual, 1, -1);
+            $actual = str_replace("''", "'", $actual);
+        }
+        return $actual === $expected;
     }
 
     private function indexMatches($table,$index,$columns,$nonUnique)

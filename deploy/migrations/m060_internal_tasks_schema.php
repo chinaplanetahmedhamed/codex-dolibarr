@@ -40,6 +40,22 @@ function m060Fail($reason, $code = 1)
     exit($code);
 }
 
+function m060MigrationFailureReason($exception)
+{
+    $reasons = array(
+        'Internal task base table is missing.' => 'BASE_TASK_TABLE_MISSING',
+        'Internal task migration is already running.' => 'MIGRATION_LOCKED',
+        'Internal task right definition collision.' => 'RIGHT_COLLISION',
+        'Internal task schema readiness check failed.' => 'READINESS_FAILED',
+        'Internal task migration step failed.' => 'DDL_FAILED',
+        'Unable to inspect internal task schema.' => 'INSPECTION_FAILED',
+        'Unable to inspect right definitions.' => 'RIGHT_INSPECTION_FAILED',
+        'Unable to release internal task migration lock.' => 'LOCK_RELEASE_FAILED',
+    );
+    $message = $exception instanceof Throwable ? $exception->getMessage() : '';
+    return isset($reasons[$message]) ? $reasons[$message] : 'MIGRATION_FAILED';
+}
+
 function m060Count($db, $sql)
 {
     $res = $db->query($sql);
@@ -172,7 +188,7 @@ try {
     }));
     if ($module->insert_menus() !== 0) m060Fail('TASK_MENU_INSTALL_FAILED');
 } catch (Throwable $exception) {
-    m060Fail('MIGRATION_FAILED');
+    m060Fail(m060MigrationFailureReason($exception));
 }
 
 $migration = new InternalTaskMigration($db);
