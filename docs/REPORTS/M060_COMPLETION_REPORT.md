@@ -110,3 +110,12 @@
 - Schema inspection returned `MIGRATION_REQUIRED`, the expected pre-apply state for additive M058–M060 tables, columns, indexes, rights and menu registration.
 - Final result: `M060_STAGING_PREFLIGHT=PASS`, with `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, and `PRODUCTION_ACCESSED=NO`.
 - No code, schema, module state, configuration, documents, business data, containers, proxy, DNS or ports were changed. The next gate is preparation and independent review of a mutating backup/apply/verify/rollback helper, followed by a new explicit backup-ERP apply approval.
+
+### Backup-ERP mutating-helper ownership correction — 2026-08-18
+
+- Ahmed approved deployment to `backup-erp` and live ERP. Production remains gated behind successful staging acceptance and a separate production-only helper; the staging helper has no production targets or grants.
+- The reviewed mutating staging helper was installed, but its first `compare` stopped before candidate extraction or mutation with `TARGET_ROOT_INVALID`. Independent `status` remained `M060_DEPLOY_STATUS=NOT_DEPLOYED`.
+- A root metadata check supplied by Ahmed proved the canonical custom-volume root is exactly `www-data:www-data 755`, not `root:root`. The helper now requires that exact observed owner, group and mode while retaining the fixed volume/container/mount, symlink, parent identity and path-boundary gates. The Dolibarr volume ownership was not changed.
+- Corrected helper SHA-256: `4e006f19221b1a1427067d302de3a40bce68f57277b1067d6f520e63ea4fac64`. Corrected transactional-upgrade installer SHA-256: `20653d1acd226b9900a31c5eb62f4e98d63eba2d43fb0a88c0e3bfa19d710cff`. It accepts only the installed previous helper SHA-256 `fef8f45d32aed25d76a68c1e34dc7ee7174a88c29ae63c5a657777d49e7f6949` or the corrected hash and restores the previous helper on a failed upgrade.
+- Sudoers remains SHA-256 `b68a8abf54acc6070aab543733f94f36ace5a8745f2373f7706c2996ca55fa4c`; artifact remains SHA-256 `a71764050597dfd7b42ffd8b9689505b5e37e754f42186e54fc5895b9b55990c`. Helper contract, executable recovery/fault suite, M058/M059/M060 source/UI regressions, shell/PHP syntax and diff checks pass.
+- The correction is prepared locally only at this record point. Corrected upload/install and all staging `compare`, `preflight`, `apply`, `verify` remain pending. Live ERP has not been accessed or changed.

@@ -241,8 +241,8 @@ clear_stale_candidates() { local stale; while IFS= read -r stale; do [[ -z "$sta
 check_environment() {
   local allow_stale=${1:-0}
   if [[ $TEST_MODE -eq 1 ]]; then for root in "$INBOX" "$TARGET_ROOT" "$BACKUP_ROOT" "$DB_BACKUP_ROOT" "$STATE_ROOT" "$ARTIFACT_ROOT" "$REQUEST_ROOT" "$STATE_ROOT/container-root"; do [[ -d "$root" && ! -L "$root" ]] || die 'TEST_ENVIRONMENT_INVALID'; done; detect_stale_candidates; [[ "$allow_stale" == 1 || -z "$STALE_CANDIDATES" ]] || die 'STALE_CANDIDATE_PRESENT'; return; fi
-  [[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" && $(owner_group_of "$TARGET_ROOT") == 'root:root' ]] || die 'TARGET_ROOT_INVALID'
-  local target_mode; target_mode=$(mode_of "$TARGET_ROOT"); (( (8#$target_mode & 8#022) == 0 )) || die 'TARGET_ROOT_MODE_UNSAFE'
+  [[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" && $(owner_group_of "$TARGET_ROOT") == 'www-data:www-data' ]] || die 'TARGET_ROOT_INVALID'
+  [[ $(mode_of "$TARGET_ROOT") == 755 ]] || die 'TARGET_ROOT_MODE_UNSAFE'
   [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$TARGET_CONTAINER" 2>/dev/null) == 'true|erp-staging|dolibarr' ]] || die 'ERP_IDENTITY_MISMATCH'
   detect_stale_candidates; [[ "$allow_stale" == 1 || -z "$STALE_CANDIDATES" ]] || die 'STALE_CANDIDATE_PRESENT'
   [[ $(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/www/html/custom"}}{{.Name}}|{{.RW}}{{end}}{{end}}' "$TARGET_CONTAINER") == "${TARGET_VOLUME}|true" ]] || die 'CUSTOM_MOUNT_MISMATCH'
