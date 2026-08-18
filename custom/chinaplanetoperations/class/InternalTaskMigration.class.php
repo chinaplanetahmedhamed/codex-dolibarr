@@ -442,7 +442,9 @@ class InternalTaskMigration
      */
     private function columnDefaultMatches($actual, $expected)
     {
-        if ($expected === null) return $actual === null;
+        // MariaDB can expose an implicit SQL NULL default as the unquoted
+        // token NULL. A quoted 'NULL' remains a real string default.
+        if ($expected === null) return $actual === null || (is_string($actual) && strcasecmp($actual, 'NULL') === 0);
         if ($actual === null) return false;
 
         $actual = (string) $actual;
