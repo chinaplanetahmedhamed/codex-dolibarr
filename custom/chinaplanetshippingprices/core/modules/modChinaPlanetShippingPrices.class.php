@@ -13,7 +13,7 @@ class modChinaPlanetShippingPrices extends DolibarrModules
         $this->family = 'products';
         $this->module_position = 99;
         $this->description = 'Versioned shipping rates, customer inquiry and internal operations SOP library';
-        $this->version = '1.4.0';
+        $this->version = '1.5.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'ship';
         $this->dirs = array('/chinaplanetshippingprices/imports');
@@ -192,6 +192,7 @@ class modChinaPlanetShippingPrices extends DolibarrModules
             'CHINAPLANETSP_DEFAULT_POL' => 'Guangzhou',
             'CHINAPLANETSP_LEGACY_VALIDITY_DAYS' => '30',
             'CHINAPLANETSP_CUSTOMER_SHOW_CARRIER' => '1',
+            'CHINAPLANETSP_PORT_FUZZY_THRESHOLD' => '0.90',
         );
         foreach ($defaults as $key => $value) {
             if (!isset($GLOBALS['conf']->global->$key)) {

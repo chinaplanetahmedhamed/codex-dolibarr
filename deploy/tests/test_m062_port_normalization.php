@@ -1,0 +1,98 @@
+<?php
+
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit(1); }
+if (!defined('MAIN_DB_PREFIX')) define('MAIN_DB_PREFIX', 'llx_');
+$root = dirname(__DIR__, 2);
+require_once $root.'/custom/chinaplanetshippingprices/class/PortNameResolver.class.php';
+
+function m062Assert($condition, $message) { if (!$condition) throw new RuntimeException($message); }
+function m062Ports(PortNameResolver $resolver, $raw) {
+    $resolved = $resolver->resolveList($raw, true);
+    if ($resolved['status'] !== 'matched') return array();
+    return array_map(function ($match) { return $match['port_name'].'|'.$match['country_code']; }, $resolved['matches']);
+}
+
+$resolver = new PortNameResolver(null, 1, 0.90);
+$cases = array(
+    'AIN SOKHNA'=>array('SOKHNA|EG'),
+    'UMM AL QAWAIN'=>array('UMM AL QUWAIN|AE'),
+    'SKIKDA'=>array('SKIKDA|DZ'), 'ORAN'=>array('ORAN|DZ'), 'KHOMS'=>array('AL KHUMS|LY'),
+    'ORAN CONTAINER TERMINAL'=>array('ORAN|DZ'), 'BEJAIA'=>array('BEJAIA|DZ'),
+    'AGADIR, Morocco'=>array('AGADIR|MA'), 'Nador'=>array('NADOR|MA'),
+    'SHEKOU-- SKIKDA, ANNABA'=>array('SKIKDA|DZ','ANNABA|DZ'),
+    'NANSHA-- SKIKDA, ANNABA'=>array('SKIKDA|DZ','ANNABA|DZ'),
+    'Bejaia'=>array('BEJAIA|DZ'), 'Oran/CASABLANCA'=>array('ORAN|DZ','CASABLANCA|MA'),
+    'DJEN DJEN'=>array('DJEN-DJEN|DZ'), 'BEJAIA/SKIKDA'=>array('BEJAIA|DZ','SKIKDA|DZ'),
+    'ALGIERS （sea port，dry port到港之后随机）'=>array('ALGIERS|DZ'),
+    'ORAN （sea port，dry port到港之后随机）'=>array('ORAN|DZ'),
+    'ANNABA （sea port，dry port到港之后随机）'=>array('ANNABA|DZ'),
+    'ALGER（dry port：EL HAMIZ & OUED BRICK两个港口随机）'=>array('ALGIERS|DZ'),
+    'GHAZAOUET'=>array('GHAZAOUET|DZ'), 'MOSTAGANEM'=>array('MOSTAGANEM|DZ'), 'EL KHOMS'=>array('AL KHUMS|LY'),
+    'SFAX & SOUSSE'=>array('SFAX|TN','SOUSSE|TN'), 'SUDAN'=>array('PORT SUDAN|SD'), 'JAZAN'=>array('JIZAN|SA'),
+    'RADES'=>array('RADES|TN'), 'CONAKRY'=>array('CONAKRY|GN'), 'BIZERTE'=>array('BIZERTE|TN'),
+    'SOUSSE'=>array('SOUSSE|TN'), 'MSIURATA'=>array('MISURATA|LY'), 'Rades,Tunis'=>array('RADES|TN','TUNIS|TN'),
+    'Algiers'=>array('ALGIERS|DZ'), 'TUNIS / RADES'=>array('TUNIS|TN','RADES|TN'),
+    'ALEXANDIRA OLD PORT （calling AICT）'=>array('ALEXANDRIA|EG'),
+    'ALEXANDIRA OLD PORT （calling ACCHC）'=>array('ALEXANDRIA|EG'),
+    'KHALIFA PORT, ABU DHABI'=>array('KHALIFA PORT|AE'), 'UMM北 (25.26#)'=>array('UMM QASR|IQ'),
+    '南沙--PORT SAID WEST'=>array('PORT SAID WEST|EG'), '深圳--PORT SAID WEST'=>array('PORT SAID WEST|EG'),
+    '虎门--PORT SAID WEST'=>array('PORT SAID WEST|EG'), 'HP-SZ-PORT SAID WEST'=>array('PORT SAID WEST|EG'),
+    'Alger/Annaba'=>array('ALGIERS|DZ','ANNABA|DZ'), 'MSIURATA/Benghazi'=>array('MISURATA|LY','BENGHAZI|LY'),
+    'BANDAR ABBAS'=>array('BANDAR ABBAS|IR'),
+    'ORAN (SEA PORT) / CASABLANCA'=>array('ORAN|DZ','CASABLANCA|MA'),
+);
+foreach ($cases as $raw => $expected) m062Assert(m062Ports($resolver, $raw) === $expected, 'Unexpected mapping for '.$raw.': '.json_encode(m062Ports($resolver, $raw)));
+
+$fuzzy = $resolver->resolveList('UMM AL QUWAI', true);
+m062Assert($fuzzy['status'] === 'matched' && $fuzzy['matches'][0]['port_name'] === 'UMM AL QUWAIN' && $fuzzy['matches'][0]['method'] === 'fuzzy', 'Safe long-name fuzzy match failed.');
+m062Assert($resolver->resolveList('ORANN', true)['status'] === 'unmapped', 'Short fuzzy input must fail closed.');
+m062Assert($resolver->resolveList('ORAN/NOT A PORT', true)['status'] === 'unmapped', 'Partial composite must fail closed.');
+m062Assert($resolver->resolveList('UNKNOWN--ORAN', true)['status'] === 'unmapped', 'Unknown origin prefix must not be stripped.');
+m062Assert($resolver->resolveList('ORAN--SKIKDA', true)['status'] === 'unmapped', 'A destination port must not be accepted as an origin prefix.');
+m062Assert($resolver->resolveList('PORT SAID (EAST)', true)['status'] === 'unmapped', 'Unknown terminal qualifier must not be stripped.');
+
+class M062ConflictResult { public $rows; public $index=0; public function __construct(array $rows){$this->rows=$rows;} }
+class M062ConflictDb {
+    public function query($sql){
+        if(strpos($sql,'chinaplanetsp_port_alias')!==false)return false;
+        if(strpos($sql,'chinaplanetsp_port')!==false)return new M062ConflictResult(array(
+            (object)array('rowid'=>1,'port_name'=>'ALPHA','port_code'=>null,'country_code'=>'DZ','aliases'=>'CONFLICT'),
+            (object)array('rowid'=>2,'port_name'=>'BETA','port_code'=>null,'country_code'=>'DZ','aliases'=>'CONFLICT'),
+        ));
+        return false;
+    }
+    public function fetch_object($result){return$result->rows[$result->index++]??false;}
+}
+$conflictResolver=new PortNameResolver(new M062ConflictDb(),1,0.90);
+m062Assert($conflictResolver->resolveList('CONFLICT',true)['status']==='ambiguous','Same-country legacy alias conflict must fail closed.');
+
+$owners = array();
+foreach (PortNameResolver::catalog() as $definition) {
+    foreach (array_merge(array($definition['port_name']), $definition['aliases']) as $alias) {
+        $normalized = PortNameResolver::normalize($alias);
+        $owner = $definition['port_name'].'|'.$definition['country_code'];
+        m062Assert(!isset($owners[$normalized]) || $owners[$normalized] === $owner, 'Conflicting built-in alias '.$normalized);
+        $owners[$normalized] = $owner;
+    }
+}
+
+$aliasSchema = file_get_contents($root.'/custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_port_alias.sql');
+m062Assert(strpos($aliasSchema, 'UNIQUE KEY uk_chinaplanetsp_port_alias (entity, normalized_alias)') !== false, 'Normalized alias uniqueness missing.');
+$rateSchema = file_get_contents($root.'/custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql');
+foreach (array('pod_raw','fk_destination_port','port_match_method','port_match_score') as $column) m062Assert(strpos($rateSchema, $column) !== false, 'Rate audit column missing '.$column);
+$importer = file_get_contents($root.'/custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php');
+m062Assert(strpos($importer, 'resolveList($podRaw, true)') !== false && strpos($importer, "'pod_raw'=>\$podRaw") !== false, 'Importer resolver/raw POD integration missing.');
+$migration = file_get_contents($root.'/deploy/migrations/m062_port_normalization.php');
+foreach (array("array('dry-run','apply','check')", 'GET_LOCK(', 'normalized_alias', 'NOT EXISTS(SELECT 1', 'resolved_warnings_removed', 'ACTIVE_ALIAS_CONFLICT', 'LEGACY_ALIAS_CONFLICT') as $needle) m062Assert(strpos($migration, $needle) !== false, 'Migration safety boundary missing '.$needle);
+m062Assert(strpos($migration,'INSERT IGNORE INTO `".$aliasTable')===false,'Legacy alias conflicts must not be silently ignored.');
+m062Assert(substr_count($migration, "ELSE source.public_visible END")===1&&strpos($migration, "ELSE public_visible END,pod=")!==false, 'Migration must preserve existing visibility and reveal only newly mapped rows.');
+$admin = file_get_contents($root.'/custom/chinaplanetshippingprices/admin/ports.php');
+m062Assert(strpos($admin, 'PortNameResolver::normalize') !== false && strpos($admin, 'Alias already belongs to') !== false, 'Admin alias collision guard missing.');
+m062Assert(strpos($admin, 'portBelongsToEntity') !== false && strpos($admin, 'Port mapping was not found in this entity.') !== false, 'Admin port mutations must reject cross-entity identifiers.');
+m062Assert(strpos($admin, "define('CSRFCHECK_WITH_TOKEN',1)") !== false && strpos($admin, 'FOR UPDATE') !== false && strpos($admin, 'ON DUPLICATE KEY UPDATE fk_port=VALUES(fk_port)') === false, 'Admin aliases require POST/CSRF and atomic no-steal ownership.');
+m062Assert(strpos($admin, '"DELETE FROM ".MAIN_DB_PREFIX."chinaplanetsp_port') === false && strpos($admin, 'Mapping archived.') !== false, 'Port mapping must archive instead of delete.');
+$manual=file_get_contents($root.'/custom/chinaplanetshippingprices/admin/adjust.php');
+m062Assert(strpos($manual,'new PortNameResolver')!==false&&strpos($manual,'resolveList($podRaw,true)')!==false&&strpos($manual,'Selected country does not match the canonical port country')!==false,'Manual rates must use canonical port resolution and reject country mismatch.');
+m062Assert(strpos($manual,'pod_raw=')!==false&&strpos($manual,'fk_destination_port=')!==false&&strpos($manual,'port_match_method=')!==false&&strpos($manual,'ON DUPLICATE KEY UPDATE country_code=VALUES(country_code)')===false,'Manual rates must retain match evidence and never rewrite canonical port countries.');
+
+print 'OK M062 port normalization cases='.count($cases).' aliases='.count($owners)."\n";

@@ -1,5 +1,14 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-25 — M062 port and country normalization
+
+- Replaced prefix-only destination-country detection with one entity-scoped canonical port resolver that normalizes case, punctuation, Unicode variants and verified aliases before using a conservative fuzzy fallback.
+- Added a unique normalized-alias table plus raw POD, canonical-port and match-evidence fields; the administrator workflow now rejects alias collisions, validates entity ownership and archives mappings instead of deleting them.
+- Correctly separates recognized origin prefixes and all-or-nothing multi-destination values, including `SHEKOU-- SKIKDA, ANNABA`, `NANSHA-- SKIKDA, ANNABA`, `BEJAIA/SKIKDA`, `Oran/CASABLANCA`, `SFAX & SOUSSE` and `TUNIS / RADES`.
+- Backed up the local Dolibarr database, restored it once while correcting visibility preservation, then applied the idempotent migration: 3,023 unmapped rows across 36 POD strings became zero; 791 destination rows were added for valid composite routes; all 1,422 resolved destination warnings were removed while 542 historical shipping-line warnings were retained.
+- Focused resolver/importer/current-data tests, migration rerun/check, PHP lint, source regressions and authenticated desktop/390px administration checks passed. Existing published-rate integration remains time-blocked because the local rate validity window expired; no validity rule was bypassed.
+- Local development database and source only. No Customer Portal/mobile UI, API contract, staging, production, outbound message or Git push was changed.
+
 ## 2026-08-15 — M060 internal task card collaboration
 
 - Added task-scoped plain-text comments, authorized mentions and a recipient-only in-app notification inbox with request-key replay protection, stable cursor pagination and administrator logical redaction.

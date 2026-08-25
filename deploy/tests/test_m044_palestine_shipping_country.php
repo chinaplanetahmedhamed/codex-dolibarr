@@ -7,6 +7,8 @@ if (PHP_SAPI !== 'cli') {
 
 $root = dirname(__DIR__, 2);
 $importer = file_get_contents($root.'/custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php');
+$resolverSource = file_get_contents($root.'/custom/chinaplanetshippingprices/class/PortNameResolver.class.php');
+require_once $root.'/custom/chinaplanetshippingprices/class/PortNameResolver.class.php';
 $service = file_get_contents($root.'/custom/chinaplanetshippingprices/class/ShippingPriceService.class.php');
 $migration = file_get_contents($root.'/deploy/migrations/m044_palestine_shipping_country.php');
 
@@ -16,8 +18,12 @@ function m044Assert($condition, $message)
     print 'PASS '.$message.PHP_EOL;
 }
 
-m044Assert(strpos($importer, "'ASHDOD'=>'PS','HAIFA'=>'PS'") !== false, 'future Ashdod and Haifa imports map to PS');
-m044Assert(strpos($importer, "'ASHDOD'=>'IL'") === false && strpos($importer, "'HAIFA'=>'IL'") === false, 'legacy IL importer mapping is absent');
+$portResolver = new PortNameResolver(null, 1);
+foreach (array('ASHDOD','HAIFA') as $portName) {
+    $resolved = $portResolver->resolveList($portName, false);
+    m044Assert($resolved['status'] === 'matched' && $resolved['matches'][0]['country_code'] === 'PS', 'future '.$portName.' imports map to PS');
+}
+m044Assert(strpos($resolverSource, "'port_name'=>'ASHDOD','country_code'=>'IL'") === false && strpos($resolverSource, "'port_name'=>'HAIFA','country_code'=>'IL'") === false, 'legacy IL resolver mapping is absent');
 m044Assert(strpos($service, "if (\$code === 'PS')") !== false && strpos($service, 'ChinaPlanetCountryPS') !== false, 'Shipping Prices applies the scoped Palestine label');
 foreach (array('chinaplanetsp_rate', 'chinaplanetsp_port', 'chinaplanetsp_rule', 'chinaplanetsp_block', 'chinaplanetsp_sop_revision') as $table) {
     m044Assert(strpos($migration, "'table' => '".$table."'") !== false, 'migration includes '.$table);

@@ -343,3 +343,13 @@ For every relevant change:
 - أثر التصميم والمصطلحات: صف إضافي صغير في نموذج تعديل الإدارة فقط: `Send email notification / إرسال إشعار بالبريد`. لا تغيير مرئي في البوابة أو التطبيق.
 - التحقق على الهاتف: `STAGING_390PX_PASS` للإدارة؛ ظهر خيار البريد وزر التحديث دون تجاوز أفقي. محاولة الإرسال التجريبية حفظت الحالة وأظهرت فشل البريد وإعادة المحاولة بأمان، لكن إعداد PHP mail في staging منع إثبات Mailpit/Agenda/الرابط.
 - الحالة: `ADMIN_STAGING_UI_VERIFIED`, `PORTAL_BEHAVIOR_UNCHANGED`, `MOBILE_BEHAVIOR_UNCHANGED`, `STAGING_SMTP_BLOCKED_SAFE`, `PRODUCTION_RELEASE_APPROVED_PENDING_DEPLOYMENT`.
+
+### 2026-08-25 — M062 توحيد الموانئ والدول
+
+- تغيير المصدر: أضيف resolver موحد لأسماء الموانئ مع aliases فريدة وتطبيع case/punctuation/Unicode وfuzzy matching محافظ، مع فصل origin عن destination وتقسيم الوجهات المركبة فقط عندما تنجح كل الأجزاء.
+- ERP الإداري: `LOCAL_RUNTIME_VERIFIED`؛ أصبحت الأسماء المطلوبة موانئ canonical مرتبطة بدولتها، وحُفظ النص الخام ودليل طريقة المطابقة، ومنعت الشاشة تضارب aliases والـ IDs خارج الكيان وأصبحت الإزالة أرشفة منطقية.
+- بوابة العميل: `SHARED_DATA_BEHAVIOR_CORRECTED`؛ لا تغيير في المسار أو التصميم أو الصلاحيات أو DTO، لكن البحث الحالي يستهلك نفس صفوف الأسعار بعد تصحيح POD والدولة. لم يُنشر هذا التغيير إلى runtime البوابة.
+- تطبيق الهاتف: `NOT_APPLICABLE_UI`؛ لا تغيير في `/api/mobile/v1` أو شاشة أصلية أو عقد بيانات. أثر البيانات المشترك لن يظهر إلا بعد إصدار مستقل.
+- اعتماد API والبيانات: schema إضافي داخلي وجدول aliases وحقول audit فقط؛ لا تكلفة أو هامش أو مورد أو بيانات عميل جديدة في الإسقاط العام.
+- أثر التصميم والمصطلحات: لا تغيير مرئي للعميل. شاشة الإدارة اجتازت جلسة موظف محلية على desktop و`390px`، وعرضت جدول unmapped فارغًا وأزرار Archive.
+- الحالة: `ADMIN_LOCAL_RUNTIME_VERIFIED`, `PORTAL_SHARED_DATA_SOURCE_CORRECTED`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.

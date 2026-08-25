@@ -5,6 +5,7 @@ $root = dirname(__DIR__, 2);
 $required = array(
     'custom/chinaplanetshippingprices/core/modules/modChinaPlanetShippingPrices.class.php',
     'custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php',
+    'custom/chinaplanetshippingprices/class/PortNameResolver.class.php',
     'custom/chinaplanetshippingprices/class/ShippingPriceService.class.php',
     'custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php',
     'custom/chinaplanetshippingprices/class/ShippingNoteReviewService.class.php',
@@ -14,6 +15,7 @@ $required = array(
     'custom/chinaplanetshippingprices/admin/rules.php',
     'custom/chinaplanetshippingprices/admin/disabled.php',
     'custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_block.sql',
+    'custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_port_alias.sql',
     'custom/chinaplanetshippingprices/api/class/api_chinaplanetshippingprices.class.php',
     'custom/chinaplanetshippingprices/class/ShippingSopService.class.php',
     'custom/chinaplanetshippingprices/sop/index.php',
@@ -38,6 +40,7 @@ if (strpos($importer, 'CHINAPLANETSP_DEFAULT_POL') === false || strpos($importer
 if (strpos($importer, "replacement_scope !== 'all'") === false || strpos($importer, "source_name<>'Manual entry'") === false) throw new RuntimeException('Agent/all publication replacement scope missing.');
 if (strpos($importer, "ignore_below=") === false || strpos($importer, "\$signature=") === false) throw new RuntimeException('Import-setting-aware duplicate boundary missing.');
 if (strpos($importer, "translation_status<>'approved'") === false || strpos($importer, "'public_notes' => \$translation['status'] === 'approved' ? \$translation['notes_en'] : ''") === false) throw new RuntimeException('M041 automatic translation/manual-fallback boundary missing.');
+if (strpos($importer, 'PortNameResolver') === false || strpos($importer, 'resolveList($podRaw, true)') === false || strpos($importer, 'pod_raw') === false) throw new RuntimeException('M062 canonical port resolver boundary missing.');
 $ports = file_get_contents($root.'/custom/chinaplanetshippingprices/admin/ports.php');
 if (strpos($ports, "\$action==='assign_pol'") === false || strpos($ports, "(pol='UNKNOWN' OR pol='' OR pol IS NULL)") === false) throw new RuntimeException('Unknown POL assignment control missing.');
 $disabled = file_get_contents($root.'/custom/chinaplanetshippingprices/admin/disabled.php');
