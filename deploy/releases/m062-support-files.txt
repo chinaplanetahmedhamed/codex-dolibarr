@@ -1,0 +1,4 @@
+deploy/migrations/m062_port_normalization.php
+deploy/tests/test_m062_current_data.php
+deploy/tests/test_m062_importer_parsing.php
+deploy/tests/test_m062_port_normalization.php
