@@ -145,3 +145,13 @@ The existing public-search integration test is time-blocked because all local pu
 - The root-owned `0600` installer copy passed the externally pinned SHA-256 check. Installer result: `M062_DEPLOY_HELPER_INSTALL=PASS`, `DEPLOY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, `PRODUCTION_ACCESSED=NO`.
 - Independent restricted verification: installed helper `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports` is `root:root 0755`, size `45432`, with the exact reviewed helper SHA-256. `sudo -n -l` exposes exactly the six reviewed M062 commands and no additional M062 command.
 - No helper command was executed. Shipping Prices runtime and database were not deployed or changed by this gate. Compare/preflight, operational-directory setup, apply/verify, authenticated acceptance and production remain separate approvals.
+
+## Dependency-closed staging correction — 2026-08-27
+
+- The first approved `compare` after operational-directory setup stopped before schema/data inspection with `M062_DEPLOY_FAIL=CANDIDATE_TEST_FAILED`: the isolated candidate lacked `custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php`, which the importer requires. `preflight` did not run.
+- Baseline and corrected runtime commits contain identical dependency bytes, SHA-256 `1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54`.
+- Corrected runtime/payload commit: `c4cef25a8dc6bd2ffedd180d6ac8a68428057746`. The dependency is support-only; the runtime/apply manifest remains seven files.
+- Corrected metadata-normalized artifact: `m062-port-normalization-c4cef25.tar.gz`; 15 regular files; SHA-256 `90ac84416a9c0d7b8b8f8aee0849607e829db252ada036a142caa69ad9008ce4`.
+- Corrected helper SHA-256: `7fcafdcf379b9838846426b74460364f15521521c84f9e7862b2641a7cd7b2aa`. It requires the live support dependency to be `www-data:www-data 0644` and match the pinned SHA before reporting compare/preflight success.
+- Replacement installer SHA-256: `80904234f9ce05862cf9a7674417521f129780f0010608c8578440f2b592e451`. It upgrades only prior helper SHA-256 `34fad8e6e04304b5661206a1b7562e09641431b82deb06f658aa1fae6efc2c87`, creates the root-only exact backup atomically and restores it automatically if post-install validation fails. Sudoers remains SHA-256 `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+- Approved next gate after renewed Shipping/Security/QA PASS: upload corrected artifact/helper/installer, replace helper only on canonical staging, independently verify it, run `compare`, and run `preflight` only if compare is zero-drift. No apply, database change or production access is authorized.

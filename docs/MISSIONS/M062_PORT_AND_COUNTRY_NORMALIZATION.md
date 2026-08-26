@@ -137,3 +137,11 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - The installer returned `M062_DEPLOY_HELPER_INSTALL=PASS`, exact helper and sudoers hashes, the six-command surface, `DEPLOY_EXECUTED=NO`, `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`.
 - Independent restricted verification confirmed the installed helper is `root:root 0755`, size `45432`, SHA-256 `34fad8e6e04304b5661206a1b7562e09641431b82deb06f658aa1fae6efc2c87`, and sudo exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback` and `status` for this helper.
 - No M062 helper command was executed. Stop after installation; compare/preflight and all later release or database actions require separate exact approval.
+
+## Dependency-closure correction authorization — 2026-08-27
+
+- The first approved staging `compare` stopped fail closed at `CANDIDATE_TEST_FAILED` because the isolated artifact omitted the unchanged `ShippingNoteTranslationService.class.php` required by `ShippingPriceImporter.class.php`. `preflight` did not run and no database, runtime or production resource changed.
+- Ahmed explicitly approved adding the dependency as support-only, rebuilding and reviewing the package, replacing only the exact installed M062 helper on canonical staging, then rerunning `compare` and conditional `preflight` only.
+- The dependency must not enter the seven-file runtime/apply manifest. The corrected helper must require the live staging dependency to match the pinned support SHA-256 before compare/preflight/apply can continue.
+- The replacement installer may upgrade only the exact installed prior helper SHA-256, must retain a root-only verified backup and automatically restore it on validation failure. Sudoers remains unchanged.
+- `apply`, `verify`, `rollback`, `status`, database/schema mutation, authenticated acceptance and production remain outside this authorization.
