@@ -112,3 +112,19 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - Ahmed replied `ok, do it` after the proposed sequence: freeze M062, inspect and deploy to `backup-erp`, verify there, then consider the identical production release.
 - Current approved gate is the local release freeze plus read-only canonical `backup-erp` discovery/compare preparation. It does not override the repository rule that helper installation, compare/preflight, apply/verify, authenticated business acceptance and production mutation are separate gates.
 - Production remains unchanged and requires an exact post-staging approval naming the frozen commit/artifact and production action.
+
+## Staging helper installation authorization — 2026-08-26
+
+- Ahmed explicitly approved a non-destructive rollback that restores the prior Shipping Prices code while retaining the additive M062 schema, aliases and normalized data.
+- Ahmed explicitly approved installing the checksum-pinned M062 helper on canonical `backup-erp` only, without running `compare`, `preflight`, `apply`, `verify`, `rollback` or `status`.
+- The installation gate may upload the frozen artifact/helper/installer/sudoers to `/home/codex-deploy/staging-inbox`, install only `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports` and `/etc/sudoers.d/codex-deploy-backup-erp-m062-ports`, validate their hashes/ownership/modes and the six-command sudo surface, then stop.
+- Database, schema, Shipping Prices runtime, documents, containers and business data must remain unchanged. Production remains forbidden and must not be accessed.
+- `compare` and conditional `preflight` are the next separate approval gate after successful installation.
+
+## Staging helper correction authorization — 2026-08-26
+
+- After independent release reviews blocked the first helper, Ahmed explicitly approved correcting the M062 helper and package locally, repeating Shipping/Security/QA review, and then installing only the helper and sudoers on canonical staging.
+- The correction may make future `apply` schema-first, support retained-schema reapply only from root-owned terminal states, fail closed to explicit database recovery when a non-transactional migration is not exactly `READY`, make current-data checks dataset-aware, and replace the artifact with a reproducible metadata-normalized build.
+- The installer must create only `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports` and `/etc/sudoers.d/codex-deploy-backup-erp-m062-ports`. Operational backup/state directories are deferred to a separately approved setup gate.
+- Root execution must use a root-owned `0600` copy of the installer after independent SHA-256 verification; the inbox copy must not be executed directly as root.
+- This authorization still forbids every helper command and every database, schema, runtime, document, container, configuration or business-data change. Production remains forbidden and must not be accessed.

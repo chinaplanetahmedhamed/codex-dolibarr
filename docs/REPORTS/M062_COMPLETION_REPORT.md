@@ -118,3 +118,21 @@ The existing public-search integration test is time-blocked because all local pu
 - This is local evidence, not staging or production acceptance.
 - Before external release: freeze a checksum-pinned artifact, take environment-specific code/database backups, run compare/preflight under separate approval, apply first to staging, and test with a currently valid published rate.
 - No Git push, pull request, staging deployment or production deployment is included.
+
+## Frozen staging release preparation — 2026-08-26
+
+- Runtime/payload commit: `33e96658f14f1f036e483bef57975279d3f8fc11`.
+- Canonical metadata-normalized artifact: `m062-port-normalization-33e9665.tar.gz`; 14 regular files; SHA-256 `20d7a024134bf416f84b6bfbf5e032796c3767b70882943e0124a60385417924`.
+- `deploy/tools/build_m062_artifact.py` rebuilds the artifact only from the pinned Git commit with USTAR format, root/root numeric identity, mode `0644`, one commit timestamp and gzip timestamp zero. A clean rebuild must match byte-for-byte.
+- Runtime allowlist: 7 Shipping Prices files. Support allowlist: migration plus 3 focused tests. The artifact also carries the three pinned allowlist/prestate manifests.
+- Mission-specific helper target: `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports`; exact six-command surface: `compare`, `preflight`, `apply`, `verify`, `rollback`, `status`.
+- Approved rollback policy: restore prior runtime files atomically while retaining additive schema and normalized/alias data; no database rewind.
+- Future initial apply is schema-first; code is installed only after the candidate migration reports exact `READY`. Reapply after approved non-destructive rollback accepts `READY` only from the matching root-owned retained-schema states and skips the already-complete migration.
+- A partial/non-transactional migration that is not exactly `READY` enters `APPLY_FAILED_DB_RECOVERY_REQUIRED`, preserves the validated full database backup and refuses further apply. It never reports a successful automatic rollback.
+- The live-data test is dataset-aware: it requires zero unmapped rows, unique and complete catalog aliases, correct country mapping for every present catalog row, complete clones for every composite value actually present, zero resolved destination warnings and zero duplicate composite clones; it does not require named sample ports or composites to exist.
+- Helper SHA-256: `5502669adf467e87468d733d3bef6ce184d28bf0349ec2ca44cc2bf81f215da1`. Sudoers SHA-256: `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+- Installer SHA-256: `b553c4528f2cda6d218ef40dbbc099e31527ec764a9f7b5218f41187860c8fd4`. It installs only the helper and sudoers; it does not create operational backup/state directories and does not execute any helper command.
+- Root bootstrap policy: copy the installer from the staging inbox to a new root-owned `0600` path, verify this externally recorded installer SHA-256 on that root-owned copy, then execute only the verified root copy. Never execute the writable inbox copy directly as root.
+- Helper contract and fault/restart/recovery tests include command-level initial apply → rollback → retained-schema reapply, auto-rollback reapply, schema-before-code ordering and partial-migration classification. Production identifiers and the noncanonical duplicate staging stack are rejected.
+- Ahmed approved helper installation on canonical `backup-erp` only without executing any helper command. Compare/preflight, apply/verify, authenticated acceptance and production remain separate gates.
+- This installation gate creates only the two approved installed files. Required operational backup/state directories remain absent/deferred unless already present and must be provisioned under a later exact approval before `compare` or `preflight` can succeed.
