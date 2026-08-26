@@ -145,3 +145,9 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - The dependency must not enter the seven-file runtime/apply manifest. The corrected helper must require the live staging dependency to match the pinned support SHA-256 before compare/preflight/apply can continue.
 - The replacement installer must fail if the helper or sudoers is absent, may upgrade only the exact installed prior helper SHA-256, must retain a root-only verified backup and automatically restore it on validation failure, and must contain no sudoers mutation path. Sudoers remains unchanged.
 - `apply`, `verify`, `rollback`, `status`, database/schema mutation, authenticated acceptance and production remain outside this authorization.
+
+## Corrected staging compare result — 2026-08-27
+
+- The corrected helper installation and independent SHA/sudo-surface verification passed. Sudoers was not changed and no deploy command was executed by the installer.
+- `compare` passed candidate tests and dependency parity but returned `DRIFT_COUNT=1` for `custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql`; schema state was `MIGRATION_REQUIRED`.
+- Per the approved gate, `preflight` was not run. The release remains blocked pending a separate, read-only provenance review and a reviewed baseline decision for that exact file. No staging runtime or database mutation and no production access occurred.
