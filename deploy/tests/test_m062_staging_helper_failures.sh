@@ -97,6 +97,11 @@ grep -Fxq 'finish:APPLY_FAILED_DB_RECOVERY_REQUIRED' "$events" || { echo 'M062_D
 recover_apply
 grep -Fxq 'state:APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED' "$events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=READY_SCHEMA_NOT_RETAINED' >&2; exit 1; }
 
+: >"$events"; REQUEST_STARTED=1; CODE_MUTATED=0; SCHEMA_MUTATED=1; export M062_TEST_SCHEMA_STATE=READY M062_TEST_CURRENT_DATA_STATE=FAIL
+if recover_apply; then echo 'M062_DEPLOY_FAILURES=FAIL REASON=LATE_PARTIAL_DATA_ACCEPTED' >&2; exit 1; fi
+grep -Fxq 'state:APPLY_FAILED_DB_RECOVERY_REQUIRED' "$events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=LATE_PARTIAL_DB_RECOVERY_STATE' >&2; exit 1; }
+export M062_TEST_CURRENT_DATA_STATE=PASS
+
 : >"$events"; REQUEST_STARTED=1; ROLLBACK_MUTATED=1
 recover_rollback
 expected=$'reapply\nlive\nstate:ROLLBACK_FAILED_REAPPLIED\nfinish:ROLLBACK_FAILED_REAPPLIED'
@@ -120,6 +125,15 @@ finish_request(){ printf 'finish:%s\n' "$1" >>"$events"; REQUEST_STARTED=0; }
 reconcile_pending
 grep -Fxq 'state:APPLY_FAILED_NO_MUTATION' "$events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PENDING_PREPARE_STATE' >&2; exit 1; }
 grep -Fxq 'finish:APPLY_FAILED_NO_MUTATION' "$events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PENDING_PREPARE_AUDIT' >&2; exit 1; }
+
+# A crashed rollback may only terminalize as retained when the full DB audit is READY.
+: >"$events"; REQUEST_STARTED=1; STATE_STATUS=PENDING_ROLLBACK; REQUEST_ACTION=rollback; export M062_TEST_SCHEMA_STATE=MIGRATION_REQUIRED
+prepare_retained_candidate(){ return 0; }
+prestate_matches(){ return 0; }
+if reconcile_pending; then echo 'M062_DEPLOY_FAILURES=FAIL REASON=PENDING_ROLLBACK_INCOMPLETE_DB_ACCEPTED' >&2; exit 1; fi
+grep -Fxq 'state:ROLLBACK_FAILED_DB_RECOVERY_REQUIRED' "$events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PENDING_ROLLBACK_DB_RECOVERY_STATE' >&2; exit 1; }
+grep -Fxq 'finish:ROLLBACK_FAILED_DB_RECOVERY_REQUIRED' "$events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PENDING_ROLLBACK_DB_RECOVERY_AUDIT' >&2; exit 1; }
+export M062_TEST_SCHEMA_STATE=READY
 
 # A stale root-only candidate must be reachable and removable through the restart gate.
 mkdir "$test_root/state/container-root/m062-ports-candidate.stale"

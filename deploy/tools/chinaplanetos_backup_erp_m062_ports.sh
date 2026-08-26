@@ -5,10 +5,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M062-R01'
-readonly RUNTIME_COMMIT='33e96658f14f1f036e483bef57975279d3f8fc11'
+readonly RUNTIME_COMMIT='66da3c54d1ace11e0872750ce1aca49e0f2ac97b'
 readonly BASELINE_COMMIT='95402e7f22665c9efd61d648f1e545094aaf47c9'
-readonly SHORT_COMMIT='33e9665'
-readonly ARTIFACT_SHA='20d7a024134bf416f84b6bfbf5e032796c3767b70882943e0124a60385417924'
+readonly SHORT_COMMIT='66da3c5'
+readonly ARTIFACT_SHA='977cdb6309ee5a084d74b4311789733f73f467fe764131e912dddbabe70510d8'
 readonly RUNTIME_MANIFEST_SHA='4cd75025aafbff6d46a8ebaf88f6b4188d9a1b62044a0f55bb6b4584ae16709e'
 readonly SUPPORT_MANIFEST_SHA='a5b6815ee28f7d7c06eadc61b4e6f9c2444e275a31c1ee4a78472c0e8c61d944'
 readonly BASELINE_MANIFEST_SHA='d377b0fefe2315a3cc164740b74e1f5dff0296ede357b7323cf2407f3380ba6d'
@@ -17,7 +17,7 @@ readonly SUPPORT_MANIFEST='deploy/releases/m062-support-files.txt'
 readonly BASELINE_MANIFEST='deploy/releases/m062-prestate.sha256'
 readonly MIGRATION='deploy/migrations/m062_port_normalization.php'
 readonly ARTIFACT_NAME="m062-port-normalization-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m062-staging-33e9665-root-only'
+readonly DEPLOY_CONTEXT='m062-staging-66da3c5-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
@@ -162,7 +162,7 @@ load_state() {
   [[ $TEST_MODE -eq 1 || $(owner_group_of "$STATE_FILE") == 'root:root' ]] || die 'STATE_METADATA_INVALID'
   source "$STATE_FILE"
   [[ "$STATE_RELEASE" == "$RELEASE" && "$STATE_RUNTIME_COMMIT" == "$RUNTIME_COMMIT" && "$STATE_ARTIFACT_SHA" == "$ARTIFACT_SHA" && "$STATE_RETAINED_ARTIFACT" == "$RETAINED_ARTIFACT" ]] || die 'STATE_MISMATCH'
-  case "$STATE_STATUS" in DEPLOYED|ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_NO_MUTATION|ROLLBACK_FAILED_NO_MUTATION|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_DB_RECOVERY_REQUIRED|APPLY_FAILED_RECOVERY_REQUIRED|ROLLBACK_FAILED_REAPPLIED|ROLLBACK_FAILED_RECOVERY_REQUIRED|PENDING_APPLY_PREPARE|PENDING_APPLY_SCHEMA|PENDING_APPLY_CODE|PENDING_ROLLBACK_PREPARE|PENDING_ROLLBACK) ;; *) die 'STATE_STATUS_INVALID' ;; esac
+  case "$STATE_STATUS" in DEPLOYED|ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_NO_MUTATION|ROLLBACK_FAILED_NO_MUTATION|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_DB_RECOVERY_REQUIRED|APPLY_FAILED_RECOVERY_REQUIRED|ROLLBACK_FAILED_REAPPLIED|ROLLBACK_FAILED_DB_RECOVERY_REQUIRED|ROLLBACK_FAILED_RECOVERY_REQUIRED|PENDING_APPLY_PREPARE|PENDING_APPLY_SCHEMA|PENDING_APPLY_CODE|PENDING_ROLLBACK_PREPARE|PENDING_ROLLBACK) ;; *) die 'STATE_STATUS_INVALID' ;; esac
   CODE_BACKUP=$STATE_CODE_BACKUP; CODE_BACKUP_SHA=$STATE_CODE_BACKUP_SHA; PRESTATE_FILE=$STATE_PRESTATE_FILE; PRESTATE_SHA=$STATE_PRESTATE_SHA; DB_BACKUP=$STATE_DB_BACKUP; DB_BACKUP_SHA=$STATE_DB_BACKUP_SHA; SCHEMA_PRESTATE=$STATE_SCHEMA_PRESTATE; REAPPLY_CODE=$STATE_REAPPLY_CODE; REAPPLY_CODE_SHA=$STATE_REAPPLY_CODE_SHA
   REQUEST_ID=$STATE_REQUEST_ID
   if [[ -n "$REQUEST_ID" ]]; then
@@ -178,7 +178,7 @@ finalize_terminal_request_from_state() {
   case "$STATE_STATUS" in
     DEPLOYED) if [[ "$REQUEST_ACTION" == apply ]]; then terminal='APPLIED_RECOVERED_TERMINAL_AUDIT'; else terminal='ROLLBACK_FAILED_NO_MUTATION_RECOVERED_TERMINAL_AUDIT'; fi ;;
     ROLLED_BACK_SCHEMA_RETAINED) terminal='ROLLED_BACK_SCHEMA_RETAINED_RECOVERED_TERMINAL_AUDIT' ;;
-    APPLY_FAILED_NO_MUTATION|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_DB_RECOVERY_REQUIRED|APPLY_FAILED_RECOVERY_REQUIRED|ROLLBACK_FAILED_REAPPLIED|ROLLBACK_FAILED_RECOVERY_REQUIRED) terminal="${STATE_STATUS}_RECOVERED_TERMINAL_AUDIT" ;;
+    APPLY_FAILED_NO_MUTATION|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_DB_RECOVERY_REQUIRED|APPLY_FAILED_RECOVERY_REQUIRED|ROLLBACK_FAILED_REAPPLIED|ROLLBACK_FAILED_DB_RECOVERY_REQUIRED|ROLLBACK_FAILED_RECOVERY_REQUIRED) terminal="${STATE_STATUS}_RECOVERED_TERMINAL_AUDIT" ;;
     PENDING_*) return 0 ;;
     *) return 1 ;;
   esac
@@ -195,7 +195,8 @@ recover_apply() {
   save_state 'APPLY_FAILED_RECOVERY_REQUIRED' || return 1; [[ $REQUEST_STARTED -eq 0 ]] || finish_request 'APPLY_FAILED_RECOVERY_REQUIRED' || return 1; echo 'M062_DEPLOY_AUTO_ROLLBACK=FAIL RECOVERY_REQUIRED=YES' >&2; return 1
 }
 recover_rollback() {
-  if schema_ready && reapply_release && live_checks; then save_state 'ROLLBACK_FAILED_REAPPLIED' || return 1; [[ $REQUEST_STARTED -eq 0 ]] || finish_request 'ROLLBACK_FAILED_REAPPLIED' || return 1; ROLLBACK_MUTATED=0; echo 'M062_DEPLOY_ROLLBACK_REAPPLY=PASS' >&2; return 0; fi
+  if ! schema_ready; then save_state 'ROLLBACK_FAILED_DB_RECOVERY_REQUIRED' || return 1; [[ $REQUEST_STARTED -eq 0 ]] || finish_request 'ROLLBACK_FAILED_DB_RECOVERY_REQUIRED' || return 1; echo "M062_DEPLOY_ROLLBACK_REAPPLY=FAIL DATABASE_RECOVERY_REQUIRED=YES DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA" >&2; return 1; fi
+  if reapply_release && live_checks; then save_state 'ROLLBACK_FAILED_REAPPLIED' || return 1; [[ $REQUEST_STARTED -eq 0 ]] || finish_request 'ROLLBACK_FAILED_REAPPLIED' || return 1; ROLLBACK_MUTATED=0; echo 'M062_DEPLOY_ROLLBACK_REAPPLY=PASS' >&2; return 0; fi
   save_state 'ROLLBACK_FAILED_RECOVERY_REQUIRED' || return 1; [[ $REQUEST_STARTED -eq 0 ]] || finish_request 'ROLLBACK_FAILED_RECOVERY_REQUIRED' || return 1; echo 'M062_DEPLOY_ROLLBACK_REAPPLY=FAIL RECOVERY_REQUIRED=YES' >&2; return 1
 }
 finish_pending_no_mutation() { local status; status=$(printf '%s_FAILED_NO_MUTATION' "$REQUEST_ACTION" | tr '[:lower:]' '[:upper:]'); if [[ "$REQUEST_ACTION" == rollback ]]; then save_state DEPLOYED || return 1; else save_state "$status" || return 1; fi; finish_request "$status"; }
@@ -215,7 +216,7 @@ reconcile_pending() {
       ;;
     PENDING_ROLLBACK)
       REQUEST_ACTION=rollback; prepare_retained_candidate
-      if prestate_matches; then schema_prestate; if [[ "$SCHEMA_PRESTATE" == MIGRATION_REQUIRED || "$SCHEMA_PRESTATE" == READY ]]; then save_state ROLLED_BACK_SCHEMA_RETAINED || return 1; finish_request 'ROLLBACK_RECOVERED_COMPLETED' || return 1; echo 'M062_DEPLOY_RECONCILE=PASS RESULT=ROLLED_BACK_SCHEMA_RETAINED'; return 0; fi; fi
+      if prestate_matches && schema_ready; then save_state ROLLED_BACK_SCHEMA_RETAINED || return 1; finish_request 'ROLLBACK_RECOVERED_COMPLETED' || return 1; echo 'M062_DEPLOY_RECONCILE=PASS RESULT=ROLLED_BACK_SCHEMA_RETAINED'; return 0; fi
       ROLLBACK_MUTATED=1; recover_rollback || return 1; echo 'M062_DEPLOY_RECONCILE=PASS RESULT=ROLLBACK_FAILED_REAPPLIED'
       ;;
     *) return 1 ;;
@@ -278,10 +279,11 @@ validate_artifact() {
 }
 retain_artifact() { [[ "$ARTIFACT_SOURCE" == "$ARTIFACT" ]] || return 0; if [[ -e "$RETAINED_ARTIFACT" || -L "$RETAINED_ARTIFACT" ]]; then validate_backup_file "$RETAINED_ARTIFACT" "$ARTIFACT_SHA" || die 'RETAINED_ARTIFACT_INVALID'; return; fi; local temp; temp=$(mktemp "$ARTIFACT_ROOT/.m062-artifact.XXXXXX"); install -m 0600 "$ARTIFACT_COPY" "$temp"; [[ $(sha256 "$temp") == "$ARTIFACT_SHA" ]] || die 'RETAINED_ARTIFACT_HASH_INVALID'; ln "$temp" "$RETAINED_ARTIFACT" 2>/dev/null || { rm -f "$temp"; die 'RETAINED_ARTIFACT_COLLISION'; }; rm -f "$temp"; fsync_path "$RETAINED_ARTIFACT"; fsync_path "$ARTIFACT_ROOT"; }
 candidate_checks() {
-  local rel; if [[ $TEST_MODE -eq 1 ]]; then for rel in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do [[ "$rel" == *.php ]] && php -l "$CANDIDATE_ROOT/$rel" >/dev/null; done; return; fi
+  local rel; if [[ $TEST_MODE -eq 1 ]]; then for rel in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do [[ "$rel" == *.php ]] && php -l "$CANDIDATE_ROOT/$rel" >/dev/null; done; M062_DATA_AUDIT_SELF_TEST=1 php "$CANDIDATE_ROOT/deploy/tests/test_m062_current_data.php" >/dev/null; return; fi
   CANDIDATE_REMOTE=$(docker exec "$TARGET_CONTAINER" mktemp -d /root/m062-ports-candidate.XXXXXX); [[ "$CANDIDATE_REMOTE" == /root/m062-ports-candidate.* ]] || die 'CANDIDATE_REMOTE_INVALID'; docker exec "$TARGET_CONTAINER" chmod 0700 "$CANDIDATE_REMOTE"; docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE/"; docker exec "$TARGET_CONTAINER" chmod -R go-rwx "$CANDIDATE_REMOTE"
   for rel in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}"; do if [[ "$rel" == *.php ]]; then docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$rel" >/dev/null || die 'CANDIDATE_LINT_FAILED'; fi; done
   for rel in "${STATIC_TESTS[@]}"; do docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$rel" >/dev/null || die 'CANDIDATE_TEST_FAILED'; done
+  docker exec -e M062_DATA_AUDIT_SELF_TEST=1 "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m062_current_data.php" >/dev/null || die 'CANDIDATE_DATA_AUDIT_TEST_FAILED'
 }
 classify_schema() {
   if [[ $TEST_MODE -eq 1 ]]; then SCHEMA_PRESTATE=${M062_TEST_SCHEMA_STATE:-MIGRATION_REQUIRED}; case "$SCHEMA_PRESTATE" in READY|MIGRATION_REQUIRED) return 0 ;; *) SCHEMA_PRESTATE=DRIFT; return 1 ;; esac; fi
@@ -291,7 +293,11 @@ classify_schema() {
   SCHEMA_PRESTATE=DRIFT; echo "$out" >&2; return 1
 }
 schema_prestate() { classify_schema || die 'SCHEMA_PRESTATE_DRIFT'; }
-schema_ready() { classify_schema && [[ "$SCHEMA_PRESTATE" == READY ]]; }
+current_data_ready() {
+  if [[ $TEST_MODE -eq 1 ]]; then [[ ${M062_TEST_CURRENT_DATA_STATE:-PASS} == PASS ]]; return; fi
+  docker exec -e M062_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m062_current_data.php" >/dev/null
+}
+schema_ready() { classify_schema && [[ "$SCHEMA_PRESTATE" == READY ]] && current_data_ready; }
 data_preflight() {
   [[ $TEST_MODE -eq 1 ]] && return 0
   local out rc; set +e; out=$(docker exec -e M062_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" dry-run 2>&1); rc=$?; set -e
