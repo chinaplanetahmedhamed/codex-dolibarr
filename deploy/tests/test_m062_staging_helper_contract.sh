@@ -16,11 +16,14 @@ bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
 [[ $(sha256 "$helper") == 7fcafdcf379b9838846426b74460364f15521521c84f9e7862b2641a7cd7b2aa ]] || fail HELPER_HASH
 [[ $(sha256 "$sudoers") == 958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231 ]] || fail SUDOERS_HASH
-[[ $(sha256 "$installer") == 80904234f9ce05862cf9a7674417521f129780f0010608c8578440f2b592e451 ]] || fail INSTALLER_HASH
+[[ $(sha256 "$installer") == 13841f57b297439e82375819ad1f59568cdc6307a5651dd0d1187298ab92313a ]] || fail INSTALLER_HASH
 grep -Fq "readonly HELPER_SHA='7fcafdcf379b9838846426b74460364f15521521c84f9e7862b2641a7cd7b2aa'" "$installer" || fail INSTALLER_HELPER_PIN
 grep -Fq "readonly PREVIOUS_HELPER_SHA='34fad8e6e04304b5661206a1b7562e09641431b82deb06f658aa1fae6efc2c87'" "$installer" || fail INSTALLER_PREVIOUS_HELPER_PIN
 grep -Fq "readonly SUDOERS_SHA='958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231'" "$installer" || fail INSTALLER_SUDOERS_PIN
-[[ $(grep -n 'GLOBAL_SUDOERS_PRECHECK_FAILED' "$installer" | cut -d: -f1) -lt $(grep -n 'mv "$sudoers_stage" "$TARGET_SUDOERS"' "$installer" | cut -d: -f1) ]] || fail INSTALLER_PRECHECK_ORDER
+grep -Fq "die 'EXISTING_HELPER_REQUIRED'" "$installer" || fail INSTALLER_REQUIRES_EXISTING_HELPER
+grep -Fq "die 'EXISTING_SUDOERS_REQUIRED'" "$installer" || fail INSTALLER_REQUIRES_EXISTING_SUDOERS
+if grep -Eq 'SOURCE_SUDOERS|sudoers_stage|mv .*TARGET_SUDOERS|install .*TARGET_SUDOERS|rm -f .*TARGET_SUDOERS' "$installer"; then fail INSTALLER_SUDOERS_MUTATION; fi
+grep -Fq 'SUDOERS_CHANGED=NO' "$installer" || fail INSTALLER_SUDOERS_UNCHANGED_EVIDENCE
 grep -Fq "readonly UPGRADE_BACKUP_ROOT='/root/m062-ports-helper-upgrade-backups'" "$installer" || fail INSTALLER_BACKUP_ROOT
 grep -Fq "elif [[ \"\$existing_helper_sha\" == \"\$PREVIOUS_HELPER_SHA\" ]]; then upgrading_helper=1" "$installer" || fail INSTALLER_EXACT_UPGRADE_GATE
 grep -Fq 'mv -f "$restore_stage" "$TARGET_HELPER"' "$installer" || fail INSTALLER_AUTO_RESTORE
@@ -37,7 +40,7 @@ grep -Fq "TARGET_VOLUME='erp-staging_erp-staging_custom'" "$helper" || fail CUST
 grep -Fq "DB_VOLUME='erp-staging_erp-staging_mariadb_data'" "$helper" || fail DB_VOLUME
 if grep -Eq 'vision_erp|vision_db|vision-os_|codex_staging|/opt/codex-dolibarr-staging|https://erp\.visiontrading\.biz' "$helper" "$installer" "$sudoers"; then fail FORBIDDEN_TARGET; fi
 if grep -Eq '/root/backup-erp-(code|db|release)-backups|/var/lib/chinaplanetos-m062-ports' "$installer"; then fail INSTALLER_SCOPE_EXPANDED; fi
-grep -Fq '80904234f9ce05862cf9a7674417521f129780f0010608c8578440f2b592e451' "$report" || fail INSTALLER_HASH_NOT_RECORDED
+grep -Fq '13841f57b297439e82375819ad1f59568cdc6307a5651dd0d1187298ab92313a' "$report" || fail INSTALLER_HASH_NOT_RECORDED
 
 [[ $(wc -l <"$sudoers" | tr -d ' ') -eq 6 ]] || fail SUDOERS_COUNT
 for command in compare preflight apply verify rollback status; do
