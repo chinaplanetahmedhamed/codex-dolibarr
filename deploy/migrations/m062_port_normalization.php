@@ -37,12 +37,11 @@ if ($entity <= 0 || !m062TableExists($db,$portTable) || !m062TableExists($db,$ra
 
 $inspect = function (PortNameResolver $resolver) use ($db,$entity,$rateTable) {
     $summary=array('unmapped_rows'=>0,'unmapped_values'=>0,'resolvable_rows'=>0,'resolvable_values'=>0,'remaining'=>array());
-    $res=m062Query($db,"SELECT pod,COUNT(*) total FROM `".$rateTable."` WHERE entity=".$entity." AND (destination_country IS NULL OR destination_country='') GROUP BY pod ORDER BY total DESC,pod",'UNMAPPED_INSPECTION_FAILED');
+    $res=m062Query($db,"SELECT pod,COUNT(*) total FROM `".$rateTable."` WHERE entity=".$entity." GROUP BY pod ORDER BY total DESC,pod",'UNMAPPED_INSPECTION_FAILED');
     while($row=$db->fetch_object($res)){
-        $summary['unmapped_rows']+=(int)$row->total;$summary['unmapped_values']++;
         $match=$resolver->resolveList($row->pod,true);
         if($match['status']==='matched'){$summary['resolvable_rows']+=(int)$row->total;$summary['resolvable_values']++;}
-        else $summary['remaining'][]=array('pod'=>$row->pod,'rows'=>(int)$row->total,'status'=>$match['status'],'reason'=>$match['reason']??'');
+        else{$summary['unmapped_rows']+=(int)$row->total;$summary['unmapped_values']++;$summary['remaining'][]=array('pod'=>$row->pod,'rows'=>(int)$row->total,'status'=>$match['status'],'reason'=>$match['reason']??'');}
     }
     return $summary;
 };
