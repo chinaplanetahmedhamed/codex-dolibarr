@@ -5,10 +5,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M062-R01'
-readonly RUNTIME_COMMIT='66da3c54d1ace11e0872750ce1aca49e0f2ac97b'
+readonly RUNTIME_COMMIT='b8fb049082d5ee11ed20c529d5474ed24a07a93a'
 readonly BASELINE_COMMIT='95402e7f22665c9efd61d648f1e545094aaf47c9'
-readonly SHORT_COMMIT='66da3c5'
-readonly ARTIFACT_SHA='977cdb6309ee5a084d74b4311789733f73f467fe764131e912dddbabe70510d8'
+readonly SHORT_COMMIT='b8fb049'
+readonly ARTIFACT_SHA='7ae30289096a6b903c5c52ea01c5361c0955363d22e37368645923b059cd8dab'
 readonly RUNTIME_MANIFEST_SHA='4cd75025aafbff6d46a8ebaf88f6b4188d9a1b62044a0f55bb6b4584ae16709e'
 readonly SUPPORT_MANIFEST_SHA='a5b6815ee28f7d7c06eadc61b4e6f9c2444e275a31c1ee4a78472c0e8c61d944'
 readonly BASELINE_MANIFEST_SHA='d377b0fefe2315a3cc164740b74e1f5dff0296ede357b7323cf2407f3380ba6d'
@@ -17,7 +17,7 @@ readonly SUPPORT_MANIFEST='deploy/releases/m062-support-files.txt'
 readonly BASELINE_MANIFEST='deploy/releases/m062-prestate.sha256'
 readonly MIGRATION='deploy/migrations/m062_port_normalization.php'
 readonly ARTIFACT_NAME="m062-port-normalization-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m062-staging-66da3c5-root-only'
+readonly DEPLOY_CONTEXT='m062-staging-b8fb049-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
