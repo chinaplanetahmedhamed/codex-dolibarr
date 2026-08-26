@@ -136,3 +136,12 @@ The existing public-search integration test is time-blocked because all local pu
 - Helper contract and fault/restart/recovery tests include command-level initial apply → rollback → retained-schema reapply, auto-rollback reapply, schema-before-code ordering and partial-migration classification. Production identifiers and the noncanonical duplicate staging stack are rejected.
 - Ahmed approved helper installation on canonical `backup-erp` only without executing any helper command. Compare/preflight, apply/verify, authenticated acceptance and production remain separate gates.
 - This installation gate creates only the two approved installed files. Required operational backup/state directories remain absent/deferred unless already present and must be provisioned under a later exact approval before `compare` or `preflight` can succeed.
+
+## Staging helper installed — 2026-08-26
+
+- Final preparation commit: `45d299a259b414b7775b434dac09fc17af7db09f`; runtime/payload commit remains `f697431b4ebf646bc2196e131e98e3bd53568e3e`.
+- Final Shipping, Security and QA reviews: `PASS`, with no findings. A clean checkout reproduced the 14-file artifact byte-for-byte.
+- Server-side inbox hashes matched artifact `6200712277c4af51fb81bb40ea3ead9ad811035547d179128f029ea028b55e0e`, helper `34fad8e6e04304b5661206a1b7562e09641431b82deb06f658aa1fae6efc2c87`, installer `b3c542155e4557c80989a14b3df2c76fbedbf0efe54b38949eec9e814e2408c8` and sudoers `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`; each inbox file was `codex-deploy:codex-deploy 0644`.
+- The root-owned `0600` installer copy passed the externally pinned SHA-256 check. Installer result: `M062_DEPLOY_HELPER_INSTALL=PASS`, `DEPLOY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, `PRODUCTION_ACCESSED=NO`.
+- Independent restricted verification: installed helper `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports` is `root:root 0755`, size `45432`, with the exact reviewed helper SHA-256. `sudo -n -l` exposes exactly the six reviewed M062 commands and no additional M062 command.
+- No helper command was executed. Shipping Prices runtime and database were not deployed or changed by this gate. Compare/preflight, operational-directory setup, apply/verify, authenticated acceptance and production remain separate approvals.

@@ -128,3 +128,12 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - The installer must create only `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports` and `/etc/sudoers.d/codex-deploy-backup-erp-m062-ports`. Operational backup/state directories are deferred to a separately approved setup gate.
 - Root execution must use a root-owned `0600` copy of the installer after independent SHA-256 verification; the inbox copy must not be executed directly as root.
 - This authorization still forbids every helper command and every database, schema, runtime, document, container, configuration or business-data change. Production remains forbidden and must not be accessed.
+
+## Staging helper installation result — 2026-08-26
+
+- Final preparation commit `45d299a259b414b7775b434dac09fc17af7db09f` and runtime commit `f697431b4ebf646bc2196e131e98e3bd53568e3e` passed the required Shipping, Security and QA reviews with no findings.
+- The four reviewed files were uploaded to the canonical staging inbox as `codex-deploy:codex-deploy 0644`; their server-side SHA-256 values matched the frozen artifact, helper, installer and sudoers pins.
+- The root bootstrap used `/root/install-m062-helper-45d299a.sh`, created as a root-owned `0600` copy. Its SHA-256 check returned `OK` before execution.
+- The installer returned `M062_DEPLOY_HELPER_INSTALL=PASS`, exact helper and sudoers hashes, the six-command surface, `DEPLOY_EXECUTED=NO`, `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`.
+- Independent restricted verification confirmed the installed helper is `root:root 0755`, size `45432`, SHA-256 `34fad8e6e04304b5661206a1b7562e09641431b82deb06f658aa1fae6efc2c87`, and sudo exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback` and `status` for this helper.
+- No M062 helper command was executed. Stop after installation; compare/preflight and all later release or database actions require separate exact approval.
