@@ -1,3 +1,4 @@
 custom/chinaplanetshippingprices/class/ShippingPriceService.class.php
+custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php
 deploy/tests/test_m043_public_rate_token.php
 deploy/tests/test_m062_public_alexandria_group.php
