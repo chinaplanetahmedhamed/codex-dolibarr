@@ -47,7 +47,10 @@ $inspect = function (PortNameResolver $resolver) use ($db,$entity,$rateTable) {
 };
 
 if ($argv[1] === 'dry-run') {
-    $summary=$inspect(new PortNameResolver($db,$entity));
+    // Read-only preflight runs before the alias table exists. This is the only
+    // caller allowed to assess curated literal resolvability without a linked
+    // alias row; apply/check and all runtime callers require database port IDs.
+    $summary=$inspect(new PortNameResolver($db,$entity,null,true));
     echo 'M062_PORTS_DRY_RUN='.json_encode($summary,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
     exit(empty($summary['remaining'])?0:2);
 }

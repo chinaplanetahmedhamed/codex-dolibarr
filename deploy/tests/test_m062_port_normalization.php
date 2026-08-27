@@ -89,6 +89,7 @@ m062Assert($conflictResolver->resolveList('CONFLICT',true)['status']==='ambiguou
 
 class M062MutableLiteralDb {
     public function query($sql){
+        if(strpos($sql,'information_schema.tables')!==false)return new M062ConflictResult(array((object)array('total'=>1)));
         if(strpos($sql,'chinaplanetsp_port_alias')!==false)return new M062ConflictResult(array(
             (object)array('alias_name'=>'KUWAIT/SHUAIBA','normalized_alias'=>'KUWAIT SHUAIBA','rowid'=>99,'port_name'=>'SHUAIBA','port_code'=>'KWSAA','country_code'=>'KW'),
         ));
@@ -106,6 +107,7 @@ class M062LiteralFkDb {
     private $conflict;
     public function __construct($conflict=false){$this->conflict=$conflict;}
     public function query($sql){
+        if(strpos($sql,'information_schema.tables')!==false)return new M062ConflictResult(array((object)array('total'=>1)));
         if(strpos($sql,'chinaplanetsp_port_alias')!==false)return new M062ConflictResult(array(
             (object)array('alias_name'=>'AGADIR, Morocco','normalized_alias'=>'AGADIR MOROCCO','rowid'=>$this->conflict?77:48,'port_name'=>$this->conflict?'ORAN':'AGADIR','port_code'=>$this->conflict?'DZORN':'MAAGA','country_code'=>$this->conflict?'DZ':'MA'),
             (object)array('alias_name'=>'KHALIFA PORT, ABU DHABI','normalized_alias'=>'KHALIFA PORT ABU DHABI','rowid'=>22,'port_name'=>'KHALIFA PORT','port_code'=>'AEKHL','country_code'=>'AE'),
@@ -126,6 +128,33 @@ m062Assert($khalifaLiteral['status']==='matched'&&(int)$khalifaLiteral['matches'
 $literalConflict=(new PortNameResolver(new M062LiteralFkDb(true),1,0.90))->resolveList('AGADIR, Morocco',true);
 m062Assert($literalConflict['status']==='ambiguous'&&$literalConflict['reason']==='literal_alias_owner_mismatch','A mutable literal owner mismatch must fail closed.');
 
+class M062MissingLiteralAliasDb {
+    private $aliasQueryFails;
+    public function __construct($aliasQueryFails=false){$this->aliasQueryFails=$aliasQueryFails;}
+    public function query($sql){
+        if(strpos($sql,'information_schema.tables')!==false)return new M062ConflictResult(array((object)array('total'=>1)));
+        if(strpos($sql,'chinaplanetsp_port_alias')!==false)return $this->aliasQueryFails?false:new M062ConflictResult(array());
+        if(strpos($sql,'chinaplanetsp_port')!==false)return new M062ConflictResult(array(
+            (object)array('rowid'=>48,'port_name'=>'AGADIR','port_code'=>'MAAGA','country_code'=>'MA','aliases'=>''),
+        ));
+        return false;
+    }
+    public function fetch_object($result){return$result->rows[$result->index++]??false;}
+}
+foreach(array(false,true) as $queryFails){
+    $missingLiteral=(new PortNameResolver(new M062MissingLiteralAliasDb($queryFails),1,0.90))->resolveList('AGADIR, Morocco',true);
+    m062Assert($missingLiteral['status']==='ambiguous'&&$missingLiteral['reason']==='literal_alias_owner_unavailable','A missing or unreadable active literal alias must fail closed.');
+}
+
+class M062PreMigrationLiteralDb extends M062MissingLiteralAliasDb {
+    public function query($sql){
+        if(strpos($sql,'information_schema.tables')!==false)return new M062ConflictResult(array((object)array('total'=>0)));
+        return parent::query($sql);
+    }
+}
+$preMigrationLiteral=(new PortNameResolver(new M062PreMigrationLiteralDb(),1,0.90,true))->resolveList('AGADIR, Morocco',true);
+m062Assert($preMigrationLiteral['status']==='matched'&&(int)$preMigrationLiteral['matches'][0]['fk_port']===0,'Only explicit pre-migration dry-run mode may inspect a literal before alias-table creation.');
+
 $owners = array();
 foreach (PortNameResolver::catalog() as $definition) {
     foreach (array_merge(array($definition['port_name']), $definition['aliases']) as $alias) {
@@ -143,7 +172,7 @@ foreach (array('pod_raw','fk_destination_port','port_match_method','port_match_s
 $importer = file_get_contents($root.'/custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php');
 m062Assert(strpos($importer, 'resolveList($podRaw, true)') !== false && strpos($importer, "'pod_raw'=>\$podRaw") !== false, 'Importer resolver/raw POD integration missing.');
 $migration = file_get_contents($root.'/deploy/migrations/m062_port_normalization.php');
-foreach (array("array('dry-run','apply','check')", 'GET_LOCK(', 'normalized_alias', 'NOT EXISTS(SELECT 1', 'resolved_warnings_removed', 'ACTIVE_ALIAS_CONFLICT', 'LEGACY_ALIAS_CONFLICT') as $needle) m062Assert(strpos($migration, $needle) !== false, 'Migration safety boundary missing '.$needle);
+foreach (array("array('dry-run','apply','check')", 'new PortNameResolver($db,$entity,null,true)', 'GET_LOCK(', 'normalized_alias', 'NOT EXISTS(SELECT 1', 'resolved_warnings_removed', 'ACTIVE_ALIAS_CONFLICT', 'LEGACY_ALIAS_CONFLICT') as $needle) m062Assert(strpos($migration, $needle) !== false, 'Migration safety boundary missing '.$needle);
 m062Assert(strpos($migration,'INSERT IGNORE INTO `".$aliasTable')===false,'Legacy alias conflicts must not be silently ignored.');
 m062Assert(substr_count($migration, "ELSE source.public_visible END")===1&&strpos($migration, "ELSE public_visible END,pod=")!==false, 'Migration must preserve existing visibility and reveal only newly mapped rows.');
 $admin = file_get_contents($root.'/custom/chinaplanetshippingprices/admin/ports.php');

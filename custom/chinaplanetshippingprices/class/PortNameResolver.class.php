@@ -20,8 +20,10 @@ class PortNameResolver
     private $ambiguous = array();
     private $literalAliases = array();
     private $literalAmbiguous = array();
+    private $allowMissingAliasTableLiterals = false;
+    private $aliasTableState = 'not_checked';
 
-    public function __construct($db = null, $entity = 1, $threshold = null)
+    public function __construct($db = null, $entity = 1, $threshold = null, $allowMissingAliasTableLiterals = false)
     {
         $this->db = $db;
         $this->entity = (int) $entity;
@@ -29,6 +31,7 @@ class PortNameResolver
             $threshold = (float) $GLOBALS['conf']->global->CHINAPLANETSP_PORT_FUZZY_THRESHOLD;
         }
         $this->threshold = max(0.85, min(1.0, $threshold === null ? self::DEFAULT_FUZZY_THRESHOLD : (float) $threshold));
+        $this->allowMissingAliasTableLiterals = $allowMissingAliasTableLiterals === true;
         $this->loadBuiltinCatalog();
         $this->loadLegacyMappings();
         $this->loadAliasTable();
@@ -175,6 +178,11 @@ class PortNameResolver
         if ($match['port_name'] !== $expected['port_name'] || $match['country_code'] !== $expected['country_code']) {
             return array('status'=>'ambiguous', 'matches'=>array(), 'reason'=>'literal_alias_owner_mismatch');
         }
+        if ($this->db && !($this->allowMissingAliasTableLiterals && $this->aliasTableState === 'missing')) {
+            if ($this->aliasTableState !== 'loaded' || ($match['source'] ?? '') !== 'database' || (int)($match['fk_port'] ?? 0) <= 0) {
+                return array('status'=>'ambiguous', 'matches'=>array(), 'reason'=>'literal_alias_owner_unavailable');
+            }
+        }
         $match['method'] = 'exact'; $match['score'] = 1.0; $match['matched_alias'] = self::normalize($value);
         return array('status'=>'matched', 'matches'=>array($match), 'method'=>'exact', 'score'=>1.0);
     }
@@ -290,11 +298,17 @@ class PortNameResolver
     private function loadAliasTable()
     {
         if (!$this->db) return;
+        $existsSql = "SELECT COUNT(*) total FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='".MAIN_DB_PREFIX."chinaplanetsp_port_alias'";
+        $existsResult = $this->db->query($existsSql);
+        if (!$existsResult) { $this->aliasTableState = 'failed'; return; }
+        $exists = $this->db->fetch_object($existsResult);
+        if (!$exists || (int)$exists->total !== 1) { $this->aliasTableState = 'missing'; return; }
         $sql = "SELECT a.alias_name,a.normalized_alias,p.rowid,p.port_name,p.port_code,p.country_code";
         $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetsp_port_alias a INNER JOIN ".MAIN_DB_PREFIX."chinaplanetsp_port p ON p.rowid=a.fk_port AND p.entity=a.entity";
         $sql .= " WHERE a.entity=".$this->entity." AND a.status=1 AND p.status=1";
         $res = $this->db->query($sql);
-        if (!$res) return;
+        if (!$res) { $this->aliasTableState = 'failed'; return; }
+        $this->aliasTableState = 'loaded';
         while ($row = $this->db->fetch_object($res)) {
             $port = array('port_name'=>$row->port_name, 'country_code'=>$row->country_code, 'port_code'=>$row->port_code, 'fk_port'=>(int)$row->rowid, 'source'=>'database');
             $this->addAlias($row->alias_name ?: $row->normalized_alias, $port, true);
