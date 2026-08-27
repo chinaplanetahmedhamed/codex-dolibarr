@@ -1,5 +1,15 @@
 # M062 — Port and country normalization
 
+## Production release preparation — 2026-08-28
+
+- After successful ERP and React staging acceptance, Ahmed requested that M062 be pushed live. This records production intent and authorizes read-only production discovery plus local release preparation; it does not authorize installing an unreviewed helper or mutating production before the required production review and deployment gates pass.
+- Read-only public inspection found production still exposes legacy Egypt POD values including `ALEXANDIRA OLD PORT`, `ALEXANDIRA OLD PORT （calling AICT）` and `Alexandria（TMT）`. Production React reports deploy SHA `234d9efa68b9197bbce2982156a67c67ff0d0178`; accepted staging reports `41257e59ec4b44869960ddfbf0d7b66f9cf670b2`.
+- Restricted `sudo -n -l` confirms no production M062 helper or sudoers surface is installed. The staging M062 helper remains staging-only and must not be reused against production.
+- Production release `M062-PROD-R01` combines the eight current M062 runtime files, including the Alexandria public gateway, with the idempotent M062 migration and exact supporting tests. The metadata-free 19-file artifact `/private/tmp/m062-production-a84c9ac.tar.gz` has SHA-256 `a96314b98e2d5bdb630376373a076f90ab36370cc93675b4a5ef3d76a09d7f2b` and runtime commit `a84c9ac0444dc9f15b1730cceb921d99354cfeab`.
+- Prepared production helper SHA-256 is `d10f813110c3047bed4ec7040824491e88ac545fc73227905b9e30034e50df53`; sudoers SHA-256 is `4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf`; transactional installer SHA-256 is `59d006e55247a786780446a691e7fe0c86e5b8858b1631294cfad5a2d9e459c1`. The surface is exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status`.
+- Local artifact reproducibility, helper/installer syntax, production-target isolation, fixed sudo surface, dependency pins, real restore/reapply primitives, restart reconciliation and fault-injection recovery tests pass. Shipping, Security and QA must independently review these exact pins before upload or installation.
+- Required live order is gated: (1) reviewed upload and helper/sudoers install only; (2) separately approved `compare` and conditional read-only `preflight`; (3) separately approved ERP `apply` and `verify` with full code/database backups; (4) public ERP API acceptance; (5) merge the exact accepted React tree to `main`, redeploy and reaccept staging from `main`; (6) dispatch the checksum-resolved production React workflow and verify desktop/390px RTL/LTR. Any failure stops the sequence and preserves the last verified live state.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
