@@ -4,7 +4,9 @@
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
 - ERP release `M062-R03` is code-only: exactly `custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php`. It must not run a migration or change database, schema, configuration, module state, business data, documents, containers, proxy, DNS or ports.
+- The frozen artifact must include the gateway's price-service and note-translation dependencies as support-only candidate-test closure; neither dependency enters the one-file runtime/apply manifest.
 - The installed M062-R02 helper cannot deploy this new file. R03 therefore uses a checksum-pinned replacement at the same already-approved six-command path and the unchanged sudoers surface. It keeps R02 state/backups intact and uses independent R03 state and rollback paths.
+- Any apply failure after mutation must restore the exact baseline before exit. Any rollback failure after restoring the baseline must re-apply the exact R03 file and preserve deployed state; deterministic fault tests are a release gate.
 - Required order: install/verify the R03 helper, `compare`, `preflight`, `apply`, `verify`, and public ERP API acceptance; only then may the React commit be deployed to `new.chinaplanet.org` and accepted at desktop/390px in RTL/LTR.
 - If ERP apply or verify fails, stop and use only the R03 recorded code rollback. React must not deploy. No production command, URL, container, file, database or workflow is authorized.
 

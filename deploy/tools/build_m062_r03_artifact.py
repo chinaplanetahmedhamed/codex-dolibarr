@@ -11,11 +11,11 @@ import tarfile
 
 
 RUNTIME_COMMIT = "dcd24ddd99ab5668c2ace3ccddd580abec24b472"
-SCOPE_COMMIT = "ee073e681d52f97a52c8b6c1bf723ca1ba78012b"
+SCOPE_COMMIT = "4c566135dcd7b9a5c37112583ce43d9ca44e136e"
 RUNTIME_MANIFEST = "deploy/releases/m062-r03-runtime-files.txt"
 SUPPORT_MANIFEST = "deploy/releases/m062-r03-support-files.txt"
 PRESTATE_MANIFEST = "deploy/releases/m062-r03-prestate.sha256"
-EXPECTED_SHA256 = "8ab43813389f06476ff6f3843cca26f09b780bfbe5c727510ff4a48270c746e7"
+EXPECTED_SHA256 = "c1bd85e9d3e2ddcae887c96600511495443d8d64bf54ec194da3081ef4e51e48"
 
 
 def git_bytes(repo: pathlib.Path, commit: str, path: str) -> bytes:
@@ -39,7 +39,7 @@ def main() -> int:
         RUNTIME_MANIFEST, SUPPORT_MANIFEST, PRESTATE_MANIFEST
     )]
     paths = [path for _, path in sourced]
-    if len(paths) != 7 or len(set(paths)) != 7 or any(
+    if len(paths) != 8 or len(set(paths)) != 8 or any(
         not path or path.startswith("/") or ".." in path.split("/") for path in paths
     ):
         raise SystemExit("M062_R03_ARTIFACT_BUILD=FAIL REASON=ALLOWLIST_INVALID")
@@ -69,7 +69,7 @@ def main() -> int:
             raise SystemExit("M062_R03_ARTIFACT_BUILD=FAIL REASON=SHA_NOT_FROZEN")
     elif digest != EXPECTED_SHA256:
         raise SystemExit("M062_R03_ARTIFACT_BUILD=FAIL REASON=SHA_MISMATCH ACTUAL=" + digest)
-    print(f"M062_R03_ARTIFACT_BUILD=PASS FILES=7 SHA256={digest} RUNTIME_COMMIT={RUNTIME_COMMIT} SCOPE_COMMIT={SCOPE_COMMIT}")
+    print(f"M062_R03_ARTIFACT_BUILD=PASS FILES=8 SHA256={digest} RUNTIME_COMMIT={RUNTIME_COMMIT} SCOPE_COMMIT={SCOPE_COMMIT}")
     return 0
 
 

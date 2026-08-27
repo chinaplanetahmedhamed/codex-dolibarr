@@ -2,8 +2,9 @@
 
 ## 2026-08-28 — M062-R03 Alexandria public-search staging package
 
-- Added a deterministic code-only staging artifact and checksum-pinned replacement helper for the one-file public shipping gateway correction.
+- Added a deterministic code-only staging artifact and checksum-pinned replacement helper for the one-file public shipping gateway correction, with both unchanged PHP dependencies carried as support-only candidate-test closure.
 - Preserved the deployed M062-R02 database/schema/runtime state while isolating R03 code backup, state and rollback evidence.
+- Added fault-injection coverage proving failed apply-state publication restores the baseline and failed post-restore rollback validation re-applies the exact deployed release.
 - Enforced ERP gateway deployment and verification before the related React staging release; production remains forbidden.
 
 ## 2026-08-28 — M062 Alexandria public-search grouping

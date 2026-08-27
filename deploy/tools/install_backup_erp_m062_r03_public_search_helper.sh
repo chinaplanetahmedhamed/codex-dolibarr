@@ -5,7 +5,7 @@ umask 077
 
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m062_r03_public_search.sh"
-readonly HELPER_SHA='e0724258612b0e5161f24cd6b842e650f2c434a6a96ce4cb9b8c0d5712a49c1b'
+readonly HELPER_SHA='db05f15212cc25dbae0cf2b9d4a183e3fead4dfa9c6d46ccc2cfb21de1962adb'
 readonly PREVIOUS_HELPER_SHA='6cb72966c1a6e88dcd0f7071727f524a7259eae2f0b337ffabadc24cc86435f4'
 readonly SUDOERS_SHA='958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-backup-erp-m062-ports'

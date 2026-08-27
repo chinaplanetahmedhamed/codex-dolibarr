@@ -3,11 +3,11 @@
 ## Alexandria public-search R03 staging release preparation — 2026-08-28
 
 - Ahmed approved ERP gateway staging deployment and verification first, followed conditionally by React staging and desktop/390px acceptance. Production remains forbidden.
-- Runtime commit: `dcd24ddd99ab5668c2ace3ccddd580abec24b472`; release-scope commit: `ee073e681d52f97a52c8b6c1bf723ca1ba78012b`.
-- Deterministic seven-file artifact: `/private/tmp/m062-public-search-dcd24dd.tar.gz`, SHA-256 `8ab43813389f06476ff6f3843cca26f09b780bfbe5c727510ff4a48270c746e7`. Runtime scope is exactly one file: `PublicShippingRateService.class.php`; the other files are its unchanged price-service dependency, two candidate tests and three release manifests.
-- Reviewed helper source SHA-256: `e0724258612b0e5161f24cd6b842e650f2c434a6a96ce4cb9b8c0d5712a49c1b`. Installer SHA-256: `d195c67a3c5009f7753ffefa460c1f12e7604168ba13be096243b3c875ef8517`. Existing sudoers remains unchanged at SHA-256 `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+- Runtime commit: `dcd24ddd99ab5668c2ace3ccddd580abec24b472`; corrected release-scope commit: `4c566135dcd7b9a5c37112583ce43d9ca44e136e`.
+- Deterministic eight-file artifact: `/private/tmp/m062-public-search-dcd24dd.tar.gz`, SHA-256 `c1bd85e9d3e2ddcae887c96600511495443d8d64bf54ec194da3081ef4e51e48`. Runtime scope is exactly one file: `PublicShippingRateService.class.php`; support-only closure contains the unchanged price and note-translation dependencies, two candidate tests and three release manifests.
+- Reviewed helper source SHA-256: `db05f15212cc25dbae0cf2b9d4a183e3fead4dfa9c6d46ccc2cfb21de1962adb`. Installer SHA-256: `f01e811b3b4fa777f7cd053ed54f33143aa97c1278bf93c079d217169c6f9631`. Existing sudoers remains unchanged at SHA-256 `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
 - The helper accepts only the verified staging baseline SHA-256 `ce821a27a26bbde6915f07ee4c37925a528db8d393b200ece15332b4b13b11de`, creates an exact code/prestate backup, atomically installs runtime SHA-256 `189bee8d2bc6bf47c8898dcb90efb8dc7658b7816ac2fecaee988d53edb95cb4`, and automatically restores on failed live checks.
-- Local helper contract, deterministic rebuild, PHP lint, encrypted-token regression and Alexandria grouping regression passed. The release contains no migration or database command and declares `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO` for every command.
+- Local helper contract, deterministic rebuild, PHP lint, encrypted-token regression and Alexandria grouping regression passed. Fault injection also proves apply-state failure restores the baseline, and every tested post-restore rollback failure re-applies the exact release while retaining `DEPLOYED` state. The release contains no migration or database command and declares `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO` for every command.
 - Staging upload, root helper replacement, compare/preflight/apply/verify and runtime acceptance evidence are pending below; React remains blocked until ERP verify and public API acceptance pass.
 
 ## Alexandria public-search grouping — local correction, 2026-08-28
