@@ -31,6 +31,12 @@ printf 'preserve-me\n' >"$marker"
 eval "$(declare -f restore_code | sed '1s/restore_code/real_restore_code/')"
 eval "$(declare -f reapply_release | sed '1s/reapply_release/real_reapply_release/')"
 eval "$(declare -f load_state | sed '1s/load_state/real_load_state/')"
+prior_retained="$ARTIFACT_ROOT/${PRIOR_ARTIFACT_NAME}.${PRIOR_ARTIFACT_SHA}"
+printf 'STATE_RELEASE=%s\nSTATE_STATUS=DEPLOYED\nSTATE_RUNTIME_COMMIT=%s\nSTATE_ARTIFACT_SHA=%s\nSTATE_RETAINED_ARTIFACT=%s\nSTATE_CODE_BACKUP=\nSTATE_CODE_BACKUP_SHA=\nSTATE_PRESTATE_FILE=\nSTATE_PRESTATE_SHA=\nSTATE_DB_BACKUP=\nSTATE_DB_BACKUP_SHA=\nSTATE_SCHEMA_PRESTATE=READY\nSTATE_REAPPLY_CODE=\nSTATE_REAPPLY_CODE_SHA=\nSTATE_REQUEST_ID=\nSTATE_UPDATED_AT=2026-08-27T13:05:09Z\n' "$PRIOR_RELEASE" "$PRIOR_RUNTIME_COMMIT" "$PRIOR_ARTIFACT_SHA" "$prior_retained" >"$STATE_FILE"
+chmod 0600 "$STATE_FILE"
+real_load_state
+[[ $STATE_IS_PRIOR_RELEASE -eq 1 && "$STATE_STATUS" == DEPLOYED ]] || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PRIOR_DEPLOYED_STATE_REJECTED' >&2; exit 1; }
+rm -f "$STATE_FILE"
 mkdir -p "$TARGET_ROOT/chinaplanetshippingprices/class" "$test_root/candidate/custom/chinaplanetshippingprices/class"
 target_file="$TARGET_ROOT/chinaplanetshippingprices/class/test.php"
 candidate_file="$test_root/candidate/custom/chinaplanetshippingprices/class/test.php"
@@ -182,7 +188,7 @@ new_request_id(){ request_sequence=$((request_sequence+1)); REQUEST_ID="m062-202
 begin_request(){ REQUEST_STARTED=1; printf 'begin\n' >>"$events"; }
 finish_request(){ printf 'finish:%s\n' "$1" >>"$events"; REQUEST_STARTED=0; }
 retain_artifact(){ printf 'retain\n' >>"$events"; }
-save_state(){ STATE_STATUS=$1; : >"$STATE_FILE"; chmod 0600 "$STATE_FILE"; printf 'state:%s\n' "$1" >>"$events"; }
+save_state(){ STATE_IS_PRIOR_RELEASE=0; STATE_STATUS=$1; : >"$STATE_FILE"; chmod 0600 "$STATE_FILE"; printf 'state:%s\n' "$1" >>"$events"; }
 load_state(){ printf 'load-state:%s\n' "$STATE_STATUS" >>"$events"; }
 finalize_terminal_request_from_state(){ return 0; }
 create_code_backup(){ CODE_BACKUP="$BACKUP_ROOT/code-$request_sequence"; CODE_BACKUP_SHA=codehash; PRESTATE_FILE="$BACKUP_ROOT/prestate-$request_sequence"; PRESTATE_SHA=prestatehash; printf 'code-backup\n' >>"$events"; }
@@ -202,6 +208,19 @@ command_apply >/dev/null
 [[ "$STATE_STATUS" == DEPLOYED ]] || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=INITIAL_COMMAND_APPLY_STATE' >&2; exit 1; }
 schema_line=$(grep -n '^apply-schema$' "$events" | tail -1 | cut -d: -f1); code_line=$(grep -n '^apply-code$' "$events" | tail -1 | cut -d: -f1)
 [[ -n "$schema_line" && -n "$code_line" && "$schema_line" -lt "$code_line" ]] || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=SCHEMA_NOT_BEFORE_CODE' >&2; exit 1; }
+
+# The exact deployed R01 state is an apply-only upgrade predecessor. It must
+# require the correction migration, then become an R02 state.
+printf 'prior-upgrade-marker\n' >>"$events"; STATE_IS_PRIOR_RELEASE=1; STATE_STATUS=DEPLOYED; TEST_SCHEMA=MIGRATION_REQUIRED; : >"$STATE_FILE"; chmod 0600 "$STATE_FILE"
+command_apply >/dev/null
+prior_upgrade_events=$(sed -n '/^prior-upgrade-marker$/,$p' "$events")
+[[ "$STATE_STATUS" == DEPLOYED && $STATE_IS_PRIOR_RELEASE -eq 0 ]] || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PRIOR_UPGRADE_STATE' >&2; exit 1; }
+grep -Fxq 'schema-prestate:MIGRATION_REQUIRED' <<<"$prior_upgrade_events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PRIOR_UPGRADE_SCHEMA_GATE' >&2; exit 1; }
+grep -Fxq 'apply-schema' <<<"$prior_upgrade_events" || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=PRIOR_UPGRADE_MIGRATION_MISSING' >&2; exit 1; }
+STATE_IS_PRIOR_RELEASE=1; STATE_STATUS=DEPLOYED
+if (command_verify >/dev/null 2>&1); then echo 'M062_DEPLOY_FAILURES=FAIL REASON=PRIOR_VERIFY_ACCEPTED' >&2; exit 1; fi
+if (command_rollback >/dev/null 2>&1); then echo 'M062_DEPLOY_FAILURES=FAIL REASON=PRIOR_ROLLBACK_ACCEPTED' >&2; exit 1; fi
+STATE_IS_PRIOR_RELEASE=0
 
 command_rollback >/dev/null
 [[ "$STATE_STATUS" == ROLLED_BACK_SCHEMA_RETAINED ]] || { echo 'M062_DEPLOY_FAILURES=FAIL REASON=COMMAND_ROLLBACK_STATE' >&2; exit 1; }
@@ -224,4 +243,4 @@ printf 'STATE_RELEASE=%s\nSTATE_STATUS=INVALID\nSTATE_RUNTIME_COMMIT=%s\nSTATE_A
 chmod 0600 "$STATE_FILE"
 if (real_load_state >/dev/null 2>&1); then echo 'M062_DEPLOY_FAILURES=FAIL REASON=INVALID_STATE_ACCEPTED' >&2; exit 1; fi
 
-echo 'M062_DEPLOY_FAILURES=PASS REAL_RESTORE=PASS REAL_REAPPLY=PASS REAL_AUDIT=PASS STATUS=READ_ONLY PATH_ISOLATION=PASS STALE_RESTART=REACHABLE APPLY_FAULT=RECOVERED ROLLBACK_FAULT=REAPPLIED TERMINAL_AUDIT=FAIL_CLOSED FINAL_STATE_AUDIT=RECONCILED ROLLBACK_NO_MUTATION=DEPLOYED PENDING_RESTART=RECONCILED CONCURRENT_MARKER=PRESERVED INVALID_STATE=REJECTED'
+echo 'M062_DEPLOY_FAILURES=PASS REAL_RESTORE=PASS REAL_REAPPLY=PASS REAL_AUDIT=PASS STATUS=READ_ONLY PATH_ISOLATION=PASS STALE_RESTART=REACHABLE APPLY_FAULT=RECOVERED ROLLBACK_FAULT=REAPPLIED TERMINAL_AUDIT=FAIL_CLOSED FINAL_STATE_AUDIT=RECONCILED ROLLBACK_NO_MUTATION=DEPLOYED PENDING_RESTART=RECONCILED CONCURRENT_MARKER=PRESERVED PRIOR_UPGRADE=APPLY_ONLY INVALID_STATE=REJECTED'

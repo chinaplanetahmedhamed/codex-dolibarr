@@ -4,14 +4,18 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M062-R01'
-readonly RUNTIME_COMMIT='fef173463ef6c2031f0f37c83a006b6802c8c3fc'
-readonly BASELINE_REFERENCE='95402e7+verified-live-sql-13939d2'
-readonly SHORT_COMMIT='fef1734'
-readonly ARTIFACT_SHA='5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d'
+readonly RELEASE='M062-R02'
+readonly RUNTIME_COMMIT='b1bc2c1219ac74e3c5c2e6cb26d0498e3e03bf58'
+readonly BASELINE_REFERENCE='fef1734+verified-staging-deployed'
+readonly SHORT_COMMIT='b1bc2c1'
+readonly ARTIFACT_SHA='d6761051289019bb361930dc24a75097e21c2a0e0f69e9e70022c3d348313c5e'
 readonly RUNTIME_MANIFEST_SHA='4cd75025aafbff6d46a8ebaf88f6b4188d9a1b62044a0f55bb6b4584ae16709e'
 readonly SUPPORT_MANIFEST_SHA='2c1146468ddf0c27ced34a4816fe7e546d003d65e3d382c568ca96e8ca2b45b2'
-readonly BASELINE_MANIFEST_SHA='69a15dda008dbbd50aa63ddd773d41e02e027831fae605595e73fa77ff7ebcdc'
+readonly BASELINE_MANIFEST_SHA='e28dfbd15052232dbbb12a1d916d6b37f840826f9a59d6b4853963a02b63a87b'
+readonly PRIOR_RELEASE='M062-R01'
+readonly PRIOR_RUNTIME_COMMIT='fef173463ef6c2031f0f37c83a006b6802c8c3fc'
+readonly PRIOR_ARTIFACT_SHA='5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d'
+readonly PRIOR_ARTIFACT_NAME='m062-port-normalization-fef1734.tar.gz'
 readonly RUNTIME_MANIFEST='deploy/releases/m062-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m062-support-files.txt'
 readonly BASELINE_MANIFEST='deploy/releases/m062-prestate.sha256'
@@ -19,7 +23,7 @@ readonly MIGRATION='deploy/migrations/m062_port_normalization.php'
 readonly SUPPORT_DEPENDENCY='custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php'
 readonly SUPPORT_DEPENDENCY_SHA='1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54'
 readonly ARTIFACT_NAME="m062-port-normalization-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m062-staging-fef1734-root-only'
+readonly DEPLOY_CONTEXT='m062-staging-b1bc2c1-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
@@ -66,6 +70,7 @@ DB_BACKUP=''; DB_BACKUP_SHA=''; DB_VALIDATION_NAME=''; SCHEMA_PRESTATE=''; DRIFT
 REQUEST_ID=''; REQUEST_FILE=''; REQUEST_ACTION=''; REQUEST_STARTED=0; CODE_MUTATED=0; SCHEMA_MUTATED=0; ROLLBACK_MUTATED=0
 REAPPLY_CODE=''; REAPPLY_CODE_SHA=''; CLEANUP_ACTIVE=0
 STALE_CANDIDATES=''
+STATE_IS_PRIOR_RELEASE=0
 
 die() { echo "M062_DEPLOY_FAIL=$1" >&2; exit 1; }
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
@@ -138,6 +143,7 @@ reapply_release() {
 }
 
 save_state() {
+  STATE_IS_PRIOR_RELEASE=0
   local status=$1 tmp="${STATE_FILE}.tmp.$$"
   cat >"$tmp" <<EOF
 STATE_RELEASE=$RELEASE
@@ -163,7 +169,10 @@ load_state() {
   [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" && $(mode_of "$STATE_FILE") == 600 ]] || die 'STATE_INVALID'
   [[ $TEST_MODE -eq 1 || $(owner_group_of "$STATE_FILE") == 'root:root' ]] || die 'STATE_METADATA_INVALID'
   source "$STATE_FILE"
-  [[ "$STATE_RELEASE" == "$RELEASE" && "$STATE_RUNTIME_COMMIT" == "$RUNTIME_COMMIT" && "$STATE_ARTIFACT_SHA" == "$ARTIFACT_SHA" && "$STATE_RETAINED_ARTIFACT" == "$RETAINED_ARTIFACT" ]] || die 'STATE_MISMATCH'
+  STATE_IS_PRIOR_RELEASE=0
+  if [[ "$STATE_RELEASE" == "$RELEASE" && "$STATE_RUNTIME_COMMIT" == "$RUNTIME_COMMIT" && "$STATE_ARTIFACT_SHA" == "$ARTIFACT_SHA" && "$STATE_RETAINED_ARTIFACT" == "$RETAINED_ARTIFACT" ]]; then :
+  elif [[ "$STATE_RELEASE" == "$PRIOR_RELEASE" && "$STATE_RUNTIME_COMMIT" == "$PRIOR_RUNTIME_COMMIT" && "$STATE_ARTIFACT_SHA" == "$PRIOR_ARTIFACT_SHA" && "$STATE_RETAINED_ARTIFACT" == "${ARTIFACT_ROOT}/${PRIOR_ARTIFACT_NAME}.${PRIOR_ARTIFACT_SHA}" ]]; then STATE_IS_PRIOR_RELEASE=1
+  else die 'STATE_MISMATCH'; fi
   case "$STATE_STATUS" in DEPLOYED|ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_NO_MUTATION|ROLLBACK_FAILED_NO_MUTATION|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_DB_RECOVERY_REQUIRED|APPLY_FAILED_RECOVERY_REQUIRED|ROLLBACK_FAILED_REAPPLIED|ROLLBACK_FAILED_DB_RECOVERY_REQUIRED|ROLLBACK_FAILED_RECOVERY_REQUIRED|PENDING_APPLY_PREPARE|PENDING_APPLY_SCHEMA|PENDING_APPLY_CODE|PENDING_ROLLBACK_PREPARE|PENDING_ROLLBACK) ;; *) die 'STATE_STATUS_INVALID' ;; esac
   CODE_BACKUP=$STATE_CODE_BACKUP; CODE_BACKUP_SHA=$STATE_CODE_BACKUP_SHA; PRESTATE_FILE=$STATE_PRESTATE_FILE; PRESTATE_SHA=$STATE_PRESTATE_SHA; DB_BACKUP=$STATE_DB_BACKUP; DB_BACKUP_SHA=$STATE_DB_BACKUP_SHA; SCHEMA_PRESTATE=$STATE_SCHEMA_PRESTATE; REAPPLY_CODE=$STATE_REAPPLY_CODE; REAPPLY_CODE_SHA=$STATE_REAPPLY_CODE_SHA
   REQUEST_ID=$STATE_REQUEST_ID
@@ -273,7 +282,7 @@ validate_artifact() {
   listing=$(mktemp); expected=$(mktemp); actual=$(mktemp); stderr_file=$(mktemp); tar -tzf "$ARTIFACT_COPY" >"$listing" 2>"$stderr_file" || die 'ARTIFACT_TAR_INVALID'
   [[ ! -s "$stderr_file" && $(wc -l <"$listing") -eq 15 && -z $(tar -tvzf "$ARTIFACT_COPY" | awk 'substr($1,1,1)!="-" {print; exit}') && -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_STRUCTURE_INVALID'
   tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT" || die 'ARTIFACT_EXTRACT_FAILED'; [[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) && -z $(find "$CANDIDATE_ROOT" ! -type d ! -type f -print -quit) ]] || die 'ARTIFACT_EXTRACT_INVALID'
-  validate_manifest "$RUNTIME_MANIFEST" "$RUNTIME_MANIFEST_SHA" '^custom/chinaplanetshippingprices/'; validate_manifest "$SUPPORT_MANIFEST" "$SUPPORT_MANIFEST_SHA" '^(deploy/(migrations|tests)/.+|custom/chinaplanetshippingprices/class/ShippingNoteTranslationService\.class\.php)$'; [[ $(sha256 "$CANDIDATE_ROOT/$BASELINE_MANIFEST") == "$BASELINE_MANIFEST_SHA" ]] || die 'BASELINE_MANIFEST_INVALID'
+  validate_manifest "$RUNTIME_MANIFEST" "$RUNTIME_MANIFEST_SHA" '^custom/chinaplanetshippingprices/'; validate_manifest "$SUPPORT_MANIFEST" "$SUPPORT_MANIFEST_SHA" '^(deploy/(migrations|tests)/.+|custom/chinaplanetshippingprices/class/ShippingNoteTranslationService[.]class[.]php)$'; [[ $(sha256 "$CANDIDATE_ROOT/$BASELINE_MANIFEST") == "$BASELINE_MANIFEST_SHA" ]] || die 'BASELINE_MANIFEST_INVALID'
   RUNTIME_FILES=(); SUPPORT_FILES=(); while IFS= read -r rel; do RUNTIME_FILES+=("$rel"); done <"$CANDIDATE_ROOT/$RUNTIME_MANIFEST"; while IFS= read -r rel; do SUPPORT_FILES+=("$rel"); done <"$CANDIDATE_ROOT/$SUPPORT_MANIFEST"; [[ ${#RUNTIME_FILES[@]} -eq 7 && ${#SUPPORT_FILES[@]} -eq 5 ]] || die 'MANIFEST_COUNT_INVALID'
   [[ $(sha256 "$CANDIDATE_ROOT/$SUPPORT_DEPENDENCY") == "$SUPPORT_DEPENDENCY_SHA" ]] || die 'SUPPORT_DEPENDENCY_INVALID'
   printf '%s\n' "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}" "$RUNTIME_MANIFEST" "$SUPPORT_MANIFEST" "$BASELINE_MANIFEST" | LC_ALL=C sort >"$expected"; find "$CANDIDATE_ROOT" -type f -print | sed "s#^${CANDIDATE_ROOT}/##" | LC_ALL=C sort >"$actual"; diff -u "$expected" "$actual" >/dev/null || die 'ARTIFACT_ALLOWLIST_MISMATCH'
@@ -306,7 +315,7 @@ data_preflight() {
   local out rc; set +e; out=$(docker exec -e M062_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MIGRATION" dry-run 2>&1); rc=$?; set -e
   [[ $rc -eq 0 && "$out" =~ ^M062_PORTS_DRY_RUN= ]] || { echo "$out" >&2; return 1; }
 }
-required_apply_schema_prestate() { case "${1:-NONE}" in NONE|APPLY_FAILED_NO_MUTATION) echo MIGRATION_REQUIRED ;; ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED) echo READY ;; *) return 1 ;; esac; }
+required_apply_schema_prestate() { case "${1:-NONE}" in NONE|APPLY_FAILED_NO_MUTATION|DEPLOYED_PRIOR_RELEASE) echo MIGRATION_REQUIRED ;; ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED) echo READY ;; *) return 1 ;; esac; }
 runtime_dependency_ready() { local target="$TARGET_ROOT/${SUPPORT_DEPENDENCY#custom/}"; [[ -f "$CANDIDATE_ROOT/$SUPPORT_DEPENDENCY" && ! -L "$CANDIDATE_ROOT/$SUPPORT_DEPENDENCY" && $(sha256 "$CANDIDATE_ROOT/$SUPPORT_DEPENDENCY") == "$SUPPORT_DEPENDENCY_SHA" && -f "$target" && ! -L "$target" && $(sha256 "$target") == "$SUPPORT_DEPENDENCY_SHA" && ( $TEST_MODE -eq 1 || $(owner_group_of "$target") == 'www-data:www-data' ) && $(mode_of "$target") == 644 ]]; }
 compare_files() { local rel target release_hash target_hash baseline state; DRIFT_COUNT=0; for rel in "${RUNTIME_FILES[@]}"; do target="$TARGET_ROOT/${rel#custom/}"; release_hash=$(sha256 "$CANDIDATE_ROOT/$rel"); baseline=$(awk -v p="$rel" '$2==p {print $1}' "$CANDIDATE_ROOT/$BASELINE_MANIFEST"); [[ -n "$baseline" ]] || die 'BASELINE_PATH_MISSING'; if [[ ! -e "$target" && ! -L "$target" ]]; then if [[ "$baseline" == ABSENT ]]; then state=BASELINE_ABSENT; else state=DRIFT_ABSENT; ((DRIFT_COUNT+=1)); fi; else [[ -f "$target" && ! -L "$target" ]] || die 'TARGET_FILE_INVALID'; target_hash=$(sha256 "$target"); if [[ "$target_hash" == "$release_hash" ]]; then state=CURRENT; elif [[ "$baseline" != ABSENT && "$target_hash" == "$baseline" ]]; then state=BASELINE_PRESTATE; else state=DRIFT; ((DRIFT_COUNT+=1)); fi; fi; echo "M062_DEPLOY_COMPARE FILE=$rel STATE=$state BASELINE_SHA=$baseline RELEASE_SHA=$release_hash"; done; runtime_dependency_ready || die 'RUNTIME_DEPENDENCY_DRIFT'; echo "M062_DEPLOY_COMPARE DEPENDENCY=$SUPPORT_DEPENDENCY STATE=CURRENT SHA=$SUPPORT_DEPENDENCY_SHA"; }
 
@@ -332,6 +341,8 @@ command_apply() {
   exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment 1; clear_stale_candidates || die 'STALE_CANDIDATE_CLEANUP_FAILED'
   if [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]]; then
     load_state
+    if [[ $STATE_IS_PRIOR_RELEASE -eq 1 ]]; then [[ "$STATE_STATUS" == DEPLOYED && $REQUEST_STARTED -eq 0 ]] || die 'PRIOR_RELEASE_STATE_INVALID'; prior_state=DEPLOYED_PRIOR_RELEASE
+    else
     if [[ "$STATE_STATUS" == PENDING_* ]]; then reconcile_pending || die 'PENDING_RECONCILE_FAILED'; return; fi
     finalize_terminal_request_from_state || die 'TERMINAL_AUDIT_RECONCILE_FAILED'
     if [[ "$STATE_STATUS" == 'APPLY_FAILED_RECOVERY_REQUIRED' ]]; then
@@ -345,6 +356,7 @@ command_apply() {
     [[ "$STATE_STATUS" != 'APPLY_FAILED_DB_RECOVERY_REQUIRED' ]] || die 'DATABASE_RECOVERY_REQUIRED'
     [[ "$STATE_STATUS" == 'ROLLED_BACK_SCHEMA_RETAINED' || "$STATE_STATUS" == 'APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED' || "$STATE_STATUS" == 'APPLY_FAILED_NO_MUTATION' ]] || die 'STATE_NOT_APPLYABLE'
     prior_state=$STATE_STATUS
+    fi
   fi
   required_schema_prestate=$(required_apply_schema_prestate "$prior_state") || die 'STATE_NOT_APPLYABLE'
   prepare_inbox_candidate; schema_prestate; data_preflight || die 'DATA_PREFLIGHT_FAILED'; compare_files; [[ $DRIFT_COUNT -eq 0 && "$SCHEMA_PRESTATE" == "$required_schema_prestate" ]] || die 'APPLY_PRESTATE_INVALID'
@@ -353,9 +365,9 @@ command_apply() {
   save_state 'PENDING_APPLY_CODE'; CODE_MUTATED=1; apply_code; live_checks || die 'LIVE_CHECK_FAILED'; save_state 'DEPLOYED'; finish_request 'APPLIED'; CODE_MUTATED=0; SCHEMA_MUTATED=0
   echo "M062_DEPLOY_APPLY=PASS REQUEST_ID=$REQUEST_ID RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA DATABASE_CHANGED=YES PRODUCTION_ACCESSED=NO"
 }
-command_verify() { check_environment; load_state; if [[ "$STATE_STATUS" == PENDING_* ]]; then REQUEST_STARTED=0; die 'STATE_PENDING_REQUIRES_APPLY_OR_ROLLBACK'; fi; [[ "$STATE_STATUS" == DEPLOYED ]] || die 'STATE_NOT_DEPLOYED'; finalize_terminal_request_from_state || die 'TERMINAL_AUDIT_RECONCILE_FAILED'; prepare_retained_candidate; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M062_DEPLOY_VERIFY=PASS STATE=DEPLOYED RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA DATABASE_SCHEMA=READY DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO"; }
+command_verify() { check_environment; load_state; [[ $STATE_IS_PRIOR_RELEASE -eq 0 ]] || die 'PRIOR_RELEASE_REQUIRES_UPGRADE'; if [[ "$STATE_STATUS" == PENDING_* ]]; then REQUEST_STARTED=0; die 'STATE_PENDING_REQUIRES_APPLY_OR_ROLLBACK'; fi; [[ "$STATE_STATUS" == DEPLOYED ]] || die 'STATE_NOT_DEPLOYED'; finalize_terminal_request_from_state || die 'TERMINAL_AUDIT_RECONCILE_FAILED'; prepare_retained_candidate; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M062_DEPLOY_VERIFY=PASS STATE=DEPLOYED RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA DATABASE_SCHEMA=READY DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO"; }
 command_rollback() {
-  exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment 1; clear_stale_candidates || die 'STALE_CANDIDATE_CLEANUP_FAILED'; load_state; if [[ "$STATE_STATUS" == PENDING_* ]]; then reconcile_pending || die 'PENDING_RECONCILE_FAILED'; return; fi; finalize_terminal_request_from_state || die 'TERMINAL_AUDIT_RECONCILE_FAILED'; [[ "$STATE_STATUS" == DEPLOYED ]] || die 'STATE_NOT_DEPLOYED'; prepare_retained_candidate; live_checks || die 'ROLLBACK_CURRENT_STATE_INVALID'
+  exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment 1; clear_stale_candidates || die 'STALE_CANDIDATE_CLEANUP_FAILED'; load_state; [[ $STATE_IS_PRIOR_RELEASE -eq 0 ]] || die 'PRIOR_RELEASE_REQUIRES_UPGRADE'; if [[ "$STATE_STATUS" == PENDING_* ]]; then reconcile_pending || die 'PENDING_RECONCILE_FAILED'; return; fi; finalize_terminal_request_from_state || die 'TERMINAL_AUDIT_RECONCILE_FAILED'; [[ "$STATE_STATUS" == DEPLOYED ]] || die 'STATE_NOT_DEPLOYED'; prepare_retained_candidate; live_checks || die 'ROLLBACK_CURRENT_STATE_INVALID'
   new_request_id; begin_request; save_state 'PENDING_ROLLBACK_PREPARE'; create_reapply_backup; save_state 'PENDING_ROLLBACK'; ROLLBACK_MUTATED=1; disable_schema; restore_code; prestate_matches || die 'ROLLBACK_PRESTATE_INVALID'; schema_ready || die 'ROLLBACK_SCHEMA_NOT_RETAINED'; [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || die 'ROLLBACK_HTTP_FAILED'; save_state 'ROLLED_BACK_SCHEMA_RETAINED'; finish_request 'ROLLED_BACK_SCHEMA_RETAINED' || die 'ROLLBACK_AUDIT_FAILED'; ROLLBACK_MUTATED=0
   echo "M062_DEPLOY_ROLLBACK=PASS REQUEST_ID=$REQUEST_ID REAPPLY_CODE=$REAPPLY_CODE REAPPLY_CODE_SHA=$REAPPLY_CODE_SHA SCHEMA_RETAINED=YES DATA_RETAINED=YES DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO"
 }
