@@ -178,3 +178,11 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - Renewed Security review found that a mutable legacy/database alias containing a top-level delimiter could still enter the literal whole-alias allowlist and bypass composite splitting.
 - Literal whole-alias exceptions are now restricted to the reviewed built-in catalog. Legacy, manual and database aliases remain available for normal single-candidate matching but can never authorize bypass of top-level composite parsing.
 - A database-plus-legacy regression fixture supplies `KUWAIT/SHUAIBA` as a same-owner mutable alias and requires the resolver to return both Kuwait and Shuaiba. Runtime commit `7f67d0c688adc9aeb8d94f52ac41b85da26d02fa` requires renewed three-role PASS before staging upload.
+
+## Final staging compare and preflight — 2026-08-27
+
+- Shipping, Security and QA renewed reviews all passed for preparation commit `69b52254b75044941e60aa8b80f8e3a490f495f3`, runtime commit `7f67d0c688adc9aeb8d94f52ac41b85da26d02fa` and artifact SHA-256 `2275ffe1ba6fa0ea2e32bed43fa5c7b3dfaa5561691d50548a8f05609b078374`.
+- The transactional installer upgraded only the exact prior helper to SHA-256 `9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85`, retained the verified prior-helper backup and reported no sudoers, deployment, database or production change. Independent restricted verification matched the installed helper, artifact and installer pins.
+- `compare` passed with `DRIFT_COUNT=0`, all seven runtime paths in their expected baseline states, the support dependency current, and schema classified `MIGRATION_REQUIRED`.
+- The read-only migration dry-run inside `preflight` passed, which requires an empty remaining list and therefore zero unmapped rows and zero unmapped values. `preflight` finished `PASS` with `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`.
+- Work stops at the approved gate. Runtime code, schema and business data remain unchanged; `apply` requires a separate explicit approval.
