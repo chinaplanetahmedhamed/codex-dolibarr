@@ -189,3 +189,10 @@ The existing public-search integration test is time-blocked because all local pu
 - Corrected runtime commit: `525eca241a323d4ae073077a940de75d9d3b64e7`. Corrected 15-file artifact `m062-port-normalization-525eca2.tar.gz`: SHA-256 `3ec2073c80f8ea99ce01a8c1e975a9c6d0917c0a63b17253d672b43c37a7ac28`.
 - Corrected helper SHA-256: `b6577abf57aeecba67476026b08ad0052931d7b7380fd421b19841768f241174`. Transactional installer SHA-256: `56cc432fb924dd014987a5a6eef47ae861c8e63b9fe3d5f4a31e208644f30ab9`; it accepts only the currently installed helper SHA-256 `32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd` or the new helper and leaves sudoers unchanged.
 - No corrected helper command has run. Staging runtime/database and production remain untouched pending renewed Shipping, Security and QA PASS.
+
+## Mutable-alias delimiter hardening — 2026-08-27
+
+- A second Security review blocked the package before upload because mutable legacy/database aliases could still populate the literal whole-alias allowlist.
+- The allowlist is now built-in-only. A regression DB supplies the same `KUWAIT/SHUAIBA` text through both legacy and alias-table paths and proves it still resolves as the two-destination composite; curated `KHALIFA PORT, ABU DHABI` and parenthetical `KUWAIT(SHUAIBA)` remain exact single destinations.
+- Final runtime commit: `7f67d0c688adc9aeb8d94f52ac41b85da26d02fa`. Final 15-file artifact `m062-port-normalization-7f67d0c.tar.gz`: SHA-256 `2275ffe1ba6fa0ea2e32bed43fa5c7b3dfaa5561691d50548a8f05609b078374`.
+- Final helper SHA-256: `9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85`. Final installer SHA-256: `c44a9105aafff63c56458b61923cafb2eee9181d10353baf1d3ef704f154b959`; previous installed helper remains pinned to `32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd` and sudoers remains unchanged.

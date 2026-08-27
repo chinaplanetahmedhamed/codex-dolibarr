@@ -172,3 +172,9 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - Parsing is now parenthesis-depth aware. Top-level `/`, `,`, `&`, `+` and `;` delimiters split destinations before normalized matching; delimiters inside parentheses remain qualifier text. Explicit literal aliases such as `KHALIFA PORT, ABU DHABI` remain supported without granting punctuation-equivalent composites the same identity.
 - Regression coverage requires `KUWAIT(SHUAIBA)` to resolve to one Shuaiba destination while all five top-level delimiter variants resolve to both Kuwait and Shuaiba. Fuzzy thresholds and fail-closed composite behavior remain unchanged.
 - Corrected runtime commit `525eca241a323d4ae073077a940de75d9d3b64e7` must receive renewed Shipping, Security and QA PASS before staging upload. Authorization remains helper rotation, `compare`, and conditional `preflight` only; apply, database mutation and production are forbidden.
+
+## Mutable-alias delimiter hardening — 2026-08-27
+
+- Renewed Security review found that a mutable legacy/database alias containing a top-level delimiter could still enter the literal whole-alias allowlist and bypass composite splitting.
+- Literal whole-alias exceptions are now restricted to the reviewed built-in catalog. Legacy, manual and database aliases remain available for normal single-candidate matching but can never authorize bypass of top-level composite parsing.
+- A database-plus-legacy regression fixture supplies `KUWAIT/SHUAIBA` as a same-owner mutable alias and requires the resolver to return both Kuwait and Shuaiba. Runtime commit `7f67d0c688adc9aeb8d94f52ac41b85da26d02fa` requires renewed three-role PASS before staging upload.
