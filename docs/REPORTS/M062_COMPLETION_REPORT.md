@@ -9,7 +9,19 @@
 - The helper accepts only the verified staging baseline SHA-256 `ce821a27a26bbde6915f07ee4c37925a528db8d393b200ece15332b4b13b11de`, creates an exact code/prestate backup, atomically installs runtime SHA-256 `189bee8d2bc6bf47c8898dcb90efb8dc7658b7816ac2fecaee988d53edb95cb4`, and automatically restores on failed live checks.
 - Local helper contract, deterministic rebuild, PHP lint, encrypted-token regression and Alexandria grouping regression passed. Both live PHP dependencies are checksum-gated. Fault injection also proves pre/post-state-publication apply failures restore the exact prior code/state pair, and every tested post-restore rollback failure re-applies the exact release and reconciles state to `DEPLOYED`. The release contains no migration or database command and declares `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO` for every command.
 - Renewed independent Shipping, Security and QA reviews all returned `PASS` with no blockers for preparation commit `857e203ef1e6f06e38de28d1370d378a41379371` and the exact artifact/helper/installer pins above.
-- Staging upload, root helper replacement, compare/preflight/apply/verify and runtime acceptance evidence are pending below; React remains blocked until ERP verify and public API acceptance pass.
+- Staging upload, helper replacement, compare/preflight/apply/verify and runtime acceptance are recorded below. React was released only after the ERP and public API gates passed.
+
+## Alexandria public-search R03 staging deployment and live acceptance — 2026-08-28
+
+- The installed staging helper matched SHA-256 `b8f945538e38bfef34eb4d83cbb39b83f0bf39eb6a8e77c3cb47c0aebf6af0ba`, metadata `root:root 0755`, and initial R03 state `NOT_DEPLOYED`. Uploaded artifact/helper/installer metadata and SHA-256 values matched the reviewed pins.
+- `compare` and `preflight` passed from exact baseline SHA-256 `ce821a27a26bbde6915f07ee4c37925a528db8d393b200ece15332b4b13b11de`. The runtime scope remained exactly one gateway file, both live dependencies matched their pinned hashes, and no database operation ran.
+- `apply` and independent `verify` passed for runtime commit `dcd24ddd99ab5668c2ace3ccddd580abec24b472` and artifact SHA-256 `c1bd85e9d3e2ddcae887c96600511495443d8d64bf54ec194da3081ef4e51e48`. Durable state is `DEPLOYED`.
+- Code backup `/root/backup-erp-code-backups/m062-r03-before-dcd24dd-20260827T184157Z.tar.gz` has SHA-256 `3f361762a95401ad051b13702721ed3f92d203747eca280d052db193a06c522c`; prestate SHA-256 is `64537d0851cc026b19d6f07ce1747d825f0755e986d67fce0dbb2249e9274a73`.
+- Public API acceptance passed before React deployment: Egypt/Guangzhou exposes exactly one `ALEXANDRIA` option and no terminal-specific options; grouped 40HQ search returned both `ALEXANDRIA OLD PORT` and `ALEXANDRIA TMT`, every card had an opaque exact-rate token, and no private cost, margin, supplier, forwarder or internal-ID key was exposed.
+- React staging deployed successfully through workflow run `33105268113` from server commit `41257e59ec4b44869960ddfbf0d7b66f9cf670b2`, whose tree SHA-1 `1bf1564ec6c2c656d5b64bc3ec1ea3ff9c9f4448` exactly matches reviewed local commit `b99ac3549bd23efb8ec10080ce3e95c5a420c529`. Live `/api/health` reports the same deployed SHA.
+- Live desktop and `390x844` acceptance passed in Arabic RTL and English LTR: one Alexandria selector option, terminal label on every returned card, Old Port and TMT cards both visible, mixed-terminal history suppressed, and no page-wide horizontal overflow.
+- Remaining non-blocking data warning: two active COSCO/TMT source rate rows currently produce identical public card fields and distinct valid tokens. This is a published-rate data duplicate, not a port/country mapping duplicate; no source rate was deleted or guessed during this release.
+- All commands reported `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`. Rollback was not invoked and production remained untouched.
 
 ## Alexandria public-search grouping — local correction, 2026-08-28
 
