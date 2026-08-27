@@ -408,4 +408,14 @@ class PortNameResolver
         $normalized = self::normalize($alias);
         return isset($transitions[$normalized]) ? $transitions[$normalized] : null;
     }
+
+    /** Return a catalog transition only for a one-destination exact match. */
+    public static function exactCatalogAliasTransition($resolution)
+    {
+        if (!is_array($resolution) || ($resolution['status'] ?? '') !== 'matched' || count($resolution['matches'] ?? array()) !== 1) return null;
+        $match = $resolution['matches'][0];
+        $method = $match['method'] ?? ($resolution['method'] ?? '');
+        if ($method !== 'exact') return null;
+        return self::catalogAliasTransition($match['matched_alias'] ?? '');
+    }
 }
