@@ -231,3 +231,12 @@ The existing public-search integration test is time-blocked because all local pu
 - Frozen artifact `m062-port-normalization-e052d8b.tar.gz` contains exactly 15 allowlisted regular files and has SHA-256 `87a82a8069e82a240ca25d3cd63bb5503cac28e56965b592cef47beca7e5b825`.
 - Prepared helper SHA-256: `ca1012d9d17fbf2efd20d6d0bdb010aece1f56c5864dd3daac76db0384540337`. Prepared transactional installer SHA-256: `afe0b497708334472d881ff928b9b437381cd110eff2ec8ebfb55f6ba8a3da43`; it accepts only the installed helper SHA-256 `9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85`. Sudoers remains SHA-256 `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231` and is not modified.
 - Corrected helper/artifact upload, helper replacement, compare, preflight, apply and verify remain pending separate gates. No corrected deployment command ran.
+
+## Database literal-link fail-closed correction — 2026-08-27
+
+- Security review blocked the `e052d8b` package before upload because a DB-backed resolver could still return a same-owner built-in literal with `fk_port=0` when the active literal alias row was missing/inactive or the alias query failed.
+- Final runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc` requires DB-backed delimiter literals to come from a successfully loaded active alias row with `source=database`, a positive `fk_port`, and the reviewed port/country owner. Missing rows, inactive rows, query failure and owner mismatch all fail closed.
+- The only unlinked-literal mode is the explicit read-only migration `dry-run` while the alias table is absent. Apply, check, importer and admin resolution retain the strict linked-ID requirement. New regressions prove missing and unreadable alias paths are ambiguous and never return `fk_port=0`.
+- Final reproducible 15-file artifact `m062-port-normalization-fef1734.tar.gz`: SHA-256 `5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d`.
+- Final prepared helper SHA-256: `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b`. Final prepared installer SHA-256: `80c64cb56639c2bcc6cb9bccc5c8347ca7f7c4046ab168d24823a78ae557e435`; prior installed helper remains `9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85`; sudoers remains unchanged.
+- The blocked `e052d8b` candidate was not uploaded or installed. No final helper command ran; compare, preflight, apply and verify remain pending separate authorization gates.
