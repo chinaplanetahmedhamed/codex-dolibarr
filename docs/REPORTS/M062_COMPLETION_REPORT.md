@@ -180,3 +180,12 @@ The existing public-search integration test is time-blocked because all local pu
 - Runtime commit: `4dbb0cc0150b78140f15bdca992ab1f59bba2150`. Resolver coverage increases from 45 to 61 cases and built-in aliases from 100 to 116.
 - Corrected 15-file artifact `m062-port-normalization-4dbb0cc.tar.gz`: SHA-256 `dbe96641c2efe12d23c5c775c101e66dddfa70e793f1bcbb284ae16568324f63`. Helper SHA-256: `4635ddf52fd9ff4a79bb231ee85ef482ef266fe6a2ccebc08224a03c73c5085f`.
 - Transactional installer SHA-256: `20d2884f103515bcc1b3ecfe8dc59825434dbef86b71357e51499b17020c57ad`; it accepts only installed helper SHA-256 `32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd` or the new helper, and leaves sudoers unchanged.
+
+## Composite-delimiter security correction — 2026-08-27
+
+- Security review correctly blocked the preceding package before staging upload: normalization made `KUWAIT(SHUAIBA)` collide with top-level composites such as `KUWAIT/SHUAIBA` when whole-string alias lookup ran first.
+- The resolver now splits only top-level destination delimiters, preserves delimiters nested inside parentheses, and uses delimiter-preserving literal identity only for explicitly curated whole aliases such as `KHALIFA PORT, ABU DHABI`. Database aliases retain their literal spelling for this check.
+- Five new negative-regression variants prove that slash, comma, ampersand, plus and semicolon inputs resolve to both `KUWAIT|KW` and `SHUAIBA|KW`; the parenthetical input still resolves exactly to `SHUAIBA|KW`. Resolver coverage is now 66 cases. Fuzzy threshold `0.90`, two-edit cap and winner margin `0.08` are unchanged.
+- Corrected runtime commit: `525eca241a323d4ae073077a940de75d9d3b64e7`. Corrected 15-file artifact `m062-port-normalization-525eca2.tar.gz`: SHA-256 `3ec2073c80f8ea99ce01a8c1e975a9c6d0917c0a63b17253d672b43c37a7ac28`.
+- Corrected helper SHA-256: `b6577abf57aeecba67476026b08ad0052931d7b7380fd421b19841768f241174`. Transactional installer SHA-256: `56cc432fb924dd014987a5a6eef47ae861c8e63b9fe3d5f4a31e208644f30ab9`; it accepts only the currently installed helper SHA-256 `32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd` or the new helper and leaves sudoers unchanged.
+- No corrected helper command has run. Staging runtime/database and production remain untouched pending renewed Shipping, Security and QA PASS.

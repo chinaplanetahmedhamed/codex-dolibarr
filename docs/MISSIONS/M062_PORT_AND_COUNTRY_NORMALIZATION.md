@@ -165,3 +165,10 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - Curated exact aliases now cover those 16 strings: Shuaiba for `KUWAIT(SHUAIBA)`; Alexandria TMT; Jeddah Red Sea Gateway/South/DPW variants; Khor Fakkan ICD; Sharjah ICD; the listed Umm Qasr North/South/berth variants; and Istanbul Mardas.
 - The terminal relationships were verified from official port/terminal sources. No fuzzy threshold, edit cap or winner margin was relaxed. Partial and unknown composites remain rejected.
 - Runtime commit `4dbb0cc0150b78140f15bdca992ab1f59bba2150` must be rebuilt/reviewed and may repeat only helper rotation, compare and conditional preflight. Apply and production remain forbidden.
+
+## Composite-delimiter safety correction — 2026-08-27
+
+- Security review blocked the first terminal-alias package before upload because punctuation-insensitive whole matching could collapse a top-level composite such as `KUWAIT/SHUAIBA` into the single parenthetical alias `KUWAIT(SHUAIBA)`.
+- Parsing is now parenthesis-depth aware. Top-level `/`, `,`, `&`, `+` and `;` delimiters split destinations before normalized matching; delimiters inside parentheses remain qualifier text. Explicit literal aliases such as `KHALIFA PORT, ABU DHABI` remain supported without granting punctuation-equivalent composites the same identity.
+- Regression coverage requires `KUWAIT(SHUAIBA)` to resolve to one Shuaiba destination while all five top-level delimiter variants resolve to both Kuwait and Shuaiba. Fuzzy thresholds and fail-closed composite behavior remain unchanged.
+- Corrected runtime commit `525eca241a323d4ae073077a940de75d9d3b64e7` must receive renewed Shipping, Security and QA PASS before staging upload. Authorization remains helper rotation, `compare`, and conditional `preflight` only; apply, database mutation and production are forbidden.
