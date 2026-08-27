@@ -5,13 +5,13 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M062-R01'
-readonly RUNTIME_COMMIT='c4cef25a8dc6bd2ffedd180d6ac8a68428057746'
-readonly BASELINE_COMMIT='95402e7f22665c9efd61d648f1e545094aaf47c9'
-readonly SHORT_COMMIT='c4cef25'
-readonly ARTIFACT_SHA='90ac84416a9c0d7b8b8f8aee0849607e829db252ada036a142caa69ad9008ce4'
+readonly RUNTIME_COMMIT='d931a2be9e95167ecb08e9436913c765e52c1162'
+readonly BASELINE_REFERENCE='95402e7+verified-live-sql-13939d2'
+readonly SHORT_COMMIT='d931a2b'
+readonly ARTIFACT_SHA='cca7b7dab430d1e0e869764597e197fb258448d15ac0016d14ffd40abed3fdc3'
 readonly RUNTIME_MANIFEST_SHA='4cd75025aafbff6d46a8ebaf88f6b4188d9a1b62044a0f55bb6b4584ae16709e'
 readonly SUPPORT_MANIFEST_SHA='2c1146468ddf0c27ced34a4816fe7e546d003d65e3d382c568ca96e8ca2b45b2'
-readonly BASELINE_MANIFEST_SHA='d377b0fefe2315a3cc164740b74e1f5dff0296ede357b7323cf2407f3380ba6d'
+readonly BASELINE_MANIFEST_SHA='69a15dda008dbbd50aa63ddd773d41e02e027831fae605595e73fa77ff7ebcdc'
 readonly RUNTIME_MANIFEST='deploy/releases/m062-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m062-support-files.txt'
 readonly BASELINE_MANIFEST='deploy/releases/m062-prestate.sha256'
@@ -19,7 +19,7 @@ readonly MIGRATION='deploy/migrations/m062_port_normalization.php'
 readonly SUPPORT_DEPENDENCY='custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php'
 readonly SUPPORT_DEPENDENCY_SHA='1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54'
 readonly ARTIFACT_NAME="m062-port-normalization-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m062-staging-c4cef25-root-only'
+readonly DEPLOY_CONTEXT='m062-staging-d931a2b-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
@@ -325,7 +325,7 @@ live_checks() { [[ $TEST_MODE -eq 1 ]] && return 0; local rel status body; runti
 
 prepare_inbox_candidate() { ARTIFACT_SOURCE="$ARTIFACT"; validate_artifact; candidate_checks; }
 prepare_retained_candidate() { ARTIFACT_SOURCE="$RETAINED_ARTIFACT"; validate_artifact; candidate_checks; }
-command_compare() { check_environment; prepare_inbox_candidate; schema_prestate; compare_files; echo "M062_DEPLOY_COMPARE=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT BASELINE_COMMIT=$BASELINE_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE DRIFT_COUNT=$DRIFT_COUNT APPLY_EXECUTED=NO PRODUCTION_ACCESSED=NO"; }
+command_compare() { check_environment; prepare_inbox_candidate; schema_prestate; compare_files; echo "M062_DEPLOY_COMPARE=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT BASELINE_REFERENCE=$BASELINE_REFERENCE ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE DRIFT_COUNT=$DRIFT_COUNT APPLY_EXECUTED=NO PRODUCTION_ACCESSED=NO"; }
 command_preflight() { check_environment; prepare_inbox_candidate; schema_prestate; data_preflight || die 'DATA_PREFLIGHT_FAILED'; compare_files; [[ $DRIFT_COUNT -eq 0 ]] || die 'BASELINE_DRIFT'; echo "M062_DEPLOY_PREFLIGHT=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
 command_apply() {
   local prior_state=NONE required_schema_prestate

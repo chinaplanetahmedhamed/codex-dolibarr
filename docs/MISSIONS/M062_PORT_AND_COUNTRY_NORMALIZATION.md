@@ -151,3 +151,10 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - The corrected helper installation and independent SHA/sudo-surface verification passed. Sudoers was not changed and no deploy command was executed by the installer.
 - `compare` passed candidate tests and dependency parity but returned `DRIFT_COUNT=1` for `custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql`; schema state was `MIGRATION_REQUIRED`.
 - Per the approved gate, `preflight` was not run. The release remains blocked pending a separate, read-only provenance review and a reviewed baseline decision for that exact file. No staging runtime or database mutation and no production access occurred.
+
+## Verified staging prestate correction — 2026-08-27
+
+- Ahmed approved the bounded read-only provenance review and requested the correction be finished quickly.
+- Two independent reads through canonical staging localhost returned identical bytes for `llx_chinaplanetsp_rate.sql`, SHA-256 `13939d258df2c329616645f5ae7128e18e11df352d83bd6a93a27fc26f508831`.
+- Those bytes are identical to Git commits `6cbd0ffbc6f7cc6030aaecad1d067c0969795c5e` and `2dff2fd76d8d4f6b5690c13828c3fcd58f2499b7`. The source-derived M062 baseline SHA `b2607e9d...` belongs to the later translation-schema source revision, which was never deployed as this SQL install file; the translation database columns were delivered separately by migration.
+- The M062 prestate manifest is therefore corrected to the verified live SHA only. Runtime behavior remains unchanged. The artifact/helper/installer must be rebuilt, independently reviewed and checksum-rotated before repeating `compare` and conditional `preflight`; apply and production remain forbidden.

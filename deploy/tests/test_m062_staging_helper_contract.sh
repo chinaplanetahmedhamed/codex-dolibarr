@@ -7,18 +7,18 @@ installer="$repo_root/deploy/tools/install_backup_erp_m062_ports_helper.sh"
 sudoers="$repo_root/deploy/config/codex-deploy-backup-erp-m062-ports.sudoers"
 builder="$repo_root/deploy/tools/build_m062_artifact.py"
 report="$repo_root/docs/REPORTS/M062_COMPLETION_REPORT.md"
-artifact=${M062_ARTIFACT:-/private/tmp/m062-port-normalization-c4cef25.tar.gz}
+artifact=${M062_ARTIFACT:-/private/tmp/m062-port-normalization-d931a2b.tar.gz}
 
 fail() { echo "M062_STAGING_HELPER_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-[[ $(sha256 "$helper") == 7fcafdcf379b9838846426b74460364f15521521c84f9e7862b2641a7cd7b2aa ]] || fail HELPER_HASH
+[[ $(sha256 "$helper") == 32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd ]] || fail HELPER_HASH
 [[ $(sha256 "$sudoers") == 958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231 ]] || fail SUDOERS_HASH
-[[ $(sha256 "$installer") == 13841f57b297439e82375819ad1f59568cdc6307a5651dd0d1187298ab92313a ]] || fail INSTALLER_HASH
-grep -Fq "readonly HELPER_SHA='7fcafdcf379b9838846426b74460364f15521521c84f9e7862b2641a7cd7b2aa'" "$installer" || fail INSTALLER_HELPER_PIN
-grep -Fq "readonly PREVIOUS_HELPER_SHA='34fad8e6e04304b5661206a1b7562e09641431b82deb06f658aa1fae6efc2c87'" "$installer" || fail INSTALLER_PREVIOUS_HELPER_PIN
+[[ $(sha256 "$installer") == dc22a1a0201b4138e68293f719bfda26a608d581f7328655785632050e4a9465 ]] || fail INSTALLER_HASH
+grep -Fq "readonly HELPER_SHA='32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd'" "$installer" || fail INSTALLER_HELPER_PIN
+grep -Fq "readonly PREVIOUS_HELPER_SHA='7fcafdcf379b9838846426b74460364f15521521c84f9e7862b2641a7cd7b2aa'" "$installer" || fail INSTALLER_PREVIOUS_HELPER_PIN
 grep -Fq "readonly SUDOERS_SHA='958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231'" "$installer" || fail INSTALLER_SUDOERS_PIN
 grep -Fq "die 'EXISTING_HELPER_REQUIRED'" "$installer" || fail INSTALLER_REQUIRES_EXISTING_HELPER
 grep -Fq "die 'EXISTING_SUDOERS_REQUIRED'" "$installer" || fail INSTALLER_REQUIRES_EXISTING_SUDOERS
@@ -28,8 +28,9 @@ grep -Fq "readonly UPGRADE_BACKUP_ROOT='/root/m062-ports-helper-upgrade-backups'
 grep -Fq "elif [[ \"\$existing_helper_sha\" == \"\$PREVIOUS_HELPER_SHA\" ]]; then upgrading_helper=1" "$installer" || fail INSTALLER_EXACT_UPGRADE_GATE
 grep -Fq 'mv -f "$restore_stage" "$TARGET_HELPER"' "$installer" || fail INSTALLER_AUTO_RESTORE
 grep -Fq 'mv "$backup_stage" "$PREVIOUS_HELPER_BACKUP"' "$installer" || fail INSTALLER_ATOMIC_BACKUP
-grep -Fq "readonly ARTIFACT_SHA='90ac84416a9c0d7b8b8f8aee0849607e829db252ada036a142caa69ad9008ce4'" "$helper" || fail ARTIFACT_PIN
-grep -Fq "readonly RUNTIME_COMMIT='c4cef25a8dc6bd2ffedd180d6ac8a68428057746'" "$helper" || fail COMMIT_PIN
+grep -Fq "readonly ARTIFACT_SHA='cca7b7dab430d1e0e869764597e197fb258448d15ac0016d14ffd40abed3fdc3'" "$helper" || fail ARTIFACT_PIN
+grep -Fq "readonly RUNTIME_COMMIT='d931a2be9e95167ecb08e9436913c765e52c1162'" "$helper" || fail COMMIT_PIN
+grep -Fq "readonly BASELINE_REFERENCE='95402e7+verified-live-sql-13939d2'" "$helper" || fail BASELINE_REFERENCE
 grep -Fq "readonly SUPPORT_DEPENDENCY_SHA='1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54'" "$helper" || fail DEPENDENCY_PIN
 grep -Fq "STATE_ROOT='/var/lib/chinaplanetos-m062-ports-staging-r01'" "$helper" || fail STATE_ISOLATION
 grep -Fq 'Approved M062 rollback is non-destructive' "$helper" || fail ROLLBACK_POLICY
@@ -40,7 +41,7 @@ grep -Fq "TARGET_VOLUME='erp-staging_erp-staging_custom'" "$helper" || fail CUST
 grep -Fq "DB_VOLUME='erp-staging_erp-staging_mariadb_data'" "$helper" || fail DB_VOLUME
 if grep -Eq 'vision_erp|vision_db|vision-os_|codex_staging|/opt/codex-dolibarr-staging|https://erp\.visiontrading\.biz' "$helper" "$installer" "$sudoers"; then fail FORBIDDEN_TARGET; fi
 if grep -Eq '/root/backup-erp-(code|db|release)-backups|/var/lib/chinaplanetos-m062-ports' "$installer"; then fail INSTALLER_SCOPE_EXPANDED; fi
-grep -Fq '13841f57b297439e82375819ad1f59568cdc6307a5651dd0d1187298ab92313a' "$report" || fail INSTALLER_HASH_NOT_RECORDED
+grep -Fq 'dc22a1a0201b4138e68293f719bfda26a608d581f7328655785632050e4a9465' "$report" || fail INSTALLER_HASH_NOT_RECORDED
 
 [[ $(wc -l <"$sudoers" | tr -d ' ') -eq 6 ]] || fail SUDOERS_COUNT
 for command in compare preflight apply verify rollback status; do
@@ -48,7 +49,7 @@ for command in compare preflight apply verify rollback status; do
 done
 
 [[ -f "$artifact" && ! -L "$artifact" ]] || fail ARTIFACT_MISSING
-[[ $(sha256 "$artifact") == 90ac84416a9c0d7b8b8f8aee0849607e829db252ada036a142caa69ad9008ce4 ]] || fail ARTIFACT_HASH
+[[ $(sha256 "$artifact") == cca7b7dab430d1e0e869764597e197fb258448d15ac0016d14ffd40abed3fdc3 ]] || fail ARTIFACT_HASH
 [[ $(tar -tzf "$artifact" | wc -l | tr -d ' ') -eq 15 ]] || fail ARTIFACT_COUNT
 [[ $(tar -tzf "$artifact" | grep -Fxc 'custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php') -eq 1 ]] || fail DEPENDENCY_MEMBER
 [[ -z $(tar -tzf "$artifact" | awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ || /\.DS_Store/ || /PaxHeader/ || /\/\._/ {print; exit}') ]] || fail ARTIFACT_PATH
@@ -59,8 +60,8 @@ trap 'rm -rf "$test_root"' EXIT
 for dir in inbox target code-backups db-backups state state/requests state/container-root artifacts; do mkdir -p "$test_root/$dir"; done
 python3 "$builder" --output "$test_root/rebuilt.tar.gz" >/dev/null || fail ARTIFACT_REBUILD
 cmp -s "$artifact" "$test_root/rebuilt.tar.gz" || fail ARTIFACT_NOT_REPRODUCIBLE
-cp "$artifact" "$test_root/inbox/m062-port-normalization-c4cef25.tar.gz"
-chmod 0644 "$test_root/inbox/m062-port-normalization-c4cef25.tar.gz"
+cp "$artifact" "$test_root/inbox/m062-port-normalization-d931a2b.tar.gz"
+chmod 0644 "$test_root/inbox/m062-port-normalization-d931a2b.tar.gz"
 export M062_DEPLOY_HELPER_TEST_MODE=1 M062_DEPLOY_HELPER_TEST_ROOT="$test_root" M062_DEPLOY_HELPER_LIBRARY_MODE=1
 helper_copy="$test_root/chinaplanetos-backup-erp-m062-ports.test"
 cp "$helper" "$helper_copy"
