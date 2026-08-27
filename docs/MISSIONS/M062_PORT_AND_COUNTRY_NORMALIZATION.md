@@ -234,3 +234,12 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - `compare` returned `PASS`: all seven runtime paths matched their reviewed baseline states, the support dependency matched SHA-256 `1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54`, schema was `MIGRATION_REQUIRED`, and `DRIFT_COUNT=0`.
 - Conditional `preflight` returned `PASS` for release `M062-R01`, runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc` and the exact final artifact. It reported `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`.
 - Both successful commands emitted the same non-fatal GNU awk escape warning before their PASS markers. No runtime/schema/business-data mutation occurred. Work stops before `apply`, which requires separate explicit approval.
+
+## Final staging apply and verify after recovery — 2026-08-27
+
+- Ahmed approved `apply` followed by conditional `verify` on canonical `backup-erp` staging only. Production remained forbidden.
+- Immediately before mutation, installed helper and artifact hashes matched the final reviewed pins and helper `status` returned `M062_DEPLOY_STATUS=NOT_DEPLOYED`.
+- `apply` returned `PASS` for request `m062-20260827T130509Z-6a3b15720ab1`, release `M062-R01`, runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc` and artifact SHA-256 `5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d`.
+- The helper created code backup `/root/backup-erp-code-backups/m062-before-fef1734-m062-20260827T130509Z-6a3b15720ab1.tar.gz`, SHA-256 `dd1008fe64a5164d1dd7ecbcba3829913b2e393d0da071c380f7867636158023`, and full database backup `/root/backup-erp-db-backups/m062-before-fef1734-m062-20260827T130509Z-6a3b15720ab1.sql`, SHA-256 `cf87acb47bae28bcabc23e1c64536a27cc119ef8b53880f5c2cdfdd11929349b`.
+- Conditional `verify` returned `PASS` with state `DEPLOYED`, exact runtime/artifact pins and `DATABASE_SCHEMA=READY`. Current-data validation passed, so the verified M062 unmapped destination country/port remainder is zero; unrelated shipping-line normalization remains outside scope.
+- The non-fatal GNU awk escape warning remains in helper output. Rollback was not invoked, authenticated business/UI acceptance remains pending, and production was not accessed.

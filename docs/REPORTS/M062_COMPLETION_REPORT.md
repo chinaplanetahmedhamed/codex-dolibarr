@@ -255,3 +255,12 @@ The existing public-search integration test is time-blocked because all local pu
 - `M062_DEPLOY_COMPARE=PASS`: `SCHEMA=MIGRATION_REQUIRED`, `DRIFT_COUNT=0`, all seven runtime files at their reviewed baselines, and the live support dependency at its pinned hash.
 - `M062_DEPLOY_PREFLIGHT=PASS`: release `M062-R01`, runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc`, artifact SHA-256 `5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d`, `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, `PRODUCTION_ACCESSED=NO`.
 - A non-fatal GNU awk escape warning preceded both successful results. No apply/verify/rollback/status command ran and no runtime, schema or business data changed. Apply remains a separate approval gate.
+
+## Final post-recovery staging deployment — 2026-08-27
+
+- Ahmed approved staging `apply` followed by conditional `verify`. Pinned helper/artifact identities and `NOT_DEPLOYED` prestate were rechecked before mutation.
+- Apply request `m062-20260827T130509Z-6a3b15720ab1` returned `PASS` for release `M062-R01`, runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc`, and artifact SHA-256 `5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d` with `DATABASE_CHANGED=YES` and `PRODUCTION_ACCESSED=NO`.
+- Code backup: `/root/backup-erp-code-backups/m062-before-fef1734-m062-20260827T130509Z-6a3b15720ab1.tar.gz`, SHA-256 `dd1008fe64a5164d1dd7ecbcba3829913b2e393d0da071c380f7867636158023`.
+- Full database backup: `/root/backup-erp-db-backups/m062-before-fef1734-m062-20260827T130509Z-6a3b15720ab1.sql`, SHA-256 `cf87acb47bae28bcabc23e1c64536a27cc119ef8b53880f5c2cdfdd11929349b`.
+- Independent helper verify returned `PASS`, `STATE=DEPLOYED`, exact runtime/artifact pins, and `DATABASE_SCHEMA=READY`. Current-data validation passed with no remaining M062 unmapped destination country/port value.
+- Remaining warnings/acceptance: the helper emits a non-fatal GNU awk escape warning; unrelated shipping-line normalization remains out of scope; authenticated staff/UI business acceptance has not yet run. Rollback and production were not invoked.
