@@ -7,17 +7,17 @@ installer="$repo_root/deploy/tools/install_backup_erp_m062_ports_helper.sh"
 sudoers="$repo_root/deploy/config/codex-deploy-backup-erp-m062-ports.sudoers"
 builder="$repo_root/deploy/tools/build_m062_artifact.py"
 report="$repo_root/docs/REPORTS/M062_COMPLETION_REPORT.md"
-artifact=${M062_ARTIFACT:-/private/tmp/m062-port-normalization-1ba3087.tar.gz}
+artifact=${M062_ARTIFACT:-/private/tmp/m062-port-normalization-ce6e87a.tar.gz}
 
 fail() { echo "M062_STAGING_HELPER_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-[[ $(sha256 "$helper") == cac210d431715011cfab063978205148e0fc2602d09666e521a6ae6cc5856be9 ]] || fail HELPER_HASH
+[[ $(sha256 "$helper") == 6cb72966c1a6e88dcd0f7071727f524a7259eae2f0b337ffabadc24cc86435f4 ]] || fail HELPER_HASH
 [[ $(sha256 "$sudoers") == 958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231 ]] || fail SUDOERS_HASH
-[[ $(sha256 "$installer") == 08a38c7cca3ccb8aea477ea6482c398d640bc12266711f38b092def0782787b7 ]] || fail INSTALLER_HASH
-grep -Fq "readonly HELPER_SHA='cac210d431715011cfab063978205148e0fc2602d09666e521a6ae6cc5856be9'" "$installer" || fail INSTALLER_HELPER_PIN
+[[ $(sha256 "$installer") == 9c3b2fcb484a8af4aafbc580ed7fd66432f2eb98a577ff40ea5304af948f0c0a ]] || fail INSTALLER_HASH
+grep -Fq "readonly HELPER_SHA='6cb72966c1a6e88dcd0f7071727f524a7259eae2f0b337ffabadc24cc86435f4'" "$installer" || fail INSTALLER_HELPER_PIN
 grep -Fq "readonly PREVIOUS_HELPER_SHA='03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b'" "$installer" || fail INSTALLER_PREVIOUS_HELPER_PIN
 grep -Fq "readonly SUDOERS_SHA='958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231'" "$installer" || fail INSTALLER_SUDOERS_PIN
 grep -Fq "die 'EXISTING_HELPER_REQUIRED'" "$installer" || fail INSTALLER_REQUIRES_EXISTING_HELPER
@@ -28,8 +28,8 @@ grep -Fq "readonly UPGRADE_BACKUP_ROOT='/root/m062-ports-helper-upgrade-backups'
 grep -Fq "elif [[ \"\$existing_helper_sha\" == \"\$PREVIOUS_HELPER_SHA\" ]]; then upgrading_helper=1" "$installer" || fail INSTALLER_EXACT_UPGRADE_GATE
 grep -Fq 'mv -f "$restore_stage" "$TARGET_HELPER"' "$installer" || fail INSTALLER_AUTO_RESTORE
 grep -Fq 'mv "$backup_stage" "$PREVIOUS_HELPER_BACKUP"' "$installer" || fail INSTALLER_ATOMIC_BACKUP
-grep -Fq "readonly ARTIFACT_SHA='76a9f1481596c641e1c8b4e3e00d8465fc42937f1e5ef11a9ca8696674d5d356'" "$helper" || fail ARTIFACT_PIN
-grep -Fq "readonly RUNTIME_COMMIT='1ba3087d3cf37607ced37589d9cefe48a944264a'" "$helper" || fail COMMIT_PIN
+grep -Fq "readonly ARTIFACT_SHA='2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201'" "$helper" || fail ARTIFACT_PIN
+grep -Fq "readonly RUNTIME_COMMIT='ce6e87afe0058d1b4939f3c5f0f0090d14db2972'" "$helper" || fail COMMIT_PIN
 grep -Fq "readonly BASELINE_REFERENCE='fef1734+verified-staging-deployed'" "$helper" || fail BASELINE_REFERENCE
 grep -Fq "readonly PRIOR_RUNTIME_COMMIT='fef173463ef6c2031f0f37c83a006b6802c8c3fc'" "$helper" || fail PRIOR_COMMIT_PIN
 grep -Fq 'DEPLOYED_PRIOR_RELEASE) echo MIGRATION_REQUIRED' "$helper" || fail PRIOR_DEPLOYED_UPGRADE_GATE
@@ -44,7 +44,7 @@ grep -Fq "TARGET_VOLUME='erp-staging_erp-staging_custom'" "$helper" || fail CUST
 grep -Fq "DB_VOLUME='erp-staging_erp-staging_mariadb_data'" "$helper" || fail DB_VOLUME
 if grep -Eq 'vision_erp|vision_db|vision-os_|codex_staging|/opt/codex-dolibarr-staging|https://erp\.visiontrading\.biz' "$helper" "$installer" "$sudoers"; then fail FORBIDDEN_TARGET; fi
 if grep -Eq '/root/backup-erp-(code|db|release)-backups|/var/lib/chinaplanetos-m062-ports' "$installer"; then fail INSTALLER_SCOPE_EXPANDED; fi
-grep -Fq '08a38c7cca3ccb8aea477ea6482c398d640bc12266711f38b092def0782787b7' "$report" || fail INSTALLER_HASH_NOT_RECORDED
+grep -Fq '9c3b2fcb484a8af4aafbc580ed7fd66432f2eb98a577ff40ea5304af948f0c0a' "$report" || fail INSTALLER_HASH_NOT_RECORDED
 
 [[ $(wc -l <"$sudoers" | tr -d ' ') -eq 6 ]] || fail SUDOERS_COUNT
 for command in compare preflight apply verify rollback status; do
@@ -52,7 +52,7 @@ for command in compare preflight apply verify rollback status; do
 done
 
 [[ -f "$artifact" && ! -L "$artifact" ]] || fail ARTIFACT_MISSING
-[[ $(sha256 "$artifact") == 76a9f1481596c641e1c8b4e3e00d8465fc42937f1e5ef11a9ca8696674d5d356 ]] || fail ARTIFACT_HASH
+[[ $(sha256 "$artifact") == 2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201 ]] || fail ARTIFACT_HASH
 [[ $(tar -tzf "$artifact" | wc -l | tr -d ' ') -eq 15 ]] || fail ARTIFACT_COUNT
 [[ $(tar -tzf "$artifact" | grep -Fxc 'custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php') -eq 1 ]] || fail DEPENDENCY_MEMBER
 [[ -z $(tar -tzf "$artifact" | awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ || /\.DS_Store/ || /PaxHeader/ || /\/\._/ {print; exit}') ]] || fail ARTIFACT_PATH
@@ -63,8 +63,8 @@ trap 'rm -rf "$test_root"' EXIT
 for dir in inbox target code-backups db-backups state state/requests state/container-root artifacts; do mkdir -p "$test_root/$dir"; done
 python3 "$builder" --output "$test_root/rebuilt.tar.gz" >/dev/null || fail ARTIFACT_REBUILD
 cmp -s "$artifact" "$test_root/rebuilt.tar.gz" || fail ARTIFACT_NOT_REPRODUCIBLE
-cp "$artifact" "$test_root/inbox/m062-port-normalization-1ba3087.tar.gz"
-chmod 0644 "$test_root/inbox/m062-port-normalization-1ba3087.tar.gz"
+cp "$artifact" "$test_root/inbox/m062-port-normalization-ce6e87a.tar.gz"
+chmod 0644 "$test_root/inbox/m062-port-normalization-ce6e87a.tar.gz"
 export M062_DEPLOY_HELPER_TEST_MODE=1 M062_DEPLOY_HELPER_TEST_ROOT="$test_root" M062_DEPLOY_HELPER_LIBRARY_MODE=1
 helper_copy="$test_root/chinaplanetos-backup-erp-m062-ports.test"
 cp "$helper" "$helper_copy"

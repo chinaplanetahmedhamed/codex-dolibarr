@@ -5,10 +5,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M062-R02'
-readonly RUNTIME_COMMIT='1ba3087d3cf37607ced37589d9cefe48a944264a'
+readonly RUNTIME_COMMIT='ce6e87afe0058d1b4939f3c5f0f0090d14db2972'
 readonly BASELINE_REFERENCE='fef1734+verified-staging-deployed'
-readonly SHORT_COMMIT='1ba3087'
-readonly ARTIFACT_SHA='76a9f1481596c641e1c8b4e3e00d8465fc42937f1e5ef11a9ca8696674d5d356'
+readonly SHORT_COMMIT='ce6e87a'
+readonly ARTIFACT_SHA='2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201'
 readonly RUNTIME_MANIFEST_SHA='4cd75025aafbff6d46a8ebaf88f6b4188d9a1b62044a0f55bb6b4584ae16709e'
 readonly SUPPORT_MANIFEST_SHA='2c1146468ddf0c27ced34a4816fe7e546d003d65e3d382c568ca96e8ca2b45b2'
 readonly BASELINE_MANIFEST_SHA='e28dfbd15052232dbbb12a1d916d6b37f840826f9a59d6b4853963a02b63a87b'
@@ -23,7 +23,7 @@ readonly MIGRATION='deploy/migrations/m062_port_normalization.php'
 readonly SUPPORT_DEPENDENCY='custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php'
 readonly SUPPORT_DEPENDENCY_SHA='1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54'
 readonly ARTIFACT_NAME="m062-port-normalization-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m062-staging-1ba3087-root-only'
+readonly DEPLOY_CONTEXT='m062-staging-ce6e87a-root-only'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
 readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
