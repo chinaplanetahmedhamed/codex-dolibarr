@@ -186,3 +186,10 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - `compare` passed with `DRIFT_COUNT=0`, all seven runtime paths in their expected baseline states, the support dependency current, and schema classified `MIGRATION_REQUIRED`.
 - The read-only migration dry-run inside `preflight` passed, which requires an empty remaining list and therefore zero unmapped rows and zero unmapped values. `preflight` finished `PASS` with `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`.
 - Work stops at the approved gate. Runtime code, schema and business data remain unchanged; `apply` requires a separate explicit approval.
+
+## Staging apply failure and recovery gate — 2026-08-27
+
+- Ahmed explicitly approved staging `apply` followed by `verify`. Exact helper and artifact pins were reverified before mutation; the helper repeated preflight and zero-drift compare, then created code, prestate and full-database backups.
+- The additive migration ran, but post-apply current-data validation failed at `rate row 407` with `Unresolved or non-canonical port/country/id`. The helper stopped fail closed and returned `M062_DEPLOY_FAIL=SCHEMA_POST_APPLY_INVALID` followed by `M062_DEPLOY_AUTO_ROLLBACK=FAIL DATABASE_RECOVERY_REQUIRED=YES`.
+- Durable state is `APPLY_FAILED_DB_RECOVERY_REQUIRED`. Runtime compare confirms all seven files were restored to their baseline states with `DRIFT_COUNT=0`; schema is `READY`, meaning the additive/partially normalized database state remains. Staging HTTPS remains `200`. `verify` did not run and production was not accessed.
+- Full database backup is `/root/backup-erp-db-backups/m062-before-7f67d0c-m062-20260827T104336Z-f36ab1403e42.sql`, SHA-256 `8d54253f375c5fc8d12d487b6c9c17924e4b9677ffe5403e57af013a701f72cc`. Full restore is destructive and requires separate explicit approval after a bounded read-only row-407 diagnosis; do not reapply, verify or invoke rollback meanwhile.

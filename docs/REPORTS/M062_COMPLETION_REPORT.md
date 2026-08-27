@@ -204,3 +204,12 @@ The existing public-search integration test is time-blocked because all local pu
 - `compare`: PASS; `SCHEMA=MIGRATION_REQUIRED`; `DRIFT_COUNT=0`; support dependency current; `APPLY_EXECUTED=NO`; `PRODUCTION_ACCESSED=NO`.
 - `preflight`: PASS. Its dry-run can return success only when the remaining destination list is empty, so the current candidate resolves every live destination value: unmapped rows `0`, unmapped values `0`, remaining destination warnings `0`. The prior dry-run total was 3,088 rows across 83 distinct destination values; this gate introduced no data change.
 - No runtime file, schema, database, container configuration or business row was changed. Production was not accessed. The next gate is a separately approved staging `apply`, followed by `verify` and real UI/business acceptance; none was executed here.
+
+## Staging apply failure — 2026-08-27
+
+- Ahmed approved `apply` then conditional `verify` on canonical staging. The installed helper and artifact were independently rechecked at the reviewed SHA-256 pins immediately before apply.
+- Apply repeated the preflight and `DRIFT_COUNT=0` comparison, created all backups, and ran the migration. Post-apply validation then failed on rate row `407`: `Unresolved or non-canonical port/country/id at rate row 407`.
+- The helper stopped with `SCHEMA_POST_APPLY_INVALID`; automatic recovery could not certify the retained database state and recorded `APPLY_FAILED_DB_RECOVERY_REQUIRED`. Conditional `verify` was not executed.
+- Read-only status and compare confirm: runtime code is back at the seven-file baseline, `DRIFT_COUNT=0`, schema is `READY`, staging HTTPS is `200`, and production was not accessed. Database changes from the attempted migration remain pending recovery.
+- Code backup SHA-256: `dd1008fe64a5164d1dd7ecbcba3829913b2e393d0da071c380f7867636158023`; prestate SHA-256: `d9bfd6b5167f6fd3ae41fa255a86a8bdc912a98bf566e63f6980fb8619e44199`; full database backup SHA-256: `8d54253f375c5fc8d12d487b6c9c17924e4b9677ffe5403e57af013a701f72cc`.
+- Next action is a bounded read-only diagnosis of row 407, then a separately approved choice between a checksum-validated full staging database restore or a reviewed corrective recovery. No reapply, verify or rollback is safe before that decision.
