@@ -210,12 +210,12 @@ class PortNameResolver
     {
         return array(
             array('port_name'=>'SOKHNA','country_code'=>'EG','port_code'=>'EGSOK','aliases'=>array('AIN SOKHNA','EL SOKHNA')),
-            array('port_name'=>'ALEXANDRIA','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA','ALEXANDIRA OLD PORT','ALEXANDRIA OLD PORT')),
+            array('port_name'=>'ALEXANDRIA','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA','ALEXANDIRA OLD PORT','ALEXANDRIA OLD PORT','ALEXANDRIA (TMT)')),
             array('port_name'=>'DEKHEILA','country_code'=>'EG','port_code'=>'EGEDK','aliases'=>array('EL DEKHEILA')),
             array('port_name'=>'DAMIETTA','country_code'=>'EG','port_code'=>'EGDAM','aliases'=>array()),
             array('port_name'=>'PORT SAID','country_code'=>'EG','port_code'=>'EGPSD','aliases'=>array()),
             array('port_name'=>'PORT SAID WEST','country_code'=>'EG','port_code'=>'EGPSD','aliases'=>array('HP-SZ-PORT SAID WEST')),
-            array('port_name'=>'JEDDAH','country_code'=>'SA','port_code'=>'SAJED','aliases'=>array()),
+            array('port_name'=>'JEDDAH','country_code'=>'SA','port_code'=>'SAJED','aliases'=>array('JEDDAH (REDSEA GATEWAY)','JEDDAH (REASEA GATEWAY)','JEDDAH (SOUTH)','JEDDAH (DPW/南港)')),
             array('port_name'=>'DAMMAM','country_code'=>'SA','port_code'=>'SADMM','aliases'=>array()),
             array('port_name'=>'RIYADH DRY PORT','country_code'=>'SA','port_code'=>'SARYP','aliases'=>array('RIYADH')),
             array('port_name'=>'JUBAIL','country_code'=>'SA','port_code'=>'SAJUB','aliases'=>array()),
@@ -223,9 +223,9 @@ class PortNameResolver
             array('port_name'=>'JEBEL ALI','country_code'=>'AE','port_code'=>'AEJEA','aliases'=>array()),
             array('port_name'=>'ABU DHABI','country_code'=>'AE','port_code'=>'AEAUH','aliases'=>array()),
             array('port_name'=>'KHALIFA PORT','country_code'=>'AE','port_code'=>'AEKHL','aliases'=>array('KHALIFA','KHALIFA PORT, ABU DHABI')),
-            array('port_name'=>'SHARJAH','country_code'=>'AE','port_code'=>'AESHJ','aliases'=>array()),
+            array('port_name'=>'SHARJAH','country_code'=>'AE','port_code'=>'AESHJ','aliases'=>array('SHARJAH ICD')),
             array('port_name'=>'AJMAN','country_code'=>'AE','port_code'=>'AEAJM','aliases'=>array()),
-            array('port_name'=>'KHOR FAKKAN','country_code'=>'AE','port_code'=>'AEKLF','aliases'=>array('KHORFAKKAN')),
+            array('port_name'=>'KHOR FAKKAN','country_code'=>'AE','port_code'=>'AEKLF','aliases'=>array('KHORFAKKAN','KHOR FAKKAN (ICD)')),
             array('port_name'=>'FUJAIRAH','country_code'=>'AE','port_code'=>'AEFJR','aliases'=>array()),
             array('port_name'=>'UMM AL QUWAIN','country_code'=>'AE','port_code'=>'AEQIW','aliases'=>array('UMM AL QAWAIN','UMM AL QAIWAIN','UMM AL QUWAIN PORT')),
             array('port_name'=>'RAS AL KHAIMAH','country_code'=>'AE','port_code'=>'AERKT','aliases'=>array()),
@@ -238,9 +238,9 @@ class PortNameResolver
             array('port_name'=>'DJIBOUTI','country_code'=>'DJ','port_code'=>'DJJIB','aliases'=>array()),
             array('port_name'=>'BERBERA','country_code'=>'SO','port_code'=>'SOBBO','aliases'=>array()),
             array('port_name'=>'MOGADISHU','country_code'=>'SO','port_code'=>'SOMGQ','aliases'=>array()),
-            array('port_name'=>'UMM QASR','country_code'=>'IQ','port_code'=>'IQUQR','aliases'=>array('UMM北')),
+            array('port_name'=>'UMM QASR','country_code'=>'IQ','port_code'=>'IQUQR','aliases'=>array('UMM北','UMM QASR (北港，靠14 或15号码头)','UMM QASR (南港)','UMM QASR (北港)','UMM QASR (北港，靠20号码头)','UMM QASR (北港，靠27号码头)','UMM QASR 北港20号码头','UMM QASR北港（11号码头）')),
             array('port_name'=>'SHUWAIKH','country_code'=>'KW','port_code'=>'KWSWK','aliases'=>array()),
-            array('port_name'=>'SHUAIBA','country_code'=>'KW','port_code'=>'KWSAA','aliases'=>array()),
+            array('port_name'=>'SHUAIBA','country_code'=>'KW','port_code'=>'KWSAA','aliases'=>array('KUWAIT (SHUAIBA)')),
             array('port_name'=>'KUWAIT','country_code'=>'KW','port_code'=>'KWKWI','aliases'=>array()),
             array('port_name'=>'BAHRAIN','country_code'=>'BH','port_code'=>'BHBAH','aliases'=>array()),
             array('port_name'=>'SOHAR','country_code'=>'OM','port_code'=>'OMSOH','aliases'=>array()),
@@ -274,7 +274,7 @@ class PortNameResolver
             array('port_name'=>'LATTAKIA','country_code'=>'SY','port_code'=>'SYLTK','aliases'=>array('LATAKIA')),
             array('port_name'=>'BEIRUT','country_code'=>'LB','port_code'=>'LBBEY','aliases'=>array()),
             array('port_name'=>'MERSIN','country_code'=>'TR','port_code'=>'TRMER','aliases'=>array()),
-            array('port_name'=>'ISTANBUL','country_code'=>'TR','port_code'=>'TRIST','aliases'=>array()),
+            array('port_name'=>'ISTANBUL','country_code'=>'TR','port_code'=>'TRIST','aliases'=>array('ISTANBUL (MARDAS)')),
         );
     }
 }

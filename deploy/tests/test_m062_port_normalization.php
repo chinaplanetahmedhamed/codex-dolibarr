@@ -40,6 +40,22 @@ $cases = array(
     'Alger/Annaba'=>array('ALGIERS|DZ','ANNABA|DZ'), 'MSIURATA/Benghazi'=>array('MISURATA|LY','BENGHAZI|LY'),
     'BANDAR ABBAS'=>array('BANDAR ABBAS|IR'),
     'ORAN (SEA PORT) / CASABLANCA'=>array('ORAN|DZ','CASABLANCA|MA'),
+    'KUWAIT(SHUAIBA)'=>array('SHUAIBA|KW'),
+    'Alexandria（TMT）'=>array('ALEXANDRIA|EG'),
+    'JEDDAH(REDSEA GATEWAY)'=>array('JEDDAH|SA'),
+    'KHOR FAKKAN (ICD)'=>array('KHOR FAKKAN|AE'),
+    'UMM QASR(北港，靠14 或15号码头)'=>array('UMM QASR|IQ'),
+    'UMM QASR(南港)'=>array('UMM QASR|IQ'),
+    'JEDDAH（SOUTH）'=>array('JEDDAH|SA'),
+    'UMM QASR(北港)'=>array('UMM QASR|IQ'),
+    'UMM QASR(北港，靠20号码头)'=>array('UMM QASR|IQ'),
+    'UMM QASR(北港，靠27号码头)'=>array('UMM QASR|IQ'),
+    'SHARJAH ICD'=>array('SHARJAH|AE'),
+    'UMM QASR 北港20号码头'=>array('UMM QASR|IQ'),
+    'JEDDAH(DPW/南港)'=>array('JEDDAH|SA'),
+    'ISTANBUL(MARDAS)'=>array('ISTANBUL|TR'),
+    'JEDDAH(REASEA GATEWAY)'=>array('JEDDAH|SA'),
+    'UMM QASR北港（11号码头）'=>array('UMM QASR|IQ'),
 );
 foreach ($cases as $raw => $expected) m062Assert(m062Ports($resolver, $raw) === $expected, 'Unexpected mapping for '.$raw.': '.json_encode(m062Ports($resolver, $raw)));
 
