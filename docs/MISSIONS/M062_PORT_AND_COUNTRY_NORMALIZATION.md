@@ -217,4 +217,12 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - Only the migration's read-only `dry-run`, before the alias table exists, may opt into built-in literal resolvability without a port ID. No importer, admin, apply or check caller uses that mode. Regression fixtures cover missing alias rows, failed alias queries and the explicit pre-migration-only path.
 - Final 15-file artifact `m062-port-normalization-fef1734.tar.gz` SHA-256 is `5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d`. Prepared helper SHA-256 is `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b`; installer SHA-256 is `80c64cb56639c2bcc6cb9bccc5c8347ca7f7c4046ab168d24823a78ae557e435`, still accepting only installed helper SHA-256 `9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85`. Sudoers remains unchanged.
 - Shipping, Security and QA independently returned PASS for preparation commit `ff81e1a0a04c05e94b7ce7d33bd5cd993f03dfc7`, runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc`, the exact artifact/helper/installer pins above, unchanged sudoers and installed-predecessor gate.
-- The blocked `e052d8b` package was never uploaded or installed. Final upload/install/compare/preflight/apply/verify remain unexecuted and require their stated gates.
+- The blocked `e052d8b` package was never uploaded or installed.
+
+## Final staging package upload and helper replacement — 2026-08-27
+
+- Ahmed approved upload of the final artifact/helper/installer to canonical `backup-erp` staging and replacement of the M062 helper only. No helper command or production access was authorized.
+- Uploaded artifact `m062-port-normalization-fef1734.tar.gz`, helper and installer matched the reviewed SHA-256 pins and were independently confirmed as `codex-deploy:codex-deploy 0644` in the staging inbox.
+- The transactional installer reported `PASS`, upgraded only predecessor helper SHA-256 `9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85`, retained its verified root-only backup, and installed helper SHA-256 `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b`. Sudoers SHA-256 remained `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231` and was not changed.
+- Independent restricted verification confirmed `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports` is `root:root 0755` at the exact final helper hash and exposes only `compare`, `preflight`, `apply`, `verify`, `rollback` and `status` through sudo.
+- No M062 helper command ran, no runtime/schema/business data changed and production was not accessed. `compare`, conditional `preflight`, `apply` and `verify` remain separate authorization gates.
