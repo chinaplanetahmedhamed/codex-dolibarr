@@ -161,7 +161,20 @@ class PortNameResolver
         if ($signature === '') return array('status'=>'unmapped', 'matches'=>array(), 'reason'=>'empty_literal');
         if (isset($this->literalAmbiguous[$signature])) return array('status'=>'ambiguous', 'matches'=>array(), 'reason'=>'literal_alias_conflict');
         if (!isset($this->literalAliases[$signature])) return array('status'=>'unmapped', 'matches'=>array(), 'reason'=>'no_literal_alias');
-        $match = $this->literalAliases[$signature];
+        // The literal catalog is an immutable allowlist of delimiter-bearing
+        // aliases, not the final port record. Resolve the normalized alias
+        // through the authoritative map so a database-backed resolver retains
+        // fk_port and the canonical code. Fail closed if mutable data tries to
+        // move the reviewed literal alias to a different port or country.
+        $expected = $this->literalAliases[$signature];
+        $normalized = self::normalize($value);
+        if ($normalized === '' || isset($this->ambiguous[$normalized]) || !isset($this->aliases[$normalized])) {
+            return array('status'=>'ambiguous', 'matches'=>array(), 'reason'=>'literal_alias_owner_unavailable');
+        }
+        $match = $this->aliases[$normalized];
+        if ($match['port_name'] !== $expected['port_name'] || $match['country_code'] !== $expected['country_code']) {
+            return array('status'=>'ambiguous', 'matches'=>array(), 'reason'=>'literal_alias_owner_mismatch');
+        }
         $match['method'] = 'exact'; $match['score'] = 1.0; $match['matched_alias'] = self::normalize($value);
         return array('status'=>'matched', 'matches'=>array($match), 'method'=>'exact', 'score'=>1.0);
     }

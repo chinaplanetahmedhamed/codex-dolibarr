@@ -102,6 +102,30 @@ class M062MutableLiteralDb {
 $mutableLiteralResolver=new PortNameResolver(new M062MutableLiteralDb(),1,0.90);
 m062Assert(m062Ports($mutableLiteralResolver,'KUWAIT/SHUAIBA')===array('KUWAIT|KW','SHUAIBA|KW'),'Mutable database alias must not bypass top-level composite splitting.');
 
+class M062LiteralFkDb {
+    private $conflict;
+    public function __construct($conflict=false){$this->conflict=$conflict;}
+    public function query($sql){
+        if(strpos($sql,'chinaplanetsp_port_alias')!==false)return new M062ConflictResult(array(
+            (object)array('alias_name'=>'AGADIR, Morocco','normalized_alias'=>'AGADIR MOROCCO','rowid'=>$this->conflict?77:48,'port_name'=>$this->conflict?'ORAN':'AGADIR','port_code'=>$this->conflict?'DZORN':'MAAGA','country_code'=>$this->conflict?'DZ':'MA'),
+            (object)array('alias_name'=>'KHALIFA PORT, ABU DHABI','normalized_alias'=>'KHALIFA PORT ABU DHABI','rowid'=>22,'port_name'=>'KHALIFA PORT','port_code'=>'AEKHL','country_code'=>'AE'),
+        ));
+        if(strpos($sql,'chinaplanetsp_port')!==false)return new M062ConflictResult(array(
+            (object)array('rowid'=>48,'port_name'=>'AGADIR','port_code'=>'MAAGA','country_code'=>'MA','aliases'=>''),
+            (object)array('rowid'=>22,'port_name'=>'KHALIFA PORT','port_code'=>'AEKHL','country_code'=>'AE','aliases'=>''),
+        ));
+        return false;
+    }
+    public function fetch_object($result){return$result->rows[$result->index++]??false;}
+}
+$literalFkResolver=new PortNameResolver(new M062LiteralFkDb(),1,0.90);
+$agadirLiteral=$literalFkResolver->resolveList('AGADIR, Morocco',true);
+$khalifaLiteral=$literalFkResolver->resolveList('KHALIFA PORT, ABU DHABI',true);
+m062Assert($agadirLiteral['status']==='matched'&&(int)$agadirLiteral['matches'][0]['fk_port']===48&&$agadirLiteral['matches'][0]['port_code']==='MAAGA','AGADIR literal alias must retain its authoritative database port id.');
+m062Assert($khalifaLiteral['status']==='matched'&&(int)$khalifaLiteral['matches'][0]['fk_port']===22&&$khalifaLiteral['matches'][0]['port_code']==='AEKHL','KHALIFA literal alias must retain its authoritative database port id.');
+$literalConflict=(new PortNameResolver(new M062LiteralFkDb(true),1,0.90))->resolveList('AGADIR, Morocco',true);
+m062Assert($literalConflict['status']==='ambiguous'&&$literalConflict['reason']==='literal_alias_owner_mismatch','A mutable literal owner mismatch must fail closed.');
+
 $owners = array();
 foreach (PortNameResolver::catalog() as $definition) {
     foreach (array_merge(array($definition['port_name']), $definition['aliases']) as $alias) {
