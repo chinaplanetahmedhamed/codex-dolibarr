@@ -69,7 +69,7 @@ readonly AUDIT_FILE="${STATE_ROOT}/audit.log"
 RUNTIME_FILES=(); SUPPORT_FILES=()
 CANDIDATE_ROOT=''; CANDIDATE_REMOTE=''; ARTIFACT_COPY=''; ARTIFACT_SOURCE="$ARTIFACT"
 CODE_BACKUP=''; CODE_BACKUP_SHA=''; PRESTATE_FILE=''; PRESTATE_SHA=''
-DB_BACKUP=''; DB_BACKUP_SHA=''; DB_VALIDATION_NAME=''; SCHEMA_PRESTATE=''; DRIFT_COUNT=0
+DB_BACKUP=''; DB_BACKUP_SHA=''; DB_VALIDATION_NAME=''; SCHEMA_PRESTATE=''; DRIFT_COUNT=0; BASELINE_COUNT=0; CURRENT_COUNT=0; MIXED_STATE=0
 REQUEST_ID=''; REQUEST_FILE=''; REQUEST_ACTION=''; REQUEST_STARTED=0; CODE_MUTATED=0; SCHEMA_MUTATED=0; ROLLBACK_MUTATED=0
 REAPPLY_CODE=''; REAPPLY_CODE_SHA=''; CLEANUP_ACTIVE=0
 STALE_CANDIDATES=''
@@ -318,7 +318,31 @@ data_preflight() {
 }
 required_apply_schema_prestate() { case "${1:-NONE}" in NONE|APPLY_FAILED_NO_MUTATION|DEPLOYED_PRIOR_RELEASE) echo MIGRATION_REQUIRED ;; ROLLED_BACK_SCHEMA_RETAINED|APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED) echo READY ;; *) return 1 ;; esac; }
 runtime_dependency_ready() { local dependency expected target; for dependency in "$TRANSLATION_DEPENDENCY" "$PRICE_DEPENDENCY"; do if [[ "$dependency" == "$TRANSLATION_DEPENDENCY" ]]; then expected=$TRANSLATION_DEPENDENCY_SHA; else expected=$PRICE_DEPENDENCY_SHA; fi; target="$TARGET_ROOT/${dependency#custom/}"; [[ -f "$CANDIDATE_ROOT/$dependency" && ! -L "$CANDIDATE_ROOT/$dependency" && $(sha256 "$CANDIDATE_ROOT/$dependency") == "$expected" && -f "$target" && ! -L "$target" && $(sha256 "$target") == "$expected" && ( $TEST_MODE -eq 1 || $(owner_group_of "$target") == 'www-data:www-data' ) && $(mode_of "$target") == 644 ]] || return 1; done; }
-compare_files() { local rel target release_hash target_hash baseline state; DRIFT_COUNT=0; for rel in "${RUNTIME_FILES[@]}"; do target="$TARGET_ROOT/${rel#custom/}"; release_hash=$(sha256 "$CANDIDATE_ROOT/$rel"); baseline=$(awk -v p="$rel" '$2==p {print $1}' "$CANDIDATE_ROOT/$BASELINE_MANIFEST"); [[ -n "$baseline" ]] || die 'BASELINE_PATH_MISSING'; if [[ ! -e "$target" && ! -L "$target" ]]; then if [[ "$baseline" == ABSENT ]]; then state=BASELINE_ABSENT; else state=DRIFT_ABSENT; ((DRIFT_COUNT+=1)); fi; else [[ -f "$target" && ! -L "$target" ]] || die 'TARGET_FILE_INVALID'; target_hash=$(sha256 "$target"); if [[ "$target_hash" == "$release_hash" ]]; then state=CURRENT; elif [[ "$baseline" != ABSENT && "$target_hash" == "$baseline" ]]; then state=BASELINE_PRESTATE; else state=DRIFT; ((DRIFT_COUNT+=1)); fi; fi; echo "M062_DEPLOY_COMPARE FILE=$rel STATE=$state BASELINE_SHA=$baseline RELEASE_SHA=$release_hash"; done; runtime_dependency_ready || die 'RUNTIME_DEPENDENCY_DRIFT'; echo "M062_DEPLOY_COMPARE DEPENDENCY=$TRANSLATION_DEPENDENCY STATE=CURRENT SHA=$TRANSLATION_DEPENDENCY_SHA"; echo "M062_DEPLOY_COMPARE DEPENDENCY=$PRICE_DEPENDENCY STATE=CURRENT SHA=$PRICE_DEPENDENCY_SHA"; }
+compare_files() {
+  local rel target release_hash target_hash baseline state
+  DRIFT_COUNT=0; BASELINE_COUNT=0; CURRENT_COUNT=0; MIXED_STATE=0
+  for rel in "${RUNTIME_FILES[@]}"; do
+    target="$TARGET_ROOT/${rel#custom/}"
+    release_hash=$(sha256 "$CANDIDATE_ROOT/$rel")
+    baseline=$(awk -v p="$rel" '$2==p {print $1}' "$CANDIDATE_ROOT/$BASELINE_MANIFEST")
+    [[ -n "$baseline" ]] || die 'BASELINE_PATH_MISSING'
+    if [[ ! -e "$target" && ! -L "$target" ]]; then
+      if [[ "$baseline" == ABSENT ]]; then state=BASELINE_ABSENT; ((BASELINE_COUNT+=1)); else state=DRIFT_ABSENT; ((DRIFT_COUNT+=1)); fi
+    else
+      [[ -f "$target" && ! -L "$target" ]] || die 'TARGET_FILE_INVALID'
+      target_hash=$(sha256 "$target")
+      if [[ "$target_hash" == "$release_hash" ]]; then state=CURRENT; ((CURRENT_COUNT+=1))
+      elif [[ "$baseline" != ABSENT && "$target_hash" == "$baseline" ]]; then state=BASELINE_PRESTATE; ((BASELINE_COUNT+=1))
+      else state=DRIFT; ((DRIFT_COUNT+=1)); fi
+    fi
+    echo "M062_DEPLOY_COMPARE FILE=$rel STATE=$state BASELINE_SHA=$baseline RELEASE_SHA=$release_hash"
+  done
+  if [[ $BASELINE_COUNT -gt 0 && $CURRENT_COUNT -gt 0 ]]; then MIXED_STATE=1; ((DRIFT_COUNT+=1)); fi
+  runtime_dependency_ready || die 'RUNTIME_DEPENDENCY_DRIFT'
+  echo "M062_DEPLOY_COMPARE SUMMARY BASELINE_COUNT=$BASELINE_COUNT CURRENT_COUNT=$CURRENT_COUNT MIXED_STATE=$MIXED_STATE DRIFT_COUNT=$DRIFT_COUNT"
+  echo "M062_DEPLOY_COMPARE DEPENDENCY=$TRANSLATION_DEPENDENCY STATE=CURRENT SHA=$TRANSLATION_DEPENDENCY_SHA"
+  echo "M062_DEPLOY_COMPARE DEPENDENCY=$PRICE_DEPENDENCY STATE=CURRENT SHA=$PRICE_DEPENDENCY_SHA"
+}
 
 create_code_backup() {
   CODE_BACKUP="${BACKUP_ROOT}/m062-before-${SHORT_COMMIT}-${REQUEST_ID}.tar.gz"; PRESTATE_FILE="${BACKUP_ROOT}/m062-before-${SHORT_COMMIT}-${REQUEST_ID}.prestate"; [[ ! -e "$CODE_BACKUP" && ! -L "$CODE_BACKUP" && ! -e "$PRESTATE_FILE" && ! -L "$PRESTATE_FILE" ]] || die 'BACKUP_COLLISION'
@@ -336,7 +360,7 @@ live_checks() { [[ $TEST_MODE -eq 1 ]] && return 0; local rel status body; runti
 prepare_inbox_candidate() { ARTIFACT_SOURCE="$ARTIFACT"; validate_artifact; candidate_checks; }
 prepare_retained_candidate() { ARTIFACT_SOURCE="$RETAINED_ARTIFACT"; validate_artifact; candidate_checks; }
 command_compare() { check_environment; prepare_inbox_candidate; schema_prestate; compare_files; echo "M062_DEPLOY_COMPARE=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT BASELINE_REFERENCE=$BASELINE_REFERENCE ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE DRIFT_COUNT=$DRIFT_COUNT APPLY_EXECUTED=NO PRODUCTION_ACCESSED=YES"; }
-command_preflight() { check_environment; prepare_inbox_candidate; schema_prestate; data_preflight || die 'DATA_PREFLIGHT_FAILED'; compare_files; [[ $DRIFT_COUNT -eq 0 ]] || die 'BASELINE_DRIFT'; echo "M062_DEPLOY_PREFLIGHT=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=YES"; }
+command_preflight() { check_environment; prepare_inbox_candidate; schema_prestate; data_preflight || die 'DATA_PREFLIGHT_FAILED'; compare_files; [[ $DRIFT_COUNT -eq 0 && $BASELINE_COUNT -eq 8 && $CURRENT_COUNT -eq 0 ]] || die 'BASELINE_DRIFT'; echo "M062_DEPLOY_PREFLIGHT=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=YES"; }
 command_apply() {
   local prior_state=NONE required_schema_prestate
   exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'; check_environment 1; clear_stale_candidates || die 'STALE_CANDIDATE_CLEANUP_FAILED'
@@ -360,7 +384,7 @@ command_apply() {
     fi
   fi
   required_schema_prestate=$(required_apply_schema_prestate "$prior_state") || die 'STATE_NOT_APPLYABLE'
-  prepare_inbox_candidate; schema_prestate; data_preflight || die 'DATA_PREFLIGHT_FAILED'; compare_files; [[ $DRIFT_COUNT -eq 0 && "$SCHEMA_PRESTATE" == "$required_schema_prestate" ]] || die 'APPLY_PRESTATE_INVALID'
+  prepare_inbox_candidate; schema_prestate; data_preflight || die 'DATA_PREFLIGHT_FAILED'; compare_files; [[ $DRIFT_COUNT -eq 0 && $BASELINE_COUNT -eq 8 && $CURRENT_COUNT -eq 0 && "$SCHEMA_PRESTATE" == "$required_schema_prestate" ]] || die 'APPLY_PRESTATE_INVALID'
   new_request_id; begin_request; retain_artifact; save_state 'PENDING_APPLY_PREPARE'; create_code_backup; create_database_backup; validate_database_backup; save_state 'PENDING_APPLY_SCHEMA'
   if [[ "$required_schema_prestate" == MIGRATION_REQUIRED ]]; then SCHEMA_MUTATED=1; apply_schema; schema_ready || die 'SCHEMA_POST_APPLY_INVALID'; fi
   save_state 'PENDING_APPLY_CODE'; CODE_MUTATED=1; apply_code; live_checks || die 'LIVE_CHECK_FAILED'; save_state 'DEPLOYED'; finish_request 'APPLIED'; CODE_MUTATED=0; SCHEMA_MUTATED=0

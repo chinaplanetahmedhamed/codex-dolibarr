@@ -183,7 +183,7 @@ prepare_retained_candidate(){ printf 'prepare-retained\n' >>"$events"; }
 schema_prestate(){ SCHEMA_PRESTATE=$TEST_SCHEMA; printf 'schema-prestate:%s\n' "$SCHEMA_PRESTATE" >>"$events"; }
 schema_ready(){ SCHEMA_PRESTATE=$TEST_SCHEMA; printf 'schema-ready:%s\n' "$SCHEMA_PRESTATE" >>"$events"; [[ "$SCHEMA_PRESTATE" == READY ]]; }
 data_preflight(){ printf 'data-preflight\n' >>"$events"; }
-compare_files(){ DRIFT_COUNT=0; printf 'compare\n' >>"$events"; }
+compare_files(){ DRIFT_COUNT=0; BASELINE_COUNT=8; CURRENT_COUNT=0; MIXED_STATE=0; printf 'compare\n' >>"$events"; }
 new_request_id(){ request_sequence=$((request_sequence+1)); REQUEST_ID="m062-20260816T13000${request_sequence}Z-abcdef12345${request_sequence}"; REQUEST_FILE="$REQUEST_ROOT/${REQUEST_ID}.state"; }
 begin_request(){ REQUEST_STARTED=1; printf 'begin\n' >>"$events"; }
 finish_request(){ printf 'finish:%s\n' "$1" >>"$events"; REQUEST_STARTED=0; }

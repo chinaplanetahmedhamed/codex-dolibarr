@@ -13,10 +13,10 @@ sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-[[ $(sha256 "$helper") == 8e33a9b0e116d4f7249fe49aab3d7586b68f14a24be39bcc020b5d911dd1536f ]] || fail HELPER_HASH
+[[ $(sha256 "$helper") == 59aa892b00fa06f31c747abd84d494f960dbd1b7b91f918906310f334ec37306 ]] || fail HELPER_HASH
 [[ $(sha256 "$sudoers") == 4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf ]] || fail SUDOERS_HASH
-[[ $(sha256 "$installer") == 69eabfa60fcbe2c42460fc740acb6825affb6c8a444c741062cc23792339dd66 ]] || fail INSTALLER_HASH
-grep -Fq "readonly HELPER_SHA='8e33a9b0e116d4f7249fe49aab3d7586b68f14a24be39bcc020b5d911dd1536f'" "$installer" || fail INSTALLER_HELPER_PIN
+[[ $(sha256 "$installer") == bb8538d678c4183d9e4c1dbd8465ba6108e62d7555a6f96b9df2db61fa760922 ]] || fail INSTALLER_HASH
+grep -Fq "readonly HELPER_SHA='59aa892b00fa06f31c747abd84d494f960dbd1b7b91f918906310f334ec37306'" "$installer" || fail INSTALLER_HELPER_PIN
 grep -Fq "readonly PREVIOUS_HELPER_SHA='ABSENT'" "$installer" || fail INSTALLER_ABSENT_GATE
 grep -Fq "readonly SUDOERS_SHA='4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf'" "$installer" || fail INSTALLER_SUDOERS_PIN
 grep -Fq "readonly ARTIFACT_SHA='694b029d61777c4b542f5d9f56f0586e936f8b161fd939af3149c8b171b9f3f3'" "$helper" || fail ARTIFACT_PIN
@@ -63,6 +63,23 @@ for dependency in "$TRANSLATION_DEPENDENCY" "$PRICE_DEPENDENCY"; do
   chmod 0644 "$target"
 done
 runtime_dependency_ready || fail DEPENDENCY_READY
+for rel in "${RUNTIME_FILES[@]}"; do
+  baseline=$(awk -v p="$rel" '$2==p {print $1}' "$CANDIDATE_ROOT/$BASELINE_MANIFEST")
+  target="$TARGET_ROOT/${rel#custom/}"
+  if [[ "$baseline" == ABSENT ]]; then
+    rm -f "$target"
+  else
+    mkdir -p "$(dirname "$target")"
+    git -C "$repo_root" show "95402e7f22665c9efd61d648f1e545094aaf47c9:$rel" >"$target"
+    chmod 0644 "$target"
+  fi
+done
+compare_files >/dev/null
+[[ $DRIFT_COUNT -eq 0 && $BASELINE_COUNT -eq 8 && $CURRENT_COUNT -eq 0 && $MIXED_STATE -eq 0 ]] || fail EXACT_BASELINE_REJECTED
+mixed_rel='custom/chinaplanetshippingprices/admin/adjust.php'
+cp "$CANDIDATE_ROOT/$mixed_rel" "$TARGET_ROOT/${mixed_rel#custom/}"
+compare_files >/dev/null
+[[ $DRIFT_COUNT -eq 1 && $BASELINE_COUNT -eq 7 && $CURRENT_COUNT -eq 1 && $MIXED_STATE -eq 1 ]] || fail MIXED_PRESTATE_ACCEPTED
 printf '\ncorrupt\n' >>"$TARGET_ROOT/${PRICE_DEPENDENCY#custom/}"
 if runtime_dependency_ready; then fail DEPENDENCY_DRIFT_ACCEPTED; fi
 cleanup_paths
