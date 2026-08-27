@@ -1,5 +1,12 @@
 # M062 — Port and country normalization
 
+## Alexandria terminal correction authorization — 2026-08-27
+
+- Ahmed approved correcting the model so `ALEXANDRIA`, `ALEXANDRIA OLD PORT`, and `ALEXANDRIA TMT` remain three distinct pricing destinations in Egypt.
+- Generic `ALEXANDRIA` remains generic when the source does not identify a terminal; it must not be guessed as Old Port or TMT.
+- Local implementation, migration correction, tests, release packaging, and renewed Shipping/Security/QA review are authorized.
+- Staging upload, helper replacement or commands, and all production access remain separate, unapproved gates.
+
 ## Mission control
 
 - **Mission ID:** M062

@@ -32,8 +32,8 @@ $cases = array(
     'RADES'=>array('RADES|TN'), 'CONAKRY'=>array('CONAKRY|GN'), 'BIZERTE'=>array('BIZERTE|TN'),
     'SOUSSE'=>array('SOUSSE|TN'), 'MSIURATA'=>array('MISURATA|LY'), 'Rades,Tunis'=>array('RADES|TN','TUNIS|TN'),
     'Algiers'=>array('ALGIERS|DZ'), 'TUNIS / RADES'=>array('TUNIS|TN','RADES|TN'),
-    'ALEXANDIRA OLD PORT （calling AICT）'=>array('ALEXANDRIA|EG'),
-    'ALEXANDIRA OLD PORT （calling ACCHC）'=>array('ALEXANDRIA|EG'),
+    'ALEXANDIRA OLD PORT （calling AICT）'=>array('ALEXANDRIA OLD PORT|EG'),
+    'ALEXANDIRA OLD PORT （calling ACCHC）'=>array('ALEXANDRIA OLD PORT|EG'),
     'KHALIFA PORT, ABU DHABI'=>array('KHALIFA PORT|AE'), 'UMM北 (25.26#)'=>array('UMM QASR|IQ'),
     '南沙--PORT SAID WEST'=>array('PORT SAID WEST|EG'), '深圳--PORT SAID WEST'=>array('PORT SAID WEST|EG'),
     '虎门--PORT SAID WEST'=>array('PORT SAID WEST|EG'), 'HP-SZ-PORT SAID WEST'=>array('PORT SAID WEST|EG'),
@@ -46,7 +46,10 @@ $cases = array(
     'KUWAIT & SHUAIBA'=>array('KUWAIT|KW','SHUAIBA|KW'),
     'KUWAIT + SHUAIBA'=>array('KUWAIT|KW','SHUAIBA|KW'),
     'KUWAIT;SHUAIBA'=>array('KUWAIT|KW','SHUAIBA|KW'),
-    'Alexandria（TMT）'=>array('ALEXANDRIA|EG'),
+    'Alexandria（TMT）'=>array('ALEXANDRIA TMT|EG'),
+    'Alexandria TMT'=>array('ALEXANDRIA TMT|EG'),
+    'Alexandria Old Port'=>array('ALEXANDRIA OLD PORT|EG'),
+    'Alexandria'=>array('ALEXANDRIA|EG'),
     'JEDDAH(REDSEA GATEWAY)'=>array('JEDDAH|SA'),
     'KHOR FAKKAN (ICD)'=>array('KHOR FAKKAN|AE'),
     'UMM QASR(北港，靠14 或15号码头)'=>array('UMM QASR|IQ'),
@@ -63,6 +66,12 @@ $cases = array(
     'UMM QASR北港（11号码头）'=>array('UMM QASR|IQ'),
 );
 foreach ($cases as $raw => $expected) m062Assert(m062Ports($resolver, $raw) === $expected, 'Unexpected mapping for '.$raw.': '.json_encode(m062Ports($resolver, $raw)));
+
+$oldTransition=PortNameResolver::catalogAliasTransition('ALEXANDIRA OLD PORT');
+$tmtTransition=PortNameResolver::catalogAliasTransition('Alexandria (TMT)');
+m062Assert($oldTransition!==null&&$oldTransition['from_port']==='ALEXANDRIA'&&$oldTransition['to_port']==='ALEXANDRIA OLD PORT','Old Port catalog transition is not bounded correctly.');
+m062Assert($tmtTransition!==null&&$tmtTransition['from_port']==='ALEXANDRIA'&&$tmtTransition['to_port']==='ALEXANDRIA TMT','TMT catalog transition is not bounded correctly.');
+m062Assert(PortNameResolver::catalogAliasTransition('ALEXANDRIA')===null&&PortNameResolver::catalogAliasTransition('MANUAL ALIAS')===null,'Generic or manual aliases must not be transferable.');
 
 $fuzzy = $resolver->resolveList('UMM AL QUWAI', true);
 m062Assert($fuzzy['status'] === 'matched' && $fuzzy['matches'][0]['port_name'] === 'UMM AL QUWAIN' && $fuzzy['matches'][0]['method'] === 'fuzzy', 'Safe long-name fuzzy match failed.');
@@ -155,6 +164,30 @@ class M062PreMigrationLiteralDb extends M062MissingLiteralAliasDb {
 $preMigrationLiteral=(new PortNameResolver(new M062PreMigrationLiteralDb(),1,0.90,true))->resolveList('AGADIR, Morocco',true);
 m062Assert($preMigrationLiteral['status']==='matched'&&(int)$preMigrationLiteral['matches'][0]['fk_port']===0,'Only explicit pre-migration dry-run mode may inspect a literal before alias-table creation.');
 
+class M062AlexandriaDb {
+    public function query($sql){
+        if(strpos($sql,'information_schema.tables')!==false)return new M062ConflictResult(array((object)array('total'=>1)));
+        if(strpos($sql,'chinaplanetsp_port_alias')!==false)return new M062ConflictResult(array(
+            (object)array('alias_name'=>'ALEXANDRIA','normalized_alias'=>'ALEXANDRIA','rowid'=>10,'port_name'=>'ALEXANDRIA','port_code'=>'EGALY','country_code'=>'EG'),
+            (object)array('alias_name'=>'ALEXANDRIA OLD PORT','normalized_alias'=>'ALEXANDRIA OLD PORT','rowid'=>11,'port_name'=>'ALEXANDRIA OLD PORT','port_code'=>'EGALY','country_code'=>'EG'),
+            (object)array('alias_name'=>'ALEXANDIRA OLD PORT','normalized_alias'=>'ALEXANDIRA OLD PORT','rowid'=>11,'port_name'=>'ALEXANDRIA OLD PORT','port_code'=>'EGALY','country_code'=>'EG'),
+            (object)array('alias_name'=>'ALEXANDRIA TMT','normalized_alias'=>'ALEXANDRIA TMT','rowid'=>12,'port_name'=>'ALEXANDRIA TMT','port_code'=>'EGALY','country_code'=>'EG'),
+        ));
+        if(strpos($sql,'chinaplanetsp_port')!==false)return new M062ConflictResult(array(
+            (object)array('rowid'=>10,'port_name'=>'ALEXANDRIA','port_code'=>'EGALY','country_code'=>'EG','aliases'=>'ALEXANDIRA'),
+            (object)array('rowid'=>11,'port_name'=>'ALEXANDRIA OLD PORT','port_code'=>'EGALY','country_code'=>'EG','aliases'=>'ALEXANDIRA OLD PORT'),
+            (object)array('rowid'=>12,'port_name'=>'ALEXANDRIA TMT','port_code'=>'EGALY','country_code'=>'EG','aliases'=>'ALEXANDRIA (TMT)'),
+        ));
+        return false;
+    }
+    public function fetch_object($result){return$result->rows[$result->index++]??false;}
+}
+$alexandriaResolver=new PortNameResolver(new M062AlexandriaDb(),1,0.90);
+$alexandriaGeneric=$alexandriaResolver->resolveList('ALEXANDRIA',true)['matches'][0];
+$alexandriaOld=$alexandriaResolver->resolveList('ALEXANDIRA OLD PORT',true)['matches'][0];
+$alexandriaTmt=$alexandriaResolver->resolveList('ALEXANDRIA (TMT)',true)['matches'][0];
+m062Assert((int)$alexandriaGeneric['fk_port']===10&&(int)$alexandriaOld['fk_port']===11&&(int)$alexandriaTmt['fk_port']===12,'Alexandria pricing destinations must retain distinct database port IDs.');
+
 $owners = array();
 foreach (PortNameResolver::catalog() as $definition) {
     foreach (array_merge(array($definition['port_name']), $definition['aliases']) as $alias) {
@@ -173,6 +206,7 @@ $importer = file_get_contents($root.'/custom/chinaplanetshippingprices/class/Shi
 m062Assert(strpos($importer, 'resolveList($podRaw, true)') !== false && strpos($importer, "'pod_raw'=>\$podRaw") !== false, 'Importer resolver/raw POD integration missing.');
 $migration = file_get_contents($root.'/deploy/migrations/m062_port_normalization.php');
 foreach (array("array('dry-run','apply','check')", 'new PortNameResolver($db,$entity,null,true)', 'GET_LOCK(', 'normalized_alias', 'NOT EXISTS(SELECT 1', 'resolved_warnings_removed', 'ACTIVE_ALIAS_CONFLICT', 'LEGACY_ALIAS_CONFLICT') as $needle) m062Assert(strpos($migration, $needle) !== false, 'Migration safety boundary missing '.$needle);
+m062Assert(strpos($migration,'catalogAliasTransition')!==false&&strpos($migration,"alias_source==='builtin'")!==false&&strpos($migration,'RAW_RATE_CORRECTION_FAILED')!==false&&strpos($migration,'catalog_alias_ownership_drift')!==false&&strpos($migration,"summary['raw_rate_drift']")!==false,'Alexandria ownership correction must be bounded, raw-source driven and visible to check mode.');
 m062Assert(strpos($migration,'INSERT IGNORE INTO `".$aliasTable')===false,'Legacy alias conflicts must not be silently ignored.');
 m062Assert(substr_count($migration, "ELSE source.public_visible END")===1&&strpos($migration, "ELSE public_visible END,pod=")!==false, 'Migration must preserve existing visibility and reveal only newly mapped rows.');
 $admin = file_get_contents($root.'/custom/chinaplanetshippingprices/admin/ports.php');

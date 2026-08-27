@@ -175,7 +175,18 @@ The existing public-search integration test is time-blocked because all local pu
 ## Live terminal-qualified aliases — 2026-08-27
 
 - After corrected `compare` passed with `DRIFT_COUNT=0`, read-only `preflight` stopped at `DATA_PREFLIGHT_FAILED`. Its dry-run reported 447 still-unmapped rows across 16 strings; no database or runtime mutation occurred.
-- Exact catalog aliases were added for the 16 reported strings. Verified canonical results are Shuaiba/Kuwait for `KUWAIT(SHUAIBA)`; Alexandria/Egypt for TMT; Jeddah/Saudi Arabia for Red Sea Gateway, South and DPW variants; Khor Fakkan/UAE and Sharjah/UAE for their ICD variants; Umm Qasr/Iraq for North/South/berth qualifiers; and Istanbul/Turkiye for Mardas.
+- Exact catalog aliases were added for the 16 reported strings. Verified canonical results are Shuaiba/Kuwait for `KUWAIT(SHUAIBA)`; Alexandria TMT/Egypt for TMT; Jeddah/Saudi Arabia for Red Sea Gateway, South and DPW variants; Khor Fakkan/UAE and Sharjah/UAE for their ICD variants; Umm Qasr/Iraq for North/South/berth qualifiers; and Istanbul/Turkiye for Mardas.
+
+## Alexandria pricing-destination correction — local preparation, 2026-08-27
+
+- `ALEXANDRIA`, `ALEXANDRIA OLD PORT`, and `ALEXANDRIA TMT` are now distinct canonical pricing destinations under Egypt. All three retain Alexandria's parent UN/LOCODE `EGALY`; database identity and price-card labels remain distinct.
+- The previous built-in Old Port/TMT aliases may move away from generic Alexandria only when their active owner is exactly the expected prior built-in `ALEXANDRIA|EG` record. Manual or unexpected ownership fails closed.
+- Reapplication inspects preserved `pod_raw` and corrects already-stored generic rows only when the raw source resolves to exactly one specific terminal. Plain `ALEXANDRIA` remains generic.
+- This correction is local and pending renewed Shipping/Security/QA review and a separate staging gate. No staging or production mutation is included in this preparation.
+- An isolated database copy of the current local 16,705-rate dataset contained 23 unrelated unresolved `Misurata/Benghazi Tripoli /Khoms` rows; those rows were excluded only from the disposable test copy so the Alexandria migration could be exercised without expanding this correction's mapping scope.
+- On the remaining 16,682 copied rates, first apply passed and produced two canonical ports, two bounded built-in alias transfers, 281 Old Port rates, and 169 TMT rates. Check and the full current-data audit passed with 116 unique active aliases and zero duplicate composite destinations.
+- A second apply passed with `seeded_ports=0`, `transferred_builtin_aliases=0`, `raw_corrected_rows=0`, and `cloned_rows=0`. A separate conflict copy changed one predecessor alias to `manual`; apply correctly failed with `ACTIVE_ALIAS_CONFLICT`.
+- The temporary databases and files were removed. The original local database was restored to its verified pre-test counts of 16,705 rates, 100 aliases, zero Old Port/TMT canonical rows, and 169 still-generic TMT raw rows.
 - Official evidence confirms Shuaiba is a distinct Kuwait port; TMT is inside Alexandria Port; RSGT and DP World South Container Terminal are at Jeddah Islamic Port; Sharjah ICD is the emirate's inland depot; Umm Qasr North/South are zones of Umm Qasr; and Mardas is at Istanbul/Ambarli. The implementation uses exact aliases only and does not relax fuzzy safety.
 - Runtime commit: `4dbb0cc0150b78140f15bdca992ab1f59bba2150`. Resolver coverage increases from 45 to 61 cases and built-in aliases from 100 to 116.
 - Corrected 15-file artifact `m062-port-normalization-4dbb0cc.tar.gz`: SHA-256 `dbe96641c2efe12d23c5c775c101e66dddfa70e793f1bcbb284ae16568324f63`. Helper SHA-256: `4635ddf52fd9ff4a79bb231ee85ef482ef266fe6a2ccebc08224a03c73c5085f`.

@@ -46,6 +46,19 @@ $inspect = function (PortNameResolver $resolver) use ($db,$entity,$rateTable) {
     return $summary;
 };
 
+$catalogOwnershipDrift = function () use ($db,$entity,$portTable,$aliasTable) {
+    if(!m062TableExists($db,$aliasTable)) return 1;
+    $expected=array();
+    foreach(PortNameResolver::catalog() as $definition)foreach(array_merge(array($definition['port_name']),$definition['aliases']) as $alias){$normalized=PortNameResolver::normalize($alias);if($normalized!=='')$expected[$normalized]=array('port_name'=>$definition['port_name'],'country_code'=>$definition['country_code']);}
+    $drift=0;
+    foreach($expected as $normalized=>$owner){
+        $sql="SELECT a.status,p.port_name,p.country_code,p.status port_status FROM `".$aliasTable."` a LEFT JOIN `".$portTable."` p ON p.rowid=a.fk_port AND p.entity=a.entity WHERE a.entity=".$entity." AND a.normalized_alias='".$db->escape($normalized)."' LIMIT 1";
+        $res=m062Query($db,$sql,'CATALOG_ALIAS_AUDIT_FAILED');$row=$db->fetch_object($res);
+        if(!$row||(int)$row->status!==1||(int)$row->port_status!==1||$row->port_name!==$owner['port_name']||$row->country_code!==$owner['country_code'])$drift++;
+    }
+    return $drift;
+};
+
 if ($argv[1] === 'dry-run') {
     // Read-only preflight runs before the alias table exists. This is the only
     // caller allowed to assess curated literal resolvability without a linked
@@ -60,11 +73,17 @@ $schemaReady = function () use ($db,$aliasTable,$rateTable) {
     return m062TableExists($db,$aliasTable) && m062IndexExists($db,$aliasTable,'uk_chinaplanetsp_port_alias') && m062IndexExists($db,$rateTable,'idx_chinaplanetsp_rate_destination_port');
 };
 
+$rawRateDrift = function (PortNameResolver $resolver) use ($db,$entity,$rateTable) {
+    $drift=0;$res=m062Query($db,"SELECT pod,pod_raw,destination_country,fk_destination_port FROM `".$rateTable."` WHERE entity=".$entity." AND pod_raw IS NOT NULL AND pod_raw<>''",'RAW_RATE_AUDIT_FAILED');
+    while($row=$db->fetch_object($res)){$resolution=$resolver->resolveList($row->pod_raw,true);if($resolution['status']!=='matched'||count($resolution['matches'])!==1)continue;$match=$resolution['matches'][0];if($row->pod!==$match['port_name']||$row->destination_country!==$match['country_code']||(int)$row->fk_destination_port!==(int)($match['fk_port']??0))$drift++;}
+    return $drift;
+};
+
 if ($argv[1] === 'check') {
     if(!$schemaReady()){echo "M062_PORTS_CHECK=MIGRATION_REQUIRED REASON=SCHEMA\n";exit(2);}
     $duplicates=m062Count($db,"SELECT COUNT(*) total FROM (SELECT normalized_alias FROM `".$aliasTable."` WHERE entity=".$entity." AND status=1 GROUP BY normalized_alias HAVING COUNT(*)>1) duplicate_aliases");
-    $summary=$inspect(new PortNameResolver($db,$entity));
-    if($duplicates>0 || !empty($summary['remaining']) || $summary['unmapped_rows']>0){echo 'M062_PORTS_CHECK=MIGRATION_REQUIRED REASON=DATA '.json_encode($summary,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";exit(2);}
+    $checkResolver=new PortNameResolver($db,$entity);$summary=$inspect($checkResolver);$summary['catalog_alias_ownership_drift']=$catalogOwnershipDrift();$summary['raw_rate_drift']=$rawRateDrift($checkResolver);
+    if($duplicates>0 || !empty($summary['remaining']) || $summary['unmapped_rows']>0 || $summary['catalog_alias_ownership_drift']>0 || $summary['raw_rate_drift']>0){echo 'M062_PORTS_CHECK=MIGRATION_REQUIRED REASON=DATA '.json_encode($summary,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";exit(2);}
     echo "M062_PORTS_CHECK=PASS DUPLICATE_ALIASES=0 UNMAPPED_ROWS=0\n";exit(0);
 }
 
@@ -88,7 +107,7 @@ try {
     foreach($columns as $column=>$definition) if(!m062ColumnExists($db,$rateTable,$column)) m062Query($db,"ALTER TABLE `".$rateTable."` ADD COLUMN `".$column."` ".$definition,'RATE_COLUMN_ADD_FAILED');
     if(!m062IndexExists($db,$rateTable,'idx_chinaplanetsp_rate_destination_port')) m062Query($db,"ALTER TABLE `".$rateTable."` ADD INDEX `idx_chinaplanetsp_rate_destination_port` (`entity`,`fk_destination_port`,`status`)",'RATE_INDEX_ADD_FAILED');
 
-    $now=$db->idate(dol_now());$userId=!empty($GLOBALS['user']->id)?(int)$GLOBALS['user']->id:1;$seededPorts=0;$seededAliases=0;
+    $now=$db->idate(dol_now());$userId=!empty($GLOBALS['user']->id)?(int)$GLOBALS['user']->id:1;$seededPorts=0;$seededAliases=0;$transferredBuiltinAliases=0;
     foreach(PortNameResolver::catalog() as $definition){
         $res=m062Query($db,"SELECT rowid FROM `".$portTable."` WHERE entity=".$entity." AND UPPER(TRIM(port_name))='".$db->escape(mb_strtoupper($definition['port_name'],'UTF-8'))."' ORDER BY status DESC,rowid LIMIT 1",'PORT_LOOKUP_FAILED');
         $port=$db->fetch_object($res);
@@ -96,8 +115,13 @@ try {
         else{m062Query($db,"INSERT INTO `".$portTable."`(entity,port_name,port_code,country_code,aliases,status,fk_user_creat,date_creation) VALUES(".$entity.",'".$db->escape($definition['port_name'])."',".($definition['port_code']?"'".$db->escape($definition['port_code'])."'":'NULL').",'".$db->escape($definition['country_code'])."','',1,".$userId.",'".$now."')",'PORT_INSERT_FAILED');$portId=(int)$db->last_insert_id($portTable);$seededPorts++;}
         foreach(array_merge(array($definition['port_name']),$definition['aliases']) as $alias){
             $normalized=PortNameResolver::normalize($alias);if($normalized==='')continue;
-            $existing=m062Query($db,"SELECT rowid,fk_port,status FROM `".$aliasTable."` WHERE entity=".$entity." AND normalized_alias='".$db->escape($normalized)."' FOR UPDATE",'ALIAS_SEED_LOOKUP_FAILED');$existingAlias=$db->fetch_object($existing);
-            if($existingAlias&&(int)$existingAlias->status===1&&(int)$existingAlias->fk_port!==$portId)m062Fail('ACTIVE_ALIAS_CONFLICT');
+            $existing=m062Query($db,"SELECT a.rowid,a.fk_port,a.status,a.alias_source,p.port_name owner_port_name,p.country_code owner_country_code FROM `".$aliasTable."` a LEFT JOIN `".$portTable."` p ON p.rowid=a.fk_port AND p.entity=a.entity WHERE a.entity=".$entity." AND a.normalized_alias='".$db->escape($normalized)."' FOR UPDATE",'ALIAS_SEED_LOOKUP_FAILED');$existingAlias=$db->fetch_object($existing);
+            if($existingAlias&&(int)$existingAlias->status===1&&(int)$existingAlias->fk_port!==$portId){
+                $transition=PortNameResolver::catalogAliasTransition($normalized);
+                $allowed=$transition&&$existingAlias->alias_source==='builtin'&&$existingAlias->owner_port_name===$transition['from_port']&&$existingAlias->owner_country_code===$transition['from_country']&&$definition['port_name']===$transition['to_port']&&$definition['country_code']===$transition['to_country'];
+                if(!$allowed)m062Fail('ACTIVE_ALIAS_CONFLICT');
+                $transferredBuiltinAliases++;
+            }
             if($existingAlias)$sql="UPDATE `".$aliasTable."` SET fk_port=".$portId.",alias_name='".$db->escape($alias)."',alias_source='builtin',status=1,fk_user_modif=".$userId." WHERE entity=".$entity." AND rowid=".(int)$existingAlias->rowid;
             else $sql="INSERT INTO `".$aliasTable."`(entity,fk_port,alias_name,normalized_alias,alias_source,status,fk_user_creat,date_creation) VALUES(".$entity.",".$portId.",'".$db->escape($alias)."','".$db->escape($normalized)."','builtin',1,".$userId.",'".$now."')";
             m062Query($db,$sql,'ALIAS_SEED_FAILED');$seededAliases++;
@@ -110,8 +134,8 @@ try {
     $legacy=m062Query($db,"SELECT rowid,port_name,aliases FROM `".$portTable."` WHERE entity=".$entity." AND status=1 ORDER BY rowid",'LEGACY_PORT_READ_FAILED');
     while($port=$db->fetch_object($legacy))foreach(array_merge(array($port->port_name),preg_split('/[,\r\n]+/',(string)$port->aliases,-1,PREG_SPLIT_NO_EMPTY))as$alias){
         $alias=trim($alias);$normalized=PortNameResolver::normalize($alias);if($normalized==='')continue;
-        $existing=m062Query($db,"SELECT rowid,fk_port,status,alias_source FROM `".$aliasTable."` WHERE entity=".$entity." AND normalized_alias='".$db->escape($normalized)."' FOR UPDATE",'LEGACY_ALIAS_LOOKUP_FAILED');$existingAlias=$db->fetch_object($existing);
-        if($existingAlias&&(int)$existingAlias->status===1&&(int)$existingAlias->fk_port!==(int)$port->rowid)m062Fail('LEGACY_ALIAS_CONFLICT');
+        $existing=m062Query($db,"SELECT a.rowid,a.fk_port,a.status,a.alias_source,p.port_name owner_port_name,p.country_code owner_country_code FROM `".$aliasTable."` a LEFT JOIN `".$portTable."` p ON p.rowid=a.fk_port AND p.entity=a.entity WHERE a.entity=".$entity." AND a.normalized_alias='".$db->escape($normalized)."' FOR UPDATE",'LEGACY_ALIAS_LOOKUP_FAILED');$existingAlias=$db->fetch_object($existing);
+        if($existingAlias&&(int)$existingAlias->status===1&&(int)$existingAlias->fk_port!==(int)$port->rowid){$transition=PortNameResolver::catalogAliasTransition($normalized);$expectedLegacy=$transition&&$port->port_name===$transition['from_port']&&$existingAlias->alias_source==='builtin'&&$existingAlias->owner_port_name===$transition['to_port']&&$existingAlias->owner_country_code===$transition['to_country'];if($expectedLegacy)continue;m062Fail('LEGACY_ALIAS_CONFLICT');}
         if(!$existingAlias)m062Query($db,"INSERT INTO `".$aliasTable."`(entity,fk_port,alias_name,normalized_alias,alias_source,status,fk_user_creat,date_creation) VALUES(".$entity.",".(int)$port->rowid.",'".$db->escape($alias)."','".$db->escape($normalized)."','legacy',1,".$userId.",'".$now."')",'LEGACY_ALIAS_IMPORT_FAILED');
         elseif((int)$existingAlias->status!==1)m062Query($db,"UPDATE `".$aliasTable."` SET fk_port=".(int)$port->rowid.",alias_name='".$db->escape($alias)."',alias_source='legacy',status=1,fk_user_modif=".$userId." WHERE entity=".$entity." AND rowid=".(int)$existingAlias->rowid,'LEGACY_ALIAS_RESTORE_FAILED');
     }
@@ -135,16 +159,22 @@ try {
         $mappedValues++;
     }
 
+    // Re-evaluate preserved source values after a catalog ownership change.
+    // A plain ALEXANDRIA source stays generic; only one-port raw resolutions
+    // can correct a stored row to Old Port or TMT.
+    $rawCorrectedRows=0;$rawRates=m062Query($db,"SELECT rowid,pod,pod_raw,destination_country,fk_destination_port FROM `".$rateTable."` WHERE entity=".$entity." AND pod_raw IS NOT NULL AND pod_raw<>'' ORDER BY rowid",'RAW_RATE_CORRECTION_READ_FAILED');
+    while($rate=$db->fetch_object($rawRates)){$resolution=$resolver->resolveList($rate->pod_raw,true);if($resolution['status']!=='matched'||count($resolution['matches'])!==1)continue;$match=$resolution['matches'][0];$targetId=(int)($match['fk_port']??0);if($targetId<=0)m062Fail('RAW_RATE_CORRECTION_PORT_MISSING');if($rate->pod===$match['port_name']&&$rate->destination_country===$match['country_code']&&(int)$rate->fk_destination_port===$targetId)continue;$method=$match['method']??$resolution['method']??'exact';$score=(float)($match['score']??$resolution['score']??1);m062Query($db,"UPDATE `".$rateTable."` SET pod='".$db->escape($match['port_name'])."',destination_country='".$db->escape($match['country_code'])."',fk_destination_port=".$targetId.",port_match_method='".$db->escape($method)."',port_match_score=".number_format($score,4,'.','')." WHERE entity=".$entity." AND rowid=".(int)$rate->rowid,'RAW_RATE_CORRECTION_FAILED');$rawCorrectedRows++;}
+
     $compositeRaw=m062Query($db,"SELECT DISTINCT pod_raw FROM `".$rateTable."` WHERE entity=".$entity." AND pod_raw IS NOT NULL AND pod_raw<>''",'COMPOSITE_AUDIT_READ_FAILED');$compositeAuditRows=0;
     while($raw=$db->fetch_object($compositeRaw)){$resolution=$resolver->resolveList($raw->pod_raw,true);if($resolution['status']!=='matched'||count($resolution['matches'])<2)continue;$ports=array();foreach($resolution['matches']as$match)$ports[]="'".$db->escape($match['port_name'])."'";$audit=m062Query($db,"UPDATE `".$rateTable."` SET port_match_method='composite',port_match_score=1.0000 WHERE entity=".$entity." AND pod_raw='".$db->escape($raw->pod_raw)."' AND pod IN (".implode(',',$ports).")",'COMPOSITE_AUDIT_UPDATE_FAILED');$compositeAuditRows+=(int)$db->affected_rows($audit);}
 
     $warningsRemoved=0;$batches=m062Query($db,"SELECT rowid,report_json FROM `".$batchTable."` WHERE entity=".$entity,'BATCH_WARNING_READ_FAILED');
     while($batch=$db->fetch_object($batches)){$report=json_decode((string)$batch->report_json,true);if(!is_array($report)||!isset($report['warnings'])||!is_array($report['warnings']))continue;$kept=array();foreach($report['warnings']as$warning){if(preg_match('/^(?:Unmapped destination country|Unmapped destination port\/country|Ambiguous destination port):\s*(.+)$/u',(string)$warning,$match)&&$resolver->resolveList($match[1],true)['status']==='matched'){$warningsRemoved++;continue;}$kept[]=$warning;}$report['warnings']=$kept;$json=json_encode($report,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);m062Query($db,"UPDATE `".$batchTable."` SET warning_count=".count($kept).",report_json='".$db->escape($json)."',accepted_rows=(SELECT COUNT(*) FROM `".$rateTable."` rate WHERE rate.entity=".$entity." AND rate.fk_batch=".(int)$batch->rowid.") WHERE entity=".$entity." AND rowid=".(int)$batch->rowid,'BATCH_WARNING_UPDATE_FAILED');}
 
-    $summary=$inspect(new PortNameResolver($db,$entity));$duplicateAliases=m062Count($db,"SELECT COUNT(*) total FROM (SELECT normalized_alias FROM `".$aliasTable."` WHERE entity=".$entity." AND status=1 GROUP BY normalized_alias HAVING COUNT(*)>1) duplicates");
-    if(!$schemaReady()||$duplicateAliases!==0||$summary['unmapped_rows']!==0)m062Fail('POST_APPLY_VERIFY_FAILED');
+    $verifyResolver=new PortNameResolver($db,$entity);$summary=$inspect($verifyResolver);$duplicateAliases=m062Count($db,"SELECT COUNT(*) total FROM (SELECT normalized_alias FROM `".$aliasTable."` WHERE entity=".$entity." AND status=1 GROUP BY normalized_alias HAVING COUNT(*)>1) duplicates");$ownershipDrift=$catalogOwnershipDrift();$remainingRawDrift=$rawRateDrift($verifyResolver);
+    if(!$schemaReady()||$duplicateAliases!==0||$summary['unmapped_rows']!==0||$ownershipDrift!==0||$remainingRawDrift!==0)m062Fail('POST_APPLY_VERIFY_FAILED');
     $releaseLock();
-    echo 'M062_PORTS_APPLY=PASS '.json_encode(array('seeded_ports'=>$seededPorts,'seeded_alias_operations'=>$seededAliases,'archived_duplicate_ports'=>$archivedPorts,'normalized_rows'=>$mappedRows,'cloned_rows'=>$clonedRows,'normalized_values'=>$mappedValues,'composite_audit_rows'=>$compositeAuditRows,'resolved_warnings_removed'=>$warningsRemoved,'remaining'=>$summary['remaining']),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+    echo 'M062_PORTS_APPLY=PASS '.json_encode(array('seeded_ports'=>$seededPorts,'seeded_alias_operations'=>$seededAliases,'transferred_builtin_aliases'=>$transferredBuiltinAliases,'archived_duplicate_ports'=>$archivedPorts,'normalized_rows'=>$mappedRows,'raw_corrected_rows'=>$rawCorrectedRows,'cloned_rows'=>$clonedRows,'normalized_values'=>$mappedValues,'composite_audit_rows'=>$compositeAuditRows,'resolved_warnings_removed'=>$warningsRemoved,'remaining'=>$summary['remaining']),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
 } catch (Throwable $exception) {
     $releaseLock();m062Fail('MIGRATION_FAILED');
 }

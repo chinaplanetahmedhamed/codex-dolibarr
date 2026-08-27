@@ -320,7 +320,9 @@ class PortNameResolver
     {
         return array(
             array('port_name'=>'SOKHNA','country_code'=>'EG','port_code'=>'EGSOK','aliases'=>array('AIN SOKHNA','EL SOKHNA')),
-            array('port_name'=>'ALEXANDRIA','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA','ALEXANDIRA OLD PORT','ALEXANDRIA OLD PORT','ALEXANDRIA (TMT)')),
+            array('port_name'=>'ALEXANDRIA','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA')),
+            array('port_name'=>'ALEXANDRIA OLD PORT','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA OLD PORT')),
+            array('port_name'=>'ALEXANDRIA TMT','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDRIA (TMT)')),
             array('port_name'=>'DEKHEILA','country_code'=>'EG','port_code'=>'EGEDK','aliases'=>array('EL DEKHEILA')),
             array('port_name'=>'DAMIETTA','country_code'=>'EG','port_code'=>'EGDAM','aliases'=>array()),
             array('port_name'=>'PORT SAID','country_code'=>'EG','port_code'=>'EGPSD','aliases'=>array()),
@@ -386,5 +388,24 @@ class PortNameResolver
             array('port_name'=>'MERSIN','country_code'=>'TR','port_code'=>'TRMER','aliases'=>array()),
             array('port_name'=>'ISTANBUL','country_code'=>'TR','port_code'=>'TRIST','aliases'=>array('ISTANBUL (MARDAS)')),
         );
+    }
+
+    /**
+     * Return an exact, reviewed built-in alias ownership transition.
+     *
+     * The migration uses this allowlist to avoid stealing manual or otherwise
+     * unexpected aliases while correcting the prior generic Alexandria model.
+     *
+     * @return array<string,string>|null
+     */
+    public static function catalogAliasTransition($alias)
+    {
+        $transitions = array(
+            'ALEXANDIRA OLD PORT'=>array('from_port'=>'ALEXANDRIA','from_country'=>'EG','to_port'=>'ALEXANDRIA OLD PORT','to_country'=>'EG'),
+            'ALEXANDRIA OLD PORT'=>array('from_port'=>'ALEXANDRIA','from_country'=>'EG','to_port'=>'ALEXANDRIA OLD PORT','to_country'=>'EG'),
+            'ALEXANDRIA TMT'=>array('from_port'=>'ALEXANDRIA','from_country'=>'EG','to_port'=>'ALEXANDRIA TMT','to_country'=>'EG'),
+        );
+        $normalized = self::normalize($alias);
+        return isset($transitions[$normalized]) ? $transitions[$normalized] : null;
     }
 }
