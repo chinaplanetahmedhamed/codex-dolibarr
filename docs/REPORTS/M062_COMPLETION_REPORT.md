@@ -213,3 +213,11 @@ The existing public-search integration test is time-blocked because all local pu
 - Read-only status and compare confirm: runtime code is back at the seven-file baseline, `DRIFT_COUNT=0`, schema is `READY`, staging HTTPS is `200`, and production was not accessed. Database changes from the attempted migration remain pending recovery.
 - Code backup SHA-256: `dd1008fe64a5164d1dd7ecbcba3829913b2e393d0da071c380f7867636158023`; prestate SHA-256: `d9bfd6b5167f6fd3ae41fa255a86a8bdc912a98bf566e63f6980fb8619e44199`; full database backup SHA-256: `8d54253f375c5fc8d12d487b6c9c17924e4b9677ffe5403e57af013a701f72cc`.
 - Next action is a bounded read-only diagnosis of row 407, then a separately approved choice between a checksum-validated full staging database restore or a reviewed corrective recovery. No reapply, verify or rollback is safe before that decision.
+
+## Row-407 root cause — 2026-08-27
+
+- The approved read-only SQL inspection showed rate row `407` as `AGADIR|MA`, raw value `AGADIR, Morocco`, method `exact`, score `1.0000`, and `fk_destination_port=NULL`. Active port row `48` is the correct `AGADIR|MA` owner and has its active built-in alias.
+- A local database-backed resolver reproduction returned `fk_port=0` for the same literal input. Root cause: delimiter-preserving whole-literal matching correctly limits bypass to built-ins, but returns the built-in catalog object (`fk_port=0`) instead of the database-enriched alias owner (`fk_port=48`).
+- The defect class is limited in the catalog to the two top-level-delimiter literals `AGADIR, MOROCCO` and `KHALIFA PORT, ABU DHABI`. No staging mutation was performed during diagnosis.
+- Required source correction: use the built-in literal entry only as an expected-owner allowlist, obtain the resolved object from the normalized alias map, verify that its port/country equals the expected built-in owner, and otherwise fail closed. Add non-zero database FK tests for both literals plus the existing mutable-alias composite negatives.
+- Because the helper terminal state is `APPLY_FAILED_DB_RECOVERY_REQUIRED`, correction alone cannot be reapplied. The recommended safe sequence is separately approved checksum-validated full staging database restore, corrected frozen package and renewed reviews, helper rotation, compare/preflight, then a new apply/verify approval.
