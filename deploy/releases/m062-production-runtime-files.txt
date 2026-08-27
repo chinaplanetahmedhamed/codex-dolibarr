@@ -1,0 +1,8 @@
+custom/chinaplanetshippingprices/admin/adjust.php
+custom/chinaplanetshippingprices/admin/ports.php
+custom/chinaplanetshippingprices/class/PortNameResolver.class.php
+custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php
+custom/chinaplanetshippingprices/class/ShippingPriceImporter.class.php
+custom/chinaplanetshippingprices/core/modules/modChinaPlanetShippingPrices.class.php
+custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_port_alias.sql
+custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql
