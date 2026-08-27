@@ -1,5 +1,20 @@
 # M062 Local Completion Report — Port and Country Normalization
 
+## Alexandria public-search grouping — local correction, 2026-08-28
+
+- Public route options now collapse Egypt's `ALEXANDRIA`, `ALEXANDRIA OLD PORT` and `ALEXANDRIA TMT` into one `ALEXANDRIA` destination for each POL.
+- Searching that grouped destination expands server-side to the three exact pricing destinations and returns up to the existing 20-card public limit, ordered by public price. Rate IDs, fingerprints, costs and margins remain private.
+- Every encrypted rate token stores the exact terminal filter used for its card. Submit-time revalidation therefore cannot cross from TMT to Old Port, from Old Port to generic Alexandria, or in the opposite direction.
+- The React cards show an explicit destination-terminal label in Arabic, English and French. A truly generic Alexandria rate is shown as `Terminal not specified / المحطة غير محددة`; it is never guessed.
+- The grouped search deliberately omits the exact-route history chart because averaging terminal-specific history would be commercially misleading. Other routes retain their existing history behavior.
+- Dolibarr branch: `codex/m062-port-normalization`. React branch/worktree: `codex/m062-alexandria-search` from React `origin/main` `1762be4205f39018d0487ab756d99cbdd9ef519d`.
+- Focused PHP regression: `M062_PUBLIC_ALEXANDRIA_GROUP=PASS option=ONE cards=THREE booking=EXACT`; existing M043 encrypted-token regression also passed.
+- React verification: lint PASS; 48 server tests PASS; 45 UI/library tests PASS; production build PASS. No database/schema/configuration/business-data mutation was required.
+- Renewed reviews: Shipping `PASS_WITH_CONDITIONS`, Security `PASS_WITH_CONDITIONS`, and QA `PASS`. There are no blocking findings. The release dependency is mandatory: deploy and verify the Dolibarr public gateway before deploying React, then complete real desktop/390px RTL/LTR search and exact-terminal booking acceptance on staging.
+- Non-blocking follow-up: a later public-contract hardening should reject malformed or empty direct-API country codes and add an explicit 20-result-cap/duplicate fixture. The current UI supplies a valid country, and the Alexandria expansion itself is strictly limited to `EG`.
+- Admin ERP: public gateway source only; Customer Portal and native Mobile App: not applicable. The affected public React page still requires real desktop and phone acceptance after a separately approved staging deployment.
+- Staging and production were not accessed or changed by this local correction.
+
 ## Control record
 
 - Mission: M062

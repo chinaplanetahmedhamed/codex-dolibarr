@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-28 — M062 Alexandria public-search grouping
+
+- Collapsed generic Alexandria, Old Port and TMT into one customer destination option while preserving three exact ERP pricing identities.
+- Expanded the grouped search only inside the public-safe gateway, with exact terminal filters embedded in each encrypted booking token for submit-time revalidation.
+- Added explicit terminal labels to public React price cards and a fail-safe `Terminal not specified` label for genuinely generic Alexandria rates.
+- Suppressed mixed Alexandria terminal history instead of presenting a misleading combined trend; all other exact-route trends remain unchanged.
+- Added focused PHP and React regressions; complete React lint, server tests, UI tests and build passed. Local source only; no database, staging or production change.
+
 ## 2026-08-25 — M062 port and country normalization
 
 - Replaced prefix-only destination-country detection with one entity-scoped canonical port resolver that normalizes case, punctuation, Unicode variants and verified aliases before using a conservative fuzzy fallback.

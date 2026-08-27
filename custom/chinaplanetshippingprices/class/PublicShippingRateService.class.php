@@ -52,17 +52,35 @@ class PublicShippingRateService
     public function search(array $input)
     {
         $filters = $this->normalizeRequiredFilters($input);
-        $payload = $this->prices->search($filters, false, self::RESULT_LIMIT);
-        if (!empty($payload['error'])) throw new PublicShippingRateException('rate_service_unavailable', 503);
+        $pricedResults = array();
+        foreach ($this->publicDestinationMembers($filters) as $pod) {
+            $exactFilters = $filters;
+            $exactFilters['pod'] = $pod;
+            $payload = $this->prices->search($exactFilters, false, self::RESULT_LIMIT);
+            if (!empty($payload['error'])) throw new PublicShippingRateException('rate_service_unavailable', 503);
+            foreach ($payload['results'] as $priced) {
+                if (!is_array($priced) || empty($priced['rate_id']) || empty($priced['fingerprint'])) continue;
+                $pricedResults[(int) $priced['rate_id']] = array('priced' => $priced, 'filters' => $exactFilters);
+            }
+        }
+        uasort($pricedResults, function ($left, $right) {
+            $priceOrder = (float) $left['priced']['final_price'] <=> (float) $right['priced']['final_price'];
+            if ($priceOrder !== 0) return $priceOrder;
+            $podOrder = strcasecmp((string) $left['priced']['pod'], (string) $right['priced']['pod']);
+            if ($podOrder !== 0) return $podOrder;
+            return strcasecmp((string) $left['priced']['shipping_line'], (string) $right['priced']['shipping_line']);
+        });
 
         $results = array();
-        foreach ($payload['results'] as $priced) {
+        foreach ($pricedResults as $entry) {
+            if (count($results) >= self::RESULT_LIMIT) break;
+            $priced = $entry['priced'];
             if (!is_array($priced) || empty($priced['rate_id']) || empty($priced['fingerprint'])) continue;
             $tokenPayload = array(
                 'v' => 1,
                 'entity' => $this->entity,
                 'rate_id' => (int) $priced['rate_id'],
-                'filters' => $filters,
+                'filters' => $entry['filters'],
                 'fingerprint' => (string) $priced['fingerprint'],
                 'exp' => $this->now + self::TOKEN_TTL,
             );
@@ -79,17 +97,29 @@ class PublicShippingRateService
         }
         $options = $this->prices->getPublicRouteOptions($countryCode);
         if (!is_array($options)) throw new PublicShippingRateException('rate_service_unavailable', 503);
+        $routes = array();
+        foreach (isset($options['routes']) && is_array($options['routes']) ? $options['routes'] : array() as $route) {
+            if (!is_array($route) || empty($route['pol']) || empty($route['pod'])) continue;
+            $publicPod = $this->publicDestinationLabel($countryCode, $route['pod']);
+            $key = strtoupper((string) $route['pol'])."\0".strtoupper($publicPod);
+            $routes[$key] = array('pol' => (string) $route['pol'], 'pod' => $publicPod);
+        }
+        uasort($routes, function ($left, $right) {
+            $polOrder = strcasecmp($left['pol'], $right['pol']);
+            return $polOrder !== 0 ? $polOrder : strcasecmp($left['pod'], $right['pod']);
+        });
         return array(
             'country_code' => $countryCode,
             'countries' => array_values(isset($options['countries']) && is_array($options['countries']) ? $options['countries'] : array()),
-            'routes' => array_values(isset($options['routes']) && is_array($options['routes']) ? $options['routes'] : array()),
+            'routes' => array_values($routes),
         );
     }
 
     public function priceTrend(array $input)
     {
         $filters = $this->normalizeRequiredFilters($input);
-        $trend = $this->prices->getPublicPriceTrend($filters, 12);
+        $groupedDestination = $this->isAlexandriaGroup($filters['country_code'], $filters['pod']);
+        $trend = $groupedDestination ? array('points' => array(), 'error' => '') : $this->prices->getPublicPriceTrend($filters, 12);
         if (!empty($trend['error'])) throw new PublicShippingRateException('rate_service_unavailable', 503);
         return array(
             'route' => array(
@@ -100,6 +130,7 @@ class PublicShippingRateService
             ),
             'period_months' => 12,
             'reference_only' => true,
+            'grouped_destination' => $groupedDestination,
             'points' => array_values(isset($trend['points']) && is_array($trend['points']) ? $trend['points'] : array()),
         );
     }
@@ -186,6 +217,33 @@ class PublicShippingRateService
     private function hasWildcard($value)
     {
         return strpos($value, '%') !== false || strpos($value, '*') !== false || strpos($value, '_') !== false;
+    }
+
+    /**
+     * Alexandria is one customer search destination but remains three exact
+     * pricing destinations. Expansion is Egypt-only and tokens retain the
+     * exact terminal filter used for the selected card.
+     */
+    private function publicDestinationMembers(array $filters)
+    {
+        if ($this->isAlexandriaGroup($filters['country_code'], $filters['pod'])) {
+            return array('ALEXANDRIA', 'ALEXANDRIA OLD PORT', 'ALEXANDRIA TMT');
+        }
+        return array($filters['pod']);
+    }
+
+    private function publicDestinationLabel($countryCode, $pod)
+    {
+        $pod = trim((string) $pod);
+        if (strtoupper(trim((string) $countryCode)) === 'EG' && in_array(strtoupper($pod), array('ALEXANDRIA', 'ALEXANDRIA OLD PORT', 'ALEXANDRIA TMT'), true)) {
+            return 'ALEXANDRIA';
+        }
+        return $pod;
+    }
+
+    private function isAlexandriaGroup($countryCode, $pod)
+    {
+        return strtoupper(trim((string) $countryCode)) === 'EG' && strtoupper(trim((string) $pod)) === 'ALEXANDRIA';
     }
 
     private function publicProjection(array $priced, $token)

@@ -1,5 +1,14 @@
 # M062 — Port and country normalization
 
+## Alexandria public-search grouping authorization — 2026-08-28
+
+- Ahmed approved showing one public destination option, `ALEXANDRIA`, while returning separate price cards for generic Alexandria, Alexandria Old Port and Alexandria TMT when eligible rates exist.
+- Canonical ports, aliases, rate rows and terminal-specific prices remain distinct. This is a public-search projection only; it must not merge database records or assume equal prices.
+- Each returned card and booking token must retain the exact priced destination. Generic Alexandria must be labelled as terminal not specified rather than guessed as Old Port or TMT.
+- A mixed historical trend across Alexandria terminals is forbidden because it could misrepresent terminal-specific prices.
+- Local Dolibarr gateway and React implementation, tests, documentation and renewed Shipping/Security/QA review are approved. Any ERP staging update, React staging deployment or production action remains a separate exact approval gate.
+- Staging release order is mandatory: deploy and verify the Dolibarr public gateway first, then deploy React, then run desktop/390px RTL/LTR search and exact-terminal booking acceptance. React-first is forbidden because the grouped request is not understood by the old gateway and could temporarily hide Old Port/TMT prices.
+
 ## Alexandria terminal correction authorization — 2026-08-27
 
 - Ahmed approved correcting the model so `ALEXANDRIA`, `ALEXANDRIA OLD PORT`, and `ALEXANDRIA TMT` remain three distinct pricing destinations in Egypt.
@@ -109,6 +118,9 @@ The curated catalog and database alias table are the authoritative match sources
 | QA | Independent QA reviewer | PASS | 2026-08-25 | 45 resolver cases, importer negatives, two migration reruns, current data and rollback evidence verified |
 | Architect | Agent 007 Central | APPROVED | 2026-08-25 | Narrow local correction contract |
 | Ahmed | Ahmed Hamed | APPROVED | 2026-08-25 | Direct request in this task |
+| Shipping correction | Independent Shipping reviewer | PASS_WITH_CONDITIONS | 2026-08-28 | One public option, three exact terminal cards/tokens and equal-price non-merging verified; gateway-first staging order required |
+| Security correction | Independent Security reviewer | PASS_WITH_CONDITIONS | 2026-08-28 | Public allowlist, EG-only expansion, encryption/revalidation, dedupe/cap and trend suppression verified; direct-API country validation retained as P2 follow-up |
+| QA correction | Independent QA reviewer | PASS | 2026-08-28 | PHP lint/regressions, 48 server tests, 45 UI/library tests, build and diff checks passed; real staging viewport acceptance remains pending |
 
 ## Completion report contract
 

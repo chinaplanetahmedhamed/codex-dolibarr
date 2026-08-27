@@ -1,5 +1,17 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-08-28 — M062 Alexandria public-search grouping
+
+- Source change: the public China Planet website shows one `ALEXANDRIA` POD option, while its public-safe Dolibarr gateway returns separate generic, Old Port and TMT price cards and exact terminal-bound booking tokens.
+- Admin ERP: `DATA_MODEL_UNCHANGED`; the three canonical pricing destinations and their rate rows remain distinct. Only the restricted public projection changes.
+- Customer Portal: `NOT_APPLICABLE_UNCHANGED`; no authenticated Customer Center route, terminology, permission or data contract changed.
+- Mobile App: `NOT_APPLICABLE_UNCHANGED`; `/api/mobile/v1` and native customer screens do not expose this public price-search flow.
+- Public React: `LOCAL_IMPLEMENTED_AND_TESTED`; cards identify the exact terminal in Arabic, English and French. Generic Alexandria is labelled terminal not specified and is never reassigned.
+- API/data dependency: `React -> secure Node API -> Dolibarr` remains unchanged. Public results expose no internal IDs, supplier cost, margin or private metadata; booking revalidation uses the exact terminal encoded in the encrypted rate token.
+- Design/terminology impact: one dropdown option replaces the Old Port/TMT choices; terminal identity moves to a prominent card badge. Mixed-terminal historical charts are withheld.
+- Phone verification: deterministic UI/library tests and production build pass; real 390px and desktop browser acceptance remains pending a separately approved React staging deployment.
+- Status: `PUBLIC_REACT_LOCAL_VERIFIED`, `ADMIN_DATA_MODEL_UNCHANGED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_DEPLOYED`, `PRODUCTION_NOT_ACCESSED`.
+
 ## 2026-08-15 — M060 internal task card collaboration
 
 - Source change: extends the staff-only Dolibarr task card with comments, authorized mentions, internal notifications, checklists, reusable labels, private drag/drop/paste assets, image lightbox and safe board counters.
