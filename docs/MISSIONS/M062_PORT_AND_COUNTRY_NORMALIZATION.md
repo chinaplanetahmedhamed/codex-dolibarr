@@ -250,3 +250,20 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - The helper created code backup `/root/backup-erp-code-backups/m062-before-fef1734-m062-20260827T130509Z-6a3b15720ab1.tar.gz`, SHA-256 `dd1008fe64a5164d1dd7ecbcba3829913b2e393d0da071c380f7867636158023`, and full database backup `/root/backup-erp-db-backups/m062-before-fef1734-m062-20260827T130509Z-6a3b15720ab1.sql`, SHA-256 `cf87acb47bae28bcabc23e1c64536a27cc119ef8b53880f5c2cdfdd11929349b`.
 - Conditional `verify` returned `PASS` with state `DEPLOYED`, exact runtime/artifact pins and `DATABASE_SCHEMA=READY`. Current-data validation passed, so the verified M062 unmapped destination country/port remainder is zero; unrelated shipping-line normalization remains outside scope.
 - The non-fatal GNU awk escape warning remains in helper output. Rollback was not invoked, authenticated business/UI acceptance remains pending, and production was not accessed.
+
+## Alexandria R02 helper, compare and preflight — 2026-08-27
+
+- Ahmed explicitly approved uploading the exact Alexandria R02 artifact/helper/installer to canonical `backup-erp`, replacing only the M062 helper, then running `compare` and conditional `preflight`.
+- Uploaded artifact SHA-256 `2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201`, helper SHA-256 `6cb72966c1a6e88dcd0f7071727f524a7259eae2f0b337ffabadc24cc86435f4`, and installer SHA-256 `9c3b2fcb484a8af4aafbc580ed7fd66432f2eb98a577ff40ea5304af948f0c0a` matched locally and in the staging inbox.
+- The installer replaced only exact predecessor helper SHA-256 `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b`. Independent restricted verification confirmed the installed helper is `root:root 0755` at the new hash and exposes exactly the existing six commands. Sudoers was not changed.
+- `compare` passed for `M062-R02`, runtime commit `ce6e87afe0058d1b4939f3c5f0f0090d14db2972`, with `DRIFT_COUNT=0` and expected `SCHEMA=MIGRATION_REQUIRED`. It reported zero unmapped rows/values, three catalog-alias ownership transitions and 123 historical Alexandria rate rows requiring the reviewed exact-only correction.
+- Conditional `preflight` passed with `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`. Work stops before `apply`, which requires a separate explicit approval.
+
+## Alexandria R02 staging apply and verify — 2026-08-27
+
+- After being informed that the R02 migration would change three catalog-alias owners and 123 historical Alexandria rate rows, Ahmed explicitly approved staging `apply` followed by conditional `verify`.
+- Immediately before mutation, the installed helper and inbox artifact matched their exact reviewed SHA-256 pins. The helper repeated zero-drift compare and successful preflight before creating backups.
+- Apply request `m062-20260827T155220Z-1fe6e4575dfe` passed for release `M062-R02`, runtime commit `ce6e87afe0058d1b4939f3c5f0f0090d14db2972`, and artifact SHA-256 `2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201`.
+- Code backup `/root/backup-erp-code-backups/m062-before-ce6e87a-m062-20260827T155220Z-1fe6e4575dfe.tar.gz` has SHA-256 `7816781f0f329fb0071a846e8e163da78b92c799fb1a94bb123d4c825373369d`. Full database backup `/root/backup-erp-db-backups/m062-before-ce6e87a-m062-20260827T155220Z-1fe6e4575dfe.sql` has SHA-256 `e80651d780b26d820364134c3c97925a0a2c830274e9dca1dce211d806db1dbd`.
+- Conditional `verify` passed with `STATE=DEPLOYED`, exact runtime/artifact pins and `DATABASE_SCHEMA=READY`. The helper reported `DATABASE_CHANGED=YES` for apply, `DATABASE_MUTATED_BY_COMMAND=NO` for verify, and `PRODUCTION_ACCESSED=NO` for both.
+- Rollback was not invoked. Authenticated price-card/UI acceptance remains a separate business check; production remains unchanged and forbidden without a new exact approval.

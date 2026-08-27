@@ -194,6 +194,24 @@ The existing public-search integration test is time-blocked because all local pu
 - The earlier `b1bc2c1` correction artifact and its helper/installer pins are withdrawn and must not be installed. The replacement frozen pins are recorded below after the hardened runtime is committed and rebuilt.
 - Hardened runtime commit: `ce6e87afe0058d1b4939f3c5f0f0090d14db2972`. Reproducible 15-file artifact: `/private/tmp/m062-port-normalization-ce6e87a.tar.gz`, SHA-256 `2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201`.
 - Prepared R02 helper SHA-256: `6cb72966c1a6e88dcd0f7071727f524a7259eae2f0b337ffabadc24cc86435f4`. Transactional installer SHA-256: `9c3b2fcb484a8af4aafbc580ed7fd66432f2eb98a577ff40ea5304af948f0c0a`; it accepts only the currently installed helper `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b` (or the exact new helper) and leaves sudoers unchanged at `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+
+## Alexandria R02 staging compare and preflight — 2026-08-27
+
+- Ahmed approved the exact canonical-staging upload, helper replacement, `compare`, and conditional `preflight` gate. The three inbox files matched the reviewed artifact/helper/installer hashes and `codex-deploy:codex-deploy 0644` metadata.
+- The root installation replaced only predecessor helper SHA-256 `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b`. Independent restricted verification confirmed the installed helper is `root:root 0755`, SHA-256 `6cb72966c1a6e88dcd0f7071727f524a7259eae2f0b337ffabadc24cc86435f4`, and exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status`. Sudoers remained unchanged.
+- `compare` passed for runtime `ce6e87afe0058d1b4939f3c5f0f0090d14db2972` and artifact SHA-256 `2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201`: `DRIFT_COUNT=0`, dependency current, and expected `SCHEMA=MIGRATION_REQUIRED`.
+- The read-only data check reported zero unmapped rows/values, three reviewed catalog-alias ownership transitions, and 123 historical Alexandria price rows requiring the exact-only terminal correction. Conditional `preflight` passed with `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, and `PRODUCTION_ACCESSED=NO`.
+- No runtime file, schema, database row, business data, container, proxy, configuration, or production resource changed. `apply` and `verify` remain outside this gate and require separate explicit approval.
+
+## Alexandria R02 staging deployment — 2026-08-27
+
+- Ahmed explicitly approved the database-changing staging `apply` and conditional `verify` after the reviewed impact was restated: three catalog-alias ownership transitions and 123 historical Alexandria price rows.
+- The final pre-apply identity gate reconfirmed installed helper SHA-256 `6cb72966c1a6e88dcd0f7071727f524a7259eae2f0b337ffabadc24cc86435f4` and artifact SHA-256 `2ed9848435086c5be6f385db03d6035836832cc11d28a2e9d3a0c41732cdf201`.
+- Apply request `m062-20260827T155220Z-1fe6e4575dfe` passed for `M062-R02`, runtime commit `ce6e87afe0058d1b4939f3c5f0f0090d14db2972`, with `DATABASE_CHANGED=YES` and `PRODUCTION_ACCESSED=NO`.
+- Code backup: `/root/backup-erp-code-backups/m062-before-ce6e87a-m062-20260827T155220Z-1fe6e4575dfe.tar.gz`, SHA-256 `7816781f0f329fb0071a846e8e163da78b92c799fb1a94bb123d4c825373369d`.
+- Full database backup: `/root/backup-erp-db-backups/m062-before-ce6e87a-m062-20260827T155220Z-1fe6e4575dfe.sql`, SHA-256 `e80651d780b26d820364134c3c97925a0a2c830274e9dca1dce211d806db1dbd`.
+- Independent `verify` passed with `STATE=DEPLOYED`, exact release/runtime/artifact pins and `DATABASE_SCHEMA=READY`. Verify was read-only (`DATABASE_MUTATED_BY_COMMAND=NO`) and production was not accessed.
+- Rollback was not invoked. Authenticated staff/UI verification of the resulting generic/Old Port/TMT price-card labels remains the final business-acceptance check; no production authorization exists.
 - The R02 helper accepts only the exact deployed R01 state as an upgrade predecessor, requires `MIGRATION_REQUIRED`, and refuses R02 `verify` or `rollback` while the prior release remains active. The current deployed seven-file runtime is the exact compare baseline.
 - Official evidence confirms Shuaiba is a distinct Kuwait port; TMT is inside Alexandria Port; RSGT and DP World South Container Terminal are at Jeddah Islamic Port; Sharjah ICD is the emirate's inland depot; Umm Qasr North/South are zones of Umm Qasr; and Mardas is at Istanbul/Ambarli. The implementation uses exact aliases only and does not relax fuzzy safety.
 - Runtime commit: `4dbb0cc0150b78140f15bdca992ab1f59bba2150`. Resolver coverage increases from 45 to 61 cases and built-in aliases from 100 to 116.
