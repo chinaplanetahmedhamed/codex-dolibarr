@@ -158,3 +158,10 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - Two independent reads through canonical staging localhost returned identical bytes for `llx_chinaplanetsp_rate.sql`, SHA-256 `13939d258df2c329616645f5ae7128e18e11df352d83bd6a93a27fc26f508831`.
 - Those bytes are identical to Git commits `6cbd0ffbc6f7cc6030aaecad1d067c0969795c5e` and `2dff2fd76d8d4f6b5690c13828c3fcd58f2499b7`. The source-derived M062 baseline SHA `b2607e9d...` belongs to the later translation-schema source revision, which was never deployed as this SQL install file; the translation database columns were delivered separately by migration.
 - The M062 prestate manifest is therefore corrected to the verified live SHA only. Runtime behavior remains unchanged. The artifact/helper/installer must be rebuilt, independently reviewed and checksum-rotated before repeating `compare` and conditional `preflight`; apply and production remain forbidden.
+
+## Live terminal-qualifier correction — 2026-08-27
+
+- The zero-drift compare passed after the verified prestate correction. Read-only preflight then reported 447 rows across 16 additional live destination spellings, all retained fail-closed rather than fuzzily guessed.
+- Curated exact aliases now cover those 16 strings: Shuaiba for `KUWAIT(SHUAIBA)`; Alexandria TMT; Jeddah Red Sea Gateway/South/DPW variants; Khor Fakkan ICD; Sharjah ICD; the listed Umm Qasr North/South/berth variants; and Istanbul Mardas.
+- The terminal relationships were verified from official port/terminal sources. No fuzzy threshold, edit cap or winner margin was relaxed. Partial and unknown composites remain rejected.
+- Runtime commit `4dbb0cc0150b78140f15bdca992ab1f59bba2150` must be rebuilt/reviewed and may repeat only helper rotation, compare and conditional preflight. Apply and production remain forbidden.

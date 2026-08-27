@@ -171,3 +171,12 @@ The existing public-search integration test is time-blocked because all local pu
 - Corrected runtime/prestate commit: `d931a2be9e95167ecb08e9436913c765e52c1162`. The only payload-byte change from `c4cef25...` is the one prestate-manifest SHA; the seven candidate runtime files and five support files are unchanged.
 - Corrected 15-file artifact `m062-port-normalization-d931a2b.tar.gz`: SHA-256 `cca7b7dab430d1e0e869764597e197fb258448d15ac0016d14ffd40abed3fdc3`. Corrected helper SHA-256: `32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd`.
 - Transactional helper-upgrade installer SHA-256: `dc22a1a0201b4138e68293f719bfda26a608d581f7328655785632050e4a9465`; it accepts only the currently installed helper SHA-256 `7fcafdcf379b9838846426b74460364f15521521c84f9e7862b2641a7cd7b2aa` or the new hash, leaves sudoers unchanged, and retains automatic restoration on validation failure.
+
+## Live terminal-qualified aliases — 2026-08-27
+
+- After corrected `compare` passed with `DRIFT_COUNT=0`, read-only `preflight` stopped at `DATA_PREFLIGHT_FAILED`. Its dry-run reported 447 still-unmapped rows across 16 strings; no database or runtime mutation occurred.
+- Exact catalog aliases were added for the 16 reported strings. Verified canonical results are Shuaiba/Kuwait for `KUWAIT(SHUAIBA)`; Alexandria/Egypt for TMT; Jeddah/Saudi Arabia for Red Sea Gateway, South and DPW variants; Khor Fakkan/UAE and Sharjah/UAE for their ICD variants; Umm Qasr/Iraq for North/South/berth qualifiers; and Istanbul/Turkiye for Mardas.
+- Official evidence confirms Shuaiba is a distinct Kuwait port; TMT is inside Alexandria Port; RSGT and DP World South Container Terminal are at Jeddah Islamic Port; Sharjah ICD is the emirate's inland depot; Umm Qasr North/South are zones of Umm Qasr; and Mardas is at Istanbul/Ambarli. The implementation uses exact aliases only and does not relax fuzzy safety.
+- Runtime commit: `4dbb0cc0150b78140f15bdca992ab1f59bba2150`. Resolver coverage increases from 45 to 61 cases and built-in aliases from 100 to 116.
+- Corrected 15-file artifact `m062-port-normalization-4dbb0cc.tar.gz`: SHA-256 `dbe96641c2efe12d23c5c775c101e66dddfa70e793f1bcbb284ae16568324f63`. Helper SHA-256: `4635ddf52fd9ff4a79bb231ee85ef482ef266fe6a2ccebc08224a03c73c5085f`.
+- Transactional installer SHA-256: `20d2884f103515bcc1b3ecfe8dc59825434dbef86b71357e51499b17020c57ad`; it accepts only installed helper SHA-256 `32f62d30e783ae43b0353a9ce66fe10a9ec639788faf4fd6e791d2bde4e666fd` or the new helper, and leaves sudoers unchanged.
