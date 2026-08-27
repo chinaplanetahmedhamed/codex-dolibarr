@@ -248,3 +248,10 @@ The existing public-search integration test is time-blocked because all local pu
 - Human-root installer output reported `M062_DEPLOY_HELPER_INSTALL=PASS`, predecessor upgrade `1`, retained backup `/root/m062-ports-helper-upgrade-backups/chinaplanetos-backup-erp-m062-ports.9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85.bak`, unchanged sudoers and no deployment/database/production activity.
 - Independent restricted verification matched installed helper SHA-256 `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b`, metadata `root:root 0755`, and exactly the reviewed six-command sudo surface.
 - No M062 helper command ran. Compare, conditional preflight, apply and verify remain pending separate authorization gates; production was not accessed.
+
+## Final post-recovery staging compare/preflight — 2026-08-27
+
+- Ahmed approved final `compare` and conditional `preflight` on canonical `backup-erp` only. Installed helper and inbox artifact hashes were independently rechecked immediately before execution.
+- `M062_DEPLOY_COMPARE=PASS`: `SCHEMA=MIGRATION_REQUIRED`, `DRIFT_COUNT=0`, all seven runtime files at their reviewed baselines, and the live support dependency at its pinned hash.
+- `M062_DEPLOY_PREFLIGHT=PASS`: release `M062-R01`, runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc`, artifact SHA-256 `5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d`, `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, `PRODUCTION_ACCESSED=NO`.
+- A non-fatal GNU awk escape warning preceded both successful results. No apply/verify/rollback/status command ran and no runtime, schema or business data changed. Apply remains a separate approval gate.

@@ -226,3 +226,11 @@ Create `docs/REPORTS/M062_COMPLETION_REPORT.md` with changed files, data/config/
 - The transactional installer reported `PASS`, upgraded only predecessor helper SHA-256 `9cc8ecd3323d43be0f15865f1aff73faa008ba135316867087e3589068f73e85`, retained its verified root-only backup, and installed helper SHA-256 `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b`. Sudoers SHA-256 remained `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231` and was not changed.
 - Independent restricted verification confirmed `/usr/local/sbin/chinaplanetos-backup-erp-m062-ports` is `root:root 0755` at the exact final helper hash and exposes only `compare`, `preflight`, `apply`, `verify`, `rollback` and `status` through sudo.
 - No M062 helper command ran, no runtime/schema/business data changed and production was not accessed. `compare`, conditional `preflight`, `apply` and `verify` remain separate authorization gates.
+
+## Final staging compare and preflight after recovery — 2026-08-27
+
+- Ahmed approved `compare` followed by conditional `preflight` on canonical `backup-erp` staging only. `apply`, `verify` and production remained forbidden.
+- Immediately before execution, the installed helper and inbox artifact independently matched final SHA-256 values `03413c0143cea33925f9faa4994d2034febc5933ee84e2d00494f413d78cd43b` and `5ab2c46df2a01fffbdbaac4df2e7a27f88bc721c386133e064e425a353bc011d`.
+- `compare` returned `PASS`: all seven runtime paths matched their reviewed baseline states, the support dependency matched SHA-256 `1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54`, schema was `MIGRATION_REQUIRED`, and `DRIFT_COUNT=0`.
+- Conditional `preflight` returned `PASS` for release `M062-R01`, runtime commit `fef173463ef6c2031f0f37c83a006b6802c8c3fc` and the exact final artifact. It reported `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`.
+- Both successful commands emitted the same non-fatal GNU awk escape warning before their PASS markers. No runtime/schema/business-data mutation occurred. Work stops before `apply`, which requires separate explicit approval.
