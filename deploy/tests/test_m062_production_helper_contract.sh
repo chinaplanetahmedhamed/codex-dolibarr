@@ -6,21 +6,21 @@ helper="$repo_root/deploy/tools/chinaplanetos_production_m062_ports.sh"
 installer="$repo_root/deploy/tools/install_production_m062_ports_helper.sh"
 sudoers="$repo_root/deploy/config/codex-deploy-production-m062-ports.sudoers"
 builder="$repo_root/deploy/tools/build_m062_production_artifact.py"
-artifact=${M062_PRODUCTION_ARTIFACT:-/private/tmp/m062-production-a84c9ac.tar.gz}
+artifact=${M062_PRODUCTION_ARTIFACT:-/private/tmp/m062-production-1d42fdb.tar.gz}
 
 fail() { echo "M062_PRODUCTION_HELPER_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-[[ $(sha256 "$helper") == d10f813110c3047bed4ec7040824491e88ac545fc73227905b9e30034e50df53 ]] || fail HELPER_HASH
+[[ $(sha256 "$helper") == 8e33a9b0e116d4f7249fe49aab3d7586b68f14a24be39bcc020b5d911dd1536f ]] || fail HELPER_HASH
 [[ $(sha256 "$sudoers") == 4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf ]] || fail SUDOERS_HASH
-[[ $(sha256 "$installer") == 59d006e55247a786780446a691e7fe0c86e5b8858b1631294cfad5a2d9e459c1 ]] || fail INSTALLER_HASH
-grep -Fq "readonly HELPER_SHA='d10f813110c3047bed4ec7040824491e88ac545fc73227905b9e30034e50df53'" "$installer" || fail INSTALLER_HELPER_PIN
+[[ $(sha256 "$installer") == 69eabfa60fcbe2c42460fc740acb6825affb6c8a444c741062cc23792339dd66 ]] || fail INSTALLER_HASH
+grep -Fq "readonly HELPER_SHA='8e33a9b0e116d4f7249fe49aab3d7586b68f14a24be39bcc020b5d911dd1536f'" "$installer" || fail INSTALLER_HELPER_PIN
 grep -Fq "readonly PREVIOUS_HELPER_SHA='ABSENT'" "$installer" || fail INSTALLER_ABSENT_GATE
 grep -Fq "readonly SUDOERS_SHA='4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf'" "$installer" || fail INSTALLER_SUDOERS_PIN
-grep -Fq "readonly ARTIFACT_SHA='a96314b98e2d5bdb630376373a076f90ab36370cc93675b4a5ef3d76a09d7f2b'" "$helper" || fail ARTIFACT_PIN
-grep -Fq "readonly RUNTIME_COMMIT='a84c9ac0444dc9f15b1730cceb921d99354cfeab'" "$helper" || fail COMMIT_PIN
+grep -Fq "readonly ARTIFACT_SHA='694b029d61777c4b542f5d9f56f0586e936f8b161fd939af3149c8b171b9f3f3'" "$helper" || fail ARTIFACT_PIN
+grep -Fq "readonly RUNTIME_COMMIT='1d42fdb77214ca5f7b8613bc16fde8a04cc5dc64'" "$helper" || fail COMMIT_PIN
 grep -Fq "TARGET_CONTAINER='vision_erp'" "$helper" || fail ERP_TARGET
 grep -Fq "DB_CONTAINER='vision_db'" "$helper" || fail DB_TARGET
 grep -Fq "TARGET_VOLUME='vision-os_dolibarr_custom'" "$helper" || fail CUSTOM_VOLUME
@@ -36,7 +36,7 @@ for command in compare preflight apply verify rollback status; do
 done
 
 [[ -f "$artifact" && ! -L "$artifact" ]] || fail ARTIFACT_MISSING
-[[ $(sha256 "$artifact") == a96314b98e2d5bdb630376373a076f90ab36370cc93675b4a5ef3d76a09d7f2b ]] || fail ARTIFACT_HASH
+[[ $(sha256 "$artifact") == 694b029d61777c4b542f5d9f56f0586e936f8b161fd939af3149c8b171b9f3f3 ]] || fail ARTIFACT_HASH
 [[ $(tar -tzf "$artifact" | wc -l | tr -d ' ') -eq 19 ]] || fail ARTIFACT_COUNT
 [[ -z $(tar -tzf "$artifact" | awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ || /\.DS_Store/ || /PaxHeader/ || /\/\._/ {print; exit}') ]] || fail ARTIFACT_PATH
 [[ -z $(tar -tvzf "$artifact" | awk 'substr($1,1,1)!="-" {print; exit}') ]] || fail ARTIFACT_TYPE
@@ -46,8 +46,8 @@ trap 'rm -rf "$test_root"' EXIT
 for dir in inbox target code-backups db-backups state state/requests state/container-root artifacts; do mkdir -p "$test_root/$dir"; done
 python3 "$builder" --output "$test_root/rebuilt.tar.gz" >/dev/null || fail ARTIFACT_REBUILD
 cmp -s "$artifact" "$test_root/rebuilt.tar.gz" || fail ARTIFACT_NOT_REPRODUCIBLE
-cp "$artifact" "$test_root/inbox/m062-production-a84c9ac.tar.gz"
-chmod 0644 "$test_root/inbox/m062-production-a84c9ac.tar.gz"
+cp "$artifact" "$test_root/inbox/m062-production-1d42fdb.tar.gz"
+chmod 0644 "$test_root/inbox/m062-production-1d42fdb.tar.gz"
 export M062_DEPLOY_HELPER_TEST_MODE=1 M062_DEPLOY_HELPER_TEST_ROOT="$test_root" M062_DEPLOY_HELPER_LIBRARY_MODE=1
 helper_copy="$test_root/chinaplanetos-production-m062-ports.test"
 cp "$helper" "$helper_copy"
