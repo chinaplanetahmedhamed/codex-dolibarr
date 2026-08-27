@@ -18,6 +18,8 @@ class PortNameResolver
     private $threshold;
     private $aliases = array();
     private $ambiguous = array();
+    private $literalAliases = array();
+    private $literalAmbiguous = array();
 
     public function __construct($db = null, $entity = 1, $threshold = null)
     {
@@ -49,6 +51,23 @@ class PortNameResolver
         return trim(preg_replace('/\s+/u', ' ', $value));
     }
 
+    /** Normalize an exact literal alias while preserving delimiter meaning. */
+    private static function literalSignature($value)
+    {
+        $value = html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $value = str_replace(array("\xC2\xA0", '（', '）', '，', '：', '／', '＆', '—', '–', '‑', '−'), array(' ', '(', ')', ',', ':', '/', '&', '-', '-', '-', '-'), $value);
+        if (function_exists('transliterator_transliterate')) {
+            $converted = transliterator_transliterate('Any-Latin; Latin-ASCII', $value);
+            if ($converted !== false) $value = $converted;
+        } elseif (function_exists('iconv')) {
+            $converted = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+            if ($converted !== false && $converted !== '') $value = $converted;
+        }
+        $value = mb_strtoupper($value, 'UTF-8');
+        $value = trim(preg_replace('/\s+/u', ' ', $value));
+        return preg_replace('/\s*([(),\/&;+])\s*/u', '$1', $value);
+    }
+
     /** @return array<int,array<string,mixed>> */
     public function resolveList($raw, $allowFuzzy = true)
     {
@@ -56,6 +75,34 @@ class PortNameResolver
         if ($raw === '') return array('status'=>'unmapped', 'raw'=>$raw, 'matches'=>array(), 'reason'=>'empty');
 
         $destination = $this->removeOriginPrefix($raw);
+
+        // A delimiter inside parentheses is terminal/berth metadata, while a
+        // top-level delimiter separates destinations. Preserve explicitly
+        // curated literal aliases such as "KHALIFA PORT, ABU DHABI" without
+        // allowing punctuation-insensitive aliases to collapse composites.
+        $parts = $this->splitTopLevelComposite($destination);
+        if (count($parts) > 1) {
+            $literal = $this->resolveLiteralCandidate($destination);
+            if ($literal['status'] === 'matched' || $literal['status'] === 'ambiguous') {
+                $literal['raw'] = $raw;
+                $literal['origin_removed'] = $destination !== $raw;
+                return $literal;
+            }
+
+            $matches = array(); $seen = array();
+            foreach ($parts as $part) {
+                $part = $this->stripQualifier($part);
+                $resolved = $this->resolveCandidate($part, $allowFuzzy);
+                if ($resolved['status'] !== 'matched' || count($resolved['matches']) !== 1) {
+                    return array('status'=>$resolved['status'] === 'ambiguous' ? 'ambiguous' : 'unmapped', 'raw'=>$raw, 'matches'=>array(), 'reason'=>'unresolved_composite_part', 'part'=>trim($part));
+                }
+                $match = $resolved['matches'][0];
+                $key = $match['country_code'].'|'.$match['port_name'];
+                if (!isset($seen[$key])) { $seen[$key] = true; $matches[] = $match; }
+            }
+            return array('status'=>'matched', 'raw'=>$raw, 'matches'=>$matches, 'method'=>'composite', 'score'=>1.0, 'origin_removed'=>$destination !== $raw);
+        }
+
         $whole = $this->resolveCandidate($destination, false);
         if ($whole['status'] === 'matched') {
             $whole['raw'] = $raw;
@@ -75,25 +122,48 @@ class PortNameResolver
             $destination = $qualified;
         }
 
-        $parts = preg_split('/\s*(?:\/|&|,|;|\+)\s*/u', $destination, -1, PREG_SPLIT_NO_EMPTY);
-        if (count($parts) > 1) {
-            $matches = array(); $seen = array();
-            foreach ($parts as $part) {
-                $resolved = $this->resolveCandidate($part, $allowFuzzy);
-                if ($resolved['status'] !== 'matched' || count($resolved['matches']) !== 1) {
-                    return array('status'=>$resolved['status'] === 'ambiguous' ? 'ambiguous' : 'unmapped', 'raw'=>$raw, 'matches'=>array(), 'reason'=>'unresolved_composite_part', 'part'=>trim($part));
-                }
-                $match = $resolved['matches'][0];
-                $key = $match['country_code'].'|'.$match['port_name'];
-                if (!isset($seen[$key])) { $seen[$key] = true; $matches[] = $match; }
-            }
-            return array('status'=>'matched', 'raw'=>$raw, 'matches'=>$matches, 'method'=>'composite', 'score'=>1.0, 'origin_removed'=>$destination !== $raw);
-        }
-
         $resolved = $this->resolveCandidate($destination, $allowFuzzy);
         $resolved['raw'] = $raw;
         $resolved['origin_removed'] = $destination !== $raw;
         return $resolved;
+    }
+
+    /** @return array<int,string> */
+    private function splitTopLevelComposite($value)
+    {
+        $characters = preg_split('//u', (string) $value, -1, PREG_SPLIT_NO_EMPTY);
+        $parts = array(); $buffer = ''; $depth = 0;
+        foreach ($characters as $character) {
+            if ($character === '(' || $character === '（') {
+                $depth++;
+                $buffer .= $character;
+                continue;
+            }
+            if ($character === ')' || $character === '）') {
+                if ($depth > 0) $depth--;
+                $buffer .= $character;
+                continue;
+            }
+            if ($depth === 0 && in_array($character, array('/', '／', '&', '＆', ',', '，', ';', '+'), true)) {
+                if (trim($buffer) !== '') $parts[] = trim($buffer);
+                $buffer = '';
+                continue;
+            }
+            $buffer .= $character;
+        }
+        if (trim($buffer) !== '') $parts[] = trim($buffer);
+        return $parts;
+    }
+
+    private function resolveLiteralCandidate($value)
+    {
+        $signature = self::literalSignature($value);
+        if ($signature === '') return array('status'=>'unmapped', 'matches'=>array(), 'reason'=>'empty_literal');
+        if (isset($this->literalAmbiguous[$signature])) return array('status'=>'ambiguous', 'matches'=>array(), 'reason'=>'literal_alias_conflict');
+        if (!isset($this->literalAliases[$signature])) return array('status'=>'unmapped', 'matches'=>array(), 'reason'=>'no_literal_alias');
+        $match = $this->literalAliases[$signature];
+        $match['method'] = 'exact'; $match['score'] = 1.0; $match['matched_alias'] = self::normalize($value);
+        return array('status'=>'matched', 'matches'=>array($match), 'method'=>'exact', 'score'=>1.0);
     }
 
     private function resolveCandidate($value, $allowFuzzy)
@@ -155,6 +225,19 @@ class PortNameResolver
         if ($normalized === '') return;
         $port['port_name'] = trim($port['port_name']);
         $port['country_code'] = strtoupper(trim($port['country_code']));
+        $literal = self::literalSignature($alias);
+        $literalExisting = isset($this->literalAliases[$literal]) ? $this->literalAliases[$literal] : null;
+        if ($literalExisting !== null && ($literalExisting['port_name'] !== $port['port_name'] || $literalExisting['country_code'] !== $port['country_code'])) {
+            if ($authoritative) {
+                $this->literalAliases[$literal] = $port;
+                unset($this->literalAmbiguous[$literal]);
+            } elseif (($literalExisting['source'] ?? '') !== 'builtin') {
+                unset($this->literalAliases[$literal]);
+                $this->literalAmbiguous[$literal] = true;
+            }
+        } else {
+            $this->literalAliases[$literal] = $port;
+        }
         $existing = isset($this->aliases[$normalized]) ? $this->aliases[$normalized] : null;
         if ($existing !== null && ($existing['port_name'] !== $port['port_name'] || $existing['country_code'] !== $port['country_code'])) {
             if ($authoritative) {
@@ -201,7 +284,7 @@ class PortNameResolver
         if (!$res) return;
         while ($row = $this->db->fetch_object($res)) {
             $port = array('port_name'=>$row->port_name, 'country_code'=>$row->country_code, 'port_code'=>$row->port_code, 'fk_port'=>(int)$row->rowid, 'source'=>'database');
-            $this->addAlias($row->normalized_alias ?: $row->alias_name, $port, true);
+            $this->addAlias($row->alias_name ?: $row->normalized_alias, $port, true);
         }
     }
 
@@ -256,7 +339,7 @@ class PortNameResolver
             array('port_name'=>'MOSTAGANEM','country_code'=>'DZ','port_code'=>'DZMOS','aliases'=>array()),
             array('port_name'=>'ORAN','country_code'=>'DZ','port_code'=>'DZORN','aliases'=>array('ORAN CONTAINER TERMINAL')),
             array('port_name'=>'SKIKDA','country_code'=>'DZ','port_code'=>'DZSKI','aliases'=>array()),
-            array('port_name'=>'AGADIR','country_code'=>'MA','port_code'=>'MAAGA','aliases'=>array('AGADIR MOROCCO')),
+            array('port_name'=>'AGADIR','country_code'=>'MA','port_code'=>'MAAGA','aliases'=>array('AGADIR MOROCCO','AGADIR, MOROCCO')),
             array('port_name'=>'CASABLANCA','country_code'=>'MA','port_code'=>'MACAS','aliases'=>array()),
             array('port_name'=>'NADOR','country_code'=>'MA','port_code'=>'MANDR','aliases'=>array()),
             array('port_name'=>'TANGIER','country_code'=>'MA','port_code'=>'MATNG','aliases'=>array('TANGER','TANGIER TANGER MOROCCO')),
