@@ -11,6 +11,7 @@ cp "$source_helper" "$test_root/chinaplanetos-backup-erp-m062-ports.test"
 cp "$artifact" "$test_root/inbox/m062-public-search-dcd24dd.tar.gz"
 git -C "$root" show dcd24ddd99ab5668c2ace3ccddd580abec24b472^:custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php >"$test_root/target/chinaplanetshippingprices/class/PublicShippingRateService.class.php"
 cp "$root/custom/chinaplanetshippingprices/class/ShippingPriceService.class.php" "$test_root/target/chinaplanetshippingprices/class/ShippingPriceService.class.php"
+cp "$root/custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php" "$test_root/target/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php"
 chmod 0644 "$test_root/inbox/m062-public-search-dcd24dd.tar.gz" "$test_root/target/chinaplanetshippingprices/class/"*.php
 
 cat >"$test_root/bin/docker" <<'SH'
@@ -71,11 +72,16 @@ if run_helper APPLY_STATE_PUBLISH apply >"$test_root/apply-fault.log" 2>&1; then
 [[ ! -e "$test_root/state/m062-r03.state" ]]
 grep -Fq 'M062_R03_STAGING_AUTO_ROLLBACK=PASS' "$test_root/apply-fault.log" || { cat "$test_root/apply-fault.log" >&2; exit 1; }
 
+if run_helper APPLY_STATE_POST_RENAME apply >"$test_root/apply-post-rename.log" 2>&1; then echo 'M062_R03_FAILURES=FAIL REASON=APPLY_POST_RENAME_ACCEPTED' >&2; exit 1; fi
+[[ $(sha256sum "$target" | awk '{print $1}') == "$baseline" ]]
+[[ ! -e "$test_root/state/m062-r03.state" ]]
+grep -Fq 'STATE_RECONCILED=YES' "$test_root/apply-post-rename.log"
+
 run_helper '' apply >"$test_root/apply-pass.log" 2>&1
 [[ $(sha256sum "$target" | awk '{print $1}') == "$release" ]]
 grep -Fxq 'STATE_STATUS=DEPLOYED' "$test_root/state/m062-r03.state"
 
-for fault in ROLLBACK_LINT ROLLBACK_HTTP ROLLBACK_STATE_PUBLISH; do
+for fault in ROLLBACK_LINT ROLLBACK_HTTP ROLLBACK_STATE_PUBLISH ROLLBACK_STATE_POST_RENAME; do
   if run_helper "$fault" rollback >"$test_root/rollback-${fault}.log" 2>&1; then echo "M062_R03_FAILURES=FAIL REASON=${fault}_ACCEPTED" >&2; exit 1; fi
   [[ $(sha256sum "$target" | awk '{print $1}') == "$release" ]]
   grep -Fxq 'STATE_STATUS=DEPLOYED' "$test_root/state/m062-r03.state"
@@ -85,4 +91,9 @@ done
 run_helper '' rollback >"$test_root/rollback-pass.log" 2>&1
 [[ $(sha256sum "$target" | awk '{print $1}') == "$baseline" ]]
 grep -Fxq 'STATE_STATUS=ROLLED_BACK' "$test_root/state/m062-r03.state"
-echo 'M062_R03_FAILURES=PASS APPLY_STATE=RESTORED ROLLBACK_LINT=REAPPLIED ROLLBACK_HTTP=REAPPLIED ROLLBACK_STATE=REAPPLIED FINAL_ROLLBACK=PASS'
+
+if run_helper APPLY_STATE_POST_RENAME apply >"$test_root/reapply-post-rename.log" 2>&1; then echo 'M062_R03_FAILURES=FAIL REASON=REAPPLY_POST_RENAME_ACCEPTED' >&2; exit 1; fi
+[[ $(sha256sum "$target" | awk '{print $1}') == "$baseline" ]]
+grep -Fxq 'STATE_STATUS=ROLLED_BACK' "$test_root/state/m062-r03.state"
+grep -Fq 'STATE_RECONCILED=YES' "$test_root/reapply-post-rename.log"
+echo 'M062_R03_FAILURES=PASS APPLY_STATE=RESTORED APPLY_POST_RENAME=RECONCILED ROLLBACK_LINT=REAPPLIED ROLLBACK_HTTP=REAPPLIED ROLLBACK_STATE=REAPPLIED ROLLBACK_POST_RENAME=RECONCILED REAPPLY_POST_RENAME=RECONCILED FINAL_ROLLBACK=PASS'

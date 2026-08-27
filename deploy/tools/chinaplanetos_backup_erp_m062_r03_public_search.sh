@@ -21,6 +21,8 @@ readonly RUNTIME_SHA='189bee8d2bc6bf47c8898dcb90efb8dc7658b7816ac2fecaee988d53ed
 readonly BASELINE_SHA='ce821a27a26bbde6915f07ee4c37925a528db8d393b200ece15332b4b13b11de'
 readonly SUPPORT_DEPENDENCY='chinaplanetshippingprices/class/ShippingPriceService.class.php'
 readonly SUPPORT_DEPENDENCY_SHA='27cf3826310b1f4065b4bc5068b66f21cded32393a36ea1507e546c3d64e560e'
+readonly TRANSLATION_DEPENDENCY='chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php'
+readonly TRANSLATION_DEPENDENCY_SHA='1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6ff8be6093f23e337fbe54'
 readonly -a SUPPORT_FILES=(
   'custom/chinaplanetshippingprices/class/ShippingPriceService.class.php'
   'custom/chinaplanetshippingprices/class/ShippingNoteTranslationService.class.php'
@@ -65,6 +67,9 @@ MUTATED=0
 MUTATION_KIND=''
 REAPPLY_BACKUP=''
 REAPPLY_SHA=''
+PRIOR_STATE_PRESENT=0
+PRIOR_STATE_BACKUP=''
+PRIOR_STATE_SHA=''
 
 die() { echo "M062_R03_STAGING_FAIL=$1" >&2; exit 1; }
 sha256() { sha256sum "$1" | awk '{print $1}'; }
@@ -110,6 +115,44 @@ restore_prior() {
   [[ $(sha256 "$target") == "$BASELINE_SHA" ]] || return 1
 }
 
+capture_prior_state() {
+  PRIOR_STATE_PRESENT=0; PRIOR_STATE_BACKUP=''; PRIOR_STATE_SHA=''
+  if [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]]; then
+    PRIOR_STATE_BACKUP=$(mktemp "${STATE_ROOT}/m062-r03-prior-state.XXXXXX")
+    install -m 0600 "$STATE_FILE" "$PRIOR_STATE_BACKUP"
+    fsync_path "$PRIOR_STATE_BACKUP"; fsync_path "$STATE_ROOT"
+    PRIOR_STATE_SHA=$(sha256 "$PRIOR_STATE_BACKUP")
+    PRIOR_STATE_PRESENT=1
+  fi
+}
+
+restore_prior_state() {
+  local tmp="${STATE_FILE}.recovery.$$"
+  if [[ $PRIOR_STATE_PRESENT -eq 1 ]]; then
+    [[ -f "$PRIOR_STATE_BACKUP" && ! -L "$PRIOR_STATE_BACKUP" && $(sha256 "$PRIOR_STATE_BACKUP") == "$PRIOR_STATE_SHA" ]] || return 1
+    install -m 0600 "$PRIOR_STATE_BACKUP" "$tmp" || return 1
+    fsync_path "$tmp" || return 1
+    mv -f "$tmp" "$STATE_FILE" || return 1
+    fsync_path "$STATE_FILE" || return 1
+  else
+    rm -f "$STATE_FILE" || return 1
+  fi
+  fsync_path "$STATE_ROOT" || return 1
+  if [[ -n "$PRIOR_STATE_BACKUP" && -f "$PRIOR_STATE_BACKUP" ]]; then rm -f "$PRIOR_STATE_BACKUP" || return 1; fsync_path "$STATE_ROOT" || return 1; fi
+}
+
+ensure_deployed_state() {
+  local tmp="${STATE_FILE}.recovery.$$"
+  [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]] || return 1
+  awk 'BEGIN{done=0} /^STATE_STATUS=/{print "STATE_STATUS=DEPLOYED"; done=1; next} {print} END{if(!done)exit 1}' "$STATE_FILE" >"$tmp" || return 1
+  chmod 0600 "$tmp" || return 1
+  fsync_path "$tmp" || return 1
+  mv -f "$tmp" "$STATE_FILE" || return 1
+  fsync_path "$STATE_FILE" || return 1
+  fsync_path "$STATE_ROOT" || return 1
+  grep -Fxq 'STATE_STATUS=DEPLOYED' "$STATE_FILE"
+}
+
 reapply_release() {
   local target="$TARGET_ROOT/$TARGET_FILE" tmp="${TARGET_ROOT}/${TARGET_FILE}.m062-r03-reapply.$$"
   [[ -f "$REAPPLY_BACKUP" && ! -L "$REAPPLY_BACKUP" && $(sha256 "$REAPPLY_BACKUP") == "$REAPPLY_SHA" ]] || return 1
@@ -131,8 +174,8 @@ cleanup() {
   trap - EXIT
   if [[ $MUTATED -eq 1 ]]; then
     case "$MUTATION_KIND" in
-      apply) if restore_prior; then echo 'M062_R03_STAGING_AUTO_ROLLBACK=PASS' >&2; else echo 'M062_R03_STAGING_AUTO_ROLLBACK=FAIL RECOVERY_REQUIRED=YES' >&2; fi ;;
-      rollback) if reapply_release; then echo 'M062_R03_STAGING_ROLLBACK_REAPPLY=PASS' >&2; else echo 'M062_R03_STAGING_ROLLBACK_REAPPLY=FAIL RECOVERY_REQUIRED=YES' >&2; fi ;;
+      apply) if restore_prior && restore_prior_state; then echo 'M062_R03_STAGING_AUTO_ROLLBACK=PASS STATE_RECONCILED=YES' >&2; else echo 'M062_R03_STAGING_AUTO_ROLLBACK=FAIL RECOVERY_REQUIRED=YES' >&2; fi ;;
+      rollback) if reapply_release && ensure_deployed_state; then echo 'M062_R03_STAGING_ROLLBACK_REAPPLY=PASS STATE_RECONCILED=YES' >&2; else echo 'M062_R03_STAGING_ROLLBACK_REAPPLY=FAIL RECOVERY_REQUIRED=YES' >&2; fi ;;
       *) echo 'M062_R03_STAGING_RECOVERY=FAIL MUTATION_KIND_INVALID' >&2 ;;
     esac
   fi
@@ -167,6 +210,8 @@ check_environment() {
   fi
   local dependency="$TARGET_ROOT/$SUPPORT_DEPENDENCY"
   [[ -f "$dependency" && ! -L "$dependency" && $(sha256 "$dependency") == "$SUPPORT_DEPENDENCY_SHA" ]] || die 'SUPPORT_DEPENDENCY_DRIFT'
+  local translation_dependency="$TARGET_ROOT/$TRANSLATION_DEPENDENCY"
+  [[ -f "$translation_dependency" && ! -L "$translation_dependency" && $(sha256 "$translation_dependency") == "$TRANSLATION_DEPENDENCY_SHA" ]] || die 'TRANSLATION_DEPENDENCY_DRIFT'
 }
 
 validate_artifact() {
@@ -272,8 +317,10 @@ STATE_PRESTATE_SHA=$PRESTATE_SHA
 STATE_DEPLOYED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 EOF
   chmod 0600 "$tmp"; fsync_path "$tmp"
-  if fault APPLY_STATE_PUBLISH; then rm -f "$tmp"; return 1; fi
-  mv -f "$tmp" "$STATE_FILE"; fsync_path "$STATE_FILE"; fsync_path "$STATE_ROOT"
+  if fault APPLY_STATE_PUBLISH || fault APPLY_STATE_PRE_RENAME; then rm -f "$tmp"; return 1; fi
+  mv -f "$tmp" "$STATE_FILE"
+  fault APPLY_STATE_POST_RENAME && return 1
+  fsync_path "$STATE_FILE"; fsync_path "$STATE_ROOT"
   grep -Fxq 'STATE_STATUS=DEPLOYED' "$STATE_FILE"
 }
 
@@ -281,8 +328,10 @@ publish_rollback_state() {
   local tmp="${STATE_FILE}.tmp.$$"
   awk 'BEGIN{done=0} /^STATE_STATUS=/{print "STATE_STATUS=ROLLED_BACK"; done=1; next} {print} END{if(!done)exit 1}' "$STATE_FILE" >"$tmp"
   chmod 0600 "$tmp"; fsync_path "$tmp"
-  if fault ROLLBACK_STATE_PUBLISH; then rm -f "$tmp"; return 1; fi
-  mv -f "$tmp" "$STATE_FILE"; fsync_path "$STATE_FILE"; fsync_path "$STATE_ROOT"
+  if fault ROLLBACK_STATE_PUBLISH || fault ROLLBACK_STATE_PRE_RENAME; then rm -f "$tmp"; return 1; fi
+  mv -f "$tmp" "$STATE_FILE"
+  fault ROLLBACK_STATE_POST_RENAME && return 1
+  fsync_path "$STATE_FILE"; fsync_path "$STATE_ROOT"
   grep -Fxq 'STATE_STATUS=ROLLED_BACK' "$STATE_FILE"
 }
 
@@ -311,7 +360,8 @@ command_apply() {
   check_environment; validate_artifact; candidate_checks
   if [[ -f "$STATE_FILE" ]]; then load_state; if [[ "$STATE_STATUS" == DEPLOYED ]] && live_checks; then echo "M062_R03_STAGING_APPLY=NOOP_ALREADY_APPLIED RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; return; fi; fi
   compare_file; [[ $(sha256 "$TARGET_ROOT/$TARGET_FILE") == "$BASELINE_SHA" ]] || die 'BASELINE_REQUIRED'
-  create_backup; MUTATION_KIND='apply'; MUTATED=1; apply_file; live_checks || die 'LIVE_CHECK_FAILED'; save_state; MUTATED=0; MUTATION_KIND=''
+  capture_prior_state; create_backup; MUTATION_KIND='apply'; MUTATED=1; apply_file; live_checks || die 'LIVE_CHECK_FAILED'; save_state; MUTATED=0; MUTATION_KIND=''
+  if [[ $PRIOR_STATE_PRESENT -eq 1 ]]; then rm -f "$PRIOR_STATE_BACKUP"; fsync_path "$STATE_ROOT"; fi
   echo "M062_R03_STAGING_APPLY=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA PRESTATE=$PRESTATE_FILE PRESTATE_SHA=$PRESTATE_SHA FILES=1 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
 }
 command_verify() { check_environment; validate_artifact; candidate_checks; load_state; [[ "$STATE_STATUS" == DEPLOYED ]] || die 'STATE_NOT_DEPLOYED'; live_checks || die 'LIVE_VERIFY_FAILED'; echo "M062_R03_STAGING_VERIFY=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=1 DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"; }
