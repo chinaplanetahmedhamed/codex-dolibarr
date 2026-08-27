@@ -1,5 +1,15 @@
 # M062 Local Completion Report — Port and Country Normalization
 
+## Alexandria public-search R03 staging release preparation — 2026-08-28
+
+- Ahmed approved ERP gateway staging deployment and verification first, followed conditionally by React staging and desktop/390px acceptance. Production remains forbidden.
+- Runtime commit: `dcd24ddd99ab5668c2ace3ccddd580abec24b472`; release-scope commit: `ee073e681d52f97a52c8b6c1bf723ca1ba78012b`.
+- Deterministic seven-file artifact: `/private/tmp/m062-public-search-dcd24dd.tar.gz`, SHA-256 `8ab43813389f06476ff6f3843cca26f09b780bfbe5c727510ff4a48270c746e7`. Runtime scope is exactly one file: `PublicShippingRateService.class.php`; the other files are its unchanged price-service dependency, two candidate tests and three release manifests.
+- Reviewed helper source SHA-256: `e0724258612b0e5161f24cd6b842e650f2c434a6a96ce4cb9b8c0d5712a49c1b`. Installer SHA-256: `d195c67a3c5009f7753ffefa460c1f12e7604168ba13be096243b3c875ef8517`. Existing sudoers remains unchanged at SHA-256 `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+- The helper accepts only the verified staging baseline SHA-256 `ce821a27a26bbde6915f07ee4c37925a528db8d393b200ece15332b4b13b11de`, creates an exact code/prestate backup, atomically installs runtime SHA-256 `189bee8d2bc6bf47c8898dcb90efb8dc7658b7816ac2fecaee988d53edb95cb4`, and automatically restores on failed live checks.
+- Local helper contract, deterministic rebuild, PHP lint, encrypted-token regression and Alexandria grouping regression passed. The release contains no migration or database command and declares `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO` for every command.
+- Staging upload, root helper replacement, compare/preflight/apply/verify and runtime acceptance evidence are pending below; React remains blocked until ERP verify and public API acceptance pass.
+
 ## Alexandria public-search grouping — local correction, 2026-08-28
 
 - Public route options now collapse Egypt's `ALEXANDRIA`, `ALEXANDRIA OLD PORT` and `ALEXANDRIA TMT` into one `ALEXANDRIA` destination for each POL.

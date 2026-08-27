@@ -1,5 +1,11 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-28 — M062-R03 Alexandria public-search staging package
+
+- Added a deterministic code-only staging artifact and checksum-pinned replacement helper for the one-file public shipping gateway correction.
+- Preserved the deployed M062-R02 database/schema/runtime state while isolating R03 code backup, state and rollback evidence.
+- Enforced ERP gateway deployment and verification before the related React staging release; production remains forbidden.
+
 ## 2026-08-28 — M062 Alexandria public-search grouping
 
 - Collapsed generic Alexandria, Old Port and TMT into one customer destination option while preserving three exact ERP pricing identities.

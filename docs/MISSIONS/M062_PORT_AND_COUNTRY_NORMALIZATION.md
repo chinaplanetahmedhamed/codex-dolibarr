@@ -1,5 +1,13 @@
 # M062 — Port and country normalization
 
+## Alexandria public-search staging deployment authorization — 2026-08-28
+
+- Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
+- ERP release `M062-R03` is code-only: exactly `custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php`. It must not run a migration or change database, schema, configuration, module state, business data, documents, containers, proxy, DNS or ports.
+- The installed M062-R02 helper cannot deploy this new file. R03 therefore uses a checksum-pinned replacement at the same already-approved six-command path and the unchanged sudoers surface. It keeps R02 state/backups intact and uses independent R03 state and rollback paths.
+- Required order: install/verify the R03 helper, `compare`, `preflight`, `apply`, `verify`, and public ERP API acceptance; only then may the React commit be deployed to `new.chinaplanet.org` and accepted at desktop/390px in RTL/LTR.
+- If ERP apply or verify fails, stop and use only the R03 recorded code rollback. React must not deploy. No production command, URL, container, file, database or workflow is authorized.
+
 ## Alexandria public-search grouping authorization — 2026-08-28
 
 - Ahmed approved showing one public destination option, `ALEXANDRIA`, while returning separate price cards for generic Alexandria, Alexandria Old Port and Alexandria TMT when eligible rates exist.
