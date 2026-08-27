@@ -87,6 +87,21 @@ class M062ConflictDb {
 $conflictResolver=new PortNameResolver(new M062ConflictDb(),1,0.90);
 m062Assert($conflictResolver->resolveList('CONFLICT',true)['status']==='ambiguous','Same-country legacy alias conflict must fail closed.');
 
+class M062MutableLiteralDb {
+    public function query($sql){
+        if(strpos($sql,'chinaplanetsp_port_alias')!==false)return new M062ConflictResult(array(
+            (object)array('alias_name'=>'KUWAIT/SHUAIBA','normalized_alias'=>'KUWAIT SHUAIBA','rowid'=>99,'port_name'=>'SHUAIBA','port_code'=>'KWSAA','country_code'=>'KW'),
+        ));
+        if(strpos($sql,'chinaplanetsp_port')!==false)return new M062ConflictResult(array(
+            (object)array('rowid'=>99,'port_name'=>'SHUAIBA','port_code'=>'KWSAA','country_code'=>'KW','aliases'=>'KUWAIT/SHUAIBA'),
+        ));
+        return false;
+    }
+    public function fetch_object($result){return$result->rows[$result->index++]??false;}
+}
+$mutableLiteralResolver=new PortNameResolver(new M062MutableLiteralDb(),1,0.90);
+m062Assert(m062Ports($mutableLiteralResolver,'KUWAIT/SHUAIBA')===array('KUWAIT|KW','SHUAIBA|KW'),'Mutable database alias must not bypass top-level composite splitting.');
+
 $owners = array();
 foreach (PortNameResolver::catalog() as $definition) {
     foreach (array_merge(array($definition['port_name']), $definition['aliases']) as $alias) {

@@ -225,18 +225,18 @@ class PortNameResolver
         if ($normalized === '') return;
         $port['port_name'] = trim($port['port_name']);
         $port['country_code'] = strtoupper(trim($port['country_code']));
-        $literal = self::literalSignature($alias);
-        $literalExisting = isset($this->literalAliases[$literal]) ? $this->literalAliases[$literal] : null;
-        if ($literalExisting !== null && ($literalExisting['port_name'] !== $port['port_name'] || $literalExisting['country_code'] !== $port['country_code'])) {
-            if ($authoritative) {
-                $this->literalAliases[$literal] = $port;
-                unset($this->literalAmbiguous[$literal]);
-            } elseif (($literalExisting['source'] ?? '') !== 'builtin') {
+        // Only the reviewed built-in catalog may declare that a top-level
+        // delimiter belongs to one literal alias. Mutable legacy/database
+        // aliases must never bypass composite splitting.
+        if (($port['source'] ?? '') === 'builtin') {
+            $literal = self::literalSignature($alias);
+            $literalExisting = isset($this->literalAliases[$literal]) ? $this->literalAliases[$literal] : null;
+            if ($literalExisting !== null && ($literalExisting['port_name'] !== $port['port_name'] || $literalExisting['country_code'] !== $port['country_code'])) {
                 unset($this->literalAliases[$literal]);
                 $this->literalAmbiguous[$literal] = true;
+            } elseif (!isset($this->literalAmbiguous[$literal])) {
+                $this->literalAliases[$literal] = $port;
             }
-        } else {
-            $this->literalAliases[$literal] = $port;
         }
         $existing = isset($this->aliases[$normalized]) ? $this->aliases[$normalized] : null;
         if ($existing !== null && ($existing['port_name'] !== $port['port_name'] || $existing['country_code'] !== $port['country_code'])) {
