@@ -49,6 +49,13 @@
 - Independent restricted verification after the root installation confirms `/usr/local/sbin/chinaplanetos-production-m062-ports` is `root:root 0755`, size `48357`, at the exact corrected helper hash. `sudo -n -l` exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` for that helper path. The inbox artifact remains at its exact reviewed hash and production ERP returned HTTPS `200`.
 - No M062 helper command ran during this gate. Runtime files, schema, database, business data, documents and configuration were not changed. The next gate is separately approved `compare` followed by conditional read-only `preflight`; `apply` and `verify` remain forbidden.
 
+## Corrected production compare and preflight — 2026-08-28
+
+- Ahmed separately approved production `compare` followed by conditional read-only `preflight`, with `apply` and database mutation forbidden. Immediately before execution, the installed helper and inbox artifact matched exact reviewed SHA-256 values `9bb10f73b8ccb1928c15bf2d0b23af17cd9aa1bda7f5578cec70f8b951f56b9f` and `e64dae7c857bc77071368393ea4d5cb50ecc63474798e344a2c35c2554924696`.
+- `compare` returned `PASS` for `M062-PROD-R01`: `BASELINE_COUNT=8`, `CURRENT_COUNT=0`, `MIXED_STATE=0`, `DRIFT_COUNT=0`; both pinned support dependencies were current and schema was the expected `MIGRATION_REQUIRED`.
+- Conditional `preflight` returned `PASS` for runtime commit `d6c2953bda1ab6f7c74c99385782542fd853299a` and the exact artifact. The migration dry-run passed, candidate tests passed, baseline remained `8/0/0`, and the command reported `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, `PRODUCTION_ACCESSED=YES`.
+- The reviewed helper intentionally exposes the dry-run as a pass/fail gate and does not print row-level production data or mutation counts on success; no unsupported production count is claimed. Runtime, schema, database and business data remain unchanged. Work stops before separately approved production `apply` and conditional `verify`, which will create and validate full code and database backups before mutation.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
