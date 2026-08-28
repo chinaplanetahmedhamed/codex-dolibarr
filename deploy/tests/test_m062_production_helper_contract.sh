@@ -70,7 +70,11 @@ for rel in "${RUNTIME_FILES[@]}"; do
     rm -f "$target"
   else
     mkdir -p "$(dirname "$target")"
-    git -C "$repo_root" show "95402e7f22665c9efd61d648f1e545094aaf47c9:$rel" >"$target"
+    baseline_commit='95402e7f22665c9efd61d648f1e545094aaf47c9'
+    if [[ "$rel" == 'custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql' ]]; then
+      baseline_commit='2dff2fd76d8d4f6b5690c13828c3fcd58f2499b7'
+    fi
+    git -C "$repo_root" show "$baseline_commit:$rel" >"$target"
     chmod 0644 "$target"
   fi
 done

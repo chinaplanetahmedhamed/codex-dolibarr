@@ -19,6 +19,14 @@
 - Independent restricted verification after the human root install confirms `/usr/local/sbin/chinaplanetos-production-m062-ports` is `root:root 0755`, size `48357`, at the exact reviewed helper hash. `sudo -n -l` exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` for that path.
 - No M062 helper command has run. Production runtime, schema, database, business data, documents, configuration and containers remain unchanged. The next gate is separately approved `compare` followed by conditional read-only `preflight` only.
 
+## Production compare drift diagnosis — 2026-08-28
+
+- Ahmed approved production `compare` followed by conditional read-only `preflight`. The installed helper and inbox artifact matched their reviewed pins before execution.
+- `compare` stopped the gate with `BASELINE_COUNT=7`, `CURRENT_COUNT=0`, `MIXED_STATE=0`, and `DRIFT_COUNT=1`; conditional `preflight` did not run. The only drifted path was `custom/chinaplanetshippingprices/sql/llx_chinaplanetsp_rate.sql`. No runtime, schema, database or business-data mutation occurred.
+- Two independent cache-bypassed HTTPS reads returned identical live bytes for that SQL file, size `1369`, SHA-256 `13939d258df2c329616645f5ae7128e18e11df352d83bd6a93a27fc26f508831`, with public `Last-Modified` dated 2026-07-16. The bytes match Git commits `6cbd0ffbc6f7cc6030aaecad1d067c0969795c5e` and `2dff2fd76d8d4f6b5690c13828c3fcd58f2499b7`.
+- The rejected manifest SHA `b2607e9d941bf13c14260777fe50253f428a8f8a9487d43e14d2efd943afe09d` is the later translation-schema source revision from `f0b722183419ca2cfc38cb4939ae6b9d12b6d1fa`; that SQL install file was not deployed to production because the translation columns were delivered separately by migration. The production prestate manifest is corrected to the verified live SHA only; runtime behavior remains unchanged.
+- The artifact, helper and installer must now be rebuilt with rotated pins, tested and independently reviewed. Any upload, helper replacement, repeated `compare`/`preflight`, `apply`, `verify`, database change or React production deployment remains outside this local correction gate.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
