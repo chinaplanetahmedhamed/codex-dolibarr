@@ -69,8 +69,15 @@ foreach ($cases as $raw => $expected) m062Assert(m062Ports($resolver, $raw) === 
 
 $oldTransition=PortNameResolver::catalogAliasTransition('ALEXANDIRA OLD PORT');
 $tmtTransition=PortNameResolver::catalogAliasTransition('Alexandria (TMT)');
+$khalifaTransition=PortNameResolver::catalogAliasOwnershipTransition('KHALIFA PORT, ABU DHABI');
 m062Assert($oldTransition!==null&&$oldTransition['from_port']==='ALEXANDRIA'&&$oldTransition['to_port']==='ALEXANDRIA OLD PORT','Old Port catalog transition is not bounded correctly.');
 m062Assert($tmtTransition!==null&&$tmtTransition['from_port']==='ALEXANDRIA'&&$tmtTransition['to_port']==='ALEXANDRIA TMT','TMT catalog transition is not bounded correctly.');
+m062Assert($khalifaTransition!==null&&$khalifaTransition['from_port']==='ABU DHABI'&&$khalifaTransition['to_port']==='KHALIFA PORT','Khalifa Port alias ownership transition is not bounded correctly.');
+foreach(array('KHALIFA PORT / ABU DHABI','KHALIFA PORT; ABU DHABI','KHALIFA PORT + ABU DHABI','KHALIFA PORT & ABU DHABI') as $unsafeKhalifa) m062Assert(PortNameResolver::catalogAliasOwnershipTransition($unsafeKhalifa)===null,'Unsafe Khalifa ownership delimiter accepted: '.$unsafeKhalifa);
+$khalifaLegacyValues=PortNameResolver::legacyAliasValues('ABU DHABI','KHALIFA PORT, ABU DHABI');
+m062Assert($khalifaLegacyValues===array('ABU DHABI','KHALIFA PORT, ABU DHABI'),'Reviewed comma-bearing Khalifa legacy alias was split.');
+m062Assert(PortNameResolver::legacyAliasValues('ABU DHABI','UNREVIEWED PORT, ABU DHABI')===array('ABU DHABI','UNREVIEWED PORT',' ABU DHABI'),'Unreviewed comma alias must retain generic splitting.');
+foreach(array('ALEXANDRIA, TMT','ALEXANDRIA, OLD PORT','ALEXANDIRA, OLD PORT') as $alexandriaCommaList){$values=PortNameResolver::legacyAliasValues('ALEXANDRIA',$alexandriaCommaList);m062Assert(count($values)===3&&!in_array($alexandriaCommaList,$values,true),'Alexandria comma list was incorrectly preserved as an ownership literal: '.$alexandriaCommaList);}
 m062Assert(PortNameResolver::catalogAliasTransition('ALEXANDRIA')===null&&PortNameResolver::catalogAliasTransition('MANUAL ALIAS')===null,'Generic or manual aliases must not be transferable.');
 
 $exactTmtResolution=$resolver->resolveList('ALEXANDRIA TMT',true);
@@ -210,6 +217,7 @@ $importer = file_get_contents($root.'/custom/chinaplanetshippingprices/class/Shi
 m062Assert(strpos($importer, 'resolveList($podRaw, true)') !== false && strpos($importer, "'pod_raw'=>\$podRaw") !== false, 'Importer resolver/raw POD integration missing.');
 $migration = file_get_contents($root.'/deploy/migrations/m062_port_normalization.php');
 foreach (array("array('dry-run','apply','check')", 'new PortNameResolver($db,$entity,null,true)', 'GET_LOCK(', 'normalized_alias', 'NOT EXISTS(SELECT 1', 'resolved_warnings_removed', 'ACTIVE_ALIAS_CONFLICT', 'LEGACY_ALIAS_CONFLICT') as $needle) m062Assert(strpos($migration, $needle) !== false, 'Migration safety boundary missing '.$needle);
+m062Assert(strpos($migration,'legacy_alias_conflicts')!==false&&strpos($migration,'LEGACY_ALIAS_CONFLICT_PREFLIGHT')!==false&&strpos($migration,'M062_PORTS_LEGACY_ALIAS_CONFLICTS')!==false,'Dry-run and apply must reject legacy alias ownership conflicts before schema mutation.');
 m062Assert(substr_count($migration,'exactCatalogAliasTransition')===2&&strpos($migration,"alias_source!=='builtin'")!==false&&strpos($migration,'CATALOG_ALIAS_PROVENANCE_CONFLICT')!==false&&strpos($migration,'CATALOG_ALIAS_INACTIVE_CONFLICT')!==false&&strpos($migration,'RAW_RATE_CORRECTION_PRESTATE_INVALID')!==false&&strpos($migration,'catalog_alias_ownership_drift')!==false&&strpos($migration,"summary['raw_rate_drift']")!==false,'Alexandria ownership correction must reject fuzzy/manual/inactive aliases, be raw-source bounded and remain visible to check mode.');
 m062Assert(strpos($migration,'$db->begin()')!==false&&strpos($migration,'$db->commit()')!==false&&strpos($migration,'$db->rollback()')!==false&&strpos($migration,"AND alias_source='builtin'")!==false,'Alias ownership check and update must be transactionally protected and provenance-rechecked.');
 m062Assert(strpos($migration,'INSERT IGNORE INTO `".$aliasTable')===false,'Legacy alias conflicts must not be silently ignored.');

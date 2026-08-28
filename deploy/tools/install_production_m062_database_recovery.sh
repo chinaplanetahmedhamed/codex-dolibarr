@@ -5,8 +5,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly SOURCE='/home/codex-deploy/staging-inbox/recover-production-m062-database.sh'
-readonly SOURCE_SHA='ecb5b68490431be39879c77eee661bf62845be022cc3dd3a81028d61dc292a1d'
-readonly TARGET='/root/recover-production-m062-database'
+readonly SOURCE_SHA='2c892b53485c22b63c9483fad35f08514fbd4f31b6d4d6e1123894d5d70e6b15'
+readonly TARGET='/root/recover-production-m062-database-r03'
 
 private_root=''
 target_stage=''

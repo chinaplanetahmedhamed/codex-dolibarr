@@ -409,6 +409,33 @@ class PortNameResolver
         return isset($transitions[$normalized]) ? $transitions[$normalized] : null;
     }
 
+    /** Return a reviewed alias-ownership transition without erasing delimiters. */
+    public static function catalogAliasOwnershipTransition($alias)
+    {
+        $literal = mb_strtoupper(trim(preg_replace('/\s+/u', ' ', (string) $alias)), 'UTF-8');
+        if ($literal === 'KHALIFA PORT, ABU DHABI') {
+            return array('from_port'=>'ABU DHABI','from_country'=>'AE','to_port'=>'KHALIFA PORT','to_country'=>'AE');
+        }
+        return self::catalogAliasTransition($alias);
+    }
+
+    /** Only this reviewed comma-bearing literal may bypass legacy comma splitting. */
+    public static function isReviewedCommaAlias($alias)
+    {
+        return mb_strtoupper(trim(preg_replace('/\s+/u', ' ', (string) $alias)), 'UTF-8') === 'KHALIFA PORT, ABU DHABI';
+    }
+
+    /** Parse the legacy comma list while preserving reviewed comma-bearing literals only. */
+    public static function legacyAliasValues($portName, $aliases)
+    {
+        $values = array((string) $portName);
+        $raw = trim((string) $aliases);
+        if ($raw === '') return $values;
+        if (self::isReviewedCommaAlias($raw)) $values[] = $raw;
+        else $values = array_merge($values, preg_split('/[,\r\n]+/', $raw, -1, PREG_SPLIT_NO_EMPTY));
+        return $values;
+    }
+
     /** Return a catalog transition only for a one-destination exact match. */
     public static function exactCatalogAliasTransition($resolution)
     {

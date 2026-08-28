@@ -12,7 +12,7 @@ bash -n "$installer" || fail SYNTAX
 recovery_sha=$(sha256 "$recovery")
 [[ $(grep -Fxc "readonly SOURCE_SHA='$recovery_sha'" "$installer") == 1 ]] || fail RECOVERY_HASH_PIN
 grep -Fq "readonly SOURCE='/home/codex-deploy/staging-inbox/recover-production-m062-database.sh'" "$installer" || fail SOURCE_PATH_PIN
-grep -Fq "readonly TARGET='/root/recover-production-m062-database'" "$installer" || fail TARGET_PATH_PIN
+grep -Fq "readonly TARGET='/root/recover-production-m062-database-r03'" "$installer" || fail TARGET_PATH_PIN
 grep -Fq "'codex-deploy:codex-deploy 644'" "$installer" || fail SOURCE_METADATA_GATE
 grep -Fq "'root:root 700'" "$installer" || fail TARGET_METADATA_GATE
 grep -Fq "die 'UNEXPECTED_EXISTING_TARGET'" "$installer" || fail EXISTING_TARGET_GATE

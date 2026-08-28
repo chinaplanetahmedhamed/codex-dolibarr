@@ -60,13 +60,36 @@ $catalogOwnershipDrift = function () use ($db,$entity,$portTable,$aliasTable) {
     return $drift;
 };
 
+$legacyAliasConflicts = function () use ($db,$entity,$portTable) {
+    $owners=array();$canonicalNames=array();
+    foreach(PortNameResolver::catalog() as $definition){
+        $canonicalNames[PortNameResolver::normalize($definition['port_name']).'|'.$definition['country_code']]=$definition['port_name'];
+        foreach(array_merge(array($definition['port_name']),$definition['aliases']) as $alias){$normalized=PortNameResolver::normalize($alias);if($normalized!=='')$owners[$normalized]=array('port_name'=>$definition['port_name'],'country_code'=>$definition['country_code']);}
+    }
+    $ports=array();$res=m062Query($db,"SELECT rowid,port_name,country_code,aliases FROM `".$portTable."` WHERE entity=".$entity." AND status=1 ORDER BY rowid",'LEGACY_ALIAS_PREFLIGHT_READ_FAILED');
+    while($port=$db->fetch_object($res))$ports[]=$port;
+    $conflicts=array();
+    foreach($ports as $port){
+        $country=(string)$port->country_code;$portNormalized=PortNameResolver::normalize($port->port_name);$canonicalKey=$portNormalized.'|'.$country;$effectiveName=$canonicalNames[$canonicalKey]??$port->port_name;
+        if(isset($owners[$portNormalized])&&($owners[$portNormalized]['port_name']!==$effectiveName||$owners[$portNormalized]['country_code']!==$country))continue;
+        foreach(PortNameResolver::legacyAliasValues($port->port_name,$port->aliases)as$alias){
+            $alias=trim($alias);$normalized=PortNameResolver::normalize($alias);if($normalized===''||!isset($owners[$normalized]))continue;$expected=$owners[$normalized];
+            if($expected['port_name']===$effectiveName&&$expected['country_code']===$country)continue;
+            $transition=PortNameResolver::catalogAliasOwnershipTransition($alias);$allowed=$transition&&$effectiveName===$transition['from_port']&&$country===$transition['from_country']&&$expected['port_name']===$transition['to_port']&&$expected['country_code']===$transition['to_country'];
+            if(!$allowed)$conflicts[]=array('normalized_alias'=>$normalized,'legacy_port'=>$effectiveName,'legacy_country'=>$country,'catalog_port'=>$expected['port_name'],'catalog_country'=>$expected['country_code']);
+        }
+    }
+    return $conflicts;
+};
+
 if ($argv[1] === 'dry-run') {
     // Read-only preflight runs before the alias table exists. This is the only
     // caller allowed to assess curated literal resolvability without a linked
     // alias row; apply/check and all runtime callers require database port IDs.
     $summary=$inspect(new PortNameResolver($db,$entity,null,true));
+    $summary['legacy_alias_conflicts']=$legacyAliasConflicts();
     echo 'M062_PORTS_DRY_RUN='.json_encode($summary,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
-    exit(empty($summary['remaining'])?0:2);
+    exit(empty($summary['remaining'])&&empty($summary['legacy_alias_conflicts'])?0:2);
 }
 
 $schemaReady = function () use ($db,$aliasTable,$rateTable) {
@@ -89,6 +112,8 @@ if ($argv[1] === 'check') {
 }
 
 $lockName='chinaplanetos:m062:entity:'.$entity;
+$preflightLegacyConflicts=$legacyAliasConflicts();
+if(!empty($preflightLegacyConflicts)){fwrite(STDERR,'M062_PORTS_LEGACY_ALIAS_CONFLICTS='.json_encode($preflightLegacyConflicts,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n");m062Fail('LEGACY_ALIAS_CONFLICT_PREFLIGHT');}
 $lockRes=m062Query($db,"SELECT GET_LOCK('".$db->escape($lockName)."',0) acquired",'LOCK_CHECK_FAILED');
 $lock=$db->fetch_object($lockRes);if(!$lock||(int)$lock->acquired!==1)m062Fail('MIGRATION_LOCKED');
 $releaseLock=function()use($db,$lockName){$db->query("SELECT RELEASE_LOCK('".$db->escape($lockName)."')");};
@@ -122,7 +147,7 @@ try {
             if($existingAlias){
                 if($existingAlias->alias_source!=='builtin')m062Fail('CATALOG_ALIAS_PROVENANCE_CONFLICT');
                 if((int)$existingAlias->status!==1)m062Fail('CATALOG_ALIAS_INACTIVE_CONFLICT');
-                if((int)$existingAlias->fk_port!==$portId){$transition=PortNameResolver::catalogAliasTransition($normalized);$allowed=$transition&&$existingAlias->owner_port_name===$transition['from_port']&&$existingAlias->owner_country_code===$transition['from_country']&&$definition['port_name']===$transition['to_port']&&$definition['country_code']===$transition['to_country'];if(!$allowed)m062Fail('ACTIVE_ALIAS_CONFLICT');$transferredBuiltinAliases++;}
+                if((int)$existingAlias->fk_port!==$portId){$transition=PortNameResolver::catalogAliasOwnershipTransition($alias);$allowed=$transition&&$existingAlias->owner_port_name===$transition['from_port']&&$existingAlias->owner_country_code===$transition['from_country']&&$definition['port_name']===$transition['to_port']&&$definition['country_code']===$transition['to_country'];if(!$allowed)m062Fail('ACTIVE_ALIAS_CONFLICT');$transferredBuiltinAliases++;}
             }
             if($existingAlias)$sql="UPDATE `".$aliasTable."` SET fk_port=".$portId.",alias_name='".$db->escape($alias)."',alias_source='builtin',status=1,fk_user_modif=".$userId." WHERE entity=".$entity." AND rowid=".(int)$existingAlias->rowid." AND fk_port=".(int)$existingAlias->fk_port." AND status=1 AND alias_source='builtin'";
             else $sql="INSERT INTO `".$aliasTable."`(entity,fk_port,alias_name,normalized_alias,alias_source,status,fk_user_creat,date_creation) VALUES(".$entity.",".$portId.",'".$db->escape($alias)."','".$db->escape($normalized)."','builtin',1,".$userId.",'".$now."')";
@@ -135,10 +160,10 @@ try {
     while($port=$db->fetch_object($ports)){$normalized=PortNameResolver::normalize($port->port_name);$res=m062Query($db,"SELECT fk_port FROM `".$aliasTable."` WHERE entity=".$entity." AND normalized_alias='".$db->escape($normalized)."' AND status=1",'PORT_DEDUPE_ALIAS_FAILED');$alias=$db->fetch_object($res);if($alias&&(int)$alias->fk_port!==(int)$port->rowid){m062Query($db,"UPDATE `".$portTable."` SET status=0,fk_user_modif=".$userId." WHERE entity=".$entity." AND rowid=".(int)$port->rowid,'DUPLICATE_PORT_ARCHIVE_FAILED');$archivedPorts++;}}
 
     $legacy=m062Query($db,"SELECT rowid,port_name,aliases FROM `".$portTable."` WHERE entity=".$entity." AND status=1 ORDER BY rowid",'LEGACY_PORT_READ_FAILED');
-    while($port=$db->fetch_object($legacy))foreach(array_merge(array($port->port_name),preg_split('/[,\r\n]+/',(string)$port->aliases,-1,PREG_SPLIT_NO_EMPTY))as$alias){
+    while($port=$db->fetch_object($legacy))foreach(PortNameResolver::legacyAliasValues($port->port_name,$port->aliases)as$alias){
         $alias=trim($alias);$normalized=PortNameResolver::normalize($alias);if($normalized==='')continue;
         $existing=m062Query($db,"SELECT a.rowid,a.fk_port,a.status,a.alias_source,p.port_name owner_port_name,p.country_code owner_country_code FROM `".$aliasTable."` a LEFT JOIN `".$portTable."` p ON p.rowid=a.fk_port AND p.entity=a.entity WHERE a.entity=".$entity." AND a.normalized_alias='".$db->escape($normalized)."' FOR UPDATE",'LEGACY_ALIAS_LOOKUP_FAILED');$existingAlias=$db->fetch_object($existing);
-        if($existingAlias&&(int)$existingAlias->status===1&&(int)$existingAlias->fk_port!==(int)$port->rowid){$transition=PortNameResolver::catalogAliasTransition($normalized);$expectedLegacy=$transition&&$port->port_name===$transition['from_port']&&$existingAlias->alias_source==='builtin'&&$existingAlias->owner_port_name===$transition['to_port']&&$existingAlias->owner_country_code===$transition['to_country'];if($expectedLegacy)continue;m062Fail('LEGACY_ALIAS_CONFLICT');}
+        if($existingAlias&&(int)$existingAlias->status===1&&(int)$existingAlias->fk_port!==(int)$port->rowid){$transition=PortNameResolver::catalogAliasOwnershipTransition($alias);$expectedLegacy=$transition&&$port->port_name===$transition['from_port']&&$existingAlias->alias_source==='builtin'&&$existingAlias->owner_port_name===$transition['to_port']&&$existingAlias->owner_country_code===$transition['to_country'];if($expectedLegacy)continue;m062Fail('LEGACY_ALIAS_CONFLICT');}
         if(!$existingAlias)m062Query($db,"INSERT INTO `".$aliasTable."`(entity,fk_port,alias_name,normalized_alias,alias_source,status,fk_user_creat,date_creation) VALUES(".$entity.",".(int)$port->rowid.",'".$db->escape($alias)."','".$db->escape($normalized)."','legacy',1,".$userId.",'".$now."')",'LEGACY_ALIAS_IMPORT_FAILED');
         elseif((int)$existingAlias->status!==1)m062Query($db,"UPDATE `".$aliasTable."` SET fk_port=".(int)$port->rowid.",alias_name='".$db->escape($alias)."',alias_source='legacy',status=1,fk_user_modif=".$userId." WHERE entity=".$entity." AND rowid=".(int)$existingAlias->rowid,'LEGACY_ALIAS_RESTORE_FAILED');
     }

@@ -23,7 +23,7 @@ grep -Fq "SOURCE_FINGERPRINT" "$recovery" || fail SOURCE_FINGERPRINT
 grep -Fq "ACTIVE_FINGERPRINT_MISMATCH" "$recovery" || fail ACTIVE_FINGERPRINT
 grep -Fq "verify_prestate" "$recovery" || fail PRESTATE_CHECK
 grep -Fq 'verify_prestate "$SOURCE_VALIDATION_DB"' "$recovery" || fail SOURCE_PRESTATE_CHECK
-grep -Fq "rowid=407 AND pod='AGADIR, Morocco'" "$recovery" || fail ROOT_CAUSE_ROW_PRESTATE
+grep -Fq "rowid=407 AND pod='CASABLANCA'" "$recovery" || fail SOURCE_ROW_PRESTATE
 grep -Fq "pod='KHALIFA PORT, ABU DHABI'" "$recovery" || fail KHALIFA_PRESTATE
 grep -Fq '[[ "$khalifa_rows" == 24 && "$agadir_rows" == 22 ]]' "$recovery" || fail RATE_COUNTS_PRESTATE
 grep -Fq "restore_safety_backup" "$recovery" || fail AUTO_RESTORE
@@ -42,7 +42,7 @@ grep -Fq 'ensure_erp_stopped || erp_stop_verified=NO' "$recovery" || fail MANUAL
 grep -Fq "STATE_ARCHIVE" "$recovery" || fail STATE_ARCHIVE
 grep -Fq "PRODUCTION_ACCESSED=YES" "$recovery" || fail PRODUCTION_EVIDENCE
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz/'" "$recovery" || fail HTTP_TARGET_PIN
-grep -Fq "'/root/recover-production-m062-database'" "$recovery" || fail INVOCATION_PATH_PIN
+grep -Fq "'/root/recover-production-m062-database-r03'" "$recovery" || fail INVOCATION_PATH_PIN
 if grep -Eq 'erp-staging|backup-erp|127\.0\.0\.1:18088|/opt/codex-dolibarr-staging' "$recovery"; then fail FORBIDDEN_STAGING_TARGET; fi
 if grep -Eq 'rm -rf|docker (compose|rm|volume rm)|systemctl|reboot|shutdown' "$recovery"; then fail EXPANDED_MUTATION; fi
 

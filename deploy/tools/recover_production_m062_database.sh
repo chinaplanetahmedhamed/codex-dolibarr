@@ -146,14 +146,17 @@ dump_active_database() {
 }
 
 verify_prestate() {
-  local db=$1 schema_count row_407 khalifa_rows agadir_rows
+  local db=$1 schema_count row_407 row_407_pod row_407_pod_hex khalifa_rows agadir_rows
   [[ "$db" =~ ^m062_recovery_source_[0-9]+_[a-f0-9]{8}$ || "$db" == "$DB_NAME" ]] || return 1
   schema_count=$(db_root_sql "SELECT (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}' AND table_name='llx_chinaplanetsp_port_alias') + (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='${db}' AND table_name='llx_chinaplanetsp_rate' AND column_name IN ('pod_raw','fk_destination_port','port_match_method','port_match_score')) + (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='${db}' AND table_name='llx_chinaplanetsp_rate' AND index_name='idx_chinaplanetsp_rate_destination_port')")
   [[ "$schema_count" == 0 ]] || return 1
-  row_407=$(db_root_sql "SELECT COUNT(*) FROM \`${db}\`.llx_chinaplanetsp_rate WHERE rowid=407 AND pod='AGADIR, Morocco'")
-  [[ "$row_407" == 1 ]] || return 1
+  row_407=$(db_root_sql "SELECT COUNT(*) FROM \`${db}\`.llx_chinaplanetsp_rate WHERE rowid=407 AND pod='CASABLANCA'")
+  row_407_pod=$(db_root_sql "SELECT COALESCE(pod,'<NULL>') FROM \`${db}\`.llx_chinaplanetsp_rate WHERE rowid=407 LIMIT 1")
+  row_407_pod_hex=$(printf '%s' "$row_407_pod" | od -An -tx1 | tr -d ' \n')
   khalifa_rows=$(db_root_sql "SELECT COUNT(*) FROM \`${db}\`.llx_chinaplanetsp_rate WHERE pod='KHALIFA PORT, ABU DHABI'")
   agadir_rows=$(db_root_sql "SELECT COUNT(*) FROM \`${db}\`.llx_chinaplanetsp_rate WHERE pod='AGADIR, Morocco'")
+  echo "M062_DB_RECOVERY_PRESTATE DB=$db SCHEMA_COUNT=$schema_count ROW_407_CASABLANCA=$row_407 ROW_407_POD_HEX=$row_407_pod_hex KHALIFA_ROWS=$khalifa_rows AGADIR_MOROCCO_ROWS=$agadir_rows" >&2
+  [[ "$row_407" == 1 ]] || return 1
   [[ "$khalifa_rows" == 24 && "$agadir_rows" == 22 ]]
 }
 
@@ -294,7 +297,7 @@ if [[ ${M062_DB_RECOVERY_LIBRARY_MODE:-0} == 1 ]]; then
 fi
 
 [[ $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
-[[ "$0" == '/root/recover-production-m062-database' && -f "$0" && ! -L "$0" && $(owner_group_of "$0") == root:root && $(mode_of "$0") == 700 ]] || die 'RECOVERY_PATH_NOT_ALLOWED'
+[[ "$0" == '/root/recover-production-m062-database-r03' && -f "$0" && ! -L "$0" && $(owner_group_of "$0") == root:root && $(mode_of "$0") == 700 ]] || die 'RECOVERY_PATH_NOT_ALLOWED'
 [[ $# -eq 0 ]] || die 'ARGUMENTS_FORBIDDEN'
 
 for root in "$STATE_ROOT" "$DB_BACKUP_ROOT"; do
