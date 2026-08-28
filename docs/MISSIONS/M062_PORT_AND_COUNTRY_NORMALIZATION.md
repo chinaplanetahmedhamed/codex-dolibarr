@@ -12,6 +12,13 @@
 - Security rejected the first corrected helper before upload because per-file baseline/current acceptance allowed a partial mixed prestate. The final helper counts exact states and requires all eight runtime paths to be the verified baseline (six hashes plus two `ABSENT`) for preflight and every apply/reapply entry. Any baseline/current mixture is classified as drift; all-current is accepted only through recorded deployed-state verification/reconciliation. The final pins below must be rotated and re-reviewed.
 - Required live order is gated: (1) reviewed upload and helper/sudoers install only; (2) separately approved `compare` and conditional read-only `preflight`; (3) separately approved ERP `apply` and `verify` with full code/database backups; (4) public ERP API acceptance; (5) merge the exact accepted React tree to `main`, redeploy and reaccept staging from `main`; (6) dispatch the checksum-resolved production React workflow and verify desktop/390px RTL/LTR. Any failure stops the sequence and preserves the last verified live state.
 
+## Production helper installation — 2026-08-28
+
+- Ahmed approved upload and installation of the reviewed `M062-PROD-R01` helper/sudoers only, with no helper command and no database change.
+- All four inbox files were uploaded as `codex-deploy:codex-deploy 0644` and independently matched their reviewed hashes: artifact `694b029d61777c4b542f5d9f56f0586e936f8b161fd939af3149c8b171b9f3f3`, helper `59aa892b00fa06f31c747abd84d494f960dbd1b7b91f918906310f334ec37306`, sudoers `4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf`, and installer `bb8538d678c4183d9e4c1dbd8465ba6108e62d7555a6f96b9df2db61fa760922`.
+- Independent restricted verification after the human root install confirms `/usr/local/sbin/chinaplanetos-production-m062-ports` is `root:root 0755`, size `48357`, at the exact reviewed helper hash. `sudo -n -l` exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` for that path.
+- No M062 helper command has run. Production runtime, schema, database, business data, documents, configuration and containers remain unchanged. The next gate is separately approved `compare` followed by conditional read-only `preflight` only.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
