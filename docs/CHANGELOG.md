@@ -1,5 +1,45 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-28 — M062-R04 separate Alexandria terminal trends
+
+- Replaced the intentionally empty grouped Alexandria history contract with independently queried Old Port, TMT and optional terminal-not-specified series; no terminal prices are averaged together.
+- Added a backward-compatible React multi-series chart with separate currency axes, localized terminal legend and fail-closed rejection of grouped flat fallback points.
+- Prepared a checksum-pinned, one-file, code-only `backup-erp` R04 release with deterministic artifact, unchanged sudoers and automatic rollback/reconciliation tests. Staging deployment and viewport acceptance are recorded separately after execution; production remains forbidden.
+- Deployed and independently verified R04 on canonical staging, then deployed exact React SHA `53da1bf` through GitHub Actions. Live grouped API plus Arabic/English desktop and 390px acceptance passed with separate Old Port/TMT history lines; database and production were untouched.
+- Prepared a production-only one-file ERP release and protected GitHub workflow with exact artifact/helper/sudoers/installer pins, independent rollback state, no migration/database command, and separate upload versus deployment gates. Production remained unchanged pending frozen-package Security/QA/Shipping review and Ahmed's next exact gate.
+
+## 2026-08-28 — M062 production backup-validation hardening
+
+- Preserved the strict full-database restore/fingerprint validation while preventing false mismatches from live ERP writes by briefly quiescing only the exact production Dolibarr container during backup validation.
+- Added durable interrupted-quiesce recovery, exact container identity checks, automatic ERP restart/HTTPS verification on success or failure, and focused contract/recovery coverage.
+- Kept the exact reviewed runtime commit and artifact unchanged; the failed production apply made no schema, code or business-data mutation.
+- Deployed and independently verified the exact M062 runtime/schema/data package in production. Live public search now presents one Alexandria option and terminal-specific Old Port/TMT cards; no booking was submitted during acceptance.
+
+## 2026-08-28 — M062-R03 Alexandria public-search staging package
+
+- Added a deterministic code-only staging artifact and checksum-pinned replacement helper for the one-file public shipping gateway correction, with both unchanged PHP dependencies carried as support-only candidate-test closure.
+- Preserved the deployed M062-R02 database/schema/runtime state while isolating R03 code backup, state and rollback evidence.
+- Added fault-injection coverage proving failed apply-state publication restores the baseline and failed post-restore rollback validation re-applies the exact deployed release.
+- Deployed and independently verified the exact one-file gateway correction on canonical `backup-erp`, then deployed the matching React tree to `new.chinaplanet.org`; live desktop and 390px Arabic/English acceptance passed with one Alexandria option and exact Old Port/TMT cards. No database or production change occurred.
+- Enforced ERP gateway deployment and verification before the related React staging release; production remains forbidden.
+
+## 2026-08-28 — M062 Alexandria public-search grouping
+
+- Collapsed generic Alexandria, Old Port and TMT into one customer destination option while preserving three exact ERP pricing identities.
+- Expanded the grouped search only inside the public-safe gateway, with exact terminal filters embedded in each encrypted booking token for submit-time revalidation.
+- Added explicit terminal labels to public React price cards and a fail-safe `Terminal not specified` label for genuinely generic Alexandria rates.
+- Suppressed mixed Alexandria terminal history instead of presenting a misleading combined trend; all other exact-route trends remain unchanged.
+- Added focused PHP and React regressions; complete React lint, server tests, UI tests and build passed. Local source only; no database, staging or production change.
+
+## 2026-08-25 — M062 port and country normalization
+
+- Replaced prefix-only destination-country detection with one entity-scoped canonical port resolver that normalizes case, punctuation, Unicode variants and verified aliases before using a conservative fuzzy fallback.
+- Added a unique normalized-alias table plus raw POD, canonical-port and match-evidence fields; the administrator workflow now rejects alias collisions, validates entity ownership and archives mappings instead of deleting them.
+- Correctly separates recognized origin prefixes and all-or-nothing multi-destination values, including `SHEKOU-- SKIKDA, ANNABA`, `NANSHA-- SKIKDA, ANNABA`, `BEJAIA/SKIKDA`, `Oran/CASABLANCA`, `SFAX & SOUSSE` and `TUNIS / RADES`.
+- Backed up the local Dolibarr database, restored it once while correcting visibility preservation, then applied the idempotent migration: 3,023 unmapped rows across 36 POD strings became zero; 791 destination rows were added for valid composite routes; all 1,422 resolved destination warnings were removed while 542 historical shipping-line warnings were retained.
+- Focused resolver/importer/current-data tests, migration rerun/check, PHP lint, source regressions and authenticated desktop/390px administration checks passed. Existing published-rate integration remains time-blocked because the local rate validity window expired; no validity rule was bypassed.
+- Local development database and source only. No Customer Portal/mobile UI, API contract, staging, production, outbound message or Git push was changed.
+
 ## 2026-08-15 — M060 internal task card collaboration
 
 - Added task-scoped plain-text comments, authorized mentions and a recipient-only in-app notification inbox with request-key replay protection, stable cursor pagination and administrator logical redaction.

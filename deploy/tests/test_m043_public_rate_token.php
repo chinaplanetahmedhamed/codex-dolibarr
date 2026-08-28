@@ -31,7 +31,7 @@ try {
     m043Assert($countries['countries'][0]['code'] === 'EG' && empty($countries['routes']), 'country options missing');
     $routes = $service->routeOptions(array('country_code'=>'eg'));
     m043Assert($routes['country_code'] === 'EG' && $routes['routes'][0]['pod'] === 'ALEXANDRIA', 'dependent route options missing');
-    $trend = $service->priceTrend(array('country_code'=>'EG','pol'=>'NANSHA','pod'=>'ALEXANDRIA','container_type'=>'40HQ'));
+    $trend = $service->priceTrend(array('country_code'=>'EG','pol'=>'NANSHA','pod'=>'SOKHNA','container_type'=>'40HQ'));
     m043Assert($trend['reference_only'] === true && $trend['points'][0]['price'] === 2300.00, 'public trend projection missing');
     $trendJson = json_encode($trend);
     foreach (array('cost_price','supplier_cost','base_margin','rate_id','fingerprint','shipping_line') as $forbidden) m043Assert(strpos($trendJson, $forbidden) === false, 'public trend leaks '.$forbidden);

@@ -9,6 +9,10 @@ CREATE TABLE llx_chinaplanetsp_rate (
   pol varchar(128) NOT NULL,
   destination_country char(2) NULL,
   pod varchar(160) NOT NULL,
+  pod_raw varchar(160) NULL,
+  fk_destination_port bigint NULL,
+  port_match_method varchar(16) NOT NULL DEFAULT 'legacy',
+  port_match_score decimal(5,4) NULL,
   shipping_line varchar(80) NOT NULL,
   service_type varchar(16) NOT NULL DEFAULT 'unknown',
   route_detail varchar(512) NULL,
@@ -39,6 +43,7 @@ CREATE TABLE llx_chinaplanetsp_rate (
   KEY idx_chinaplanetsp_rate_batch (fk_batch),
   KEY idx_chinaplanetsp_rate_current (entity, is_current, status, destination_country, pod),
   KEY idx_chinaplanetsp_rate_route (entity, pol, pod, shipping_line, container_type, service_type),
+  KEY idx_chinaplanetsp_rate_destination_port (entity, fk_destination_port, status),
   KEY idx_chinaplanetsp_rate_history (entity, valid_from, pod, container_type),
   KEY idx_chinaplanetsp_rate_translation (entity, fk_batch, translation_status)
 ) ENGINE=innodb;

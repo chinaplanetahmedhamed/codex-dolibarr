@@ -1,5 +1,17 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-08-28 — M062 Alexandria public-search grouping
+
+- Source change: the public China Planet website shows one `ALEXANDRIA` POD option, while its public-safe Dolibarr gateway returns separate generic, Old Port and TMT price cards and exact terminal-bound booking tokens.
+- Admin ERP: `DATA_MODEL_UNCHANGED`; the three canonical pricing destinations and their rate rows remain distinct. Only the restricted public projection changes.
+- Customer Portal: `NOT_APPLICABLE_UNCHANGED`; no authenticated Customer Center route, terminology, permission or data contract changed.
+- Mobile App: `NOT_APPLICABLE_UNCHANGED`; `/api/mobile/v1` and native customer screens do not expose this public price-search flow.
+- Public React: `LOCAL_IMPLEMENTED_AND_TESTED`; cards identify the exact terminal in Arabic, English and French. Generic Alexandria is labelled terminal not specified and is never reassigned.
+- API/data dependency: `React -> secure Node API -> Dolibarr` remains unchanged. Public results expose no internal IDs, supplier cost, margin or private metadata; booking revalidation uses the exact terminal encoded in the encrypted rate token.
+- Design/terminology impact: one dropdown option replaces the Old Port/TMT choices; terminal identity moves to a prominent card badge. Mixed-terminal historical charts are withheld.
+- Phone verification: deterministic UI/library tests and production build pass; real 390px and desktop browser acceptance remains pending a separately approved React staging deployment.
+- Status: `PUBLIC_REACT_LOCAL_VERIFIED`, `ADMIN_DATA_MODEL_UNCHANGED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_DEPLOYED`, `PRODUCTION_NOT_ACCESSED`.
+
 ## 2026-08-15 — M060 internal task card collaboration
 
 - Source change: extends the staff-only Dolibarr task card with comments, authorized mentions, internal notifications, checklists, reusable labels, private drag/drop/paste assets, image lightbox and safe board counters.
@@ -343,3 +355,13 @@ For every relevant change:
 - أثر التصميم والمصطلحات: صف إضافي صغير في نموذج تعديل الإدارة فقط: `Send email notification / إرسال إشعار بالبريد`. لا تغيير مرئي في البوابة أو التطبيق.
 - التحقق على الهاتف: `STAGING_390PX_PASS` للإدارة؛ ظهر خيار البريد وزر التحديث دون تجاوز أفقي. محاولة الإرسال التجريبية حفظت الحالة وأظهرت فشل البريد وإعادة المحاولة بأمان، لكن إعداد PHP mail في staging منع إثبات Mailpit/Agenda/الرابط.
 - الحالة: `ADMIN_STAGING_UI_VERIFIED`, `PORTAL_BEHAVIOR_UNCHANGED`, `MOBILE_BEHAVIOR_UNCHANGED`, `STAGING_SMTP_BLOCKED_SAFE`, `PRODUCTION_RELEASE_APPROVED_PENDING_DEPLOYMENT`.
+
+### 2026-08-25 — M062 توحيد الموانئ والدول
+
+- تغيير المصدر: أضيف resolver موحد لأسماء الموانئ مع aliases فريدة وتطبيع case/punctuation/Unicode وfuzzy matching محافظ، مع فصل origin عن destination وتقسيم الوجهات المركبة فقط عندما تنجح كل الأجزاء.
+- ERP الإداري: `LOCAL_RUNTIME_VERIFIED`؛ أصبحت الأسماء المطلوبة موانئ canonical مرتبطة بدولتها، وحُفظ النص الخام ودليل طريقة المطابقة، ومنعت الشاشة تضارب aliases والـ IDs خارج الكيان وأصبحت الإزالة أرشفة منطقية.
+- بوابة العميل: `SHARED_DATA_BEHAVIOR_CORRECTED`؛ لا تغيير في المسار أو التصميم أو الصلاحيات أو DTO، لكن البحث الحالي يستهلك نفس صفوف الأسعار بعد تصحيح POD والدولة. لم يُنشر هذا التغيير إلى runtime البوابة.
+- تطبيق الهاتف: `NOT_APPLICABLE_UI`؛ لا تغيير في `/api/mobile/v1` أو شاشة أصلية أو عقد بيانات. أثر البيانات المشترك لن يظهر إلا بعد إصدار مستقل.
+- اعتماد API والبيانات: schema إضافي داخلي وجدول aliases وحقول audit فقط؛ لا تكلفة أو هامش أو مورد أو بيانات عميل جديدة في الإسقاط العام.
+- أثر التصميم والمصطلحات: لا تغيير مرئي للعميل. شاشة الإدارة اجتازت جلسة موظف محلية على desktop و`390px`، وعرضت جدول unmapped فارغًا وأزرار Archive.
+- الحالة: `ADMIN_LOCAL_RUNTIME_VERIFIED`, `PORTAL_SHARED_DATA_SOURCE_CORRECTED`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.

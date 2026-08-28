@@ -1,13 +1,14 @@
 <?php
 
 require_once __DIR__.'/ShippingNoteTranslationService.class.php';
+require_once __DIR__.'/PortNameResolver.class.php';
 
 class ShippingPriceImporter
 {
     private $db;
     private $entity;
     private $user;
-    private $countryMap;
+    private $portResolver;
     private $lastImportResults = array();
 
     public function __construct($db, $user, $entity = null, $translator = null)
@@ -15,8 +16,7 @@ class ShippingPriceImporter
         $this->db = $db;
         $this->user = $user;
         $this->entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
-        $this->countryMap = $this->defaultCountryMap();
-        $this->loadSavedCountryMap();
+        $this->portResolver = new PortNameResolver($db, $this->entity);
     }
 
     public function importFile($path, $originalName, array $options)
@@ -250,12 +250,25 @@ class ShippingPriceImporter
             if ($origin !== '') $lastOrigin = $origin; else $origin = $lastOrigin;
             $podRaw = trim((string) $this->cellValue($sheet, $meta['pod_col'], $r));
             if ($podRaw === '' || $origin === '') continue;
-            $pod = $this->cleanPod($podRaw);
-            if ($pod === '') continue;
+            $resolvedDestination = $this->portResolver->resolveList($podRaw, true);
+            $destinations = array();
+            if ($resolvedDestination['status'] === 'matched') {
+                $destinationMethod = count($resolvedDestination['matches']) > 1 ? 'composite' : null;
+                foreach ($resolvedDestination['matches'] as $match) {
+                    $destinations[] = array(
+                        'pod'=>$match['port_name'], 'country'=>$match['country_code'], 'fk_port'=>(int)($match['fk_port'] ?? 0),
+                        'method'=>$destinationMethod ?: ($match['method'] ?? ($resolvedDestination['method'] ?? 'exact')), 'score'=>(float)($match['score'] ?? ($resolvedDestination['score'] ?? 1.0)),
+                    );
+                }
+            } else {
+                $pod = $this->cleanPod($podRaw);
+                if ($pod === '') continue;
+                $destinations[] = array('pod'=>$pod, 'country'=>'', 'fk_port'=>0, 'method'=>$resolvedDestination['status'], 'score'=>(float)($resolvedDestination['best_score'] ?? 0));
+                $warningLabel = $resolvedDestination['status'] === 'ambiguous' ? 'Ambiguous destination port: ' : 'Unmapped destination port/country: ';
+                $warnings['country:'.$podRaw] = $warningLabel.$podRaw;
+            }
             $route = trim((string) $this->cellValue($sheet, $meta['route_col'], $r));
             $originData = $this->parseOrigin($origin);
-            $country = $this->countryForPod($pod);
-            if ($country === '') $warnings['country:'.$pod] = 'Unmapped destination country: '.$pod;
             if ($originData['line'] === 'UNKNOWN') $warnings['line:'.$origin] = 'Unmapped shipping line: '.$origin;
             $foundPrice = false; $acceptedPrices = array();
             foreach ($meta['price_cols'] as $col => $container) {
@@ -275,27 +288,23 @@ class ShippingPriceImporter
                 $margin = $this->containerMargin($container);
                 $acceptedPrices[] = array('cell'=>$cell, 'container'=>$container, 'cost'=>$cost, 'sale'=>$cost + $margin);
             }
-            if (!$foundPrice) $ignored[] = array('row' => $r, 'cell' => '', 'reason' => 'no_usable_price', 'value' => $pod);
+            if (!$foundPrice) $ignored[] = array('row' => $r, 'cell' => '', 'reason' => 'no_usable_price', 'value' => $podRaw);
             if (!$acceptedPrices) continue;
             $notesRaw = (string) $this->cellValue($sheet, $meta['notes_col'], $r);
             $notes = ShippingNoteTranslationService::normalizeSource($notesRaw);
             $translation = $this->translationForNote($notes);
-            foreach ($acceptedPrices as $acceptedPrice) {
+            foreach ($acceptedPrices as $acceptedPrice) foreach ($destinations as $destination) {
                 $rows[] = array(
                     'source_row' => $r, 'source_cell' => $acceptedPrice['cell']->getCoordinate(), 'region' => $originData['region'],
-                    'pol' => $originData['pol'], 'country' => $country, 'pod' => $pod, 'line' => $originData['line'],
-                    'service' => $this->serviceType($route), 'route' => $route, 'container' => $acceptedPrice['container'],
+                    'pol' => $originData['pol'], 'country' => $destination['country'], 'pod' => $destination['pod'], 'pod_raw'=>$podRaw,
+                    'fk_destination_port'=>$destination['fk_port'], 'port_match_method'=>$destination['method'], 'port_match_score'=>$destination['score'],
+                    'line' => $originData['line'], 'service' => $this->serviceType($route), 'route' => $route, 'container' => $acceptedPrice['container'],
                     'cost' => $acceptedPrice['cost'], 'sale' => $acceptedPrice['sale'], 'currency' => $currency,
-                    'public_visible' => ($country !== '' && $originData['pol'] !== 'UNKNOWN' && $originData['line'] !== 'UNKNOWN') ? 1 : 0,
-                    'source_notes_raw' => $notesRaw,
-                    'source_notes' => $notes,
-                    'notes_en' => $translation['notes_en'],
-                    'translation_status' => $translation['status'],
-                    'translation_source_hash' => $translation['source_hash'],
-                    'translation_provider' => $translation['provider'],
-                    'translation_model' => $translation['model'],
-                    'translation_error' => $translation['error'],
-                    'public_notes' => $translation['status'] === 'approved' ? $translation['notes_en'] : '',
+                    'public_visible' => ($destination['country'] !== '' && $originData['pol'] !== 'UNKNOWN' && $originData['line'] !== 'UNKNOWN') ? 1 : 0,
+                    'source_notes_raw' => $notesRaw, 'source_notes' => $notes, 'notes_en' => $translation['notes_en'],
+                    'translation_status' => $translation['status'], 'translation_source_hash' => $translation['source_hash'],
+                    'translation_provider' => $translation['provider'], 'translation_model' => $translation['model'],
+                    'translation_error' => $translation['error'], 'public_notes' => $translation['status'] === 'approved' ? $translation['notes_en'] : '',
                     'internal_notes' => $notes,
                 );
             }
@@ -321,8 +330,8 @@ class ShippingPriceImporter
         if (!$this->db->query($sql)) throw new RuntimeException($this->db->lasterror());
         $batchId = $this->db->last_insert_id(MAIN_DB_PREFIX.'chinaplanetsp_batch');
         foreach ($parsed['rows'] as $row) {
-            $sql = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetsp_rate(entity,fk_batch,source_sheet,source_row,source_cell,region_label,pol,destination_country,pod,shipping_line,service_type,route_detail,container_type,cost_price,sale_price,currency_code,valid_from,source_notes_raw,source_notes,notes_en,translation_status,translation_source_hash,translation_provider,translation_model,translation_error,public_notes,internal_notes,public_visible,is_current,status,fk_user_creat,date_creation) VALUES(";
-            $sql .= $this->entity.",".$batchId.",'".$this->db->escape($parsed['sheet'])."',".(int) $row['source_row'].",'".$this->db->escape($row['source_cell'])."','".$this->db->escape($row['region'])."','".$this->db->escape($row['pol'])."',".($row['country'] !== '' ? "'".$this->db->escape($row['country'])."'" : 'NULL').",'".$this->db->escape($row['pod'])."','".$this->db->escape($row['line'])."','".$this->db->escape($row['service'])."','".$this->db->escape($row['route'])."','".$this->db->escape($row['container'])."',".price2num($row['cost']).",".price2num($row['sale']).",'".$this->db->escape($row['currency'])."','".$this->db->escape($parsed['effective_date'])."',".$this->nullable($row['source_notes_raw']).",".$this->nullable($row['source_notes']).",".$this->nullable($row['notes_en']).",'".$this->db->escape($row['translation_status'])."',".$this->nullable($row['translation_source_hash']).",".$this->nullable($row['translation_provider']).",".$this->nullable($row['translation_model']).",".$this->nullable($row['translation_error']).",".$this->nullable($row['public_notes']).",".$this->nullable($row['internal_notes']).",".(int)$row['public_visible'].",0,0,".(int) $this->user->id.",'".$this->db->idate(dol_now())."')";
+            $sql = "INSERT INTO ".MAIN_DB_PREFIX."chinaplanetsp_rate(entity,fk_batch,source_sheet,source_row,source_cell,region_label,pol,destination_country,pod,pod_raw,fk_destination_port,port_match_method,port_match_score,shipping_line,service_type,route_detail,container_type,cost_price,sale_price,currency_code,valid_from,source_notes_raw,source_notes,notes_en,translation_status,translation_source_hash,translation_provider,translation_model,translation_error,public_notes,internal_notes,public_visible,is_current,status,fk_user_creat,date_creation) VALUES(";
+            $sql .= $this->entity.",".$batchId.",'".$this->db->escape($parsed['sheet'])."',".(int) $row['source_row'].",'".$this->db->escape($row['source_cell'])."','".$this->db->escape($row['region'])."','".$this->db->escape($row['pol'])."',".($row['country'] !== '' ? "'".$this->db->escape($row['country'])."'" : 'NULL').",'".$this->db->escape($row['pod'])."',".$this->nullable($row['pod_raw']).",".($row['fk_destination_port'] > 0 ? (int)$row['fk_destination_port'] : 'NULL').",'".$this->db->escape($row['port_match_method'])."',".price2num($row['port_match_score']).",'".$this->db->escape($row['line'])."','".$this->db->escape($row['service'])."','".$this->db->escape($row['route'])."','".$this->db->escape($row['container'])."',".price2num($row['cost']).",".price2num($row['sale']).",'".$this->db->escape($row['currency'])."','".$this->db->escape($parsed['effective_date'])."',".$this->nullable($row['source_notes_raw']).",".$this->nullable($row['source_notes']).",".$this->nullable($row['notes_en']).",'".$this->db->escape($row['translation_status'])."',".$this->nullable($row['translation_source_hash']).",".$this->nullable($row['translation_provider']).",".$this->nullable($row['translation_model']).",".$this->nullable($row['translation_error']).",".$this->nullable($row['public_notes']).",".$this->nullable($row['internal_notes']).",".(int)$row['public_visible'].",0,0,".(int) $this->user->id.",'".$this->db->idate(dol_now())."')";
             if (!$this->db->query($sql)) { $this->db->rollback(); throw new RuntimeException($this->db->lasterror()); }
         }
         $this->db->commit();
@@ -469,41 +478,6 @@ class ShippingPriceImporter
     {
         $key = 'CHINAPLANETSP_MARGIN_'.$container;
         return isset($GLOBALS['conf']->global->$key) ? (float) $GLOBALS['conf']->global->$key : ($container === '20GP' ? 200 : 400);
-    }
-
-    private function countryForPod($pod)
-    {
-        $normalized = strtoupper(trim(preg_replace('/\s*\(.*/', '', $pod)));
-        foreach ($this->countryMap as $needle => $country) if (strpos($normalized, $needle) === 0) return $country;
-        return '';
-    }
-
-    /** Saved mappings override and extend the built-in fallback map. */
-    private function loadSavedCountryMap()
-    {
-        $sql = "SELECT port_name,aliases,country_code FROM ".MAIN_DB_PREFIX."chinaplanetsp_port WHERE entity=".$this->entity." AND status=1";
-        $res = $this->db->query($sql);
-        if (!$res) return;
-        while ($row = $this->db->fetch_object($res)) {
-            $names = array($row->port_name);
-            foreach (preg_split('/[,\r\n]+/', (string) $row->aliases) as $alias) if (trim($alias) !== '') $names[] = trim($alias);
-            foreach ($names as $name) {
-                $normalized = strtoupper(trim(preg_replace('/\s*\(.*/', '', $name)));
-                if ($normalized !== '') $this->countryMap[$normalized] = strtoupper($row->country_code);
-            }
-        }
-        uksort($this->countryMap, function ($a, $b) { return strlen($b) - strlen($a); });
-    }
-
-    private function defaultCountryMap()
-    {
-        return array(
-            'SOKHNA'=>'EG','AIN SOKHNA'=>'EG','ALEXANDRIA'=>'EG','DEKHEILA'=>'EG','DAMIETTA'=>'EG','PORT SAID'=>'EG',
-            'JEDDAH'=>'SA','DAMMAM'=>'SA','RIYADH'=>'SA','JUBAIL'=>'SA','JEBEL ALI'=>'AE','ABU DHABI'=>'AE','SHARJAH'=>'AE','AJMAN'=>'AE','KHOR FAKKAN'=>'AE','FUJAIRAH'=>'AE','UMM AL QAIWAIN'=>'AE','RAS AL KHAIMAH'=>'AE',
-            'HAMAD'=>'QA','DOHA'=>'QA','AQABA'=>'JO','ADEN'=>'YE','HODEIDAH'=>'YE','PORT SUDAN'=>'SD','DJIBOUTI'=>'DJ','BERBERA'=>'SO','MOGADISHU'=>'SO',
-            'UMM QASR'=>'IQ','SHUWAIKH'=>'KW','SHUAIBA'=>'KW','KUWAIT'=>'KW','BAHRAIN'=>'BH','SOHAR'=>'OM','SALALAH'=>'OM','MUSCAT'=>'OM',
-            'ASHDOD'=>'PS','HAIFA'=>'PS','MISURATA'=>'LY','BENGHAZI'=>'LY','TRIPOLI'=>'LY','LATTAKIA'=>'SY','BEIRUT'=>'LB','MERSIN'=>'TR','ISTANBUL'=>'TR',
-        );
     }
 
     private function findDuplicate($hash, $sheet, $sourceName, $ignoreBelow, $currency, $mode, $replacementScope)
