@@ -56,6 +56,14 @@
 - Conditional `preflight` returned `PASS` for runtime commit `d6c2953bda1ab6f7c74c99385782542fd853299a` and the exact artifact. The migration dry-run passed, candidate tests passed, baseline remained `8/0/0`, and the command reported `APPLY_EXECUTED=NO`, `DATABASE_CHANGED=NO`, `PRODUCTION_ACCESSED=YES`.
 - The reviewed helper intentionally exposes the dry-run as a pass/fail gate and does not print row-level production data or mutation counts on success; no unsupported production count is claimed. Runtime, schema, database and business data remain unchanged. Work stops before separately approved production `apply` and conditional `verify`, which will create and validate full code and database backups before mutation.
 
+## Production apply failure and recovery gate — 2026-08-28
+
+- Ahmed approved completing all remaining M062 production deployment gates. Immediately before mutation, helper and artifact pins matched and helper `status` was `NOT_DEPLOYED`; production ERP returned HTTPS `200`.
+- `apply` repeated zero-drift `8 baseline / 0 current` validation, created and validated code/database backups, then the migration failed with `M062_PORTS=FAIL REASON=LEGACY_ALIAS_CONFLICT`. Automatic recovery could not return the database to its exact prestate and stopped fail-closed with `DATABASE_RECOVERY_REQUIRED=YES`.
+- Durable helper state is `APPLY_FAILED_DB_RECOVERY_REQUIRED`. Runtime code was restored to all eight reviewed baseline states with `DRIFT_COUNT=0`, and ERP remained HTTPS `200`. The partially changed database reports 46 unresolved rows across two exact literals: `KHALIFA PORT, ABU DHABI` (24) and `AGADIR, Morocco` (22), both `literal_alias_owner_unavailable`; `catalog_alias_ownership_drift=116` and `raw_rate_drift=0`.
+- Full pre-apply database backup is `/root/chinaplanetos-production-db-backups/m062-before-d6c2953-m062-20260828T070839Z-4f2d6bf8b151.sql`, SHA-256 `c9e94e44f375100c586264241269cbf1521894a2a2d4df5aba0b3dc79602f578`. Code backup is `/root/chinaplanetos-production-code-backups/m062-before-d6c2953-m062-20260828T070839Z-4f2d6bf8b151.tar.gz`, SHA-256 `8f6af6126dca3404a393d08e7796fdb89e1b44dc87e4e3cb92b6c384127874d8`.
+- `verify` and all React merge/deploy/acceptance steps did not run. Do not invoke M062 `apply`, `verify` or `rollback` in this state. The next action is a separately checksum-pinned production database recovery using the recorded backup, with a validated safety backup of the partial state, exact state archival, rollback-on-recovery-failure and post-restore prestate/HTTP verification.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
