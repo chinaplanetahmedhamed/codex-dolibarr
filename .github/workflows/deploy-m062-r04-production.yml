@@ -27,12 +27,15 @@ env:
   SCOPE_COMMIT: 3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67
   ARTIFACT_NAME: m062-production-terminal-trend-f0d8d33.tar.gz
   ARTIFACT_SHA: a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c
-  HELPER_SHA: 416e96b75e98760192168a7cdad8efd230a47f13ed179b0e44b3a6801dbfe5c5
+  HELPER_SHA: 24648c70da56cb105aa2679269cd8e1f532c0e0f345d08826b56af1a40f21b85
   SUDOERS_SHA: db06230225a8ae124ffcdb6b05c73f043859e1568863579aa9e81510a2d68abd
+  INSTALLER_SHA: 3f6cb66aa3dd967a762139b7a6c57884b3bd6187697ae998c206e96b840daba7
   DEPLOY_HOST: 31.97.158.178
   DEPLOY_USER: codex-deploy
   STAGING_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-m062-ports
+  STAGING_HELPER_SHA: e849e93691481962085b5313917a3c10f21f2ebc7fe5366fadb5564ee48047ac
   BASE_PRODUCTION_HELPER: /usr/local/sbin/chinaplanetos-production-m062-ports
+  BASE_PRODUCTION_HELPER_SHA: 964347ae88550901a10f9f72d56d89804d891ac5c818f0ba7f0172dd29a3687f
   PRODUCTION_HELPER: /usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend
   REMOTE_INBOX: /home/codex-deploy/staging-inbox
 
@@ -63,6 +66,9 @@ jobs:
           test "$(sha256sum "$RUNNER_TEMP/$ARTIFACT_NAME" | awk '{print $1}')" = "$ARTIFACT_SHA"
           M062_R04_ARTIFACT="$RUNNER_TEMP/$ARTIFACT_NAME" bash deploy/tests/test_m062_r04_production_helper_contract.sh
           M062_R04_ARTIFACT="$RUNNER_TEMP/$ARTIFACT_NAME" bash deploy/tests/test_m062_r04_production_helper_failures.sh
+          test "$(sha256sum deploy/tools/chinaplanetos_production_m062_r04_terminal_trend.sh | awk '{print $1}')" = "$HELPER_SHA"
+          test "$(sha256sum deploy/config/codex-deploy-production-m062-r04-terminal-trend.sudoers | awk '{print $1}')" = "$SUDOERS_SHA"
+          test "$(sha256sum deploy/tools/install_production_m062_r04_terminal_trend_helper.sh | awk '{print $1}')" = "$INSTALLER_SHA"
       - name: Configure restricted production SSH
         shell: bash
         env:
@@ -83,6 +89,11 @@ jobs:
           scp "${ssh_opts[@]}" "$RUNNER_TEMP/$ARTIFACT_NAME" "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/$ARTIFACT_NAME"
           scp "${ssh_opts[@]}" deploy/tools/chinaplanetos_production_m062_r04_terminal_trend.sh deploy/tools/install_production_m062_r04_terminal_trend_helper.sh deploy/config/codex-deploy-production-m062-r04-terminal-trend.sudoers "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_INBOX/"
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "chmod 0644 '$REMOTE_INBOX/$ARTIFACT_NAME' '$REMOTE_INBOX/chinaplanetos_production_m062_r04_terminal_trend.sh' '$REMOTE_INBOX/install_production_m062_r04_terminal_trend_helper.sh' '$REMOTE_INBOX/codex-deploy-production-m062-r04-terminal-trend.sudoers'"
+          remote_hashes=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$REMOTE_INBOX/$ARTIFACT_NAME' '$REMOTE_INBOX/chinaplanetos_production_m062_r04_terminal_trend.sh' '$REMOTE_INBOX/install_production_m062_r04_terminal_trend_helper.sh' '$REMOTE_INBOX/codex-deploy-production-m062-r04-terminal-trend.sudoers'")
+          grep -Fq "$ARTIFACT_SHA  $REMOTE_INBOX/$ARTIFACT_NAME" <<<"$remote_hashes"
+          grep -Fq "$HELPER_SHA  $REMOTE_INBOX/chinaplanetos_production_m062_r04_terminal_trend.sh" <<<"$remote_hashes"
+          grep -Fq "$INSTALLER_SHA  $REMOTE_INBOX/install_production_m062_r04_terminal_trend_helper.sh" <<<"$remote_hashes"
+          grep -Fq "$SUDOERS_SHA  $REMOTE_INBOX/codex-deploy-production-m062-r04-terminal-trend.sudoers" <<<"$remote_hashes"
       - name: Remove transient SSH material
         if: ${{ always() }}
         run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
@@ -113,6 +124,9 @@ jobs:
           test "$(sha256sum "$RUNNER_TEMP/$ARTIFACT_NAME" | awk '{print $1}')" = "$ARTIFACT_SHA"
           M062_R04_ARTIFACT="$RUNNER_TEMP/$ARTIFACT_NAME" bash deploy/tests/test_m062_r04_production_helper_contract.sh
           M062_R04_ARTIFACT="$RUNNER_TEMP/$ARTIFACT_NAME" bash deploy/tests/test_m062_r04_production_helper_failures.sh
+          test "$(sha256sum deploy/tools/chinaplanetos_production_m062_r04_terminal_trend.sh | awk '{print $1}')" = "$HELPER_SHA"
+          test "$(sha256sum deploy/config/codex-deploy-production-m062-r04-terminal-trend.sudoers | awk '{print $1}')" = "$SUDOERS_SHA"
+          test "$(sha256sum deploy/tools/install_production_m062_r04_terminal_trend_helper.sh | awk '{print $1}')" = "$INSTALLER_SHA"
       - name: Configure restricted production SSH
         shell: bash
         env:
@@ -130,9 +144,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          staging_meta=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "stat -c '%U:%G %a' '$STAGING_HELPER' && sha256sum '$STAGING_HELPER'")
+          grep -Fq 'root:root 755' <<<"$staging_meta"
+          grep -Fq "$STAGING_HELPER_SHA  $STAGING_HELPER" <<<"$staging_meta"
+          base_meta=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "stat -c '%U:%G %a' '$BASE_PRODUCTION_HELPER' && sha256sum '$BASE_PRODUCTION_HELPER'")
+          grep -Fq 'root:root 755' <<<"$base_meta"
+          grep -Fq "$BASE_PRODUCTION_HELPER_SHA  $BASE_PRODUCTION_HELPER" <<<"$base_meta"
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $STAGING_HELPER verify"
           ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $BASE_PRODUCTION_HELPER verify"
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "test \"\$(sha256sum '$PRODUCTION_HELPER' | awk '{print \$1}')\" = '$HELPER_SHA'"
+          production_meta=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "stat -c '%U:%G %a' '$PRODUCTION_HELPER' && sha256sum '$PRODUCTION_HELPER'")
+          grep -Fq 'root:root 755' <<<"$production_meta"
+          grep -Fq "$HELPER_SHA  $PRODUCTION_HELPER" <<<"$production_meta"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $PRODUCTION_HELPER status"
       - name: Upload identical staging-accepted artifact
         shell: bash
         run: |

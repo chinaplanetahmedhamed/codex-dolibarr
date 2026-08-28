@@ -39,6 +39,8 @@ readonly -a SUPPORT_SHAS=(
 readonly TARGET_CONTAINER='vision_erp'
 readonly DB_CONTAINER='vision_db'
 readonly TARGET_VOLUME='vision-os_dolibarr_custom'
+readonly SUDOERS_FILE='/etc/sudoers.d/codex-deploy-production-m062-r04-terminal-trend'
+readonly SUDOERS_SHA='db06230225a8ae124ffcdb6b05c73f043859e1568863579aa9e81510a2d68abd'
 TEST_MODE=0
 if [[ ${M062_R04_TEST_MODE:-0} == 1 ]]; then
   TEST_MODE=1
@@ -187,6 +189,9 @@ require_root() {
   [[ $TEST_MODE -eq 1 || $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
   [[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
   if [[ $TEST_MODE -eq 1 ]]; then [[ $(basename "$0") == 'chinaplanetos-production-m062-r04-terminal-trend.test' ]] || die 'HELPER_PATH_NOT_ALLOWED'; else [[ $(basename "$0") == 'chinaplanetos-production-m062-r04-terminal-trend' ]] || die 'HELPER_PATH_NOT_ALLOWED'; fi
+  if [[ $TEST_MODE -eq 0 ]]; then
+    [[ -f "$SUDOERS_FILE" && ! -L "$SUDOERS_FILE" && $(stat -c '%U:%G %a' "$SUDOERS_FILE") == 'root:root 440' && $(sha256 "$SUDOERS_FILE") == "$SUDOERS_SHA" ]] || die 'SUDOERS_INSTALLATION_INVALID'
+  fi
 }
 
 check_environment() {

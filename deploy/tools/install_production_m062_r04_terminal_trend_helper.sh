@@ -6,7 +6,7 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_production_m062_r04_terminal_trend.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-production-m062-r04-terminal-trend.sudoers"
-readonly HELPER_SHA='416e96b75e98760192168a7cdad8efd230a47f13ed179b0e44b3a6801dbfe5c5'
+readonly HELPER_SHA='24648c70da56cb105aa2679269cd8e1f532c0e0f345d08826b56af1a40f21b85'
 readonly SUDOERS_SHA='db06230225a8ae124ffcdb6b05c73f043859e1568863579aa9e81510a2d68abd'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m062-r04-terminal-trend'
