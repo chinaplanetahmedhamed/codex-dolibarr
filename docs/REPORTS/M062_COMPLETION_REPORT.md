@@ -10,6 +10,16 @@
 - Source reviews on ERP `f0d8d33` and corrected React `53da1bf` returned Shipping/Portal `PASS`, QA `PASS`, and Security `PASS_WITH_CONDITIONS`. Security conditions are release gates: exact Git pins, frozen package review, ERP-first payload/privacy/failure checks and actual React viewport acceptance.
 - No helper upload/replacement or deployment command has run for R04 yet. Database, runtime, configuration and production remain unchanged at this preparation point.
 
+## Alexandria terminal-history R04 staging deployment and acceptance — 2026-08-29
+
+- Frozen-package Security and QA reviews returned `PASS`; artifact/helper/installer hashes, exact one-file runtime allowlist, deterministic rebuild, rollback reconciliation and production isolation all matched the reviewed package.
+- R04 helper installation passed at SHA-256 `e849e93691481962085b5313917a3c10f21f2ebc7fe5366fadb5564ee48047ac`. Sudoers stayed unchanged at SHA-256 `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+- Restricted `compare`, `preflight`, `apply` and independent `verify` passed. Durable status is `DEPLOYED` for runtime `f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b`, scope `3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67` and artifact `a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c`.
+- Code backup `/root/backup-erp-code-backups/m062-r04-before-f0d8d33-20260828T170604Z.tar.gz` has SHA-256 `60c754d418b7cf0a0db28efc3cac3177c92f52dfd02e68f90fdde5b4f677a476`; prestate SHA-256 is `5a26fac12a8e1f69f904247fb52e080a7fedfc2b9cb63bb37dd11f294ed60501`.
+- Live public grouped trend returned separate Old Port and TMT July/August USD points and an empty grouped flat `points` array; the exact TMT route retained flat points. The projection exposed only route metadata, dates, prices and currencies.
+- GitHub Actions run `33193378034` completed successfully from exact React SHA `53da1bfd6e8bc92bd1a5f73eda5ee2306d716d0f`. Live `new.chinaplanet.org` acceptance passed at `1440x900` and `390x844` in Arabic and English: exact terminal badges/cards, two labelled chart lines, no merged average, no page-wide overflow and no console warning/error.
+- ERP reported `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`; production was not touched. A non-blocking GitHub annotation remains because older action releases target Node.js 20 and are currently forced onto Node.js 24.
+
 ## Alexandria terminal-history chart — local correction, 2026-08-28
 
 - The grouped ERP trend now queries `ALEXANDRIA OLD PORT`, `ALEXANDRIA TMT` and legacy generic `ALEXANDRIA` independently. It returns non-empty terminal-labelled `series` while retaining the existing flat `points` contract for exact non-grouped routes.

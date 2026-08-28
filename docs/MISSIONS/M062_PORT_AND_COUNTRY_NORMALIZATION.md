@@ -18,6 +18,15 @@
 - Source Shipping/Portal and QA reviews returned `PASS`; Security returned `PASS_WITH_CONDITIONS` requiring exact Git pins, dependency-closed ERP-first staging deployment, payload/privacy checks, and real viewport acceptance. The frozen R04 package/helper/installer still requires independent release Security/QA review before upload.
 - Required order is helper/artifact upload and checksum verification, helper-only replacement, `compare`, `preflight`, `apply`, independent `verify`, gateway payload/failure acceptance, then GitHub React staging deployment and desktop/390px Arabic/English acceptance. Stop and restore/reconcile on the first failure.
 
+## Alexandria terminal-history R04 staging completion — 2026-08-29
+
+- Independent frozen-package Security and QA reviews returned `PASS`. Uploaded artifact, helper and installer hashes matched the reviewed pins; the installed helper matched `e849e93691481962085b5313917a3c10f21f2ebc7fe5366fadb5564ee48047ac` and the existing sudoers remained unchanged.
+- Restricted `compare`, `preflight`, `apply` and independent `verify` all passed on canonical `backup-erp`. Durable state is `DEPLOYED` for runtime `f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b`, scope `3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67` and artifact `a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c`.
+- Rollback evidence is `/root/backup-erp-code-backups/m062-r04-before-f0d8d33-20260828T170604Z.tar.gz` at SHA-256 `60c754d418b7cf0a0db28efc3cac3177c92f52dfd02e68f90fdde5b4f677a476`; prestate SHA-256 is `5a26fac12a8e1f69f904247fb52e080a7fedfc2b9cb63bb37dd11f294ed60501`.
+- Live grouped API acceptance returned `points: []` plus exact `ALEXANDRIA OLD PORT` and `ALEXANDRIA TMT` series, each limited to `date`, `price` and `currency`. Exact TMT retained the backward-compatible flat `points` contract. No private cost, supplier, margin, rate ID, fingerprint or carrier field was exposed.
+- GitHub Actions run `33193378034` deployed exact React commit `53da1bfd6e8bc92bd1a5f73eda5ee2306d716d0f` successfully to `new.chinaplanet.org`. Live desktop `1440x900` and mobile `390x844` acceptance passed in Arabic RTL and English LTR: cards name their exact terminal and the chart shows two labelled, non-averaged terminal lines without horizontal overflow or browser console errors.
+- All ERP helper commands reported `DATABASE_CHANGED=NO` and `PRODUCTION_ACCESSED=NO`. Production remained untouched. The only remaining deployment warning is GitHub's non-blocking deprecation notice for Node.js 20-based action versions forced onto Node.js 24.
+
 ## Production release preparation — 2026-08-28
 
 - After successful ERP and React staging acceptance, Ahmed requested that M062 be pushed live. This records production intent and authorizes read-only production discovery plus local release preparation; it does not authorize installing an unreviewed helper or mutating production before the required production review and deployment gates pass.
