@@ -27,6 +27,14 @@
 - The rejected manifest SHA `b2607e9d941bf13c14260777fe50253f428a8f8a9487d43e14d2efd943afe09d` is the later translation-schema source revision from `f0b722183419ca2cfc38cb4939ae6b9d12b6d1fa`; that SQL install file was not deployed to production because the translation columns were delivered separately by migration. The production prestate manifest is corrected to the verified live SHA only; runtime behavior remains unchanged.
 - The artifact, helper and installer must now be rebuilt with rotated pins, tested and independently reviewed. Any upload, helper replacement, repeated `compare`/`preflight`, `apply`, `verify`, database change or React production deployment remains outside this local correction gate.
 
+## Corrected production prestate package — 2026-08-28
+
+- Corrected source commit is `d6c2953bda1ab6f7c74c99385782542fd853299a`. The 19-file deterministic artifact is `/private/tmp/m062-production-d6c2953.tar.gz`, SHA-256 `e64dae7c857bc77071368393ea4d5cb50ecc63474798e344a2c35c2554924696`; only the reviewed production prestate manifest changed inside the artifact and the eight runtime payload files remain byte-identical to the previously accepted release.
+- Corrected helper SHA-256 is `9bb10f73b8ccb1928c15bf2d0b23af17cd9aa1bda7f5578cec70f8b951f56b9f`. It keeps the exact production targets and six-command sudo surface, requires the verified `8 baseline / 0 current / 0 drift` state, and pins the corrected prestate manifest SHA-256 `b89d37ec17e96d11963470d296868b1a66e0ee12ec4a3c2121398786a587bbe0`.
+- Upgrade installer SHA-256 is `631b232bdc36057724e078cbaefe90969c0bef6cd5e6cd448e190802a1136e87`. It accepts only the installed predecessor helper SHA-256 `59aa892b00fa06f31c747abd84d494f960dbd1b7b91f918906310f334ec37306`, requires the existing unchanged sudoers SHA-256 `4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf`, retains a root-only predecessor backup, and automatically restores it on post-replacement validation failure.
+- Local syntax, deterministic rebuild, production-only contract, exact baseline/mixed-state rejection, dependency-pin, path-isolation, no-clobber audit, restart reconciliation, apply-fault recovery, rollback reapply and static resolver/importer/Alexandria/token suites pass. The environment-backed current-data test is intentionally deferred to helper preflight/verify because the local database is not the accepted staging/production dataset.
+- Shipping, Security and QA must independently review these exact pins before any upload or installation. Production remains unchanged; helper rotation and rerunning `compare`/conditional `preflight` require a new exact approval.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.

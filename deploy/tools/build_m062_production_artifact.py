@@ -10,11 +10,11 @@ import subprocess
 import tarfile
 
 
-RUNTIME_COMMIT = "TO_BE_FROZEN"
+RUNTIME_COMMIT = "d6c2953bda1ab6f7c74c99385782542fd853299a"
 RUNTIME_MANIFEST = "deploy/releases/m062-production-runtime-files.txt"
 SUPPORT_MANIFEST = "deploy/releases/m062-production-support-files.txt"
 PRESTATE_MANIFEST = "deploy/releases/m062-production-prestate.sha256"
-EXPECTED_SHA256 = "TO_BE_FROZEN"
+EXPECTED_SHA256 = "e64dae7c857bc77071368393ea4d5cb50ecc63474798e344a2c35c2554924696"
 
 
 def git_bytes(repo: pathlib.Path, path: str) -> bytes:
