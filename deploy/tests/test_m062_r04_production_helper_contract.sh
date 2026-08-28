@@ -17,7 +17,7 @@ python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); compile(p.read_text
 [[ -f "$artifact" && ! -L "$artifact" ]] || fail 'ARTIFACT_ABSENT'
 [[ $(sha256 "$artifact") == 'a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c' ]] || fail 'ARTIFACT_HASH'
 
-test_root=$(mktemp -d /private/tmp/m062-r04-contract.XXXXXX)
+test_root=$(mktemp -d /tmp/m062-r04-contract.XXXXXX)
 trap 'rm -rf "$test_root"' EXIT
 python3 "$builder" --output "$test_root/rebuilt.tar.gz" >/dev/null
 cmp "$artifact" "$test_root/rebuilt.tar.gz"
