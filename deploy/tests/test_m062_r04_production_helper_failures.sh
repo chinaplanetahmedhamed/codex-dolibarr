@@ -4,7 +4,7 @@ set -Eeuo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 source_helper="$root/deploy/tools/chinaplanetos_production_m062_r04_terminal_trend.sh"
 artifact=${M062_R04_ARTIFACT:-/private/tmp/m062-production-terminal-trend-f0d8d33.tar.gz}
-test_root=$(mktemp -d /private/tmp/m062-r04-helper-test.XXXXXX)
+test_root=$(mktemp -d /tmp/m062-r04-helper-test.XXXXXX)
 trap 'rm -rf "$test_root"' EXIT
 mkdir -p "$test_root/bin" "$test_root/inbox" "$test_root/target/chinaplanetshippingprices/class" "$test_root/backups" "$test_root/state"
 cp "$source_helper" "$test_root/chinaplanetos-production-m062-r04-terminal-trend.test"
