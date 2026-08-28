@@ -408,3 +408,10 @@ The existing public-search integration test is time-blocked because all local pu
 - Prepare run `33199956743` passed. The four inbox files were independently verified as `codex-deploy:codex-deploy 0644` with artifact/helper/installer/sudoers hashes `a295723c...`, `24648c70...`, `3f6cb66a...`, and `db062302...` respectively.
 - Root installation returned `M062_R04_PRODUCTION_HELPER_INSTALL=PASS`, `DEPLOY_EXECUTED=NO`, and `DATABASE_CHANGED=NO`. Independent restricted verification matched installed helper metadata `root:root 0755`, size `24812`, exact SHA-256 `24648c70da56cb105aa2679269cd8e1f532c0e0f345d08826b56af1a40f21b85`, and exactly six sudo commands. Base helper SHA-256 remains `964347ae88550901a10f9f72d56d89804d891ac5c818f0ba7f0172dd29a3687f`.
 - No R04 helper command ran and no production runtime/database/schema/business-data change occurred. `compare` and conditional read-only `preflight` require the next separate approval; apply/verify remain forbidden.
+
+## R04 production compare/preflight — 2026-08-29
+
+- The installed helper and inbox artifact were reverified at exact reviewed SHA-256 values `24648c70da56cb105aa2679269cd8e1f532c0e0f345d08826b56af1a40f21b85` and `a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c` immediately before execution.
+- Production `compare` passed with the single gateway file in the expected `UPDATE_REQUIRED` state, baseline `189bee8d...` and release `e8f83e15...`; no unexpected drift was reported.
+- Conditional read-only `preflight` passed for release `M062-PROD-R04`, runtime `f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b`, exact artifact and `FILES=1`, with `DATABASE_CHANGED=NO`.
+- No apply/verify/rollback/status command ran. Runtime, schema, database, business data and React remain unchanged. Apply plus conditional independent verify require the next separate production approval.
