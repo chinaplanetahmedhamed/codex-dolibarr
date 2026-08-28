@@ -6,6 +6,7 @@
 - Added a backward-compatible React multi-series chart with separate currency axes, localized terminal legend and fail-closed rejection of grouped flat fallback points.
 - Prepared a checksum-pinned, one-file, code-only `backup-erp` R04 release with deterministic artifact, unchanged sudoers and automatic rollback/reconciliation tests. Staging deployment and viewport acceptance are recorded separately after execution; production remains forbidden.
 - Deployed and independently verified R04 on canonical staging, then deployed exact React SHA `53da1bf` through GitHub Actions. Live grouped API plus Arabic/English desktop and 390px acceptance passed with separate Old Port/TMT history lines; database and production were untouched.
+- Prepared a production-only one-file ERP release and protected GitHub workflow with exact artifact/helper/sudoers/installer pins, independent rollback state, no migration/database command, and separate upload versus deployment gates. Production remained unchanged pending frozen-package Security/QA/Shipping review and Ahmed's next exact gate.
 
 ## 2026-08-28 — M062 production backup-validation hardening
 

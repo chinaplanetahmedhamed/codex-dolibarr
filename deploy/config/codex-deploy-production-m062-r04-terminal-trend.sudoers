@@ -1,0 +1,6 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend compare
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m062-r04-terminal-trend status
