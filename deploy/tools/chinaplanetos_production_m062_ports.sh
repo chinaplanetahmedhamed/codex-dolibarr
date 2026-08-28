@@ -65,6 +65,7 @@ readonly STATE_FILE="${STATE_ROOT}/m062.state"
 readonly LOCK_FILE="${STATE_ROOT}/m062.lock"
 readonly REQUEST_ROOT="${STATE_ROOT}/requests"
 readonly AUDIT_FILE="${STATE_ROOT}/audit.log"
+readonly QUIESCE_MARKER="${STATE_ROOT}/erp-quiesced.state"
 
 RUNTIME_FILES=(); SUPPORT_FILES=()
 CANDIDATE_ROOT=''; CANDIDATE_REMOTE=''; ARTIFACT_COPY=''; ARTIFACT_SOURCE="$ARTIFACT"
@@ -74,6 +75,8 @@ REQUEST_ID=''; REQUEST_FILE=''; REQUEST_ACTION=''; REQUEST_STARTED=0; CODE_MUTAT
 REAPPLY_CODE=''; REAPPLY_CODE_SHA=''; CLEANUP_ACTIVE=0
 STALE_CANDIDATES=''
 STATE_IS_PRIOR_RELEASE=0
+ERP_QUIESCED=0
+QUIESCE_RECOVERY_STATUS=''
 
 die() { echo "M062_DEPLOY_FAIL=$1" >&2; exit 1; }
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
@@ -109,6 +112,69 @@ drop_validation_database() {
   [[ $TEST_MODE -eq 1 ]] && { DB_VALIDATION_NAME=''; return 0; }
   docker exec -e M062_TEMP_DB="$DB_VALIDATION_NAME" "$DB_CONTAINER" sh -eu -c 'pass=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}; [ -n "$pass" ]; case "$M062_TEMP_DB" in *[!A-Za-z0-9_]*) exit 1;; esac; MYSQL_PWD="$pass" exec mariadb -u root -e "DROP DATABASE IF EXISTS \`$M062_TEMP_DB\`"' >/dev/null || return 1
   DB_VALIDATION_NAME=''
+}
+
+quiesce_erp_for_backup() {
+  local marker_stage
+  [[ -n "$REQUEST_ID" && "$REQUEST_ID" =~ ^m062-[0-9]{8}T[0-9]{6}Z-[a-f0-9]{12}$ ]] || return 1
+  [[ ! -e "$QUIESCE_MARKER" && ! -L "$QUIESCE_MARKER" ]] || return 1
+  if [[ $TEST_MODE -eq 0 ]]; then
+    [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$TARGET_CONTAINER") == 'true|vision-os|dolibarr' ]] || return 1
+  fi
+  marker_stage=$(mktemp "${QUIESCE_MARKER}.stage.XXXXXX") || return 1
+  printf 'TARGET_CONTAINER=%s\nREQUEST_ID=%s\n' "$TARGET_CONTAINER" "$REQUEST_ID" >"$marker_stage"
+  chmod 0600 "$marker_stage"
+  durable_move "$marker_stage" "$QUIESCE_MARKER" || { rm -f "$marker_stage"; return 1; }
+  ERP_QUIESCED=1
+  [[ $TEST_MODE -eq 1 ]] && return 0
+  docker stop --time 30 "$TARGET_CONTAINER" >/dev/null || return 1
+  [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$TARGET_CONTAINER") == 'false|vision-os|dolibarr' ]]
+}
+
+quiesce_marker_valid() {
+  local marker_request
+  [[ -f "$QUIESCE_MARKER" && ! -L "$QUIESCE_MARKER" && $(mode_of "$QUIESCE_MARKER") == 600 ]] || return 1
+  [[ $TEST_MODE -eq 1 || $(owner_group_of "$QUIESCE_MARKER") == 'root:root' ]] || return 1
+  [[ $(wc -l <"$QUIESCE_MARKER" | tr -d ' ') == 2 ]] || return 1
+  grep -Fxq "TARGET_CONTAINER=$TARGET_CONTAINER" "$QUIESCE_MARKER" || return 1
+  marker_request=$(awk -F= '$1=="REQUEST_ID" {print $2}' "$QUIESCE_MARKER")
+  [[ "$marker_request" =~ ^m062-[0-9]{8}T[0-9]{6}Z-[a-f0-9]{12}$ ]]
+}
+
+resume_erp_after_backup() {
+  [[ $ERP_QUIESCED -eq 1 ]] || return 0
+  quiesce_marker_valid || return 1
+  if [[ $TEST_MODE -eq 1 ]]; then rm -f "$QUIESCE_MARKER" || return 1; fsync_path "$STATE_ROOT" || return 1; ERP_QUIESCED=0; return 0; fi
+  local identity status attempt
+  identity=$(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$TARGET_CONTAINER") || return 1
+  case "$identity" in
+    'false|vision-os|dolibarr') docker start "$TARGET_CONTAINER" >/dev/null || return 1 ;;
+    'true|vision-os|dolibarr') ;;
+    *) return 1 ;;
+  esac
+  for attempt in $(seq 1 30); do status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "${TARGET_HTTP}/" 2>/dev/null || true); [[ "$status" =~ ^(200|302)$ ]] && break; sleep 2; done
+  [[ "$status" =~ ^(200|302)$ && $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$TARGET_CONTAINER") == 'true|vision-os|dolibarr' ]] || return 1
+  rm -f "$QUIESCE_MARKER" || return 1
+  fsync_path "$STATE_ROOT" || return 1
+  ERP_QUIESCED=0
+}
+
+recover_interrupted_quiesce() {
+  QUIESCE_RECOVERY_STATUS=''
+  [[ ! -e "$QUIESCE_MARKER" && ! -L "$QUIESCE_MARKER" ]] && return 0
+  [[ -d "$STATE_ROOT" && ! -L "$STATE_ROOT" && $(mode_of "$STATE_ROOT") == 700 ]] || return 1
+  [[ $TEST_MODE -eq 1 || $(owner_group_of "$STATE_ROOT") == 'root:root' ]] || return 1
+  [[ -f "$LOCK_FILE" && ! -L "$LOCK_FILE" && $(mode_of "$LOCK_FILE") == 600 ]] || return 1
+  [[ $TEST_MODE -eq 1 || $(owner_group_of "$LOCK_FILE") == 'root:root' ]] || return 1
+  exec 8<>"$LOCK_FILE" || return 1
+  if ! flock -n 8; then QUIESCE_RECOVERY_STATUS='LOCKED'; exec 8>&-; return 1; fi
+  if [[ ! -e "$QUIESCE_MARKER" && ! -L "$QUIESCE_MARKER" ]]; then flock -u 8; exec 8>&-; return 0; fi
+  if ! quiesce_marker_valid; then flock -u 8; exec 8>&-; return 1; fi
+  ERP_QUIESCED=1
+  if ! resume_erp_after_backup; then flock -u 8; exec 8>&-; return 1; fi
+  flock -u 8
+  exec 8>&-
+  echo 'M062_DEPLOY_RECOVERY=ERP_RESUMED_AFTER_INTERRUPTED_BACKUP'
 }
 
 cleanup_paths() {
@@ -240,7 +306,7 @@ cleanup() {
   local rc=$? cleanup_rc=0 recovery_attempted=0; [[ $CLEANUP_ACTIVE -eq 0 ]] || exit "$rc"; CLEANUP_ACTIVE=1; trap - EXIT
   if [[ $ROLLBACK_MUTATED -eq 1 ]]; then recovery_attempted=1; recover_rollback || cleanup_rc=1; elif [[ $CODE_MUTATED -eq 1 || $SCHEMA_MUTATED -eq 1 ]]; then recovery_attempted=1; recover_apply || cleanup_rc=1; fi
   if [[ $REQUEST_STARTED -eq 1 ]]; then if [[ $recovery_attempted -eq 1 ]]; then finish_request 'FAILED_TERMINAL_AUDIT_RETRY' || cleanup_rc=1; else finish_pending_no_mutation || cleanup_rc=1; fi; fi
-  drop_validation_database || cleanup_rc=1; cleanup_paths || cleanup_rc=1
+  drop_validation_database || cleanup_rc=1; resume_erp_after_backup || cleanup_rc=1; cleanup_paths || cleanup_rc=1
   [[ $cleanup_rc -eq 0 ]] || rc=1; exit "$rc"
 }
 trap cleanup EXIT
@@ -251,6 +317,7 @@ require_invocation() {
   [[ $TEST_MODE -eq 1 || $(basename "$0") == 'chinaplanetos-production-m062-ports' ]] || die 'HELPER_PATH_NOT_ALLOWED'
   [[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
   case "$1" in compare|preflight|apply|verify|rollback|status) ;; *) die 'COMMAND_NOT_ALLOWED' ;; esac
+  if ! recover_interrupted_quiesce; then [[ "$QUIESCE_RECOVERY_STATUS" == LOCKED ]] && die 'LOCKED'; die 'ERP_INTERRUPTED_BACKUP_RECOVERY_FAILED'; fi
 }
 detect_stale_candidates() { if [[ $TEST_MODE -eq 1 ]]; then STALE_CANDIDATES=$(find "$STATE_ROOT/container-root" -maxdepth 1 -type d -name 'm062-ports-candidate.*' -print 2>/dev/null || true); else STALE_CANDIDATES=$(docker exec "$TARGET_CONTAINER" find /root -maxdepth 1 -type d -name 'm062-ports-candidate.*' -print); fi; }
 clear_stale_candidates() { local stale; while IFS= read -r stale; do [[ -z "$stale" ]] && continue; if [[ $TEST_MODE -eq 1 ]]; then [[ "$stale" == "$STATE_ROOT/container-root/m062-ports-candidate."* && -d "$stale" && ! -L "$stale" ]] || return 1; rm -rf "$stale"; else [[ "$stale" == /root/m062-ports-candidate.* ]] || return 1; [[ $(docker exec "$TARGET_CONTAINER" stat -c '%U:%G %a' "$stale") == 'root:root 700' ]] || return 1; docker exec "$TARGET_CONTAINER" sh -eu -c 'case "$1" in /root/m062-ports-candidate.*) [ -d "$1" ] && [ ! -L "$1" ]; rm -rf -- "$1";; *) exit 1;; esac' sh "$stale" || return 1; fi; done <<<"$STALE_CANDIDATES"; STALE_CANDIDATES=''; detect_stale_candidates; [[ -z "$STALE_CANDIDATES" ]]; }
@@ -385,7 +452,7 @@ command_apply() {
   fi
   required_schema_prestate=$(required_apply_schema_prestate "$prior_state") || die 'STATE_NOT_APPLYABLE'
   prepare_inbox_candidate; schema_prestate; data_preflight || die 'DATA_PREFLIGHT_FAILED'; compare_files; [[ $DRIFT_COUNT -eq 0 && $BASELINE_COUNT -eq 8 && $CURRENT_COUNT -eq 0 && "$SCHEMA_PRESTATE" == "$required_schema_prestate" ]] || die 'APPLY_PRESTATE_INVALID'
-  new_request_id; begin_request; retain_artifact; save_state 'PENDING_APPLY_PREPARE'; create_code_backup; create_database_backup; validate_database_backup; save_state 'PENDING_APPLY_SCHEMA'
+  new_request_id; begin_request; retain_artifact; save_state 'PENDING_APPLY_PREPARE'; create_code_backup; quiesce_erp_for_backup || die 'ERP_BACKUP_QUIESCE_FAILED'; create_database_backup; validate_database_backup; resume_erp_after_backup || die 'ERP_BACKUP_RESUME_FAILED'; save_state 'PENDING_APPLY_SCHEMA'
   if [[ "$required_schema_prestate" == MIGRATION_REQUIRED ]]; then SCHEMA_MUTATED=1; apply_schema; schema_ready || die 'SCHEMA_POST_APPLY_INVALID'; fi
   save_state 'PENDING_APPLY_CODE'; CODE_MUTATED=1; apply_code; live_checks || die 'LIVE_CHECK_FAILED'; save_state 'DEPLOYED'; finish_request 'APPLIED'; CODE_MUTATED=0; SCHEMA_MUTATED=0
   echo "M062_DEPLOY_APPLY=PASS REQUEST_ID=$REQUEST_ID RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA DATABASE_CHANGED=YES PRODUCTION_ACCESSED=YES"

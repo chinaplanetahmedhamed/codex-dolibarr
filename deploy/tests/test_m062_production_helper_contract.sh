@@ -13,11 +13,11 @@ sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-[[ $(sha256 "$helper") == a1a769dbdb4f4cdfb0f304a54566a98aad73710ba1a2054d8c026919a8892cc4 ]] || fail HELPER_HASH
+[[ $(sha256 "$helper") == 964347ae88550901a10f9f72d56d89804d891ac5c818f0ba7f0172dd29a3687f ]] || fail HELPER_HASH
 [[ $(sha256 "$sudoers") == 4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf ]] || fail SUDOERS_HASH
-[[ $(sha256 "$installer") == 94b33fb3b9f76e1a6c986de2a7b772fd95117d35f035ebf5cee6484af9ed1e37 ]] || fail INSTALLER_HASH
-grep -Fq "readonly HELPER_SHA='a1a769dbdb4f4cdfb0f304a54566a98aad73710ba1a2054d8c026919a8892cc4'" "$installer" || fail INSTALLER_HELPER_PIN
-grep -Fq "readonly PREVIOUS_HELPER_SHA='2006eab431cca65127dcea495d3fbc262ed840fad38129a235ae0364790cb049'" "$installer" || fail INSTALLER_PREVIOUS_HELPER_PIN
+[[ $(sha256 "$installer") == 89a3dcd17d602f58108cd6b09482e49b3400f0188244fd66892e038526e47e39 ]] || fail INSTALLER_HASH
+grep -Fq "readonly HELPER_SHA='964347ae88550901a10f9f72d56d89804d891ac5c818f0ba7f0172dd29a3687f'" "$installer" || fail INSTALLER_HELPER_PIN
+grep -Fq "readonly PREVIOUS_HELPER_SHA='a1a769dbdb4f4cdfb0f304a54566a98aad73710ba1a2054d8c026919a8892cc4'" "$installer" || fail INSTALLER_PREVIOUS_HELPER_PIN
 grep -Fq "readonly UPGRADE_BACKUP_ROOT='/root/m062-production-helper-upgrade-backups'" "$installer" || fail INSTALLER_BACKUP_ROOT
 grep -Fq 'PREVIOUS_HELPER_BACKUP_HASH_MISMATCH' "$installer" || fail INSTALLER_BACKUP_HASH_GATE
 grep -Fq "die 'EXISTING_HELPER_REQUIRED'" "$installer" || fail INSTALLER_REQUIRES_INSTALLED_HELPER
@@ -35,6 +35,10 @@ grep -Fq "DB_VOLUME='vision-os_mariadb_data'" "$helper" || fail DB_VOLUME
 grep -Fq "TARGET_HTTP='https://erp.visiontrading.biz'" "$helper" || fail HTTPS_TARGET
 grep -Fq "STATE_ROOT='/var/lib/chinaplanetos-m062-ports-production-r01'" "$helper" || fail STATE_ROOT
 grep -Fq 'Approved M062 rollback is non-destructive' "$helper" || fail ROLLBACK_POLICY
+grep -Fq "quiesce_erp_for_backup || die 'ERP_BACKUP_QUIESCE_FAILED'" "$helper" || fail ERP_BACKUP_QUIESCE_GATE
+grep -Fq "resume_erp_after_backup || die 'ERP_BACKUP_RESUME_FAILED'" "$helper" || fail ERP_BACKUP_RESUME_GATE
+grep -Fq 'resume_erp_after_backup || cleanup_rc=1' "$helper" || fail ERP_BACKUP_CLEANUP_RESUME
+grep -Fq "[[ \"\$QUIESCE_RECOVERY_STATUS\" == LOCKED ]] && die 'LOCKED'" "$helper" || fail ERP_BACKUP_CRASH_RECOVERY_GATE
 if grep -Eq 'erp-staging|backup-erp\.visiontrading\.biz|codex_staging|/opt/codex-dolibarr-staging' "$helper" "$installer" "$sudoers"; then fail STAGING_TARGET_PRESENT; fi
 
 [[ $(wc -l <"$sudoers" | tr -d ' ') -eq 6 ]] || fail SUDOERS_COUNT
@@ -51,6 +55,7 @@ done
 test_root=$(mktemp -d /private/tmp/m062-production-helper-test.XXXXXX)
 trap 'rm -rf "$test_root"' EXIT
 for dir in inbox target code-backups db-backups state state/requests state/container-root artifacts; do mkdir -p "$test_root/$dir"; done
+chmod 0700 "$test_root/state"
 python3 "$builder" --output "$test_root/rebuilt.tar.gz" >/dev/null || fail ARTIFACT_REBUILD
 cmp -s "$artifact" "$test_root/rebuilt.tar.gz" || fail ARTIFACT_NOT_REPRODUCIBLE
 cp "$artifact" "$test_root/inbox/m062-production-8dab3b9.tar.gz"
@@ -60,6 +65,24 @@ helper_copy="$test_root/chinaplanetos-production-m062-ports.test"
 cp "$helper" "$helper_copy"
 # shellcheck source=/dev/null
 source "$helper_copy"
+flock() { case "${1:-}" in -n) [[ ${M062_TEST_RECOVERY_LOCK_BUSY:-0} -eq 0 ]] ;; -u) return 0 ;; *) return 1 ;; esac; }
+REQUEST_ID='m062-20260828T120000Z-abcdef123456'
+quiesce_erp_for_backup
+[[ $ERP_QUIESCED -eq 1 ]] || fail ERP_TEST_QUIESCE
+[[ -f "$QUIESCE_MARKER" ]] || fail ERP_TEST_QUIESCE_MARKER
+resume_erp_after_backup
+[[ $ERP_QUIESCED -eq 0 && ! -e "$QUIESCE_MARKER" ]] || fail ERP_TEST_RESUME
+printf 'TARGET_CONTAINER=%s\nREQUEST_ID=%s\n' "$TARGET_CONTAINER" "$REQUEST_ID" >"$QUIESCE_MARKER"
+chmod 0600 "$QUIESCE_MARKER"
+: >"$LOCK_FILE"
+chmod 0600 "$LOCK_FILE"
+ERP_QUIESCED=0
+M062_TEST_RECOVERY_LOCK_BUSY=1
+if recover_interrupted_quiesce >/dev/null; then fail ERP_TEST_ACTIVE_LOCK_RECOVERED; fi
+[[ "$QUIESCE_RECOVERY_STATUS" == LOCKED && $ERP_QUIESCED -eq 0 && -f "$QUIESCE_MARKER" ]] || fail ERP_TEST_ACTIVE_LOCK_MUTATED
+M062_TEST_RECOVERY_LOCK_BUSY=0
+recover_interrupted_quiesce >/dev/null
+[[ $ERP_QUIESCED -eq 0 && ! -e "$QUIESCE_MARKER" ]] || fail ERP_TEST_INTERRUPTED_RESUME
 check_environment
 prepare_inbox_candidate
 [[ ${#RUNTIME_FILES[@]} -eq 8 && ${#SUPPORT_FILES[@]} -eq 8 ]] || fail CANDIDATE_COUNTS

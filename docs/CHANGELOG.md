@@ -1,5 +1,11 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-28 — M062 production backup-validation hardening
+
+- Preserved the strict full-database restore/fingerprint validation while preventing false mismatches from live ERP writes by briefly quiescing only the exact production Dolibarr container during backup validation.
+- Added durable interrupted-quiesce recovery, exact container identity checks, automatic ERP restart/HTTPS verification on success or failure, and focused contract/recovery coverage.
+- Kept the exact reviewed runtime commit and artifact unchanged; the failed production apply made no schema, code or business-data mutation.
+
 ## 2026-08-28 — M062-R03 Alexandria public-search staging package
 
 - Added a deterministic code-only staging artifact and checksum-pinned replacement helper for the one-file public shipping gateway correction, with both unchanged PHP dependencies carried as support-only candidate-test closure.
