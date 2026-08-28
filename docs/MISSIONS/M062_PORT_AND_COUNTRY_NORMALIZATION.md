@@ -42,6 +42,13 @@
 - Reviewers verified the corrected SQL prestate provenance, exact predecessor-helper gate, root-only durable backup, automatic restore, absence of a sudoers mutation path, production-only fixed targets, strict `8 baseline / 0 current / 0 drift` gate, path isolation, no-clobber audit, restart reconciliation and fail-closed recovery behavior.
 - No reviewer accessed the server or changed runtime/database state. The corrected package is ready for a separately approved upload and helper-only replacement; no helper command may run under that installation approval.
 
+## Corrected production helper replacement — 2026-08-28
+
+- Ahmed approved uploading the corrected artifact/helper/installer/sudoers to the production inbox and replacing only the installed M062 helper, without running any helper command or changing the database.
+- All four inbox files were independently verified as `codex-deploy:codex-deploy 0644` at the reviewed hashes: artifact `e64dae7c857bc77071368393ea4d5cb50ecc63474798e344a2c35c2554924696`, helper `9bb10f73b8ccb1928c15bf2d0b23af17cd9aa1bda7f5578cec70f8b951f56b9f`, installer `631b232bdc36057724e078cbaefe90969c0bef6cd5e6cd448e190802a1136e87`, and unchanged sudoers `4ae95799f8bd69744d5e09ec4ab8f598052f9a2482952ab41e7d3ee1b2b0ebbf`.
+- Independent restricted verification after the root installation confirms `/usr/local/sbin/chinaplanetos-production-m062-ports` is `root:root 0755`, size `48357`, at the exact corrected helper hash. `sudo -n -l` exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` for that helper path. The inbox artifact remains at its exact reviewed hash and production ERP returned HTTPS `200`.
+- No M062 helper command ran during this gate. Runtime files, schema, database, business data, documents and configuration were not changed. The next gate is separately approved `compare` followed by conditional read-only `preflight`; `apply` and `verify` remain forbidden.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
