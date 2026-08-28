@@ -1,5 +1,15 @@
 # M062 Local Completion Report — Port and Country Normalization
 
+## Alexandria terminal-history R04 staging release preparation — 2026-08-28
+
+- Ahmed approved ERP-first deployment to canonical `backup-erp`, followed only after successful verification by React staging deployment and desktop/390px acceptance. Production remains forbidden.
+- Read-only staging discovery reconfirmed restricted identity `codex-deploy`, installed R03 helper SHA-256 `b8f945538e38bfef34eb4d83cbb39b83f0bf39eb6a8e77c3cb47c0aebf6af0ba`, durable R03 state `DEPLOYED`, exact current gateway SHA-256 `189bee8d2bc6bf47c8898dcb90efb8dc7658b7816ac2fecaee988d53edb95cb4`, and staging HTTPS `200`.
+- Frozen ERP runtime commit is `f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b`; manifest-scope commit is `3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67`. The deterministic eight-file artifact `/private/tmp/m062-terminal-trend-f0d8d33.tar.gz` has SHA-256 `a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c`; runtime scope is exactly one gateway file and support-only files are never applied.
+- R04 helper SHA-256 is `e849e93691481962085b5313917a3c10f21f2ebc7fe5366fadb5564ee48047ac`; checksum-pinned predecessor-only installer SHA-256 is `ce100832a7035981d40e89be791a3ab20839deadd01ac3c6fd9cf5088c2a35fb`; sudoers remains unchanged at SHA-256 `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+- Artifact reproducibility, helper/installer syntax and contract, exact one-file allowlist, fixed staging identities, no-database/no-production policy, candidate PHP regressions, apply rollback reconciliation, rollback reapply recovery and final rollback all passed locally.
+- Source reviews on ERP `f0d8d33` and corrected React `53da1bf` returned Shipping/Portal `PASS`, QA `PASS`, and Security `PASS_WITH_CONDITIONS`. Security conditions are release gates: exact Git pins, frozen package review, ERP-first payload/privacy/failure checks and actual React viewport acceptance.
+- No helper upload/replacement or deployment command has run for R04 yet. Database, runtime, configuration and production remain unchanged at this preparation point.
+
 ## Alexandria terminal-history chart — local correction, 2026-08-28
 
 - The grouped ERP trend now queries `ALEXANDRIA OLD PORT`, `ALEXANDRIA TMT` and legacy generic `ALEXANDRIA` independently. It returns non-empty terminal-labelled `series` while retaining the existing flat `points` contract for exact non-grouped routes.

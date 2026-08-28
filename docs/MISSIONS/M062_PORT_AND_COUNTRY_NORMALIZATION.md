@@ -8,6 +8,16 @@
 - Existing exact-route `points` remain backward compatible. Public output remains allowlisted and must not expose rate IDs, fingerprints, carrier identity fields, cost, supplier or margin data.
 - Local ERP gateway and React implementation, tests and documentation are authorized. Staging and production deployment remain separate exact approval gates.
 
+## Alexandria terminal-history R04 staging authorization — 2026-08-28
+
+- Ahmed approved the announced ERP-first staging gate: deploy and verify the corrected public gateway on canonical `backup-erp`, then deploy React to `new.chinaplanet.org` through GitHub Actions and complete desktop/390px acceptance. Production remains forbidden.
+- Frozen ERP runtime commit is `f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b`; frozen React commit is `53da1bfd6e8bc92bd1a5f73eda5ee2306d716d0f`.
+- R04 is code-only and may replace exactly `custom/chinaplanetshippingprices/class/PublicShippingRateService.class.php`. It must not run a migration or modify database, schema, configuration, module state, business data, documents, containers, volumes, ports, proxy or DNS.
+- The accepted staging prestate is the independently rechecked R03 gateway SHA-256 `189bee8d2bc6bf47c8898dcb90efb8dc7658b7816ac2fecaee988d53edb95cb4`; installed R03 helper SHA-256 is `b8f945538e38bfef34eb4d83cbb39b83f0bf39eb6a8e77c3cb47c0aebf6af0ba` and durable status is `DEPLOYED`.
+- Deterministic eight-file artifact SHA-256 is `a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c`. R04 helper SHA-256 is `e849e93691481962085b5313917a3c10f21f2ebc7fe5366fadb5564ee48047ac`; installer SHA-256 is `ce100832a7035981d40e89be791a3ab20839deadd01ac3c6fd9cf5088c2a35fb`; existing sudoers remains unchanged at `958ad27c1e7aae16c6b7a8b297e23fcb2a5847666085b0f82493e31f2b651231`.
+- Source Shipping/Portal and QA reviews returned `PASS`; Security returned `PASS_WITH_CONDITIONS` requiring exact Git pins, dependency-closed ERP-first staging deployment, payload/privacy checks, and real viewport acceptance. The frozen R04 package/helper/installer still requires independent release Security/QA review before upload.
+- Required order is helper/artifact upload and checksum verification, helper-only replacement, `compare`, `preflight`, `apply`, independent `verify`, gateway payload/failure acceptance, then GitHub React staging deployment and desktop/390px Arabic/English acceptance. Stop and restore/reconcile on the first failure.
+
 ## Production release preparation — 2026-08-28
 
 - After successful ERP and React staging acceptance, Ahmed requested that M062 be pushed live. This records production intent and authorizes read-only production discovery plus local release preparation; it does not authorize installing an unreviewed helper or mutating production before the required production review and deployment gates pass.
