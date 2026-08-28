@@ -10,11 +10,11 @@ import subprocess
 import tarfile
 
 
-RUNTIME_COMMIT = "d6c2953bda1ab6f7c74c99385782542fd853299a"
+RUNTIME_COMMIT = "4b6e14f9a319f63f502796e3cd33024389b04321"
 RUNTIME_MANIFEST = "deploy/releases/m062-production-runtime-files.txt"
 SUPPORT_MANIFEST = "deploy/releases/m062-production-support-files.txt"
 PRESTATE_MANIFEST = "deploy/releases/m062-production-prestate.sha256"
-EXPECTED_SHA256 = "e64dae7c857bc77071368393ea4d5cb50ecc63474798e344a2c35c2554924696"
+EXPECTED_SHA256 = "43d55dcc6179a4bc913a379ffedb212e28faacb0cee95bc03708e14fc5bdcdc9"
 
 
 def git_bytes(repo: pathlib.Path, path: str) -> bytes:
