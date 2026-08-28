@@ -321,7 +321,7 @@ class PortNameResolver
         return array(
             array('port_name'=>'SOKHNA','country_code'=>'EG','port_code'=>'EGSOK','aliases'=>array('AIN SOKHNA','EL SOKHNA')),
             array('port_name'=>'ALEXANDRIA','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA')),
-            array('port_name'=>'ALEXANDRIA OLD PORT','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA OLD PORT')),
+            array('port_name'=>'ALEXANDRIA OLD PORT','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDIRA OLD PORT','ALEXANDIRA OLD PORT （calling AICT）','ALEXANDIRA OLD PORT （calling ACCHC）')),
             array('port_name'=>'ALEXANDRIA TMT','country_code'=>'EG','port_code'=>'EGALY','aliases'=>array('ALEXANDRIA (TMT)')),
             array('port_name'=>'DEKHEILA','country_code'=>'EG','port_code'=>'EGEDK','aliases'=>array('EL DEKHEILA')),
             array('port_name'=>'DAMIETTA','country_code'=>'EG','port_code'=>'EGDAM','aliases'=>array()),
