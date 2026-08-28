@@ -5,10 +5,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
 readonly RELEASE='M062-PROD-R01'
-readonly RUNTIME_COMMIT='4b6e14f9a319f63f502796e3cd33024389b04321'
+readonly RUNTIME_COMMIT='8dab3b90ba335ad99b5d61d12c731021fc92f1d7'
 readonly BASELINE_REFERENCE='verified-production-pre-m062'
-readonly SHORT_COMMIT='4b6e14f'
-readonly ARTIFACT_SHA='43d55dcc6179a4bc913a379ffedb212e28faacb0cee95bc03708e14fc5bdcdc9'
+readonly SHORT_COMMIT='8dab3b9'
+readonly ARTIFACT_SHA='add7cbc918c1af489f3b107bf2156eb6b9debb0c43f76a936e782c4cfe21aae7'
 readonly RUNTIME_MANIFEST_SHA='cb7406d9b735456842a158487b55b00e5fbe149872b2b0d272bb65a7b479de2a'
 readonly SUPPORT_MANIFEST_SHA='c558d6a4074dcebee8f437d39b72258a3f84c83241d101f2ff575e4a32711c22'
 readonly BASELINE_MANIFEST_SHA='b89d37ec17e96d11963470d296868b1a66e0ee12ec4a3c2121398786a587bbe0'
@@ -25,7 +25,7 @@ readonly TRANSLATION_DEPENDENCY_SHA='1b95c85261868d56ee4bf9b25bbd2eae30876cf74b6
 readonly PRICE_DEPENDENCY='custom/chinaplanetshippingprices/class/ShippingPriceService.class.php'
 readonly PRICE_DEPENDENCY_SHA='27cf3826310b1f4065b4bc5068b66f21cded32393a36ea1507e546c3d64e560e'
 readonly ARTIFACT_NAME="m062-production-${SHORT_COMMIT}.tar.gz"
-readonly DEPLOY_CONTEXT='m062-production-4b6e14f-root-only'
+readonly DEPLOY_CONTEXT='m062-production-8dab3b9-root-only'
 readonly TARGET_CONTAINER='vision_erp'
 readonly DB_CONTAINER='vision_db'
 readonly TARGET_VOLUME='vision-os_dolibarr_custom'
