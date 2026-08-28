@@ -1,5 +1,13 @@
 # M062 — Port and country normalization
 
+## Alexandria terminal-history correction authorization — 2026-08-28
+
+- Ahmed approved correcting the grouped Alexandria chart after confirming that the public selector should remain one `ALEXANDRIA` option while price cards identify `ALEXANDRIA OLD PORT` and `ALEXANDRIA TMT`.
+- The public trend must query each exact pricing destination independently and return labelled terminal series. It must never average Old Port, TMT and generic Alexandria into one line.
+- Generic historical `ALEXANDRIA` data may appear only as a separate terminal-not-specified series. Different currencies must use separate chart axes rather than being compared as one currency.
+- Existing exact-route `points` remain backward compatible. Public output remains allowlisted and must not expose rate IDs, fingerprints, carrier identity fields, cost, supplier or margin data.
+- Local ERP gateway and React implementation, tests and documentation are authorized. Staging and production deployment remain separate exact approval gates.
+
 ## Production release preparation — 2026-08-28
 
 - After successful ERP and React staging acceptance, Ahmed requested that M062 be pushed live. This records production intent and authorizes read-only production discovery plus local release preparation; it does not authorize installing an unreviewed helper or mutating production before the required production review and deployment gates pass.

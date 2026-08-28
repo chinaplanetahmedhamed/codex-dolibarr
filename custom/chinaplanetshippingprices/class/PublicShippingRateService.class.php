@@ -119,8 +119,21 @@ class PublicShippingRateService
     {
         $filters = $this->normalizeRequiredFilters($input);
         $groupedDestination = $this->isAlexandriaGroup($filters['country_code'], $filters['pod']);
-        $trend = $groupedDestination ? array('points' => array(), 'error' => '') : $this->prices->getPublicPriceTrend($filters, 12);
-        if (!empty($trend['error'])) throw new PublicShippingRateException('rate_service_unavailable', 503);
+        $trend = array('points' => array(), 'error' => '');
+        $series = array();
+        if ($groupedDestination) {
+            foreach ($this->alexandriaTrendMembers() as $pod) {
+                $memberFilters = $filters;
+                $memberFilters['pod'] = $pod;
+                $memberTrend = $this->prices->getPublicPriceTrend($memberFilters, 12);
+                if (!empty($memberTrend['error'])) throw new PublicShippingRateException('rate_service_unavailable', 503);
+                $memberPoints = array_values(isset($memberTrend['points']) && is_array($memberTrend['points']) ? $memberTrend['points'] : array());
+                if ($memberPoints) $series[] = array('pod' => $pod, 'points' => $memberPoints);
+            }
+        } else {
+            $trend = $this->prices->getPublicPriceTrend($filters, 12);
+            if (!empty($trend['error'])) throw new PublicShippingRateException('rate_service_unavailable', 503);
+        }
         return array(
             'route' => array(
                 'country_code' => $filters['country_code'],
@@ -132,6 +145,7 @@ class PublicShippingRateService
             'reference_only' => true,
             'grouped_destination' => $groupedDestination,
             'points' => array_values(isset($trend['points']) && is_array($trend['points']) ? $trend['points'] : array()),
+            'series' => $series,
         );
     }
 
@@ -230,6 +244,15 @@ class PublicShippingRateService
             return array('ALEXANDRIA', 'ALEXANDRIA OLD PORT', 'ALEXANDRIA TMT');
         }
         return array($filters['pod']);
+    }
+
+    /**
+     * Keep Alexandria terminal history exact. The generic legacy destination
+     * remains a separate last series and is never averaged into either terminal.
+     */
+    private function alexandriaTrendMembers()
+    {
+        return array('ALEXANDRIA OLD PORT', 'ALEXANDRIA TMT', 'ALEXANDRIA');
     }
 
     private function publicDestinationLabel($countryCode, $pod)

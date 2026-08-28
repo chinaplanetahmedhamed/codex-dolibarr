@@ -1,5 +1,16 @@
 # M062 Local Completion Report — Port and Country Normalization
 
+## Alexandria terminal-history chart — local correction, 2026-08-28
+
+- The grouped ERP trend now queries `ALEXANDRIA OLD PORT`, `ALEXANDRIA TMT` and legacy generic `ALEXANDRIA` independently. It returns non-empty terminal-labelled `series` while retaining the existing flat `points` contract for exact non-grouped routes.
+- React always requests trend data for the selected public destination. Grouped Alexandria renders one labelled line per exact terminal; generic history is labelled as terminal not specified and is never assigned to Old Port or TMT.
+- Currency groups render on separate chart axes, preventing a USD/CNY numeric comparison without conversion. Exact single-series routes retain latest/lowest/highest metrics.
+- Public projection remains limited to destination label plus date, price and currency. Tests explicitly reject cost, supplier, margin, rate ID, fingerprint and shipping-line fields.
+- Dolibarr branch/worktree: `codex/m062-c01-alexandria-trend` at `/private/tmp/m062-c01-erp-trend`. React branch/worktree: `codex/m062-c01-alexandria-trend` at `/private/tmp/m062-c01-react-trend`.
+- ERP verification passed: PHP lint; M062 grouped-search regression (`trend=SEPARATE`); M062 resolver regression (69 cases / 118 aliases); M043 public token and source-projection regressions.
+- React verification passed: 48 server tests, 50 UI/library tests, lint, production build and diff check.
+- No schema, database, configuration, business-data or permission change is required. Staging and production were not accessed or changed; runtime acceptance remains pending a separately approved ERP-first staging release.
+
 ## Alexandria public-search R03 staging release preparation — 2026-08-28
 
 - Ahmed approved ERP gateway staging deployment and verification first, followed conditionally by React staging and desktop/390px acceptance. Production remains forbidden.
