@@ -35,6 +35,13 @@
 - Local syntax, deterministic rebuild, production-only contract, exact baseline/mixed-state rejection, dependency-pin, path-isolation, no-clobber audit, restart reconciliation, apply-fault recovery, rollback reapply and static resolver/importer/Alexandria/token suites pass. The environment-backed current-data test is intentionally deferred to helper preflight/verify because the local database is not the accepted staging/production dataset.
 - Shipping, Security and QA must independently review these exact pins before any upload or installation. Production remains unchanged; helper rotation and rerunning `compare`/conditional `preflight` require a new exact approval.
 
+## Corrected production package review — 2026-08-28
+
+- Shipping, Security and QA independently returned `PASS` with no conditions or blockers for frozen preparation commit `8c9e49c73afd238963a7be3020d3e3a16876b877`, corrected source commit `d6c2953bda1ab6f7c74c99385782542fd853299a`, artifact/helper/installer pins `e64dae7c...` / `9bb10f73...` / `631b232b...`, and unchanged sudoers `4ae95799...`.
+- Independent rebuild and member comparison confirmed the 19-file artifact is deterministic, exactly one payload member changed from the previously accepted artifact (the production prestate manifest), and all eight runtime plus eight support files remain byte-identical.
+- Reviewers verified the corrected SQL prestate provenance, exact predecessor-helper gate, root-only durable backup, automatic restore, absence of a sudoers mutation path, production-only fixed targets, strict `8 baseline / 0 current / 0 drift` gate, path isolation, no-clobber audit, restart reconciliation and fail-closed recovery behavior.
+- No reviewer accessed the server or changed runtime/database state. The corrected package is ready for a separately approved upload and helper-only replacement; no helper command may run under that installation approval.
+
 ## Alexandria public-search staging deployment authorization — 2026-08-28
 
 - Ahmed explicitly approved deploying the ERP gateway to staging and verifying it, then deploying React staging only after ERP verification, followed by desktop/390px acceptance. Production remains forbidden.
