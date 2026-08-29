@@ -70,8 +70,33 @@ Risk after local completion: **medium** until authenticated browser and mail del
 
 Rollback is code-first: revert the local M068 commit or discard the clean worktree/branch. The local migration is additive; leaving unused columns/tables is the safe rollback. Destructive local schema removal requires a separate exact cleanup approval. No staging or production rollback action exists because neither environment was touched.
 
+## Local staging release-package preparation
+
+Approval used: `APPROVE M068 FOR LOCAL STAGING RELEASE-PACKAGE PREPARATION ONLY. Create and commit from 32e82ffbd82248f2a84f468172195267fb6d37a7 the exact runtime/support manifests, metadata-free checksum-pinned artifact, M068 preflight-only helper exposing compare/preflight/status only, sudoers, installer, and local Security/QA tests. NO PUSH, NO UPLOAD, NO HELPER INSTALLATION, NO STAGING COMMAND OR MUTATION, AND NO PRODUCTION ACTION.`
+
+- The worktree was clean at exact implementation commit `32e82ffbd82248f2a84f468172195267fb6d37a7` before preparation edits. The dirty/diverged permanent checkout remained untouched.
+- The deterministic USTAR/gzip staging candidate is `/private/tmp/m068-website-lifecycle-32e82ff.tar.gz`, SHA-256 `369ba510238edc1d67bf8f2d64b14a51c680070b717806fc4029527e2ff19e46`. It has 35 regular allowlisted members, canonical root/root IDs, mode `0644`, a fixed commit timestamp, no PAX headers, no symlinks/hardlinks, no Apple metadata, and reproducibly rebuilds byte-for-byte.
+- Runtime manifest: 26 files, SHA-256 `5b3b8ef2e1cc714860df71b089d4dda0e73cc5eb58b11c41add936144b0fb15a`.
+- Support manifest: 5 files, SHA-256 `f8c02594f11b3f0b377d42c39bb636fd27339a5230e0f434d27d4428cf389ad9`.
+- M062-R04 baseline manifest: 26 entries (12 present and 14 absent), SHA-256 `dbcd63d986dc3862419e806c6b900d8e5fcc3cddf7909739ea8df16ae888d3cf`.
+- Unchanged dependency manifest: 5 exact files, SHA-256 `926277d8cf5f89cdf1724b46ab83ed8949691e918681c5e3797fd7c28dac50b7`.
+- Preflight-only helper SHA-256: `e340e79ce56e88ad27f066788a85f67aa55a1cc2eef2f247390d1eb83ffa3256`. Its only accepted commands are `compare`, `preflight`, and `status`; it has no apply, verify, rollback, dry-run, arbitrary-argument, request, state-creation, backup, schema-write, or runtime-write surface.
+- Exact three-line sudoers SHA-256: `d939e20162ec13fa7a125bbd9ec40128a05615444140ef920aa0fcae8e27e018`.
+- Checksum-pinned transactional installer SHA-256: `926189d3bb75115c55eb8f780838302ae0fb6032b001511bb81545ede5bf0ca3`. It stages both files, validates helper syntax and sudoers, atomically publishes exact pins, restores the prior exact pair with the required `0755`/`0440` metadata on injected failure, retains a private recovery copy and reports `RECOVERY_REQUIRED` if automatic restoration itself fails, requires existing non-symlink system target directories, and does not execute the helper.
+- The helper is pinned only to canonical Compose project `erp-staging`, containers `erp-staging-dolibarr-1`, `erp-staging-mariadb-1`, and `erp-staging-mailpit-1`; volumes `erp-staging_erp-staging_custom`, `erp-staging_erp-staging_docs`, and `erp-staging_erp-staging_mariadb_data`; and localhost ports `18088`, `11025`, and `18025`.
+- It requires the deployed M062-R04 state pins `f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b`, `3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67`, and `a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c`. Read-only readiness covers exact code/dependency baseline, additive-schema status, HMAC presence without output, Mailpit-only SMTP transport (`mailpit:1025`) without sending, Customer Center enablement, the exact Customers Portal group/right, and absence of forbidden Core reset right `343` from that group.
+- Privileged artifact intake uses a 2 MiB hard limit and a descriptor-based `O_NOFOLLOW` bounded copy before hashing. The container candidate uses an unpredictable root-only `mktemp` directory under `/root`, verifies root ownership/mode `0700` before and after copy, and removes only the fixed safe pattern.
+- Local verification passed: PHP lint across all runtime/support PHP files; Bash and Python syntax; the three M068 source/unit checks; deterministic artifact rebuild and byte comparison; exact Git source/baseline/dependency closure; release-contract checks; corrupt, oversized, and symlink artifact denial; runtime-drift, dependency-drift, baseline-state, forbidden-command, and arbitrary-argument denial; installer checksum, idempotency, rollback metadata, recovery-backup retention, and rollback-after-each-publish-step tests; and `git diff --check`.
+- Independent Security and QA verdicts for this release package are recorded as PASS after their final read-only review. Neither reviewer edited files.
+
+This preparation did not push or upload anything, connect to any server, install or invoke a server helper, create staging request/state/backup files, run a staging command, migrate any database, send mail, create business records, restart a service, or access production. The installer was exercised only against a disposable local filesystem fixture.
+
+Stopping gate: do not upload or install this package, and do not invoke `compare`, `preflight`, or `status`, without the next exact approval. Stop on any checksum mismatch, non-M062-R04 baseline, topology/binding difference, runtime or dependency drift, unsafe archive member, missing HMAC/mail/module/group/right prerequisite, unexpected schema-check result, secret/customer-data output, or inability to validate without mutation. Because nothing was installed or deployed, rollback is to revert the preparation commit or remove the disposable local artifact; no staging/production rollback is authorized or required.
+
+Residual risk remains **medium**: source/package controls are locally proven, but the staging topology, secrets-by-presence, mail configuration, schema status, authenticated browser behavior, and disposable-mailbox lifecycle have not been revalidated with this package. Production remains entirely out of scope.
+
 ## Next exact approval gate
 
-Use this phrase only when ready to begin the next read-only staging gate:
+Use this phrase only when ready to allow staging filesystem preparation. This gate still does not authorize helper invocation or application changes:
 
-`APPROVE M068 FOR BACKUP-ERP STAGING PREPARATION AND READ-ONLY COMPARE/PREFLIGHT ONLY. NO STAGING APPLY AND NO PRODUCTION ACTION.`
+`APPROVE M068 FOR BACKUP-ERP STAGING UPLOAD AND CHECKSUM-PINNED PREFLIGHT-ONLY HELPER INSTALLATION ONLY. DO NOT RUN COMPARE, PREFLIGHT, OR STATUS; DO NOT APPLY OR MIGRATE; DO NOT SEND EMAIL OR CREATE BUSINESS RECORDS; AND NO PRODUCTION ACTION.`

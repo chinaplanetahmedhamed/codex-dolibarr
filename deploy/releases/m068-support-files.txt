@@ -1,0 +1,5 @@
+deploy/migrations/m068_website_lead_quotation_portal_lifecycle.php
+deploy/tests/test_m068_lifecycle_source.php
+deploy/tests/test_m068_portal_currency_unit.php
+deploy/tests/test_m068_portal_invitation_security_source.php
+deploy/tests/test_m068_staging_configuration.php
