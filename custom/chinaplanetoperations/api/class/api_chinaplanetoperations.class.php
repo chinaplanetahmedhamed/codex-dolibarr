@@ -50,6 +50,7 @@ class ChinaPlanetOperations extends DolibarrApi
                 'request_ref' => $result['ref'],
                 'status' => $result['status'],
                 'duplicate' => (bool) $result['duplicate'],
+                'schema_version' => (int) $result['schema_version'],
             );
         } catch (PublicWebsiteRequestException $e) {
             throw new RestException($e->getHttpStatus(), $e->getPublicCode());

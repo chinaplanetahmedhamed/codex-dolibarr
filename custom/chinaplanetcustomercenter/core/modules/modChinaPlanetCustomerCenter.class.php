@@ -12,13 +12,13 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 98;
         $this->description = 'ChinaPlanet Customer Center';
-        $this->version = '2.3.2';
+        $this->version = '2.4.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'project';
         $this->dirs = array('/chinaplanetcustomercenter');
         $this->config_page_url = array('setup.php@chinaplanetcustomercenter');
-        $this->depends = array('modSociete', 'modCommande', 'modFacture', 'modFournisseur', 'modBanque', 'modExpedition', 'modProjet');
+        $this->depends = array('modSociete', 'modCommande', 'modPropale', 'modFacture', 'modFournisseur', 'modBanque', 'modExpedition', 'modProjet', 'modChinaPlanetOperations');
         $this->requiredby = array();
         $this->phpmin = array(7, 2);
         $this->need_dolibarr_version = array(23, 0);
@@ -147,6 +147,20 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
             'position' => 110,
             'enabled' => '$conf->chinaplanetcustomercenter->enabled',
+            'perms' => '$user->hasRight("chinaplanetcustomercenter","read")',
+            'user' => 2,
+        );
+
+        $this->menu[$r++] = array(
+            'fk_menu' => 'fk_mainmenu=chinaplanetcustomercenter',
+            'type' => 'left',
+            'titre' => 'Quotation Requests',
+            'mainmenu' => 'chinaplanetcustomercenter',
+            'leftmenu' => 'quotation_requests',
+            'url' => '/custom/chinaplanetcustomercenter/quotation_requests.php',
+            'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
+            'position' => 105,
+            'enabled' => '$conf->chinaplanetcustomercenter->enabled && $conf->chinaplanetoperations->enabled',
             'perms' => '$user->hasRight("chinaplanetcustomercenter","read")',
             'user' => 2,
         );

@@ -13,7 +13,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.7.0';
+        $this->version = '2.8.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
@@ -50,6 +50,9 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500522, 'Administer internal task board and team grants', 'task_admin'),
             array(500523, 'Comment on readable internal tasks', 'task_comment'),
             array(500524, 'Manage checklists on scoped internal tasks', 'task_checklist'),
+            array(500525, 'Safely qualify public website requests', 'publicrequest_qualify'),
+            array(500526, 'Publish approved public request content to customers', 'publicrequest_publish'),
+            array(500527, 'Invite qualified customers to Customer Center', 'publicrequest_invite'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;

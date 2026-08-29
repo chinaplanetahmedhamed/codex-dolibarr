@@ -66,7 +66,12 @@ function cpcc_portal_asset($path)
 
 function cpcc_portal_navigation($user, $active = '')
 {
+    global $langs;
     if (empty($user->id) || empty($user->socid) || !empty($user->admin)) return;
+    $langs->load('chinaplanetcustomercenter@chinaplanetcustomercenter');
+
+    $activeLanguage = strtolower((string) ($langs->defaultlang ?? 'en_US'));
+    $pageDirection = strpos($activeLanguage, 'ar') === 0 ? 'rtl' : 'ltr';
 
     $activeGroups = array(
         'dashboard' => 'home',
@@ -79,7 +84,8 @@ function cpcc_portal_navigation($user, $active = '')
         'documents' => 'documents',
         'commercial_documents' => 'documents',
         'reports' => 'documents',
-        'orders' => 'requests',
+        'orders' => 'orders',
+        'quotation_requests' => 'quotation_requests',
         'profile' => 'account',
     );
     $activeGroup = isset($activeGroups[$active]) ? $activeGroups[$active] : 'home';
@@ -91,12 +97,13 @@ function cpcc_portal_navigation($user, $active = '')
         'shippingprices' => array('أسعار الشحن', 'Shipping Prices', 'fa-search-dollar', '/chinaplanetshippingprices/index.php'),
         'account' => array('الحساب المالي', 'Financial Account', 'fa-wallet', '/chinaplanetcustomercenter/balance.php'),
         'documents' => array('المستندات', 'Documents', 'fa-file-alt', '/chinaplanetcustomercenter/documents.php'),
-        'requests' => array('الطلبات والدعم', 'Orders & Support', 'fa-headset', '/chinaplanetcustomercenter/orders.php'),
+        'orders' => array('الطلبات', 'Orders', 'fa-shopping-cart', '/chinaplanetcustomercenter/orders.php'),
+        'quotation_requests' => array('طلبات عروض الأسعار', 'Quotation Requests', 'fa-file-signature', '/chinaplanetcustomercenter/quotation_requests.php'),
     );
 
     $homeUrl = dol_buildpath('/chinaplanetcustomercenter/board.php', 1);
     print '<link rel="stylesheet" href="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/portal.css')).'">';
-    print '<header class="cpcc-portal-shell" dir="rtl">';
+    print '<header class="cpcc-portal-shell" dir="'.$pageDirection.'">';
     print '<a class="cpcc-portal-brand" href="'.dol_escape_htmltag($homeUrl).'" aria-label="الرئيسية / Customer Home"><span class="cpcc-portal-brand-mark" aria-hidden="true">V</span><span><strong>Vision Customer Center</strong><small>مركز العميل</small></span></a>';
     print '<button type="button" class="cpcc-portal-menu-toggle" aria-expanded="false" aria-controls="cpcc-portal-menu"><span class="fas fa-bars" aria-hidden="true"></span><span>القائمة / Menu</span></button>';
     print '<nav id="cpcc-portal-menu" class="cpcc-portal-nav" aria-label="تنقل بوابة العميل">';
@@ -109,10 +116,11 @@ function cpcc_portal_navigation($user, $active = '')
     print '<a class="cpcc-logout-link" data-cpcc-logout href="'.dol_escape_htmltag(DOL_URL_ROOT.'/user/logout.php').'"><span class="fas fa-sign-out-alt" aria-hidden="true"></span><span><b>تسجيل الخروج</b><small lang="en" dir="ltr">Logout</small></span></a>';
     print '</nav></header>';
     print '<dialog class="cpcc-logout-dialog" data-cpcc-logout-dialog aria-labelledby="cpcc-logout-title" aria-describedby="cpcc-logout-message">';
-    print '<form method="dialog" dir="rtl">';
+    print '<form method="dialog" dir="'.$pageDirection.'">';
     print '<h2 id="cpcc-logout-title">تأكيد تسجيل الخروج</h2>';
     print '<p id="cpcc-logout-message">هل تريد حقًا تسجيل الخروج؟<br><span lang="en" dir="ltr">Are you sure you want to log out?</span></p>';
     print '<div class="cpcc-logout-actions">';
+    print '<a href="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/reset_password.php', 1)).'">'.dol_escape_htmltag($langs->trans('PortalResetPasswordLink')).'</a>';
     print '<button type="submit" value="cancel" data-cpcc-logout-cancel>إلغاء / Cancel</button>';
     print '<button type="button" class="cpcc-logout-confirm" data-cpcc-logout-confirm>تسجيل الخروج / Logout</button>';
     print '</div></form></dialog>';
@@ -177,6 +185,15 @@ function cpcc_portal_authorized_shipment($db, $user, $shipid, $requestedSocid = 
 function cpcc_portal_money($amount)
 {
     return number_format((float) $amount, 2);
+}
+
+/** Select the customer-facing proposal value and explicit ISO currency. */
+function cpcc_portal_proposal_money($proposal, $baseValue, $multicurrencyValue, $baseCurrency = null)
+{
+    $base = strtoupper((string) ($baseCurrency === null ? getDolCurrency() : $baseCurrency));
+    $currency = strtoupper((string) (!empty($proposal->multicurrency_code) ? $proposal->multicurrency_code : $base));
+    $foreign = $currency !== $base && (float) $proposal->multicurrency_tx > 0;
+    return array('amount'=>$foreign ? (float)$multicurrencyValue : (float)$baseValue, 'currency'=>$currency);
 }
 
 function cpcc_portal_shipment_doc_root($shipid)
