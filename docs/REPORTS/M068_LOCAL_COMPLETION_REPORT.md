@@ -119,3 +119,21 @@ The only helper commands are `configure-mailpit`, `compare`, `preflight`, `apply
 Local release tests passed for deterministic rebuild, artifact metadata and allowlist, pinned manifests, Mailpit-only/no-send contract, restricted sudo surface, exact predecessor upgrade, transactional installer recovery, corrupt/oversized/symlink artifact denial, runtime/dependency/baseline drift denial, synthetic apply/verify/rollback, PHP/Bash/Python syntax, and the existing M068 source suites. Production identifiers are absent from the release surface.
 
 Execution must stop on the first failed gate. Staging acceptance still requires the exact live outputs from Mailpit configuration, compare, preflight, apply, verify, and status. Authenticated browser and disposable-mailbox delivery tests remain separate because this approval forbids sending mail or creating real business records. Production remains entirely out of scope and requires a later explicit approval.
+
+## M068-R03 correction package — 2026-08-31
+
+R02 installed successfully on canonical `backup-erp`. Its Mailpit command created and restore-validated a full database backup, configured and verified `mailpit:1025` without sending mail, then stopped at `PORTAL_GROUP_OR_RIGHT_AMBIGUOUS`. `status` returned `M068_DEPLOY_STATUS=NOT_DEPLOYED`; no M068 runtime or schema was applied. The C01 verifier then reported `M068_PREFLIGHT_HELPER_INVALID` because it correctly still pinned the pre-R02 helper hash; this did not indicate HMAC value loss.
+
+Ahmed approved M068-R03 to correct these exact stopping findings and complete staging. The local package is frozen as follows:
+
+- Artifact: 37 canonical allowlisted files, SHA-256 `f47a4b51a3964ab3a65f5c4531e72fef120f3736198afecd4073e0b12681fa21`.
+- M068-R03 helper: SHA-256 `11b3e0e9e566be2722bc831e097ab67d04d93a6e4f708b4795494407df71940a`.
+- M068-R03 installer: SHA-256 `b197fbd6efd4aa8a4236a8df6946efae955d1b7bf5a8e72eb2636dec154a0a72`.
+- Eight-command sudoers: SHA-256 `a9970f4e1788b3efb513bd2558170e5765dd3c8067b4c3b1b5cdaf62e520a45f`.
+- Entity-scoped portal repair: SHA-256 `6eef8ac2bfbffa155eab7d869ab8d2f1554faf96283d610172b687a111ae5c7e`.
+- C01-R02 verifier helper: SHA-256 `5b867120ff1b6aaaaa1303f133bc23125f1d200a0bbed9caad2fc14a193b826f`.
+- C01-R02 transactional installer: SHA-256 `f67ebd874c3e8e1749a973a7410fdab4e384191aa6c815f92b5b4135ea2f0527`.
+
+The portal repair exposes counts and scope only, never row IDs or customer data. It stops on same-scope group ambiguity, preserves all groups/memberships/users, and changes only the exact active-entity portal authorization rows described in the Mission. It uses an entity-scoped MariaDB advisory lock, `FOR UPDATE`, transaction checks, a post-state proof, and independent lock release. The R03 helper creates and restore-validates a full root-coverage database backup before invoking it. The Mailpit no-op path now also runs the complete configuration gate.
+
+All local M068 helper/installer/release suites, C01 helper/installer/contract suites, existing M068 lifecycle/currency/invitation checks, PHP/Bash/Python syntax, deterministic rebuild, manifest pins, predecessor-upgrade paths, and `git diff --check` pass. No server change was made during R03 local preparation. Production remains forbidden.

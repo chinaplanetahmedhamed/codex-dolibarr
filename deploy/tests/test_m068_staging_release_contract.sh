@@ -7,6 +7,7 @@ installer="$root/deploy/tools/install_backup_erp_m068_preflight_helper.sh"
 builder="$root/deploy/tools/build_m068_staging_artifact.py"
 sudoers="$root/deploy/config/codex-deploy-backup-erp-m068-preflight.sudoers"
 mailpit="$root/deploy/migrations/m068_staging_mailpit_configuration.php"
+portal_repair="$root/deploy/migrations/m068_staging_portal_group_repair.php"
 artifact=${M068_ARTIFACT:-/private/tmp/m068-website-lifecycle-32e82ff.tar.gz}
 
 fail() { echo "M068_STAGING_RELEASE_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
@@ -16,6 +17,7 @@ constant() { sed -n "s/^readonly $1='\([^']*\)'$/\1/p" "$2"; }
 bash -n "$helper"
 bash -n "$installer"
 php -l "$mailpit" >/dev/null
+php -l "$portal_repair" >/dev/null
 python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); compile(p.read_text(),str(p),"exec")' "$builder"
 [[ -f "$artifact" && ! -L "$artifact" ]] || fail ARTIFACT_ABSENT
 artifact_sha=$(sha256 "$artifact")
@@ -31,7 +33,7 @@ import pathlib, sys, tarfile
 archive, root = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 with tarfile.open(archive) as tf:
     members=tf.getmembers(); names=[m.name for m in members]
-    assert len(members)==36 and len(set(names))==36
+    assert len(members)==37 and len(set(names))==37
     assert all(m.isfile() and not m.issym() and not m.islnk() for m in members)
     assert all(m.uid==0 and m.gid==0 and m.uname=='root' and m.gname=='root' and m.mode==0o644 and not m.pax_headers for m in members)
     runtime=(root/'deploy/releases/m068-runtime-files.txt').read_text().splitlines()
@@ -47,7 +49,7 @@ while IFS= read -r rel; do
   cmp "$test_root/source" "$test_root/extracted/$rel" || fail RUNTIME_SOURCE_MISMATCH
 done <"$root/deploy/releases/m068-runtime-files.txt"
 [[ $(wc -l <"$root/deploy/releases/m068-runtime-files.txt" | tr -d ' ') -eq 26 ]] || fail RUNTIME_COUNT
-[[ $(wc -l <"$root/deploy/releases/m068-support-files.txt" | tr -d ' ') -eq 6 ]] || fail SUPPORT_COUNT
+[[ $(wc -l <"$root/deploy/releases/m068-support-files.txt" | tr -d ' ') -eq 7 ]] || fail SUPPORT_COUNT
 [[ $(wc -l <"$root/deploy/releases/m068-m062-r04-baseline.sha256" | tr -d ' ') -eq 26 ]] || fail BASELINE_COUNT
 [[ $(wc -l <"$root/deploy/releases/m068-m062-r04-dependencies.sha256" | tr -d ' ') -eq 5 ]] || fail DEPENDENCY_COUNT
 [[ $(grep -c '^ABSENT  ' "$root/deploy/releases/m068-m062-r04-baseline.sha256") -eq 14 ]] || fail BASELINE_ABSENT_COUNT
@@ -56,7 +58,7 @@ for name in RUNTIME_MANIFEST SUPPORT_MANIFEST BASELINE_MANIFEST DEPENDENCY_MANIF
   [[ -f "$root/$path" && $(sha256 "$root/$path") == "$pin" ]] || fail "${name}_PIN"
 done
 
-grep -Fq "readonly RELEASE='M068-R02'" "$helper" || fail RELEASE
+grep -Fq "readonly RELEASE='M068-R03'" "$helper" || fail RELEASE
 grep -Fq "readonly RUNTIME_COMMIT='32e82ffbd82248f2a84f468172195267fb6d37a7'" "$helper" || fail RUNTIME_COMMIT
 grep -Fq "readonly BASELINE_RELEASE='M062-R04'" "$helper" || fail BASELINE_RELEASE
 grep -Fq "readonly BASELINE_COMMIT='f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b'" "$helper" || fail BASELINE_COMMIT
@@ -70,19 +72,33 @@ grep -Fq 'DATABASE_RESTORE_CHECK_MISMATCH' "$helper" || fail DATABASE_RESTORE_GU
 grep -Fq 'configuration_check' "$helper" || fail CONFIGURATION_GATE
 grep -Fq 'compare_dependencies' "$helper" || fail DEPENDENCY_GATE
 
-commands='configure-mailpit compare preflight apply verify rollback status'
-[[ $(grep -c '^codex-deploy ALL=(root) NOPASSWD:' "$sudoers") -eq 7 ]] || fail SUDOERS_COMMAND_COUNT
+commands='configure-mailpit repair-portal-group compare preflight apply verify rollback status'
+[[ $(grep -c '^codex-deploy ALL=(root) NOPASSWD:' "$sudoers") -eq 8 ]] || fail SUDOERS_COMMAND_COUNT
 for command in $commands; do grep -Fxq "codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight $command" "$sudoers" || fail "SUDOERS_${command}"; done
-if grep -Eq 'vision_erp|vision_db|https://erp\.visiontrading\.biz|chinaplanetos-production' "$helper" "$installer" "$sudoers" "$mailpit"; then fail PRODUCTION_IDENTIFIER; fi
+if grep -Eq 'vision_erp|vision_db|https://erp\.visiontrading\.biz|chinaplanetos-production' "$helper" "$installer" "$sudoers" "$mailpit" "$portal_repair"; then fail PRODUCTION_IDENTIFIER; fi
 if grep -Eq 'CMailFile|mail[[:space:]]*\(' "$mailpit"; then fail MAIL_SEND_SURFACE; fi
 grep -Fq "'MAIN_MAIL_SMTP_SERVER' => 'mailpit'" "$mailpit" || fail MAILPIT_HOST
 grep -Fq "'MAIN_MAIL_SMTP_PORT' => '1025'" "$mailpit" || fail MAILPIT_PORT
 grep -Fq 'MAIL_SEND_EXECUTED=NO' "$mailpit" || fail MAIL_SEND_ASSERTION
+grep -Fq 'SELECT GET_LOCK(' "$portal_repair" || fail PORTAL_REPAIR_LOCK
+grep -Fq 'SELECT RELEASE_LOCK(' "$portal_repair" || fail PORTAL_REPAIR_UNLOCK
+grep -Fq 'FOR UPDATE' "$portal_repair" || fail PORTAL_REPAIR_ROW_LOCK
+grep -Fq 'NONCANONICAL_RIGHT_DELETE_FAILED' "$portal_repair" || fail PORTAL_NONCANONICAL_CONTROL
+grep -Fq 'FORBIDDEN_RIGHT_DELETE_FAILED' "$portal_repair" || fail PORTAL_FORBIDDEN_CONTROL
+grep -Fq 'MEMBERSHIPS_CHANGED=NO USERS_CHANGED=NO BUSINESS_RECORDS=NONE EMAIL_SENT=NO' "$portal_repair" || fail PORTAL_NO_BUSINESS_MUTATION_ASSERTION
+if grep -Eq 'DELETE FROM .*usergroup(_user)?([^_A-Za-z]|$)|DELETE FROM .*[^_]user([^_A-Za-z]|$)' "$portal_repair"; then fail PORTAL_DESTRUCTIVE_IDENTITY_MUTATION; fi
 if grep -Eq '(INSERT|UPDATE|DELETE|ALTER|DROP|CREATE)[[:space:]]' "$root/deploy/tests/test_m068_staging_configuration.php"; then fail CONFIG_TEST_MUTATES; fi
 
 helper_sha=$(sha256 "$helper"); sudoers_sha=$(sha256 "$sudoers")
 [[ "$(constant HELPER_SHA "$installer")" == "$helper_sha" ]] || fail INSTALLER_HELPER_PIN
 [[ "$(constant SUDOERS_SHA "$installer")" == "$sudoers_sha" ]] || fail INSTALLER_SUDOERS_PIN
-[[ "$(constant PREDECESSOR_HELPER_SHA "$installer")" == e340e79ce56e88ad27f066788a85f67aa55a1cc2eef2f247390d1eb83ffa3256 ]] || fail PREDECESSOR_HELPER_PIN
-[[ "$(constant PREDECESSOR_SUDOERS_SHA "$installer")" == d939e20162ec13fa7a125bbd9ec40128a05615444140ef920aa0fcae8e27e018 ]] || fail PREDECESSOR_SUDOERS_PIN
-echo "M068_STAGING_RELEASE_CONTRACT=PASS ARTIFACT_SHA=$artifact_sha MEMBERS=36 RUNTIME=26 SUPPORT=6 DEPENDENCIES=5 COMMANDS=7 TARGET=ERP_STAGING_ONLY MAIL_SEND=NO PRODUCTION_ACCESSED=NO"
+[[ "$(constant PREDECESSOR_HELPER_SHA "$installer")" == 2905d15d4f4a2c1a9c49cbf45faf37049ef9d9040b807910f885299a32a2f2e7 ]] || fail PREDECESSOR_HELPER_PIN
+[[ "$(constant PREDECESSOR_SUDOERS_SHA "$installer")" == d59be9bd212a0602e1ce966e9d07d4f018e6fe6b0c9b15f280c1915e009a878e ]] || fail PREDECESSOR_SUDOERS_PIN
+while read -r expected rel; do
+  if [[ "$rel" == m068-website-lifecycle-32e82ff.tar.gz ]]; then
+    [[ "$expected" == "$artifact_sha" ]] || fail RELEASE_MANIFEST_ARTIFACT
+  else
+    [[ -f "$root/$rel" && $(sha256 "$root/$rel") == "$expected" ]] || fail RELEASE_MANIFEST_COMPONENT
+  fi
+done <"$root/deploy/releases/m068-staging-deployment.sha256"
+echo "M068_STAGING_RELEASE_CONTRACT=PASS ARTIFACT_SHA=$artifact_sha MEMBERS=37 RUNTIME=26 SUPPORT=7 DEPENDENCIES=5 COMMANDS=8 TARGET=ERP_STAGING_ONLY MAIL_SEND=NO PRODUCTION_ACCESSED=NO"

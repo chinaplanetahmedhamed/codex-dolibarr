@@ -88,6 +88,12 @@ for fault in AFTER_HELPER AFTER_CONFIG AFTER_SUDOERS; do
   [[ $(stat -f '%Lp' "$target_helper") == 755 && $(stat -f '%Lp' "$target_config") == 644 && $(stat -f '%Lp' "$target_sudoers") == 440 ]] || { echo "M068_C01_INSTALLER_TEST=FAIL REASON=${fault}_METADATA" >&2; exit 1; }
 done
 
+git -C "$root" show 'a13a549c902b142519a953070526f8677a413aa8:deploy/tools/chinaplanetos_backup_erp_m068_c01_hmac.sh' >"$target_helper"
+chmod 0755 "$target_helper"
+[[ $(sha256 "$target_helper") == 752df39e6f9f7f679feba22afa08c3a94b4ccdfe00055984d6c327c5ef677e54 ]] || { echo 'M068_C01_INSTALLER_TEST=FAIL REASON=PREDECESSOR_FIXTURE' >&2; exit 1; }
+$installer >/dev/null
+[[ $(sha256 "$target_helper") == "$before_helper" ]] || { echo 'M068_C01_INSTALLER_TEST=FAIL REASON=PINNED_PREDECESSOR_UPGRADE' >&2; exit 1; }
+
 cp "$test_root/inbox/chinaplanetos_backup_erp_m068_c01_hmac.sh" "$test_root/good-helper"
 printf '\ncorrupt\n' >>"$test_root/inbox/chinaplanetos_backup_erp_m068_c01_hmac.sh"
 if "$installer" >/dev/null 2>&1; then echo 'M068_C01_INSTALLER_TEST=FAIL REASON=CORRUPT_SOURCE_ACCEPTED' >&2; exit 1; fi
@@ -102,4 +108,4 @@ case "$recovery_root" in "$test_root"/private.*) ;; *) echo 'M068_C01_INSTALLER_
 [[ -d "$recovery_root" && -f "$recovery_root/old-sudoers" ]] || { echo 'M068_C01_INSTALLER_TEST=FAIL REASON=RECOVERY_BACKUP_NOT_RETAINED' >&2; exit 1; }
 [[ $(sha256 "$recovery_root/old-sudoers") == "$before_sudoers" && $(stat -f '%Lp' "$recovery_root/old-sudoers") == 440 ]] || { echo 'M068_C01_INSTALLER_TEST=FAIL REASON=RECOVERY_BACKUP_INVALID' >&2; exit 1; }
 
-echo 'M068_C01_INSTALLER_TEST=PASS FILES=3 CHECKSUM_PINNED=YES TRANSACTION_ROLLBACK=PASS CONFIG_DIRECTORY=BOUNDED RECOVERY_BACKUP_RETAINED=PASS IDEMPOTENT=PASS CONFIG_LINT=CONTAINER_PHP HOST_PHP_USED=NO INSPECT_RUNTIME_FAILURE=FAIL_CLOSED EXEC_RUNTIME_FAILURE=FAIL_CLOSED LINT_FAILURE=FAIL_CLOSED HELPER_EXECUTED=NO SERVER_ACCESSED=NO PRODUCTION_ACCESSED=NO'
+echo 'M068_C01_INSTALLER_TEST=PASS FILES=3 CHECKSUM_PINNED=YES TRANSACTION_ROLLBACK=PASS CONFIG_DIRECTORY=BOUNDED RECOVERY_BACKUP_RETAINED=PASS IDEMPOTENT=PASS PINNED_PREDECESSOR_UPGRADE=PASS CONFIG_LINT=CONTAINER_PHP HOST_PHP_USED=NO INSPECT_RUNTIME_FAILURE=FAIL_CLOSED EXEC_RUNTIME_FAILURE=FAIL_CLOSED LINT_FAILURE=FAIL_CLOSED HELPER_EXECUTED=NO SERVER_ACCESSED=NO PRODUCTION_ACCESSED=NO'

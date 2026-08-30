@@ -4,16 +4,16 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M068-R02'
+readonly RELEASE='M068-R03'
 readonly RUNTIME_COMMIT='32e82ffbd82248f2a84f468172195267fb6d37a7'
 readonly BASELINE_COMMIT='f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b'
 readonly BASELINE_RELEASE='M062-R04'
 readonly BASELINE_SCOPE_COMMIT='3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67'
 readonly BASELINE_ARTIFACT_SHA='a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c'
 readonly SHORT_COMMIT='32e82ff'
-readonly ARTIFACT_SHA='449bb83039533bbd3ebb9eb8b69a6062cd0e800c8b071bfc5294a0cb2ce22dcd'
+readonly ARTIFACT_SHA='f47a4b51a3964ab3a65f5c4531e72fef120f3736198afecd4073e0b12681fa21'
 readonly RUNTIME_MANIFEST_SHA='5b3b8ef2e1cc714860df71b089d4dda0e73cc5eb58b11c41add936144b0fb15a'
-readonly SUPPORT_MANIFEST_SHA='41687d9edfb829d5642c3e878908cd3094adb2a719e785b69ec4e5e883e9d2aa'
+readonly SUPPORT_MANIFEST_SHA='cb42e94086bc227d58f465a9e793173e53b5e5d8eaafb905f3a4069a27bebc53'
 readonly BASELINE_MANIFEST_SHA='dbcd63d986dc3862419e806c6b900d8e5fcc3cddf7909739ea8df16ae888d3cf'
 readonly DEPENDENCY_MANIFEST_SHA='926277d8cf5f89cdf1724b46ab83ed8949691e918681c5e3797fd7c28dac50b7'
 readonly RUNTIME_MANIFEST='deploy/releases/m068-runtime-files.txt'
@@ -22,6 +22,7 @@ readonly BASELINE_MANIFEST='deploy/releases/m068-m062-r04-baseline.sha256'
 readonly DEPENDENCY_MANIFEST='deploy/releases/m068-m062-r04-dependencies.sha256'
 readonly MIGRATION='deploy/migrations/m068_website_lead_quotation_portal_lifecycle.php'
 readonly MAILPIT_CONFIG='deploy/migrations/m068_staging_mailpit_configuration.php'
+readonly PORTAL_GROUP_REPAIR='deploy/migrations/m068_staging_portal_group_repair.php'
 readonly CONFIG_TEST='deploy/tests/test_m068_staging_configuration.php'
 readonly ARTIFACT_NAME="m068-website-lifecycle-${SHORT_COMMIT}.tar.gz"
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
@@ -54,7 +55,7 @@ else
   TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
   BACKUP_ROOT='/root/backup-erp-code-backups'
   DB_BACKUP_ROOT='/root/backup-erp-db-backups'
-  STATE_ROOT='/var/lib/chinaplanetos-m068-deploy-staging-r02'
+  STATE_ROOT='/var/lib/chinaplanetos-m068-deploy-staging-r03'
   ARTIFACT_ROOT='/root/backup-erp-release-artifacts'
   BASELINE_STATE_FILE='/var/lib/chinaplanetos-m062-terminal-trend-staging-r04/m062-r04.state'
 fi
@@ -251,7 +252,7 @@ require_invocation() {
   [[ $TEST_MODE -eq 1 || $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
   [[ $TEST_MODE -eq 1 || $(basename "$0") == 'chinaplanetos-backup-erp-m068-preflight' ]] || die 'HELPER_PATH_NOT_ALLOWED'
   [[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
-  case "$1" in configure-mailpit|compare|preflight|apply|verify|rollback|status) ;; *) die 'COMMAND_NOT_ALLOWED' ;; esac
+  case "$1" in configure-mailpit|repair-portal-group|compare|preflight|apply|verify|rollback|status) ;; *) die 'COMMAND_NOT_ALLOWED' ;; esac
 }
 detect_stale_candidates() { if [[ $TEST_MODE -eq 1 ]]; then STALE_CANDIDATES=$(find "$STATE_ROOT/container-root" -maxdepth 1 -type d -name 'm068-deploy-candidate.*' -print 2>/dev/null || true); else STALE_CANDIDATES=$(docker exec "$TARGET_CONTAINER" find /root -maxdepth 1 -type d -name 'm068-deploy-candidate.*' -print); fi; }
 clear_stale_candidates() { local stale; while IFS= read -r stale; do [[ -z "$stale" ]] && continue; if [[ $TEST_MODE -eq 1 ]]; then [[ "$stale" == "$STATE_ROOT/container-root/m068-deploy-candidate."* && -d "$stale" && ! -L "$stale" ]] || return 1; rm -rf "$stale"; else [[ "$stale" == /root/m068-deploy-candidate.* ]] || return 1; [[ $(docker exec "$TARGET_CONTAINER" stat -c '%U:%G %a' "$stale") == 'root:root 700' ]] || return 1; docker exec "$TARGET_CONTAINER" sh -eu -c 'case "$1" in /root/m068-deploy-candidate.*) [ -d "$1" ] && [ ! -L "$1" ]; rm -rf -- "$1";; *) exit 1;; esac' sh "$stale" || return 1; fi; done <<<"$STALE_CANDIDATES"; STALE_CANDIDATES=''; detect_stale_candidates; [[ -z "$STALE_CANDIDATES" ]]; }
@@ -296,7 +297,7 @@ validate_artifact() {
   if [[ $TEST_MODE -eq 1 ]]; then ARTIFACT_COPY=$(mktemp "$STATE_ROOT/artifact.XXXXXX"); CANDIDATE_ROOT=$(mktemp -d "$STATE_ROOT/candidate.XXXXXX"); else ARTIFACT_COPY=$(mktemp /root/m068-deploy-artifact.XXXXXX); CANDIDATE_ROOT=$(mktemp -d /root/m068-deploy-candidate.XXXXXX); fi
   install -m 0600 "$ARTIFACT_SOURCE" "$ARTIFACT_COPY"; [[ $(sha256 "$ARTIFACT_COPY") == "$ARTIFACT_SHA" ]] || die 'ARTIFACT_HASH_MISMATCH'
   listing=$(mktemp); expected=$(mktemp); actual=$(mktemp); stderr_file=$(mktemp); tar -tzf "$ARTIFACT_COPY" >"$listing" 2>"$stderr_file" || die 'ARTIFACT_TAR_INVALID'
-  [[ ! -s "$stderr_file" && $(wc -l <"$listing") -eq 36 && -z $(tar -tvzf "$ARTIFACT_COPY" | awk 'substr($1,1,1)!="-" {print; exit}') && -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_STRUCTURE_INVALID'
+  [[ ! -s "$stderr_file" && $(wc -l <"$listing") -eq 37 && -z $(tar -tvzf "$ARTIFACT_COPY" | awk 'substr($1,1,1)!="-" {print; exit}') && -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_STRUCTURE_INVALID'
   tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT" || die 'ARTIFACT_EXTRACT_FAILED'; [[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) && -z $(find "$CANDIDATE_ROOT" ! -type d ! -type f -print -quit) ]] || die 'ARTIFACT_EXTRACT_INVALID'
   validate_manifest "$RUNTIME_MANIFEST" "$RUNTIME_MANIFEST_SHA" '^custom/chinaplanet(operations|customercenter)/'
   validate_manifest "$SUPPORT_MANIFEST" "$SUPPORT_MANIFEST_SHA" '^deploy/(migrations|tests)/'
@@ -305,7 +306,7 @@ validate_artifact() {
   RUNTIME_FILES=(); SUPPORT_FILES=()
   while IFS= read -r path; do RUNTIME_FILES[${#RUNTIME_FILES[@]}]="$path"; done <"$CANDIDATE_ROOT/$RUNTIME_MANIFEST"
   while IFS= read -r path; do SUPPORT_FILES[${#SUPPORT_FILES[@]}]="$path"; done <"$CANDIDATE_ROOT/$SUPPORT_MANIFEST"
-  [[ ${#RUNTIME_FILES[@]} -eq 26 && ${#SUPPORT_FILES[@]} -eq 6 ]] || die 'MANIFEST_COUNT_INVALID'
+  [[ ${#RUNTIME_FILES[@]} -eq 26 && ${#SUPPORT_FILES[@]} -eq 7 ]] || die 'MANIFEST_COUNT_INVALID'
   printf '%s\n' "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}" "$RUNTIME_MANIFEST" "$SUPPORT_MANIFEST" "$BASELINE_MANIFEST" "$DEPENDENCY_MANIFEST" | LC_ALL=C sort >"$expected"; (cd "$CANDIDATE_ROOT" && find . -type f -print | sed 's#^\./##' | LC_ALL=C sort) >"$actual"; diff -u "$expected" "$actual" >/dev/null || die 'ARTIFACT_ALLOWLIST_MISMATCH'
   local baseline path baseline_count=0 dependency_count=0
   while read -r baseline path; do [[ "$baseline" == ABSENT || "$baseline" =~ ^[0-9a-f]{64}$ ]] || die 'BASELINE_ENTRY_INVALID'; [[ "$path" =~ ^custom/chinaplanet(operations|customercenter)/ ]] || die 'BASELINE_PATH_INVALID'; baseline_count=$((baseline_count + 1)); done <"$CANDIDATE_ROOT/$BASELINE_MANIFEST"; [[ $baseline_count -eq 26 ]] || die 'BASELINE_COUNT_INVALID'
@@ -381,6 +382,10 @@ mailpit_check() {
   [[ $TEST_MODE -eq 1 ]] && { echo 'M068_MAILPIT_CHECK=READY MAIL_SEND_EXECUTED=NO SECRET_OUTPUT=NO'; return 0; }
   docker exec -e M068_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$MAILPIT_CONFIG" check
 }
+portal_group_check() {
+  [[ $TEST_MODE -eq 1 ]] && { echo 'M068_PORTAL_GROUP_CHECK=READY ACTIVE_GROUPS=1 GLOBAL_GROUPS=0 CANONICAL_SCOPE=ENTITY CANONICAL_RIGHTS=1 NONCANONICAL_RIGHTS=0 FORBIDDEN_RIGHTS=0'; return 0; }
+  docker exec -e M068_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$PORTAL_GROUP_REPAIR" check
+}
 configuration_check() {
   [[ $TEST_MODE -eq 1 ]] && return 0
   [[ $(docker exec -e M068_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$CONFIG_TEST") == M068_STAGING_CONFIGURATION=PASS* ]]
@@ -455,6 +460,7 @@ command_configure_mailpit() {
   check_rc=$?
   set -e
   if [[ $check_rc -eq 0 && "$check_output" == 'M068_MAILPIT_CHECK=READY MAIL_SEND_EXECUTED=NO SECRET_OUTPUT=NO' ]]; then
+    configuration_check || die 'CONFIGURATION_PREREQUISITE_FAILED'
     echo "M068_DEPLOY_MAILPIT=PASS RESULT=NOOP_ALREADY_CONFIGURED DATABASE_CHANGED=NO MAIL_SENT=NO PRODUCTION_ACCESSED=NO"
     return
   fi
@@ -475,6 +481,41 @@ command_configure_mailpit() {
   configuration_check || die 'CONFIGURATION_PREREQUISITE_FAILED'
   append_audit 'MAILPIT_CONFIGURED'
   echo "M068_DEPLOY_MAILPIT=PASS RESULT=CONFIGURED REQUEST_ID=$REQUEST_ID DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA DATABASE_CHANGED=YES MAIL_SENT=NO BUSINESS_RECORDS=NONE PRODUCTION_ACCESSED=NO"
+}
+command_repair_portal_group() {
+  exec 9>"$LOCK_FILE"; flock -n 9 || die 'LOCKED'
+  check_environment 1
+  clear_stale_candidates || die 'STALE_CANDIDATE_CLEANUP_FAILED'
+  prepare_inbox_candidate
+  set +e
+  local check_output check_rc apply_output verify_output
+  check_output=$(portal_group_check 2>&1)
+  check_rc=$?
+  set -e
+  echo "$check_output"
+  if [[ $check_rc -eq 0 && "$check_output" == M068_PORTAL_GROUP_CHECK=READY* ]]; then
+    configuration_check || die 'CONFIGURATION_PREREQUISITE_FAILED'
+    echo 'M068_DEPLOY_PORTAL_GROUP=PASS RESULT=NOOP_ALREADY_READY DATABASE_CHANGED=NO MEMBERSHIPS_CHANGED=NO BUSINESS_RECORDS=NONE EMAIL_SENT=NO PRODUCTION_ACCESSED=NO'
+    return
+  fi
+  [[ $check_rc -eq 2 && "$check_output" == M068_PORTAL_GROUP_CHECK=REPAIR_REQUIRED* ]] || die 'PORTAL_GROUP_PRESTATE_INVALID'
+  REQUEST_ACTION=repair-portal-group
+  new_request_id
+  create_database_backup
+  validate_database_backup
+  append_audit 'PORTAL_GROUP_BACKUP_VALIDATED'
+  if [[ $TEST_MODE -eq 1 ]]; then
+    apply_output='M068_PORTAL_GROUP_APPLY=PASS ACTIVE_GROUPS=1 GLOBAL_GROUPS=0 CANONICAL_SCOPE=ENTITY CANONICAL_RIGHTS=1 NONCANONICAL_RIGHTS=0 FORBIDDEN_RIGHTS=0 MEMBERSHIPS_CHANGED=NO USERS_CHANGED=NO BUSINESS_RECORDS=NONE EMAIL_SENT=NO PRODUCTION_ACCESSED=NO'
+    verify_output='M068_PORTAL_GROUP_VERIFY=PASS ACTIVE_GROUPS=1 GLOBAL_GROUPS=0 CANONICAL_SCOPE=ENTITY CANONICAL_RIGHTS=1 NONCANONICAL_RIGHTS=0 FORBIDDEN_RIGHTS=0 MEMBERSHIPS_CHANGED=NO BUSINESS_RECORDS=NONE'
+  else
+    apply_output=$(docker exec -e M068_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$PORTAL_GROUP_REPAIR" apply)
+    verify_output=$(docker exec -e M068_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$PORTAL_GROUP_REPAIR" verify)
+  fi
+  [[ "$apply_output" == M068_PORTAL_GROUP_APPLY=PASS* && "$verify_output" == M068_PORTAL_GROUP_VERIFY=PASS* ]] || die 'PORTAL_GROUP_POST_VERIFY_FAILED'
+  configuration_check || die 'CONFIGURATION_PREREQUISITE_FAILED'
+  append_audit 'PORTAL_GROUP_REPAIRED'
+  echo "$apply_output"
+  echo "M068_DEPLOY_PORTAL_GROUP=PASS RESULT=REPAIRED REQUEST_ID=$REQUEST_ID DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA DATABASE_CHANGED=YES MEMBERSHIPS_CHANGED=NO BUSINESS_RECORDS=NONE EMAIL_SENT=NO PRODUCTION_ACCESSED=NO"
 }
 command_compare() {
   check_environment; prepare_inbox_candidate; configuration_check || die 'CONFIGURATION_PREREQUISITE_FAILED'; schema_prestate; compare_files; compare_dependencies
@@ -518,4 +559,4 @@ command_status() { check_environment; if [[ -e "$STATE_FILE" || -L "$STATE_FILE"
 
 if [[ ${M068_PREFLIGHT_HELPER_LIBRARY_MODE:-0} == 1 ]]; then [[ $TEST_MODE -eq 1 ]] || die 'LIBRARY_MODE_FORBIDDEN'; trap - EXIT; return 0 2>/dev/null || exit 0; fi
 require_invocation "$@"
-case "$1" in configure-mailpit) command_configure_mailpit ;; compare) command_compare ;; preflight) command_preflight ;; apply) command_apply ;; verify) command_verify ;; rollback) command_rollback ;; status) command_status ;; *) die 'COMMAND_NOT_ALLOWED' ;; esac
+case "$1" in configure-mailpit) command_configure_mailpit ;; repair-portal-group) command_repair_portal_group ;; compare) command_compare ;; preflight) command_preflight ;; apply) command_apply ;; verify) command_verify ;; rollback) command_rollback ;; status) command_status ;; *) die 'COMMAND_NOT_ALLOWED' ;; esac

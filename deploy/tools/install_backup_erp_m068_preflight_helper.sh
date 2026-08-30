@@ -4,10 +4,10 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly HELPER_SHA='2905d15d4f4a2c1a9c49cbf45faf37049ef9d9040b807910f885299a32a2f2e7'
-readonly SUDOERS_SHA='d59be9bd212a0602e1ce966e9d07d4f018e6fe6b0c9b15f280c1915e009a878e'
-readonly PREDECESSOR_HELPER_SHA='e340e79ce56e88ad27f066788a85f67aa55a1cc2eef2f247390d1eb83ffa3256'
-readonly PREDECESSOR_SUDOERS_SHA='d939e20162ec13fa7a125bbd9ec40128a05615444140ef920aa0fcae8e27e018'
+readonly HELPER_SHA='11b3e0e9e566be2722bc831e097ab67d04d93a6e4f708b4795494407df71940a'
+readonly SUDOERS_SHA='a9970f4e1788b3efb513bd2558170e5765dd3c8067b4c3b1b5cdaf62e520a45f'
+readonly PREDECESSOR_HELPER_SHA='2905d15d4f4a2c1a9c49cbf45faf37049ef9d9040b807910f885299a32a2f2e7'
+readonly PREDECESSOR_SUDOERS_SHA='d59be9bd212a0602e1ce966e9d07d4f018e6fe6b0c9b15f280c1915e009a878e'
 TEST_MODE=0
 if [[ ${M068_PREFLIGHT_INSTALLER_TEST_MODE:-0} == 1 ]]; then
   TEST_MODE=1
@@ -20,7 +20,7 @@ if [[ ${M068_PREFLIGHT_INSTALLER_TEST_MODE:-0} == 1 ]]; then
   TARGET_SUDOERS="$test_root/system/etc/sudoers.d/codex-deploy-backup-erp-m068-preflight"
   CODE_BACKUP_ROOT="$test_root/system/root/backup-erp-code-backups"
   DB_BACKUP_ROOT="$test_root/system/root/backup-erp-db-backups"
-  STATE_ROOT="$test_root/system/var/lib/chinaplanetos-m068-deploy-staging-r02"
+  STATE_ROOT="$test_root/system/var/lib/chinaplanetos-m068-deploy-staging-r03"
   ARTIFACT_ROOT="$test_root/system/root/backup-erp-release-artifacts"
   PRIVATE_TEMPLATE="$test_root/private.XXXXXX"
 else
@@ -29,7 +29,7 @@ else
   TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-backup-erp-m068-preflight'
   CODE_BACKUP_ROOT='/root/backup-erp-code-backups'
   DB_BACKUP_ROOT='/root/backup-erp-db-backups'
-  STATE_ROOT='/var/lib/chinaplanetos-m068-deploy-staging-r02'
+  STATE_ROOT='/var/lib/chinaplanetos-m068-deploy-staging-r03'
   ARTIFACT_ROOT='/root/backup-erp-release-artifacts'
   PRIVATE_TEMPLATE='/root/m068-preflight-helper-install.XXXXXX'
 fi
@@ -43,8 +43,9 @@ sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{
 validate_sudoers() {
   local path=$1
   if [[ $TEST_MODE -eq 1 ]]; then
-    [[ $(wc -l <"$path" | tr -d ' ') -eq 7 ]] || return 1
+    [[ $(wc -l <"$path" | tr -d ' ') -eq 8 ]] || return 1
     grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight configure-mailpit' "$path" || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight repair-portal-group' "$path" || return 1
     grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight compare' "$path" || return 1
     grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight preflight' "$path" || return 1
     grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight apply' "$path" || return 1
@@ -158,4 +159,4 @@ if [[ $TEST_MODE -eq 0 ]]; then
   [[ $(stat -c '%U:%G %a' "$TARGET_SUDOERS") == 'root:root 440' ]] || die 'POST_INSTALL_SUDOERS_METADATA_INVALID'
 fi
 INSTALL_COMPLETE=1
-echo "M068_PREFLIGHT_INSTALL=PASS HELPER_SHA=$HELPER_SHA SUDOERS_SHA=$SUDOERS_SHA COMMANDS=configure-mailpit,compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE=YES HELPER_EXECUTED=NO DATABASE_CHANGED=NO RUNTIME_CHANGED=NO STATE_FILES_CREATED=NO PRODUCTION_ACCESSED=NO"
+echo "M068_PREFLIGHT_INSTALL=PASS HELPER_SHA=$HELPER_SHA SUDOERS_SHA=$SUDOERS_SHA COMMANDS=configure-mailpit,repair-portal-group,compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE=YES HELPER_EXECUTED=NO DATABASE_CHANGED=NO RUNTIME_CHANGED=NO STATE_FILES_CREATED=NO PRODUCTION_ACCESSED=NO"

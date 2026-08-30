@@ -30,8 +30,23 @@ if ($entity <= 0) $fail('ENTITY_INVALID');
 if (!function_exists('getDolGlobalInt') || getDolGlobalInt('MAIN_MODULE_CHINAPLANETCUSTOMERCENTER') !== 1) $fail('CUSTOMER_CENTER_MODULE_DISABLED');
 $right = $db->query("SELECT id FROM ".MAIN_DB_PREFIX."rights_def WHERE entity=".$entity." AND id=500201 AND module='chinaplanetcustomercenter' AND enabled='1'");
 if (!$right || $db->num_rows($right) !== 1) $fail('PORTAL_RIGHT_MISSING');
-$group = $db->query("SELECT g.rowid FROM ".MAIN_DB_PREFIX."usergroup g INNER JOIN ".MAIN_DB_PREFIX."usergroup_rights gr ON gr.fk_usergroup=g.rowid AND gr.fk_id=500201 AND gr.entity=".$entity." WHERE g.nom='Customers Portal' AND g.entity IN (0,".$entity.") ORDER BY g.entity DESC LIMIT 2");
-if (!$group || $db->num_rows($group) !== 1) $fail('PORTAL_GROUP_OR_RIGHT_AMBIGUOUS');
+$group = $db->query("SELECT rowid,entity FROM ".MAIN_DB_PREFIX."usergroup WHERE nom='Customers Portal' AND entity IN (0,".$entity.") ORDER BY entity DESC,rowid");
+if (!$group) $fail('PORTAL_GROUP_QUERY_FAILED');
+$activeGroups = array();
+$globalGroups = array();
+while ($row = $db->fetch_object($group)) {
+    if ((int)$row->entity === $entity) $activeGroups[] = $row;
+    elseif ((int)$row->entity === 0) $globalGroups[] = $row;
+}
+if (count($activeGroups) > 1 || count($globalGroups) > 1 || (count($activeGroups) === 0 && count($globalGroups) === 0)) $fail('PORTAL_GROUP_AMBIGUOUS');
+$canonicalGroup = count($activeGroups) === 1 ? $activeGroups[0] : $globalGroups[0];
+$groupId = (int) $canonicalGroup->rowid;
+$groupRight = $db->query("SELECT COUNT(*) AS total FROM ".MAIN_DB_PREFIX."usergroup_rights WHERE fk_usergroup=".$groupId." AND fk_id=500201 AND entity=".$entity);
+$groupRightRow = $groupRight ? $db->fetch_object($groupRight) : null;
+if (!$groupRightRow || (int)$groupRightRow->total !== 1) $fail('PORTAL_GROUP_RIGHT_INVALID');
+$noncanonical = $db->query("SELECT COUNT(*) AS total FROM ".MAIN_DB_PREFIX."usergroup_rights gr INNER JOIN ".MAIN_DB_PREFIX."usergroup g ON g.rowid=gr.fk_usergroup WHERE g.nom='Customers Portal' AND g.entity IN (0,".$entity.") AND gr.entity=".$entity." AND gr.fk_id=500201 AND gr.fk_usergroup<>".$groupId);
+$noncanonicalRow = $noncanonical ? $db->fetch_object($noncanonical) : null;
+if (!$noncanonicalRow || (int)$noncanonicalRow->total !== 0) $fail('PORTAL_GROUP_NONCANONICAL_RIGHT_PRESENT');
 $coreReset = $db->query("SELECT COUNT(*) AS total FROM ".MAIN_DB_PREFIX."usergroup g INNER JOIN ".MAIN_DB_PREFIX."usergroup_rights gr ON gr.fk_usergroup=g.rowid AND gr.entity=".$entity." WHERE g.nom='Customers Portal' AND g.entity IN (0,".$entity.") AND gr.fk_id=343");
 $coreResetRow = $coreReset ? $db->fetch_object($coreReset) : null;
 if (!$coreResetRow || (int) $coreResetRow->total !== 0) $fail('PORTAL_GROUP_CORE_RESET_RIGHT_FORBIDDEN');

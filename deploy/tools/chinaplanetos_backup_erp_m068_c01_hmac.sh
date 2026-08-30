@@ -4,12 +4,12 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M068-C01-R01'
+readonly RELEASE='M068-C01-R02'
 readonly BASELINE_RELEASE='M062-R04'
 readonly BASELINE_RUNTIME_COMMIT='f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b'
 readonly BASELINE_SCOPE_COMMIT='3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67'
 readonly BASELINE_ARTIFACT_SHA='a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c'
-readonly M068_PREFLIGHT_HELPER_SHA='e340e79ce56e88ad27f066788a85f67aa55a1cc2eef2f247390d1eb83ffa3256'
+readonly M068_PREFLIGHT_HELPER_SHA='11b3e0e9e566be2722bc831e097ab67d04d93a6e4f708b4795494407df71940a'
 readonly CONFIG_SHA='20d82fec7a4b95c6a843bfcce4b0a27415c7215d7cb807df21a10e7dc714c2bf'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'

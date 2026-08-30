@@ -20,9 +20,10 @@ PREPARATION_PATHS = (
     BASELINE_MANIFEST,
     DEPENDENCY_MANIFEST,
     "deploy/migrations/m068_staging_mailpit_configuration.php",
+    "deploy/migrations/m068_staging_portal_group_repair.php",
     "deploy/tests/test_m068_staging_configuration.php",
 )
-EXPECTED_SHA256 = "449bb83039533bbd3ebb9eb8b69a6062cd0e800c8b071bfc5294a0cb2ce22dcd"
+EXPECTED_SHA256 = "f47a4b51a3964ab3a65f5c4531e72fef120f3736198afecd4073e0b12681fa21"
 
 
 def git_bytes(repo: pathlib.Path, commit: str, rel: str) -> bytes:
@@ -41,14 +42,14 @@ def main() -> int:
     repo = pathlib.Path(__file__).resolve().parents[2]
     runtime = worktree_bytes(repo, RUNTIME_MANIFEST).decode().splitlines()
     support = worktree_bytes(repo, SUPPORT_MANIFEST).decode().splitlines()
-    if len(runtime) != 26 or len(support) != 6:
+    if len(runtime) != 26 or len(support) != 7:
         raise SystemExit("M068_ARTIFACT_BUILD=FAIL REASON=MANIFEST_COUNT_INVALID")
     preparation = set(PREPARATION_PATHS)
     sourced = [(RUNTIME_COMMIT, rel) for rel in runtime]
     sourced.extend((None if rel in preparation else RUNTIME_COMMIT, rel) for rel in support)
     sourced.extend((None, rel) for rel in (RUNTIME_MANIFEST, SUPPORT_MANIFEST, BASELINE_MANIFEST, DEPENDENCY_MANIFEST))
     rels = [rel for _, rel in sourced]
-    if len(rels) != 36 or len(set(rels)) != 36 or any(not rel or rel.startswith("/") or ".." in rel.split("/") for rel in rels):
+    if len(rels) != 37 or len(set(rels)) != 37 or any(not rel or rel.startswith("/") or ".." in rel.split("/") for rel in rels):
         raise SystemExit("M068_ARTIFACT_BUILD=FAIL REASON=ALLOWLIST_INVALID")
     epoch = int(subprocess.check_output(["git", "show", "-s", "--format=%ct", RUNTIME_COMMIT], cwd=repo, text=True).strip())
     buffer = io.BytesIO()
@@ -73,7 +74,7 @@ def main() -> int:
             raise SystemExit("M068_ARTIFACT_BUILD=FAIL REASON=SHA_NOT_FROZEN")
     elif digest != EXPECTED_SHA256:
         raise SystemExit("M068_ARTIFACT_BUILD=FAIL REASON=SHA_MISMATCH ACTUAL="+digest)
-    print(f"M068_ARTIFACT_BUILD=PASS FILES=36 SHA256={digest} RUNTIME_COMMIT={RUNTIME_COMMIT} METADATA=USTAR_CANONICAL")
+    print(f"M068_ARTIFACT_BUILD=PASS FILES=37 SHA256={digest} RUNTIME_COMMIT={RUNTIME_COMMIT} METADATA=USTAR_CANONICAL")
     return 0
 
 

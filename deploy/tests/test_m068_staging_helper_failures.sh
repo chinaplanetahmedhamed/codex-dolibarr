@@ -43,6 +43,7 @@ snapshot() { find "$test_root/inbox" "$test_root/target" "$test_root/m062-state"
 before=$(snapshot)
 "$helper" status | grep -Fq 'M068_DEPLOY_STATUS=NOT_DEPLOYED'
 "$helper" configure-mailpit | grep -Fq 'M068_DEPLOY_MAILPIT=PASS RESULT=NOOP_ALREADY_CONFIGURED'
+"$helper" repair-portal-group | grep -Fq 'M068_DEPLOY_PORTAL_GROUP=PASS RESULT=NOOP_ALREADY_READY'
 "$helper" compare | grep -Fq 'M068_DEPLOY_COMPARE=PASS'
 "$helper" preflight | grep -Fq 'M068_DEPLOY_PREFLIGHT=PASS'
 [[ "$(snapshot)" == "$before" ]] || { echo 'M068_PREFLIGHT_FAILURES=FAIL REASON=READ_ONLY_INPUT_MUTATION' >&2; exit 1; }

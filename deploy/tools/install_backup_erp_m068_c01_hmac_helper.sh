@@ -4,7 +4,8 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly HELPER_SHA='752df39e6f9f7f679feba22afa08c3a94b4ccdfe00055984d6c327c5ef677e54'
+readonly HELPER_SHA='5b867120ff1b6aaaaa1303f133bc23125f1d200a0bbed9caad2fc14a193b826f'
+readonly PREDECESSOR_HELPER_SHA='752df39e6f9f7f679feba22afa08c3a94b4ccdfe00055984d6c327c5ef677e54'
 readonly CONFIG_SHA='20d82fec7a4b95c6a843bfcce4b0a27415c7215d7cb807df21a10e7dc714c2bf'
 readonly SUDOERS_SHA='dc551abe7abad810f409b22abbe69c727a949893217579a4ba43f2a8d4c2c4f4'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
@@ -150,7 +151,8 @@ validate_config_syntax "$private_config" || config_lint_rc=$?
 validate_sudoers "$private_sudoers" || die 'SUDOERS_SYNTAX_INVALID'
 
 if [[ -e "$TARGET_HELPER" || -L "$TARGET_HELPER" ]]; then
-  [[ -f "$TARGET_HELPER" && ! -L "$TARGET_HELPER" && $(sha256 "$TARGET_HELPER") == "$HELPER_SHA" ]] || die 'EXISTING_HELPER_UNEXPECTED'
+  existing_helper_sha=$(sha256 "$TARGET_HELPER")
+  [[ -f "$TARGET_HELPER" && ! -L "$TARGET_HELPER" && ( "$existing_helper_sha" == "$HELPER_SHA" || "$existing_helper_sha" == "$PREDECESSOR_HELPER_SHA" ) ]] || die 'EXISTING_HELPER_UNEXPECTED'
   [[ $TEST_MODE -eq 1 || $(stat -c '%U:%G %a' "$TARGET_HELPER") == 'root:root 755' ]] || die 'EXISTING_HELPER_METADATA_INVALID'
 fi
 if [[ -e "$TARGET_CONFIG" || -L "$TARGET_CONFIG" ]]; then
