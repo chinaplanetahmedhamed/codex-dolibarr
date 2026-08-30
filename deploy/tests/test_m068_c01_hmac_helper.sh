@@ -48,6 +48,7 @@ backup_sha=$(sed -n 's/^STATE_DB_BACKUP_SHA=//p' "$state_file")
 [[ -f "$backup_path" && -s "$backup_path" && $(stat -f '%Lp' "$backup_path") == 600 ]] || { echo 'M068_C01_HELPER_TEST=FAIL REASON=DATABASE_BACKUP_METADATA' >&2; exit 1; }
 [[ $(shasum -a 256 "$backup_path" | awk '{print $1}') == "$backup_sha" ]] || { echo 'M068_C01_HELPER_TEST=FAIL REASON=DATABASE_BACKUP_HASH' >&2; exit 1; }
 grep -Fq 'STATE_SECRET_PRESTATE=ABSENT' "$state_file"
+grep -Fxq 'STATE_RELEASE=M068-C01-R01' "$state_file"
 
 stored=$(php -r '$rows=json_decode(file_get_contents($argv[1]),true);echo count($rows)===1?$rows[0]["value"]:"";' "$test_root/config-state.json")
 secret=$(php -r '$v=$argv[1];echo str_starts_with($v,"dolcrypt:test:")?base64_decode(substr($v,14),true):"";' "$stored")
@@ -58,7 +59,7 @@ secret=$(php -r '$v=$argv[1];echo str_starts_with($v,"dolcrypt:test:")?base64_de
 ! grep -Fq "$secret" "$backup_path"
 ! grep -Fq "$stored" "$backup_path"
 
-$helper verify | grep -Fq 'M068_C01_VERIFY=PASS'
+$helper verify | grep -Fq 'M068_C01_VERIFY=PASS RELEASE=M068-C01-R03'
 if $helper apply >/dev/null 2>&1; then echo 'M068_C01_HELPER_TEST=FAIL REASON=SECOND_APPLY_ACCEPTED' >&2; exit 1; fi
 
 cp "$test_root/config-state.json" "$test_root/config-state.good.json"

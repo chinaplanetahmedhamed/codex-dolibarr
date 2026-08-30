@@ -4,17 +4,20 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M068-R03'
+readonly RELEASE='M068-R04'
 readonly RUNTIME_COMMIT='32e82ffbd82248f2a84f468172195267fb6d37a7'
 readonly BASELINE_COMMIT='f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b'
 readonly BASELINE_RELEASE='M062-R04'
 readonly BASELINE_SCOPE_COMMIT='3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67'
 readonly BASELINE_ARTIFACT_SHA='a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c'
+readonly CUSTOMER_CENTER_BASELINE_RELEASE='M061-R02-C03'
+readonly CUSTOMER_CENTER_BASELINE_COMMIT='487b61e690d7d030ec25d54a3b62afdb7e78fb55'
+readonly CUSTOMER_CENTER_BASELINE_ARTIFACT_SHA='bf508b9e7b495092542160e4bb97ce1410c2013497d90bc6af70ff9a3498085f'
 readonly SHORT_COMMIT='32e82ff'
-readonly ARTIFACT_SHA='f47a4b51a3964ab3a65f5c4531e72fef120f3736198afecd4073e0b12681fa21'
+readonly ARTIFACT_SHA='a1c4fc03d00cd0d22aac7ee4c75a35af71b1bf72e3d9f58d0cef14925a665391'
 readonly RUNTIME_MANIFEST_SHA='5b3b8ef2e1cc714860df71b089d4dda0e73cc5eb58b11c41add936144b0fb15a'
 readonly SUPPORT_MANIFEST_SHA='cb42e94086bc227d58f465a9e793173e53b5e5d8eaafb905f3a4069a27bebc53'
-readonly BASELINE_MANIFEST_SHA='dbcd63d986dc3862419e806c6b900d8e5fcc3cddf7909739ea8df16ae888d3cf'
+readonly BASELINE_MANIFEST_SHA='83293ff840622279ab53163d0ca24cd444cd014da3677f7fdf44952ad87af6cd'
 readonly DEPENDENCY_MANIFEST_SHA='926277d8cf5f89cdf1724b46ab83ed8949691e918681c5e3797fd7c28dac50b7'
 readonly RUNTIME_MANIFEST='deploy/releases/m068-runtime-files.txt'
 readonly SUPPORT_MANIFEST='deploy/releases/m068-support-files.txt'
@@ -49,7 +52,7 @@ if [[ ${M068_PREFLIGHT_HELPER_TEST_MODE:-0} == 1 ]]; then
   case "$test_root" in /tmp/m068-preflight-helper-test.*|/private/tmp/m068-preflight-helper-test.*) ;; *) echo 'M068_DEPLOY_FAIL=TEST_ROOT_INVALID' >&2; exit 1 ;; esac
   [[ -d "$test_root" && ! -L "$test_root" ]] || { echo 'M068_DEPLOY_FAIL=TEST_ROOT_INVALID' >&2; exit 1; }
   PATH="$test_root/bin:$CALLER_PATH:$PATH"
-  INBOX="$test_root/inbox"; TARGET_ROOT="$test_root/target"; BACKUP_ROOT="$test_root/code-backups"; DB_BACKUP_ROOT="$test_root/db-backups"; STATE_ROOT="$test_root/state"; ARTIFACT_ROOT="$test_root/artifacts"; BASELINE_STATE_FILE="$test_root/m062-state/m062-r04.state"
+  INBOX="$test_root/inbox"; TARGET_ROOT="$test_root/target"; BACKUP_ROOT="$test_root/code-backups"; DB_BACKUP_ROOT="$test_root/db-backups"; STATE_ROOT="$test_root/state"; ARTIFACT_ROOT="$test_root/artifacts"; BASELINE_STATE_FILE="$test_root/m062-state/m062-r04.state"; CUSTOMER_CENTER_BASELINE_STATE_FILE="$test_root/m061-state/m061-r02.state"
 else
   INBOX='/home/codex-deploy/staging-inbox'
   TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
@@ -58,8 +61,9 @@ else
   STATE_ROOT='/var/lib/chinaplanetos-m068-deploy-staging-r03'
   ARTIFACT_ROOT='/root/backup-erp-release-artifacts'
   BASELINE_STATE_FILE='/var/lib/chinaplanetos-m062-terminal-trend-staging-r04/m062-r04.state'
+  CUSTOMER_CENTER_BASELINE_STATE_FILE='/var/lib/chinaplanetos-m061-r02-staging/m061-r02.state'
 fi
-readonly TEST_MODE INBOX TARGET_ROOT BACKUP_ROOT DB_BACKUP_ROOT STATE_ROOT ARTIFACT_ROOT BASELINE_STATE_FILE
+readonly TEST_MODE INBOX TARGET_ROOT BACKUP_ROOT DB_BACKUP_ROOT STATE_ROOT ARTIFACT_ROOT BASELINE_STATE_FILE CUSTOMER_CENTER_BASELINE_STATE_FILE
 readonly ARTIFACT="${INBOX}/${ARTIFACT_NAME}"
 readonly RETAINED_ARTIFACT="${ARTIFACT_ROOT}/${ARTIFACT_NAME}.${ARTIFACT_SHA}"
 readonly STATE_FILE="${STATE_ROOT}/m068.state"
@@ -264,10 +268,16 @@ check_baseline_state() {
   grep -Fxq "STATE_RUNTIME_COMMIT=$BASELINE_COMMIT" "$BASELINE_STATE_FILE" || die 'BASELINE_RUNTIME_MISMATCH'
   grep -Fxq "STATE_SCOPE_COMMIT=$BASELINE_SCOPE_COMMIT" "$BASELINE_STATE_FILE" || die 'BASELINE_SCOPE_MISMATCH'
   grep -Fxq "STATE_ARTIFACT_SHA=$BASELINE_ARTIFACT_SHA" "$BASELINE_STATE_FILE" || die 'BASELINE_ARTIFACT_MISMATCH'
+  [[ -f "$CUSTOMER_CENTER_BASELINE_STATE_FILE" && ! -L "$CUSTOMER_CENTER_BASELINE_STATE_FILE" && $(mode_of "$CUSTOMER_CENTER_BASELINE_STATE_FILE") == 600 ]] || die 'CUSTOMER_CENTER_BASELINE_STATE_INVALID'
+  [[ $TEST_MODE -eq 1 || $(owner_group_of "$CUSTOMER_CENTER_BASELINE_STATE_FILE") == 'root:root' ]] || die 'CUSTOMER_CENTER_BASELINE_STATE_METADATA_INVALID'
+  grep -Fxq "STATE_RELEASE=$CUSTOMER_CENTER_BASELINE_RELEASE" "$CUSTOMER_CENTER_BASELINE_STATE_FILE" || die 'CUSTOMER_CENTER_BASELINE_RELEASE_MISMATCH'
+  grep -Fxq 'STATE_STATUS=DEPLOYED' "$CUSTOMER_CENTER_BASELINE_STATE_FILE" || die 'CUSTOMER_CENTER_BASELINE_STATUS_MISMATCH'
+  grep -Fxq "STATE_RUNTIME_COMMIT=$CUSTOMER_CENTER_BASELINE_COMMIT" "$CUSTOMER_CENTER_BASELINE_STATE_FILE" || die 'CUSTOMER_CENTER_BASELINE_RUNTIME_MISMATCH'
+  grep -Fxq "STATE_ARTIFACT_SHA=$CUSTOMER_CENTER_BASELINE_ARTIFACT_SHA" "$CUSTOMER_CENTER_BASELINE_STATE_FILE" || die 'CUSTOMER_CENTER_BASELINE_ARTIFACT_MISMATCH'
 }
 check_environment() {
   local allow_stale=${1:-0}
-  if [[ $TEST_MODE -eq 1 ]]; then for root in "$INBOX" "$TARGET_ROOT" "$BACKUP_ROOT" "$DB_BACKUP_ROOT" "$STATE_ROOT" "$ARTIFACT_ROOT" "$REQUEST_ROOT" "$STATE_ROOT/container-root" "$(dirname "$BASELINE_STATE_FILE")"; do [[ -d "$root" && ! -L "$root" ]] || die 'TEST_ENVIRONMENT_INVALID'; done; check_baseline_state; detect_stale_candidates; [[ "$allow_stale" == 1 || -z "$STALE_CANDIDATES" ]] || die 'STALE_CANDIDATE_PRESENT'; return; fi
+  if [[ $TEST_MODE -eq 1 ]]; then for root in "$INBOX" "$TARGET_ROOT" "$BACKUP_ROOT" "$DB_BACKUP_ROOT" "$STATE_ROOT" "$ARTIFACT_ROOT" "$REQUEST_ROOT" "$STATE_ROOT/container-root" "$(dirname "$BASELINE_STATE_FILE")" "$(dirname "$CUSTOMER_CENTER_BASELINE_STATE_FILE")"; do [[ -d "$root" && ! -L "$root" ]] || die 'TEST_ENVIRONMENT_INVALID'; done; check_baseline_state; detect_stale_candidates; [[ "$allow_stale" == 1 || -z "$STALE_CANDIDATES" ]] || die 'STALE_CANDIDATE_PRESENT'; return; fi
   [[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" && $(owner_group_of "$TARGET_ROOT") == 'www-data:www-data' ]] || die 'TARGET_ROOT_INVALID'
   [[ $(mode_of "$TARGET_ROOT") == 755 ]] || die 'TARGET_ROOT_MODE_UNSAFE'
   [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$TARGET_CONTAINER" 2>/dev/null) == 'true|erp-staging|dolibarr' ]] || die 'ERP_IDENTITY_MISMATCH'
@@ -519,7 +529,7 @@ command_repair_portal_group() {
 }
 command_compare() {
   check_environment; prepare_inbox_candidate; configuration_check || die 'CONFIGURATION_PREREQUISITE_FAILED'; schema_prestate; compare_files; compare_dependencies
-  echo "M068_DEPLOY_COMPARE=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT BASELINE_COMMIT=$BASELINE_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE DRIFT_COUNT=$DRIFT_COUNT DEPENDENCY_DRIFT_COUNT=$DEPENDENCY_DRIFT_COUNT APPLY_EXECUTED=NO PRODUCTION_ACCESSED=NO"
+  echo "M068_DEPLOY_COMPARE=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT BASELINE_COMMIT=$BASELINE_COMMIT CUSTOMER_CENTER_BASELINE_COMMIT=$CUSTOMER_CENTER_BASELINE_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$SCHEMA_PRESTATE DRIFT_COUNT=$DRIFT_COUNT DEPENDENCY_DRIFT_COUNT=$DEPENDENCY_DRIFT_COUNT APPLY_EXECUTED=NO PRODUCTION_ACCESSED=NO"
 }
 command_preflight() {
   check_environment; prepare_inbox_candidate; configuration_check || die 'CONFIGURATION_PREREQUISITE_FAILED'; schema_prestate; compare_files; compare_dependencies

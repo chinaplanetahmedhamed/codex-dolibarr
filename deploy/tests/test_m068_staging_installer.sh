@@ -41,13 +41,13 @@ case "$recovery_root" in "$test_root"/private.*) ;; *) echo 'M068_PREFLIGHT_INST
 [[ $(sha256 "$recovery_root/old-sudoers") == "$before_sudoers" && $(stat -f '%Lp' "$recovery_root/old-sudoers") == 440 ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=RECOVERY_BACKUP_INVALID' >&2; exit 1; }
 rm -rf "$recovery_root"
 
-git -C "$root" show 'a13a549c902b142519a953070526f8677a413aa8:deploy/tools/chinaplanetos_backup_erp_m068_preflight.sh' >"$target_helper"
+git -C "$root" show 'f962b7c07ec944da70487fbd223f8921c6bf5ff3:deploy/tools/chinaplanetos_backup_erp_m068_preflight.sh' >"$target_helper"
 chmod 0644 "$target_sudoers"
-git -C "$root" show 'a13a549c902b142519a953070526f8677a413aa8:deploy/config/codex-deploy-backup-erp-m068-preflight.sudoers' >"$target_sudoers"
+git -C "$root" show 'f962b7c07ec944da70487fbd223f8921c6bf5ff3:deploy/config/codex-deploy-backup-erp-m068-preflight.sudoers' >"$target_sudoers"
 chmod 0755 "$target_helper"
 chmod 0440 "$target_sudoers"
-[[ $(sha256 "$target_helper") == 2905d15d4f4a2c1a9c49cbf45faf37049ef9d9040b807910f885299a32a2f2e7 ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PREDECESSOR_HELPER_FIXTURE' >&2; exit 1; }
-[[ $(sha256 "$target_sudoers") == d59be9bd212a0602e1ce966e9d07d4f018e6fe6b0c9b15f280c1915e009a878e ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PREDECESSOR_SUDOERS_FIXTURE' >&2; exit 1; }
+[[ $(sha256 "$target_helper") == 11b3e0e9e566be2722bc831e097ab67d04d93a6e4f708b4795494407df71940a ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PREDECESSOR_HELPER_FIXTURE' >&2; exit 1; }
+[[ $(sha256 "$target_sudoers") == a9970f4e1788b3efb513bd2558170e5765dd3c8067b4c3b1b5cdaf62e520a45f ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PREDECESSOR_SUDOERS_FIXTURE' >&2; exit 1; }
 "$installer" >/dev/null
 [[ $(sha256 "$target_helper") == "$before_helper" && $(sha256 "$target_sudoers") == "$before_sudoers" ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PINNED_PREDECESSOR_UPGRADE' >&2; exit 1; }
 

@@ -73,3 +73,7 @@ No command is authorized by this local-preparation approval.
 - Installer tests prove host PHP is never called, exact container/runtime arguments are enforced, inspect/runtime loss, exec/runtime loss, and PHP syntax failure publish no target, and the helper remains unexecuted.
 - Security and QA return PASS on the final unchanged evidence.
 - Final report records exact helper, configuration tool, sudoers, and installer SHA-256 values and confirms that no server was accessed.
+
+## M068-R04 state-version correction
+
+The installed R02 helper changed its executable release label after the original C01 apply had already written an `M068-C01-R01` ownership state, causing read-only `status` to stop with `STATE_RELEASE_MISMATCH`. Under Ahmed's approved M068-R04 staging correction, the executable release is `M068-C01-R03` while `M068-C01-R01` remains the immutable ownership-state format. No state file, backup pin, secret, or ownership marker is rewritten. `verify`, `status`, and `rollback` accept only that exact original state release and continue to require the intact private database-backup hash plus exact encrypted constant metadata and logical length. Any other state release remains fail-closed.

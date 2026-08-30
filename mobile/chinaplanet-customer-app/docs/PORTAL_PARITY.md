@@ -10,6 +10,7 @@
 - Design/terminology impact: portal label is `Quotation Requests / طلبات عروض الأسعار`; Arabic RTL and English LTR are in scope, French Customer Center is out of scope, and public React retains French ownership.
 - Phone verification: deterministic responsive source rules are present; authenticated 390px browser rendering remains a later staging acceptance item and is not claimed by the CLI runtime matrix.
 - Status: `ADMIN_LOCAL_RUNTIME_VERIFIED`, `PORTAL_LOCAL_RUNTIME_VERIFIED`, `MOBILE_PENDING`, `NO_STAGING_OR_PRODUCTION`.
+- R04 preservation note (2026-08-31): the composite M061/M068 merge retains the deployed customer-section email right, customer-visible payment-note field, portal date formatter, and shipment project metadata while adding M068 quotation behavior. No `/api/mobile/v1` contract or native screen changed; mobile remains `PENDING_OUT_OF_SCOPE` and authenticated staging phone acceptance remains pending.
 - Follow-up: obtain a separate staging approval before deployment or authenticated browser/email-delivery acceptance; create a separate approved Mobile Mission before changing native screens or API.
 
 ## 2026-08-28 — M062 Alexandria public-search grouping

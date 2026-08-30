@@ -23,6 +23,7 @@ $download = $read('custom/chinaplanetoperations/class/PublicRequestPublicationSe
 $quotation = $read('custom/chinaplanetoperations/class/PublicRequestQuotationService.class.php');
 $staffPage = $read('custom/chinaplanetoperations/operations/public_requests.php');
 $customerPortal = $read('custom/chinaplanetcustomercenter/quotation_requests.php');
+$customerCenterModule = $read('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 
 $assert(strpos($intake, "const CATALOG_CONTRACT = 'cpo.catalog-order.v2'") !== false, 'v2 contract not frozen');
 $assert(strpos($intake, "'schema_version' => (int) \$result['schema_version']") === false, 'API check belongs in API source');
@@ -60,5 +61,9 @@ $assert(strpos($customerPortal, 'multicurrency_total_ht') !== false && strpos($c
 $assert(substr_count($lifecycle, '$this->db->begin();') >= 4 && strpos($lifecycle, 'public_request_visibility_failed') !== false, 'line review or portal visibility is not audit-atomic');
 $assert(strpos($quotation, '$this->db->begin();') !== false && strpos($quotation, '$this->db->rollback();') !== false && strpos($quotation, '$this->db->commit();') !== false, 'draft proposal workflow lacks an outer transaction');
 $assert(strpos($activation, "Referrer-Policy: no-referrer") !== false && strpos($activation, 'dol_escape_htmltag($langs->trans($error))') !== false && strpos($activation, '$publicErrors') !== false, 'activation page leaks referrer or dynamic error text');
+$assert(strpos($customerCenterModule, '$this->rights[5][0] = 500206;') !== false && strpos($customerCenterModule, "'email_write'") !== false, 'M061 customer section email right was not preserved');
+$assert(strpos($customerCenterModule, "'cpcc_public_note'") !== false && strpos($customerCenterModule, "'paiement'") !== false, 'M061 customer-visible payment note field was not preserved');
+$assert(strpos($navigation, 'function cpcc_portal_date(') !== false && strpos($navigation, 'function cpcc_portal_proposal_money(') !== false, 'M061 date or M068 proposal currency helper is missing after merge');
+$assert(strpos($navigation, 'pr.ref AS project_ref') !== false && strpos($navigation, 'LEFT JOIN ".MAIN_DB_PREFIX."projet pr') !== false, 'M061 shipment project linkage was not preserved');
 
-echo "M068_LIFECYCLE_SOURCE=PASS READY_UNITS_KEY=unitsPerCarton\n";
+echo "M068_LIFECYCLE_SOURCE=PASS READY_UNITS_KEY=unitsPerCarton M061_MERGE=PRESERVED\n";

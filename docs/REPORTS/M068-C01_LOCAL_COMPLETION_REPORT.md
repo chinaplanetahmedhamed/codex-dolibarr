@@ -99,3 +99,11 @@ The helper, PHP configuration tool, and sudoers content are unchanged.
 ## Non-action evidence
 
 Under the M068-C01-R01 local-correction approval: `PUSH=NO UPLOAD=NO SERVER_CONNECTION=NO STAGING_COMMAND=NO HELPER_INSTALL=NO HELPER_EXECUTION=NO COMPARE=NO PREFLIGHT=NO STATUS=NO APPLY=NO MIGRATION=NO EMAIL=NO BUSINESS_RECORDS=NO PRODUCTION_ACCESS=NO`.
+
+## M068-R04 C01 compatibility correction — 2026-08-31
+
+- Executable release: `M068-C01-R03`; immutable ownership-state release: `M068-C01-R01`.
+- The existing state is not migrated or rewritten. It is accepted only when its exact release, status, entity, absent prestate, private backup path/hash, and current owned encrypted-key presence/length all validate; any different release fails closed.
+- Helper SHA-256: `22f4413e10059350467191bbe462144e710ab5e297af9a89e857a070c123ec6d`; unchanged PHP config SHA-256: `20d82fec7a4b95c6a843bfcce4b0a27415c7215d7cb807df21a10e7dc714c2bf`; installer SHA-256: `5701981d7b2e64656fa37c01b3e4c655754896e2e71845f57bff34c05e7f6aa1`; unchanged sudoers SHA-256: `dc551abe7abad810f409b22abbe69c727a949893217579a4ba43f2a8d4c2c4f4`.
+- The helper pins only the R04 M068 successor helper SHA-256 `649888ffca725bcf8cc1406a0ff383dffe2688754e7e720ecd5f64cfac053c2c`; the installer accepts only the currently installed R02 helper SHA-256 `5b867120ff1b6aaaaa1303f133bc23125f1d200a0bbed9caad2fc14a193b826f` as predecessor.
+- All four C01 suites pass, including a state written as `M068-C01-R01` and verified by executable release `M068-C01-R03`. No secret value or digest is output or stored in Git.

@@ -4,12 +4,13 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M068-C01-R02'
+readonly RELEASE='M068-C01-R03'
+readonly OWNERSHIP_STATE_RELEASE='M068-C01-R01'
 readonly BASELINE_RELEASE='M062-R04'
 readonly BASELINE_RUNTIME_COMMIT='f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b'
 readonly BASELINE_SCOPE_COMMIT='3d9aefed5e7b534cf4d4782a3ebc15fb73a3ab67'
 readonly BASELINE_ARTIFACT_SHA='a295723c4b1646ca8794494a46bede7ae21ac7296edd40d50f6c6d2cb13eb03c'
-readonly M068_PREFLIGHT_HELPER_SHA='11b3e0e9e566be2722bc831e097ab67d04d93a6e4f708b4795494407df71940a'
+readonly M068_PREFLIGHT_HELPER_SHA='649888ffca725bcf8cc1406a0ff383dffe2688754e7e720ecd5f64cfac053c2c'
 readonly CONFIG_SHA='20d82fec7a4b95c6a843bfcce4b0a27415c7215d7cb807df21a10e7dc714c2bf'
 readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 readonly DB_CONTAINER='erp-staging-mariadb-1'
@@ -221,7 +222,7 @@ write_state() {
   updated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
   tmp="$STATE_ROOT/m068-c01.state.tmp.$$"
   {
-    echo "STATE_RELEASE=$RELEASE"
+    echo "STATE_RELEASE=$OWNERSHIP_STATE_RELEASE"
     echo "STATE_STATUS=$status"
     echo "STATE_REQUEST_ID=$request_id"
     echo "STATE_ENTITY=$entity"
@@ -240,7 +241,7 @@ write_state() {
 validate_state() {
   [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" ]] || die 'STATE_ABSENT'
   if [[ $TEST_MODE -eq 0 ]]; then [[ $(owner_group_of "$STATE_FILE") == 'root:root' && $(mode_of "$STATE_FILE") == 600 ]] || die 'STATE_METADATA_INVALID'; fi
-  [[ $(state_value_from "$STATE_FILE" STATE_RELEASE) == "$RELEASE" ]] || die 'STATE_RELEASE_MISMATCH'
+  [[ $(state_value_from "$STATE_FILE" STATE_RELEASE) == "$OWNERSHIP_STATE_RELEASE" ]] || die 'STATE_RELEASE_MISMATCH'
   [[ $(state_value_from "$STATE_FILE" STATE_SECRET_PRESTATE) == 'ABSENT' ]] || die 'STATE_PRESTATE_INVALID'
   local backup_path backup_sha
   backup_path=$(state_value_from "$STATE_FILE" STATE_DB_BACKUP)

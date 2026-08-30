@@ -14,6 +14,10 @@ RUNTIME_MANIFEST = "deploy/releases/m068-runtime-files.txt"
 SUPPORT_MANIFEST = "deploy/releases/m068-support-files.txt"
 BASELINE_MANIFEST = "deploy/releases/m068-m062-r04-baseline.sha256"
 DEPENDENCY_MANIFEST = "deploy/releases/m068-m062-r04-dependencies.sha256"
+R04_RUNTIME_CORRECTIONS = {
+    "custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php",
+    "custom/chinaplanetcustomercenter/lib/portal.lib.php",
+}
 PREPARATION_PATHS = (
     RUNTIME_MANIFEST,
     SUPPORT_MANIFEST,
@@ -21,9 +25,10 @@ PREPARATION_PATHS = (
     DEPENDENCY_MANIFEST,
     "deploy/migrations/m068_staging_mailpit_configuration.php",
     "deploy/migrations/m068_staging_portal_group_repair.php",
+    "deploy/tests/test_m068_lifecycle_source.php",
     "deploy/tests/test_m068_staging_configuration.php",
 )
-EXPECTED_SHA256 = "f47a4b51a3964ab3a65f5c4531e72fef120f3736198afecd4073e0b12681fa21"
+EXPECTED_SHA256 = "a1c4fc03d00cd0d22aac7ee4c75a35af71b1bf72e3d9f58d0cef14925a665391"
 
 
 def git_bytes(repo: pathlib.Path, commit: str, rel: str) -> bytes:
@@ -45,7 +50,7 @@ def main() -> int:
     if len(runtime) != 26 or len(support) != 7:
         raise SystemExit("M068_ARTIFACT_BUILD=FAIL REASON=MANIFEST_COUNT_INVALID")
     preparation = set(PREPARATION_PATHS)
-    sourced = [(RUNTIME_COMMIT, rel) for rel in runtime]
+    sourced = [(None if rel in R04_RUNTIME_CORRECTIONS else RUNTIME_COMMIT, rel) for rel in runtime]
     sourced.extend((None if rel in preparation else RUNTIME_COMMIT, rel) for rel in support)
     sourced.extend((None, rel) for rel in (RUNTIME_MANIFEST, SUPPORT_MANIFEST, BASELINE_MANIFEST, DEPENDENCY_MANIFEST))
     rels = [rel for _, rel in sourced]

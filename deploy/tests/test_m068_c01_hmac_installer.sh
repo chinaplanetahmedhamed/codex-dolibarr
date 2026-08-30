@@ -88,9 +88,9 @@ for fault in AFTER_HELPER AFTER_CONFIG AFTER_SUDOERS; do
   [[ $(stat -f '%Lp' "$target_helper") == 755 && $(stat -f '%Lp' "$target_config") == 644 && $(stat -f '%Lp' "$target_sudoers") == 440 ]] || { echo "M068_C01_INSTALLER_TEST=FAIL REASON=${fault}_METADATA" >&2; exit 1; }
 done
 
-git -C "$root" show 'a13a549c902b142519a953070526f8677a413aa8:deploy/tools/chinaplanetos_backup_erp_m068_c01_hmac.sh' >"$target_helper"
+git -C "$root" show 'f962b7c07ec944da70487fbd223f8921c6bf5ff3:deploy/tools/chinaplanetos_backup_erp_m068_c01_hmac.sh' >"$target_helper"
 chmod 0755 "$target_helper"
-[[ $(sha256 "$target_helper") == 752df39e6f9f7f679feba22afa08c3a94b4ccdfe00055984d6c327c5ef677e54 ]] || { echo 'M068_C01_INSTALLER_TEST=FAIL REASON=PREDECESSOR_FIXTURE' >&2; exit 1; }
+[[ $(sha256 "$target_helper") == 5b867120ff1b6aaaaa1303f133bc23125f1d200a0bbed9caad2fc14a193b826f ]] || { echo 'M068_C01_INSTALLER_TEST=FAIL REASON=PREDECESSOR_FIXTURE' >&2; exit 1; }
 $installer >/dev/null
 [[ $(sha256 "$target_helper") == "$before_helper" ]] || { echo 'M068_C01_INSTALLER_TEST=FAIL REASON=PINNED_PREDECESSOR_UPGRADE' >&2; exit 1; }
 

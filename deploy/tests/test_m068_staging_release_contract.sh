@@ -45,7 +45,10 @@ PY
 mkdir -p "$test_root/extracted"
 tar -xzf "$artifact" -C "$test_root/extracted"
 while IFS= read -r rel; do
-  git -C "$root" show "32e82ffbd82248f2a84f468172195267fb6d37a7:$rel" >"$test_root/source"
+  case "$rel" in
+    custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php|custom/chinaplanetcustomercenter/lib/portal.lib.php) cp "$root/$rel" "$test_root/source" ;;
+    *) git -C "$root" show "32e82ffbd82248f2a84f468172195267fb6d37a7:$rel" >"$test_root/source" ;;
+  esac
   cmp "$test_root/source" "$test_root/extracted/$rel" || fail RUNTIME_SOURCE_MISMATCH
 done <"$root/deploy/releases/m068-runtime-files.txt"
 [[ $(wc -l <"$root/deploy/releases/m068-runtime-files.txt" | tr -d ' ') -eq 26 ]] || fail RUNTIME_COUNT
@@ -58,10 +61,13 @@ for name in RUNTIME_MANIFEST SUPPORT_MANIFEST BASELINE_MANIFEST DEPENDENCY_MANIF
   [[ -f "$root/$path" && $(sha256 "$root/$path") == "$pin" ]] || fail "${name}_PIN"
 done
 
-grep -Fq "readonly RELEASE='M068-R03'" "$helper" || fail RELEASE
+grep -Fq "readonly RELEASE='M068-R04'" "$helper" || fail RELEASE
 grep -Fq "readonly RUNTIME_COMMIT='32e82ffbd82248f2a84f468172195267fb6d37a7'" "$helper" || fail RUNTIME_COMMIT
 grep -Fq "readonly BASELINE_RELEASE='M062-R04'" "$helper" || fail BASELINE_RELEASE
 grep -Fq "readonly BASELINE_COMMIT='f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b'" "$helper" || fail BASELINE_COMMIT
+grep -Fq "readonly CUSTOMER_CENTER_BASELINE_RELEASE='M061-R02-C03'" "$helper" || fail CUSTOMER_CENTER_BASELINE_RELEASE
+grep -Fq "readonly CUSTOMER_CENTER_BASELINE_COMMIT='487b61e690d7d030ec25d54a3b62afdb7e78fb55'" "$helper" || fail CUSTOMER_CENTER_BASELINE_COMMIT
+grep -Fq "readonly CUSTOMER_CENTER_BASELINE_ARTIFACT_SHA='bf508b9e7b495092542160e4bb97ce1410c2013497d90bc6af70ff9a3498085f'" "$helper" || fail CUSTOMER_CENTER_BASELINE_ARTIFACT
 grep -Fq "readonly TARGET_CONTAINER='erp-staging-dolibarr-1'" "$helper" || fail TARGET_CONTAINER
 grep -Fq "readonly DB_CONTAINER='erp-staging-mariadb-1'" "$helper" || fail DB_CONTAINER
 grep -Fq "readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'" "$helper" || fail MAILPIT_CONTAINER
@@ -92,8 +98,8 @@ if grep -Eq '(INSERT|UPDATE|DELETE|ALTER|DROP|CREATE)[[:space:]]' "$root/deploy/
 helper_sha=$(sha256 "$helper"); sudoers_sha=$(sha256 "$sudoers")
 [[ "$(constant HELPER_SHA "$installer")" == "$helper_sha" ]] || fail INSTALLER_HELPER_PIN
 [[ "$(constant SUDOERS_SHA "$installer")" == "$sudoers_sha" ]] || fail INSTALLER_SUDOERS_PIN
-[[ "$(constant PREDECESSOR_HELPER_SHA "$installer")" == 2905d15d4f4a2c1a9c49cbf45faf37049ef9d9040b807910f885299a32a2f2e7 ]] || fail PREDECESSOR_HELPER_PIN
-[[ "$(constant PREDECESSOR_SUDOERS_SHA "$installer")" == d59be9bd212a0602e1ce966e9d07d4f018e6fe6b0c9b15f280c1915e009a878e ]] || fail PREDECESSOR_SUDOERS_PIN
+[[ "$(constant PREDECESSOR_HELPER_SHA "$installer")" == 11b3e0e9e566be2722bc831e097ab67d04d93a6e4f708b4795494407df71940a ]] || fail PREDECESSOR_HELPER_PIN
+[[ "$(constant PREDECESSOR_SUDOERS_SHA "$installer")" == a9970f4e1788b3efb513bd2558170e5765dd3c8067b4c3b1b5cdaf62e520a45f ]] || fail PREDECESSOR_SUDOERS_PIN
 while read -r expected rel; do
   if [[ "$rel" == m068-website-lifecycle-32e82ff.tar.gz ]]; then
     [[ "$expected" == "$artifact_sha" ]] || fail RELEASE_MANIFEST_ARTIFACT
@@ -101,4 +107,4 @@ while read -r expected rel; do
     [[ -f "$root/$rel" && $(sha256 "$root/$rel") == "$expected" ]] || fail RELEASE_MANIFEST_COMPONENT
   fi
 done <"$root/deploy/releases/m068-staging-deployment.sha256"
-echo "M068_STAGING_RELEASE_CONTRACT=PASS ARTIFACT_SHA=$artifact_sha MEMBERS=37 RUNTIME=26 SUPPORT=7 DEPENDENCIES=5 COMMANDS=8 TARGET=ERP_STAGING_ONLY MAIL_SEND=NO PRODUCTION_ACCESSED=NO"
+echo "M068_STAGING_RELEASE_CONTRACT=PASS ARTIFACT_SHA=$artifact_sha MEMBERS=37 RUNTIME=26 SUPPORT=7 DEPENDENCIES=5 COMMANDS=8 COMPOSITE_M061_M062_BASELINE=PINNED TARGET=ERP_STAGING_ONLY MAIL_SEND=NO PRODUCTION_ACCESSED=NO"
