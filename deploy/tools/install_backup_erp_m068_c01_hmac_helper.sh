@@ -7,6 +7,7 @@ umask 077
 readonly HELPER_SHA='752df39e6f9f7f679feba22afa08c3a94b4ccdfe00055984d6c327c5ef677e54'
 readonly CONFIG_SHA='20d82fec7a4b95c6a843bfcce4b0a27415c7215d7cb807df21a10e7dc714c2bf'
 readonly SUDOERS_SHA='dc551abe7abad810f409b22abbe69c727a949893217579a4ba43f2a8d4c2c4f4'
+readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
 
 TEST_MODE=0
 if [[ ${M068_C01_INSTALLER_TEST_MODE:-0} == 1 ]]; then
@@ -60,6 +61,15 @@ validate_sudoers() {
   else
     visudo -cf "$path" >/dev/null
   fi
+}
+
+validate_config_syntax() {
+  local path=$1 running lint_rc
+  running=$(docker inspect --format '{{.State.Running}}' "$TARGET_CONTAINER" 2>/dev/null) || return 2
+  [[ "$running" == true ]] || return 2
+  if docker exec -i "$TARGET_CONTAINER" php -l /dev/stdin <"$path" >/dev/null 2>&1; then return 0; else lint_rc=$?; fi
+  [[ $lint_rc -eq 255 ]] && return 1
+  return 2
 }
 
 restore_or_remove() {
@@ -133,7 +143,10 @@ install -m 0600 "$SOURCE_SUDOERS" "$private_sudoers"
 [[ $(sha256 "$private_config") == "$CONFIG_SHA" ]] || die 'CONFIG_SOURCE_HASH_MISMATCH'
 [[ $(sha256 "$private_sudoers") == "$SUDOERS_SHA" ]] || die 'SUDOERS_SOURCE_HASH_MISMATCH'
 bash -n "$private_helper" || die 'HELPER_SYNTAX_INVALID'
-php -l "$private_config" >/dev/null || die 'CONFIG_SYNTAX_INVALID'
+config_lint_rc=0
+validate_config_syntax "$private_config" || config_lint_rc=$?
+[[ $config_lint_rc -ne 2 ]] || die 'CONFIG_RUNTIME_INVALID'
+[[ $config_lint_rc -eq 0 ]] || die 'CONFIG_SYNTAX_INVALID'
 validate_sudoers "$private_sudoers" || die 'SUDOERS_SYNTAX_INVALID'
 
 if [[ -e "$TARGET_HELPER" || -L "$TARGET_HELPER" ]]; then
@@ -185,4 +198,4 @@ if [[ $TEST_MODE -eq 0 ]]; then
 fi
 
 INSTALL_COMPLETE=1
-echo "M068_C01_INSTALL=PASS HELPER_SHA=$HELPER_SHA CONFIG_SHA=$CONFIG_SHA SUDOERS_SHA=$SUDOERS_SHA COMMANDS=preflight,apply,verify,rollback,status HELPER_EXECUTED=NO DATABASE_CHANGED=NO BUSINESS_RECORDS_CHANGED=NO SECRET_CREATED=NO SECRET_OUTPUT=NO CUSTOMER_DATA_OUTPUT=NO PRODUCTION_ACCESSED=NO"
+echo "M068_C01_INSTALL=PASS HELPER_SHA=$HELPER_SHA CONFIG_SHA=$CONFIG_SHA SUDOERS_SHA=$SUDOERS_SHA CONFIG_LINT=CONTAINER_PHP TARGET_CONTAINER=$TARGET_CONTAINER COMMANDS=preflight,apply,verify,rollback,status HELPER_EXECUTED=NO DATABASE_CHANGED=NO BUSINESS_RECORDS_CHANGED=NO SECRET_CREATED=NO SECRET_OUTPUT=NO CUSTOMER_DATA_OUTPUT=NO PRODUCTION_ACCESSED=NO"

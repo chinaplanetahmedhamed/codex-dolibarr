@@ -46,6 +46,13 @@ grep -Fq "if (!\$db->rollback())" "$config"
 ! grep -Eq 'putenv|export[[:space:]]+CHINAPLANET_PORTAL_INVITATION_HMAC_KEY' "$config" "$helper" || fail 'SECRET_EXPORT_PATH'
 
 grep -Fq "TARGET_CONTAINER='erp-staging-dolibarr-1'" "$helper"
+grep -Fq "TARGET_CONTAINER='erp-staging-dolibarr-1'" "$installer"
+grep -Fq "docker inspect --format '{{.State.Running}}' \"\$TARGET_CONTAINER\"" "$installer"
+grep -Fq 'docker exec -i "$TARGET_CONTAINER" php -l /dev/stdin <"$path"' "$installer"
+! grep -Fq 'php -l "$private_config"' "$installer" || fail 'INSTALLER_HOST_PHP_LINT'
+grep -Fq '[[ $lint_rc -eq 255 ]] && return 1' "$installer"
+grep -Fq "die 'CONFIG_RUNTIME_INVALID'" "$installer"
+grep -Fq 'CONFIG_LINT=CONTAINER_PHP' "$installer"
 grep -Fq "DB_CONTAINER='erp-staging-mariadb-1'" "$helper"
 grep -Fq "MAILPIT_CONTAINER='erp-staging-mailpit-1'" "$helper"
 grep -Fq "DB_NAME='dolibarr_db'" "$helper"
