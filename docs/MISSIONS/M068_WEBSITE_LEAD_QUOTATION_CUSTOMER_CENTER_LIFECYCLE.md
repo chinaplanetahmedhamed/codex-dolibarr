@@ -66,3 +66,9 @@ Portal access is parallel after qualification: `not_invited -> invite_pending ->
 ## Rollback and gate
 
 Code is reverted by exact local commit. Schema changes are additive; rollback disables the M068 routes/rights while retaining audit data, not destructive table drops. The next gate after local completion is a separate Ahmed approval for `backup-erp` staging; Mission approval never authorizes staging or production.
+
+## Approved backup-ERP staging execution — M068-R02
+
+Ahmed later approved one continuous **backup-ERP staging-only** execution: configure Dolibarr mail transport to the existing Mailpit container without sending mail; install a checksum-pinned restricted helper; then run `compare`, `preflight`, `apply`, `verify`, and `status`. The helper is limited to the canonical `erp-staging` containers, volumes, and localhost ports. It requires the exact deployed M062-R04 state, exact runtime and dependency baselines, the existing C01 HMAC configuration, Customer Center configuration, and a validated full database backup before either Mailpit configuration or M068 apply.
+
+The release remains additive and fail-closed. It may create schema objects and rights but must not create Third Parties, contacts, proposals, orders, customer accounts, quotation requests, email messages, or other business records. Rollback restores the pre-deploy code snapshot while retaining additive schema, audit data, and the Mailpit isolation route. Any checksum, topology, baseline, dependency, configuration, backup/restore, schema, runtime, login-boundary, or health mismatch is a stopping gate. Production is not approved.

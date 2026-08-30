@@ -4,8 +4,10 @@ CALLER_PATH=${PATH:-}
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly HELPER_SHA='e340e79ce56e88ad27f066788a85f67aa55a1cc2eef2f247390d1eb83ffa3256'
-readonly SUDOERS_SHA='d939e20162ec13fa7a125bbd9ec40128a05615444140ef920aa0fcae8e27e018'
+readonly HELPER_SHA='2905d15d4f4a2c1a9c49cbf45faf37049ef9d9040b807910f885299a32a2f2e7'
+readonly SUDOERS_SHA='d59be9bd212a0602e1ce966e9d07d4f018e6fe6b0c9b15f280c1915e009a878e'
+readonly PREDECESSOR_HELPER_SHA='e340e79ce56e88ad27f066788a85f67aa55a1cc2eef2f247390d1eb83ffa3256'
+readonly PREDECESSOR_SUDOERS_SHA='d939e20162ec13fa7a125bbd9ec40128a05615444140ef920aa0fcae8e27e018'
 TEST_MODE=0
 if [[ ${M068_PREFLIGHT_INSTALLER_TEST_MODE:-0} == 1 ]]; then
   TEST_MODE=1
@@ -16,14 +18,22 @@ if [[ ${M068_PREFLIGHT_INSTALLER_TEST_MODE:-0} == 1 ]]; then
   SOURCE_ROOT="$test_root/inbox"
   TARGET_HELPER="$test_root/system/usr/local/sbin/chinaplanetos-backup-erp-m068-preflight"
   TARGET_SUDOERS="$test_root/system/etc/sudoers.d/codex-deploy-backup-erp-m068-preflight"
+  CODE_BACKUP_ROOT="$test_root/system/root/backup-erp-code-backups"
+  DB_BACKUP_ROOT="$test_root/system/root/backup-erp-db-backups"
+  STATE_ROOT="$test_root/system/var/lib/chinaplanetos-m068-deploy-staging-r02"
+  ARTIFACT_ROOT="$test_root/system/root/backup-erp-release-artifacts"
   PRIVATE_TEMPLATE="$test_root/private.XXXXXX"
 else
   SOURCE_ROOT='/home/codex-deploy/staging-inbox'
   TARGET_HELPER='/usr/local/sbin/chinaplanetos-backup-erp-m068-preflight'
   TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-backup-erp-m068-preflight'
+  CODE_BACKUP_ROOT='/root/backup-erp-code-backups'
+  DB_BACKUP_ROOT='/root/backup-erp-db-backups'
+  STATE_ROOT='/var/lib/chinaplanetos-m068-deploy-staging-r02'
+  ARTIFACT_ROOT='/root/backup-erp-release-artifacts'
   PRIVATE_TEMPLATE='/root/m068-preflight-helper-install.XXXXXX'
 fi
-readonly TEST_MODE SOURCE_ROOT TARGET_HELPER TARGET_SUDOERS PRIVATE_TEMPLATE
+readonly TEST_MODE SOURCE_ROOT TARGET_HELPER TARGET_SUDOERS CODE_BACKUP_ROOT DB_BACKUP_ROOT STATE_ROOT ARTIFACT_ROOT PRIVATE_TEMPLATE
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m068_preflight.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-backup-erp-m068-preflight.sudoers"
 
@@ -33,8 +43,14 @@ sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{
 validate_sudoers() {
   local path=$1
   if [[ $TEST_MODE -eq 1 ]]; then
-    [[ $(wc -l <"$path" | tr -d ' ') -eq 3 ]] || return 1
-    ! grep -Eq '[[:space:]](apply|verify|rollback|dry-run)([[:space:]]|$)' "$path"
+    [[ $(wc -l <"$path" | tr -d ' ') -eq 7 ]] || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight configure-mailpit' "$path" || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight compare' "$path" || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight preflight' "$path" || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight apply' "$path" || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight verify' "$path" || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight rollback' "$path" || return 1
+    grep -Fxq 'codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-backup-erp-m068-preflight status' "$path"
   else
     visudo -cf "$path" >/dev/null
   fi
@@ -81,6 +97,9 @@ else
   [[ -d $(dirname "$TARGET_HELPER") && ! -L $(dirname "$TARGET_HELPER") ]] || die 'HELPER_TARGET_ROOT_INVALID'
   [[ -d $(dirname "$TARGET_SUDOERS") && ! -L $(dirname "$TARGET_SUDOERS") ]] || die 'SUDOERS_TARGET_ROOT_INVALID'
 fi
+for private_dir in "$CODE_BACKUP_ROOT" "$DB_BACKUP_ROOT" "$STATE_ROOT" "$ARTIFACT_ROOT" "$STATE_ROOT/requests"; do
+  if [[ $TEST_MODE -eq 1 ]]; then install -d -m 0700 "$private_dir"; else install -d -o root -g root -m 0700 "$private_dir"; fi
+done
 private_root=$(mktemp -d "$PRIVATE_TEMPLATE")
 private_helper="$private_root/helper"
 private_sudoers="$private_root/sudoers"
@@ -98,11 +117,13 @@ bash -n "$private_helper" || die 'HELPER_SYNTAX_INVALID'
 validate_sudoers "$private_sudoers" || die 'SUDOERS_SYNTAX_INVALID'
 
 if [[ -e "$TARGET_HELPER" || -L "$TARGET_HELPER" ]]; then
-  [[ -f "$TARGET_HELPER" && ! -L "$TARGET_HELPER" && $(sha256 "$TARGET_HELPER") == "$HELPER_SHA" ]] || die 'EXISTING_HELPER_UNEXPECTED'
+  existing_helper_sha=$(sha256 "$TARGET_HELPER")
+  [[ -f "$TARGET_HELPER" && ! -L "$TARGET_HELPER" && ( "$existing_helper_sha" == "$HELPER_SHA" || "$existing_helper_sha" == "$PREDECESSOR_HELPER_SHA" ) ]] || die 'EXISTING_HELPER_UNEXPECTED'
   [[ $TEST_MODE -eq 1 || $(stat -c '%U:%G %a' "$TARGET_HELPER") == 'root:root 755' ]] || die 'EXISTING_HELPER_METADATA_INVALID'
 fi
 if [[ -e "$TARGET_SUDOERS" || -L "$TARGET_SUDOERS" ]]; then
-  [[ -f "$TARGET_SUDOERS" && ! -L "$TARGET_SUDOERS" && $(sha256 "$TARGET_SUDOERS") == "$SUDOERS_SHA" ]] || die 'EXISTING_SUDOERS_UNEXPECTED'
+  existing_sudoers_sha=$(sha256 "$TARGET_SUDOERS")
+  [[ -f "$TARGET_SUDOERS" && ! -L "$TARGET_SUDOERS" && ( "$existing_sudoers_sha" == "$SUDOERS_SHA" || "$existing_sudoers_sha" == "$PREDECESSOR_SUDOERS_SHA" ) ]] || die 'EXISTING_SUDOERS_UNEXPECTED'
   [[ $TEST_MODE -eq 1 || $(stat -c '%U:%G %a' "$TARGET_SUDOERS") == 'root:root 440' ]] || die 'EXISTING_SUDOERS_METADATA_INVALID'
 fi
 
@@ -137,4 +158,4 @@ if [[ $TEST_MODE -eq 0 ]]; then
   [[ $(stat -c '%U:%G %a' "$TARGET_SUDOERS") == 'root:root 440' ]] || die 'POST_INSTALL_SUDOERS_METADATA_INVALID'
 fi
 INSTALL_COMPLETE=1
-echo "M068_PREFLIGHT_INSTALL=PASS HELPER_SHA=$HELPER_SHA SUDOERS_SHA=$SUDOERS_SHA COMMANDS=compare,preflight,status APPLY_AVAILABLE=NO HELPER_EXECUTED=NO DATABASE_CHANGED=NO RUNTIME_CHANGED=NO STATE_FILES_CREATED=NO PRODUCTION_ACCESSED=NO"
+echo "M068_PREFLIGHT_INSTALL=PASS HELPER_SHA=$HELPER_SHA SUDOERS_SHA=$SUDOERS_SHA COMMANDS=configure-mailpit,compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE=YES HELPER_EXECUTED=NO DATABASE_CHANGED=NO RUNTIME_CHANGED=NO STATE_FILES_CREATED=NO PRODUCTION_ACCESSED=NO"

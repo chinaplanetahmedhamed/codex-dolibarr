@@ -41,8 +41,18 @@ case "$recovery_root" in "$test_root"/private.*) ;; *) echo 'M068_PREFLIGHT_INST
 [[ $(sha256 "$recovery_root/old-sudoers") == "$before_sudoers" && $(stat -f '%Lp' "$recovery_root/old-sudoers") == 440 ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=RECOVERY_BACKUP_INVALID' >&2; exit 1; }
 rm -rf "$recovery_root"
 
+git -C "$root" show 'fdbb5ca443b942f37da2b545ec3ba2b4cb492ed3:deploy/tools/chinaplanetos_backup_erp_m068_preflight.sh' >"$target_helper"
+chmod 0644 "$target_sudoers"
+git -C "$root" show 'fdbb5ca443b942f37da2b545ec3ba2b4cb492ed3:deploy/config/codex-deploy-backup-erp-m068-preflight.sudoers' >"$target_sudoers"
+chmod 0755 "$target_helper"
+chmod 0440 "$target_sudoers"
+[[ $(sha256 "$target_helper") == e340e79ce56e88ad27f066788a85f67aa55a1cc2eef2f247390d1eb83ffa3256 ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PREDECESSOR_HELPER_FIXTURE' >&2; exit 1; }
+[[ $(sha256 "$target_sudoers") == d939e20162ec13fa7a125bbd9ec40128a05615444140ef920aa0fcae8e27e018 ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PREDECESSOR_SUDOERS_FIXTURE' >&2; exit 1; }
+"$installer" >/dev/null
+[[ $(sha256 "$target_helper") == "$before_helper" && $(sha256 "$target_sudoers") == "$before_sudoers" ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=PINNED_PREDECESSOR_UPGRADE' >&2; exit 1; }
+
 printf '\ncorrupt\n' >>"$test_root/inbox/chinaplanetos_backup_erp_m068_preflight.sh"
 if "$installer" >/dev/null 2>&1; then echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=CORRUPT_SOURCE_ACCEPTED' >&2; exit 1; fi
 [[ $(sha256 "$target_helper") == "$before_helper" && $(sha256 "$target_sudoers") == "$before_sudoers" ]] || { echo 'M068_PREFLIGHT_INSTALLER=FAIL REASON=SOURCE_FAILURE_MUTATION' >&2; exit 1; }
 
-echo 'M068_PREFLIGHT_INSTALLER=PASS TRANSACTION_ROLLBACK=PASS RECOVERY_BACKUP_RETAINED=PASS IDEMPOTENT=PASS CHECKSUM_PINNED=PASS HELPER_EXECUTED=NO SERVER_ACCESSED=NO PRODUCTION_ACCESSED=NO'
+echo 'M068_PREFLIGHT_INSTALLER=PASS TRANSACTION_ROLLBACK=PASS RECOVERY_BACKUP_RETAINED=PASS IDEMPOTENT=PASS PINNED_PREDECESSOR_UPGRADE=PASS CHECKSUM_PINNED=PASS HELPER_EXECUTED=NO SERVER_ACCESSED=NO PRODUCTION_ACCESSED=NO'

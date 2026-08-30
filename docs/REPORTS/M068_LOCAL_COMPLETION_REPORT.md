@@ -100,3 +100,22 @@ Residual risk remains **medium**: source/package controls are locally proven, bu
 Use this phrase only when ready to allow staging filesystem preparation. This gate still does not authorize helper invocation or application changes:
 
 `APPROVE M068 FOR BACKUP-ERP STAGING UPLOAD AND CHECKSUM-PINNED PREFLIGHT-ONLY HELPER INSTALLATION ONLY. DO NOT RUN COMPARE, PREFLIGHT, OR STATUS; DO NOT APPLY OR MIGRATE; DO NOT SEND EMAIL OR CREATE BUSINESS RECORDS; AND NO PRODUCTION ACTION.`
+
+## M068-R02 full staging release addendum — 2026-08-30
+
+After the earlier preflight-only package and the separately completed M068-C01 HMAC configuration, Ahmed approved completing the remaining M068 chain on **backup-ERP staging only**. The R02 package upgrades the same restricted helper path from its exact pinned predecessor; it does not create a parallel privileged surface.
+
+- Deterministic artifact: `m068-website-lifecycle-32e82ff.tar.gz`, 36 allowlisted regular files, SHA-256 `449bb83039533bbd3ebb9eb8b69a6062cd0e800c8b071bfc5294a0cb2ce22dcd`.
+- Runtime manifest: 26 files, SHA-256 `5b3b8ef2e1cc714860df71b089d4dda0e73cc5eb58b11c41add936144b0fb15a`.
+- Support manifest: 6 files, SHA-256 `41687d9edfb829d5642c3e878908cd3094adb2a719e785b69ec4e5e883e9d2aa`.
+- Restricted helper: SHA-256 `2905d15d4f4a2c1a9c49cbf45faf37049ef9d9040b807910f885299a32a2f2e7`.
+- Transactional installer: SHA-256 `36a15c51d28c62a08d7807afa63ecee71c99814604e8dd886c28e85e2bb3855e`.
+- Exact seven-command sudoers: SHA-256 `d59be9bd212a0602e1ce966e9d07d4f018e6fe6b0c9b15f280c1915e009a878e`.
+- Mailpit-only configuration tool: SHA-256 `25cc25cd03d20e2b4a44c3070e25b4dea0c013d89f48ee11f24c31a6dbc7ecf3`.
+- Consolidated release pins: `deploy/releases/m068-staging-deployment.sha256`.
+
+The only helper commands are `configure-mailpit`, `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status`. `configure-mailpit` changes only `MAIN_MAIL_SENDMODE=smtp`, `MAIN_MAIL_SMTP_SERVER=mailpit`, and `MAIN_MAIL_SMTP_PORT=1025` after a full root-coverage database dump and restore-fingerprint validation; it never sends mail. `apply` requires zero runtime/dependency drift and the exact additive-schema prestate, then creates validated code/prestate and full database backups before installing the 26 runtime files and applying the additive migration. Live verification checks exact hashes/metadata, schema, configuration, ERP health, and authenticated boundaries on the staff and Customer Center routes. No command creates business records.
+
+Local release tests passed for deterministic rebuild, artifact metadata and allowlist, pinned manifests, Mailpit-only/no-send contract, restricted sudo surface, exact predecessor upgrade, transactional installer recovery, corrupt/oversized/symlink artifact denial, runtime/dependency/baseline drift denial, synthetic apply/verify/rollback, PHP/Bash/Python syntax, and the existing M068 source suites. Production identifiers are absent from the release surface.
+
+Execution must stop on the first failed gate. Staging acceptance still requires the exact live outputs from Mailpit configuration, compare, preflight, apply, verify, and status. Authenticated browser and disposable-mailbox delivery tests remain separate because this approval forbids sending mail or creating real business records. Production remains entirely out of scope and requires a later explicit approval.

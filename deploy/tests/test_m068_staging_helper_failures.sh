@@ -5,10 +5,14 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 artifact=${M068_ARTIFACT:-/private/tmp/m068-website-lifecycle-32e82ff.tar.gz}
 test_root=$(mktemp -d /private/tmp/m068-preflight-helper-test.XXXXXX)
 trap 'rm -rf "$test_root"' EXIT
-mkdir -p "$test_root/inbox" "$test_root/target" "$test_root/m062-state" "$test_root/bin"
+mkdir -p "$test_root/inbox" "$test_root/target" "$test_root/m062-state" "$test_root/bin" \
+  "$test_root/code-backups" "$test_root/db-backups" "$test_root/state/requests" \
+  "$test_root/state/container-root" "$test_root/artifacts"
 cp "$root/deploy/tools/chinaplanetos_backup_erp_m068_preflight.sh" "$test_root/chinaplanetos-backup-erp-m068-preflight.test"
 cp "$artifact" "$test_root/inbox/m068-website-lifecycle-32e82ff.tar.gz"
 chmod 0700 "$test_root/chinaplanetos-backup-erp-m068-preflight.test"
+printf '#!/bin/sh\nexit 0\n' >"$test_root/bin/flock"
+chmod 0700 "$test_root/bin/flock"
 helper="$test_root/chinaplanetos-backup-erp-m068-preflight.test"
 baseline='f0d8d33c2efd83cf981516a24ab9c9e07b1bc05b'
 
@@ -37,12 +41,13 @@ export M068_PREFLIGHT_HELPER_TEST_MODE=1 M068_PREFLIGHT_HELPER_TEST_ROOT="$test_
 
 snapshot() { find "$test_root/inbox" "$test_root/target" "$test_root/m062-state" -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256; }
 before=$(snapshot)
-"$helper" status | grep -Fq 'M068_PREFLIGHT_STATUS=PREPARATION_ONLY'
-"$helper" compare | grep -Fq 'M068_PREFLIGHT_COMPARE=PASS'
-"$helper" preflight | grep -Fq 'M068_PREFLIGHT=PASS'
+"$helper" status | grep -Fq 'M068_DEPLOY_STATUS=NOT_DEPLOYED'
+"$helper" configure-mailpit | grep -Fq 'M068_DEPLOY_MAILPIT=PASS RESULT=NOOP_ALREADY_CONFIGURED'
+"$helper" compare | grep -Fq 'M068_DEPLOY_COMPARE=PASS'
+"$helper" preflight | grep -Fq 'M068_DEPLOY_PREFLIGHT=PASS'
 [[ "$(snapshot)" == "$before" ]] || { echo 'M068_PREFLIGHT_FAILURES=FAIL REASON=READ_ONLY_INPUT_MUTATION' >&2; exit 1; }
-[[ -z $(find "$test_root" -maxdepth 1 \( -name 'candidate.*' -o -name 'artifact.*' \) -print) ]] || { echo 'M068_PREFLIGHT_FAILURES=FAIL REASON=TEMP_NOT_CLEANED' >&2; exit 1; }
-for forbidden in apply verify rollback dry-run; do if "$helper" "$forbidden" >/dev/null 2>&1; then echo "M068_PREFLIGHT_FAILURES=FAIL REASON=FORBIDDEN_${forbidden}" >&2; exit 1; fi; done
+[[ -z $(find "$test_root/state" -maxdepth 1 \( -name 'candidate.*' -o -name 'artifact.*' \) -print) ]] || { echo 'M068_PREFLIGHT_FAILURES=FAIL REASON=TEMP_NOT_CLEANED' >&2; exit 1; }
+if "$helper" dry-run >/dev/null 2>&1; then echo 'M068_PREFLIGHT_FAILURES=FAIL REASON=FORBIDDEN_DRY_RUN' >&2; exit 1; fi
 if "$helper" compare extra >/dev/null 2>&1; then echo 'M068_PREFLIGHT_FAILURES=FAIL REASON=ARBITRARY_ARGS' >&2; exit 1; fi
 
 cp "$test_root/inbox/m068-website-lifecycle-32e82ff.tar.gz" "$test_root/inbox/good.tar.gz"
@@ -78,4 +83,10 @@ sed 's/STATE_STATUS=DEPLOYED/STATE_STATUS=ROLLED_BACK/' "$test_root/original" >"
 if "$helper" status >/dev/null 2>&1; then echo 'M068_PREFLIGHT_FAILURES=FAIL REASON=NONDEPLOYED_BASELINE_ACCEPTED' >&2; exit 1; fi
 mv "$test_root/original" "$test_root/m062-state/m062-r04.state"
 
-echo 'M068_PREFLIGHT_FAILURES=PASS READ_ONLY=YES CORRUPT_ARTIFACT=DENIED OVERSIZED_ARTIFACT=DENIED SYMLINK_ARTIFACT=DENIED RUNTIME_DRIFT=DENIED DEPENDENCY_DRIFT=DENIED BASELINE_MISMATCH=DENIED FORBIDDEN_COMMANDS=DENIED PRODUCTION_ACCESSED=NO'
+"$helper" apply | grep -Fq 'M068_DEPLOY_APPLY=PASS'
+"$helper" verify | grep -Fq 'M068_DEPLOY_VERIFY=PASS'
+"$helper" status | grep -Fq 'STATE_STATUS=DEPLOYED'
+"$helper" rollback | grep -Fq 'M068_DEPLOY_ROLLBACK=PASS'
+"$helper" status | grep -Fq 'STATE_STATUS=ROLLED_BACK_SCHEMA_RETAINED'
+
+echo 'M068_PREFLIGHT_FAILURES=PASS READ_ONLY_GATES=YES APPLY_VERIFY_ROLLBACK=PASS CORRUPT_ARTIFACT=DENIED OVERSIZED_ARTIFACT=DENIED SYMLINK_ARTIFACT=DENIED RUNTIME_DRIFT=DENIED DEPENDENCY_DRIFT=DENIED BASELINE_MISMATCH=DENIED ARBITRARY_COMMANDS=DENIED PRODUCTION_ACCESSED=NO'
