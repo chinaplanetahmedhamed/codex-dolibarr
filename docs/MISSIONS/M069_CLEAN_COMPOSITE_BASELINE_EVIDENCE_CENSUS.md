@@ -65,13 +65,13 @@ M069 can advance only when:
 - React and WordPress canonical remote heads are current and pinned;
 - no protected user work overlaps the future clean reconstruction.
 
-M069-C02 completed the full bounded runtime census without reading core, configuration, databases, documents, uploads, logs, caches, secrets, credentials, or business data. Production contains 315 approved custom-runtime files and canonical `backup-erp` contains 325. The two immutable manifests are recorded in `docs/REPORTS/`.
+M069-C02 completed the full bounded runtime census without reading core, configuration, databases, documents, uploads, server logs, caches, secrets, credentials, or business data. Production contains 315 approved custom-runtime files and canonical `backup-erp` contains 325. The two immutable manifests are recorded in `docs/REPORTS/`.
 
-All 315 Production file hashes and 321 of 325 Staging file hashes match Git blobs reachable from the canonical repository. Four Staging-only acceptance/demo scripts do not match any reachable Git blob. M070 must not start until those four hashes are traced to an approved immutable artifact or explicitly classified by a separately approved correction.
+All 315 Production file hashes and 321 of 325 Staging file hashes match Git blobs reachable from the canonical repository. M069-C03 then scanned 179 code-only Staging archives and code backups by header, streaming only an exact target member when present. None of the four Staging-only acceptance/demo paths existed in those archives. M070 must not start until Ahmed explicitly classifies those four files as unmanaged Staging residue excluded from the composite baseline or approves another correction.
 
 ## Required correction approval
 
-A later exact approval may authorize a bounded read-only provenance search for the following exact Staging hashes inside approved code-only release artifacts and code backups; databases, configuration, documents, logs, secrets, and business data remain forbidden:
+A later exact documentation-only approval may classify the following exact Staging hashes as unmanaged acceptance residue excluded from the composite baseline. Current Staging must remain unchanged; later rebuilt-stack acceptance must prove these paths are absent:
 
 - `custom/chinaplanetcustomercenter/admin/acceptance_demo.php` — `ef26675038d7e1878f461ae9133b1d5e291ef11bd63577ff8e9343672f50d884`
 - `custom/chinaplanetcustomercenter/admin/demo/seed_customer_portal_demo.php` — `ffad67b0f14b46694581d55714f38a1c2e15338fd56de992036125f2ecfbafb8`

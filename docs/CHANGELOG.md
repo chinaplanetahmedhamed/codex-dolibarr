@@ -8,7 +8,8 @@
 - Classified M068 code as automatically rolled back with additive schema retained, and recorded the current React/WordPress `cpo.catalog-order.v2` incompatibilities.
 - Completed the bounded M069-C02 Production/Staging custom-runtime census: 315 Production files and 325 Staging files, with exact metadata-only manifests and verified SHA-256 pins. All Production hashes and 321 Staging hashes are traceable to canonical Git blobs.
 - Proved that deployed Customer Center contains 54 expanded duplicate files where canonical Git owns symlink compatibility paths; these duplicates must not become new canonical source.
-- Kept M069 at `CORRECTION_REQUIRED` because four Staging-only acceptance/demo hashes remain without immutable Git or artifact provenance. M070 remains blocked.
+- Scanned 179 code-only Staging archives under M069-C03; none contained any of the four untraced target paths. The metadata-only provenance result is checksum-pinned and the temporary server output was removed.
+- Kept M069 at `CORRECTION_REQUIRED` pending Ahmed's explicit documentation-only decision to exclude the four unmanaged Staging acceptance/demo files from the composite baseline. M070 remains blocked.
 - Application code, database, schema, configuration, staging, Production, email and business records were unchanged.
 
 ## 2026-08-28 — M062-R04 separate Alexandria terminal trends

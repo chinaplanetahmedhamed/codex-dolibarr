@@ -10,7 +10,7 @@ Result: **CORRECTION_REQUIRED**
 
 The desired clean baseline cannot be produced by merging the M061 or M068 branches wholesale. Production is represented by the accepted Dolibarr main history through M062-R04, while canonical Staging adds a 39-file M061 overlay and retains additive M068 schema/configuration after M068-R04 code automatically rolled back. React Production and Staging are also intentionally different by one commit.
 
-The source and release ledger and complete bounded runtime hash inventory are now mapped. M069 still cannot be frozen because four Staging-only acceptance/demo files cannot be traced to any Git blob reachable from the canonical repository. Existing release records do not yet identify an immutable artifact provenance for those exact hashes.
+The source and release ledger and complete bounded runtime hash inventory are now mapped. M069 still cannot be frozen because four Staging-only acceptance/demo files cannot be traced to any Git blob or any of the 179 code-only Staging archives inspected under M069-C03.
 
 ## M069-C02 runtime census
 
@@ -35,6 +35,19 @@ Production provenance is complete: all 315 hashes match reachable canonical-repo
 | `custom/chinaplanetcustomercenter/admin/demo/seed_operations_sops.php` | `0d641c624638043750308060c5ec4f773b57475ea163429559bb202ef51f6abf` |
 
 The census also proves a packaging defect class: Git stores `custom/chinaplanetcustomercenter/chinaplanetlogistics` and `custom/chinaplanetcustomercenter/cpkanban` as symlinks, but both runtimes contain 54 expanded regular files at those nested paths. Their contents are traceable, but M070 must preserve the canonical top-level module ownership instead of importing these deployed duplicates as source.
+
+## M069-C03 code-archive provenance search
+
+Ahmed approved one bounded human-run Root command on canonical `backup-erp`. It inspected headers only for regular TAR/TAR.GZ/TGZ code archives under `/root/backup-erp-code-backups` and `/home/codex-deploy/staging-inbox`. Member content could be streamed only when its path matched one of the four exact targets; no member matched, so no archived code content was read.
+
+- Code archives scanned: 179.
+- Archives without a target member: 179.
+- Exact target matches: zero.
+- Same-path hash mismatches: zero.
+- Provenance manifest SHA-256: `67f8c60510bb4913e8dd268b7cc1ad4c3463399f23958116c7b14d5bcf1f832b`.
+- Temporary server output and its empty directory: removed after remote/local hash verification.
+
+The immutable metadata-only result is `M069_STAGING_ARCHIVE_PROVENANCE.tsv`. The four files are therefore classified as **unmanaged Staging-only acceptance residue pending Ahmed's explicit baseline-exclusion decision**. They are not accepted behavior, must not be copied into Git or M070, and were not deleted or changed on current Staging.
 
 ## Canonical repository pins
 
@@ -149,13 +162,11 @@ The clean rebuild must preserve and test:
 
 ## Why M069 is not frozen
 
-The complete file-by-file runtime tree is now proven, but four Staging-only hashes have no reachable Git provenance. Advancing would silently legitimize unknown acceptance/demo runtime code or omit behavior without an evidence-backed classification—the exact failure M069 exists to prevent.
+The complete file-by-file runtime tree and code-archive search are proven, but the original acceptance wording requires every deployed file to have immutable provenance. The four Staging-only files do not. Advancing without an explicit exclusion decision would silently legitimize unknown acceptance/demo runtime code—the exact failure M069 exists to prevent.
 
 ## Next exact gate
 
-Request a separate approval for a bounded read-only provenance search of code-only Staging artifacts/backups for the four exact paths and hashes above. No runtime file, helper, database, configuration, document, upload, log, cache, secret, email, or business record may be read or changed.
-
-After that evidence is compared with this ledger, M069 can either become `ARCHITECT_ACCEPTED` or explicitly exclude/quarantine the four files through a separately approved correction. M070 remains blocked.
+Request a separate documentation-only Ahmed decision that classifies the four exact files as unmanaged Staging residue excluded from the composite baseline, while leaving current Staging untouched and requiring the rebuilt stack to omit them. If approved, M069 can become `ARCHITECT_ACCEPTED`; M070 still requires its own separate implementation approval.
 
 ## Change and environment statement
 
@@ -167,3 +178,4 @@ After that evidence is compared with this ledger, M069 can either become `ARCHIT
 - Email/business records created: **NO**
 - Git branch/worktree created: **YES**, documentation-only M069 branch from refreshed Dolibarr main
 - Temporary server manifest files created and removed: **YES**, exact M069-C02 approved output files only
+- Temporary provenance output created and removed: **YES**, exact M069-C03 approved output file only
