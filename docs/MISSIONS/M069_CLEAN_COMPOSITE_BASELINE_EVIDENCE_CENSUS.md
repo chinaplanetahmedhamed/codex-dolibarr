@@ -4,11 +4,12 @@
 
 - **Mission ID:** M069
 - **Type:** DOCUMENTATION / EVIDENCE / ARCHITECTURE / RELEASE_GOVERNANCE
-- **Status:** CORRECTION_REQUIRED — runtime census complete; four Staging-only files remain without immutable provenance
+- **Status:** COMPLETED — ARCHITECT_ACCEPTED after M069-C04 baseline-exclusion decision
 - **Architect and documentation owner:** Agent 007
 - **Approved by:** Ahmed Hamed
 - **Approval date:** 2026-08-31
 - **Approval source:** Ahmed approved implementation of the complete `ChinaPlanetOS Clean Composite Rebuild Program`, whose first mandatory gate is M069.
+- **Completion approval:** Ahmed approved M069-C04 on 2026-08-31, classifying four exact Staging path/SHA-256 pairs as unmanaged acceptance residue excluded from the composite baseline.
 - **Source baseline:** refreshed Dolibarr `origin/main` at `057af0f205f819c685869b3ee6aa1aea31ea549e`
 - **Branch:** `codex/m069-composite-baseline`
 - **Target:** local evidence and documentation plus approved read-only `backup-erp` status inspection
@@ -67,13 +68,17 @@ M069 can advance only when:
 
 M069-C02 completed the full bounded runtime census without reading core, configuration, databases, documents, uploads, server logs, caches, secrets, credentials, or business data. Production contains 315 approved custom-runtime files and canonical `backup-erp` contains 325. The two immutable manifests are recorded in `docs/REPORTS/`.
 
-All 315 Production file hashes and 321 of 325 Staging file hashes match Git blobs reachable from the canonical repository. M069-C03 then scanned 179 code-only Staging archives and code backups by header, streaming only an exact target member when present. None of the four Staging-only acceptance/demo paths existed in those archives. M070 must not start until Ahmed explicitly classifies those four files as unmanaged Staging residue excluded from the composite baseline or approves another correction.
+All 315 Production file hashes and 321 of 325 Staging file hashes match Git blobs reachable from the canonical repository. M069-C03 then scanned 179 code-only Staging archives and code backups by header, streaming only an exact target member when present. None of the four Staging-only acceptance/demo paths existed in those archives.
 
-## Required correction approval
+Ahmed's M069-C04 decision explicitly replaces the provenance requirement only for the four exact path/hash pairs below. They are classified as unmanaged Staging residue, not accepted functionality, and excluded from the clean composite baseline. Current Staging remains unchanged. M073 acceptance must prove all four paths absent from the rebuilt stack. This closes M069 without importing unknown runtime code.
 
-A later exact documentation-only approval may classify the following exact Staging hashes as unmanaged acceptance residue excluded from the composite baseline. Current Staging must remain unchanged; later rebuilt-stack acceptance must prove these paths are absent:
+## Frozen M069-C04 exclusion decision
+
+The following exact Staging hashes are excluded from M070 source reconstruction, every future release artifact, and the M073 rebuilt stack:
 
 - `custom/chinaplanetcustomercenter/admin/acceptance_demo.php` — `ef26675038d7e1878f461ae9133b1d5e291ef11bd63577ff8e9343672f50d884`
 - `custom/chinaplanetcustomercenter/admin/demo/seed_customer_portal_demo.php` — `ffad67b0f14b46694581d55714f38a1c2e15338fd56de992036125f2ecfbafb8`
 - `custom/chinaplanetcustomercenter/admin/demo/seed_full_order_cycles.php` — `d83931588f4c6589260dcb09ceba1f32f96685494168135d45f22a455183d01e`
 - `custom/chinaplanetcustomercenter/admin/demo/seed_operations_sops.php` — `0d641c624638043750308060c5ec4f773b57475ea163429559bb202ef51f6abf`
+
+Cleanup of these files from current Staging is deferred to a separately approved Mission. M070 remains subject to its own exact approval and must use the frozen evidence set in `docs/REPORTS/M069_EVIDENCE_FREEZE.sha256`.

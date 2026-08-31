@@ -9,7 +9,8 @@
 - Completed the bounded M069-C02 Production/Staging custom-runtime census: 315 Production files and 325 Staging files, with exact metadata-only manifests and verified SHA-256 pins. All Production hashes and 321 Staging hashes are traceable to canonical Git blobs.
 - Proved that deployed Customer Center contains 54 expanded duplicate files where canonical Git owns symlink compatibility paths; these duplicates must not become new canonical source.
 - Scanned 179 code-only Staging archives under M069-C03; none contained any of the four untraced target paths. The metadata-only provenance result is checksum-pinned and the temporary server output was removed.
-- Kept M069 at `CORRECTION_REQUIRED` pending Ahmed's explicit documentation-only decision to exclude the four unmanaged Staging acceptance/demo files from the composite baseline. M070 remains blocked.
+- Ahmed's M069-C04 documentation-only decision classified the four exact Staging path/hash pairs as unmanaged acceptance residue, excluded them from the composite baseline and future artifacts, required M073 to prove them absent, and left current Staging untouched.
+- Froze the four authoritative evidence files in `M069_EVIDENCE_FREEZE.sha256`; M069 is `ARCHITECT_ACCEPTED` and `COMPLETED`. M070 remains a separate approval gate.
 - Application code, database, schema, configuration, staging, Production, email and business records were unchanged.
 
 ## 2026-08-28 — M062-R04 separate Alexandria terminal trends

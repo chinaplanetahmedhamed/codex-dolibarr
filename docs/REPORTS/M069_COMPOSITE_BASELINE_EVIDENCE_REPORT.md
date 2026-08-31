@@ -4,13 +4,13 @@ Date: 2026-08-31
 
 Mission: Clean Composite Baseline Evidence Census
 
-Result: **CORRECTION_REQUIRED**
+Result: **COMPLETED — ARCHITECT_ACCEPTED**
 
 ## Executive finding
 
 The desired clean baseline cannot be produced by merging the M061 or M068 branches wholesale. Production is represented by the accepted Dolibarr main history through M062-R04, while canonical Staging adds a 39-file M061 overlay and retains additive M068 schema/configuration after M068-R04 code automatically rolled back. React Production and Staging are also intentionally different by one commit.
 
-The source and release ledger and complete bounded runtime hash inventory are now mapped. M069 still cannot be frozen because four Staging-only acceptance/demo files cannot be traced to any Git blob or any of the 179 code-only Staging archives inspected under M069-C03.
+The source and release ledger and complete bounded runtime hash inventory are mapped and frozen. Four Staging-only acceptance/demo files could not be traced to any Git blob or any of the 179 code-only Staging archives inspected under M069-C03. Ahmed's M069-C04 decision classifies only those four exact path/hash pairs as unmanaged Staging residue excluded from the composite baseline. They are not accepted functionality and current Staging remains unchanged.
 
 ## M069-C02 runtime census
 
@@ -47,7 +47,19 @@ Ahmed approved one bounded human-run Root command on canonical `backup-erp`. It 
 - Provenance manifest SHA-256: `67f8c60510bb4913e8dd268b7cc1ad4c3463399f23958116c7b14d5bcf1f832b`.
 - Temporary server output and its empty directory: removed after remote/local hash verification.
 
-The immutable metadata-only result is `M069_STAGING_ARCHIVE_PROVENANCE.tsv`. The four files are therefore classified as **unmanaged Staging-only acceptance residue pending Ahmed's explicit baseline-exclusion decision**. They are not accepted behavior, must not be copied into Git or M070, and were not deleted or changed on current Staging.
+The immutable metadata-only result is `M069_STAGING_ARCHIVE_PROVENANCE.tsv`. Ahmed's M069-C04 decision now classifies the four files as **unmanaged Staging-only acceptance residue excluded from the composite baseline**. They are not accepted behavior, must not be copied into Git or M070, and were not deleted or changed on current Staging.
+
+## M069-C04 frozen exclusion decision
+
+- Decision owner: Ahmed Hamed.
+- Decision date: 2026-08-31.
+- Scope: only the four exact path/SHA-256 pairs recorded above.
+- Classification: unmanaged Staging-only acceptance residue; not accepted functionality.
+- M070: must exclude all four from reconstructed source and release manifests.
+- M073: must prove all four paths absent from the isolated rebuilt stack.
+- Current Staging: unchanged; cleanup requires a later separate Mission.
+- Production: unaffected; none of the four paths exists in the Production manifest.
+- Evidence freeze: `M069_EVIDENCE_FREEZE.sha256` pins the four authoritative M069 evidence files.
 
 ## Canonical repository pins
 
@@ -160,13 +172,13 @@ The clean rebuild must preserve and test:
 - Admin ERP, Customer Center, and mobile parity with customer/entity isolation and no supplier, cost, margin, private note, internal ID, secret, or private-document exposure.
 - No automatic email, password, proposal validation, order, booking, invoice, or other business record during release verification.
 
-## Why M069 is not frozen
+## M069 acceptance decision
 
-The complete file-by-file runtime tree and code-archive search are proven, but the original acceptance wording requires every deployed file to have immutable provenance. The four Staging-only files do not. Advancing without an explicit exclusion decision would silently legitimize unknown acceptance/demo runtime code—the exact failure M069 exists to prevent.
+The complete file-by-file runtime tree and code-archive search are proven. M069-C04 resolves the sole provenance exception without legitimizing or copying the unknown files: they are explicitly excluded from the baseline and must be absent from the rebuilt stack. M061's incomplete authenticated acceptance remains a named M073 release blocker, and the React Git ref must be refreshed successfully before its M070 implementation worktree is created.
 
 ## Next exact gate
 
-Request a separate documentation-only Ahmed decision that classifies the four exact files as unmanaged Staging residue excluded from the composite baseline, while leaving current Staging untouched and requiring the rebuilt stack to omit them. If approved, M069 can become `ARCHITECT_ACCEPTED`; M070 still requires its own separate implementation approval.
+M069 is complete. The next gate is a separate exact M070 implementation approval. M070 must begin from fresh clean worktrees, consume the frozen evidence checksums, preserve every protected dirty worktree, exclude the four residue paths and the failed M068-R04 runtime code, and stop before any server or database mutation.
 
 ## Change and environment statement
 
@@ -179,3 +191,4 @@ Request a separate documentation-only Ahmed decision that classifies the four ex
 - Git branch/worktree created: **YES**, documentation-only M069 branch from refreshed Dolibarr main
 - Temporary server manifest files created and removed: **YES**, exact M069-C02 approved output files only
 - Temporary provenance output created and removed: **YES**, exact M069-C03 approved output file only
+- M069-C04 runtime or server action: **NO**, documentation-only exclusion decision
