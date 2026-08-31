@@ -1,5 +1,14 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-31 — M069 clean composite baseline evidence census
+
+- Pinned the current canonical Dolibarr, React and WordPress plugin remote heads without merging or modifying protected permanent worktrees.
+- Recorded the current React Production/Staging SHAs and restricted `backup-erp` M060, M061, M062 and M068 release states without running compare, preflight or any mutating command.
+- Reconstructed the exact final 39-file M061 staging overlay and proved that only one path matches current Dolibarr main while M068 overlaps only two M061 runtime paths.
+- Classified M068 code as automatically rolled back with additive schema retained, and recorded the current React/WordPress `cpo.catalog-order.v2` incompatibilities.
+- Stopped M069 at `CORRECTION_REQUIRED`: existing release helpers do not prove a complete current Production/Staging runtime-tree manifest, and no exact Production read-only runtime inventory was approved. M070 remains blocked.
+- Application code, database, schema, configuration, staging, Production, email and business records were unchanged.
+
 ## 2026-08-28 — M062-R04 separate Alexandria terminal trends
 
 - Replaced the intentionally empty grouped Alexandria history contract with independently queried Old Port, TMT and optional terminal-not-specified series; no terminal prices are averaged together.
