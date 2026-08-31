@@ -56,6 +56,9 @@ export type Me = {
 
 export type Balance = {
   currency: Currency;
+  total_invoiced: Decimal;
+  paid_or_funded: Decimal;
+  outstanding: Decimal;
   debit: Decimal;
   credit: Decimal;
   balance: Decimal;
@@ -191,6 +194,7 @@ export type Transaction = {
   direction: 'debit' | 'credit';
   amount: Money;
   reference?: string | null;
+  public_note?: string | null;
   updated_at: string;
 };
 
@@ -207,11 +211,38 @@ export type ServiceInvoice = {
   updated_at: string;
 };
 
+export type ServiceInvoiceDetail = ServiceInvoice & {
+  subtotal: Money;
+  discount: Money;
+  tax: Money;
+  direct_paid: Money;
+  applied_credit: Money;
+  order_ref?: string | null;
+  public_note?: string | null;
+  lines: {
+    description: string;
+    quantity: Decimal;
+    unit?: string | null;
+    unit_price: Money;
+    tax_rate: Decimal;
+    discount_percent: Decimal;
+    total: Money;
+  }[];
+  payments: {
+    date: string;
+    reference: string;
+    amount: Money;
+    public_note?: string | null;
+  }[];
+};
+
 export type Document = {
   id: OpaqueId;
-  source_type: 'project_asset' | 'operation_report_attachment' | 'shipment_gallery';
-  kind: 'image' | 'video' | 'document';
+  source_type: 'project_asset' | 'operation_report_attachment' | 'shipment_gallery' | 'core_document' | 'commercial_document';
+  kind: 'image' | 'video' | 'document' | 'record';
   project_id?: OpaqueId | null;
+  project_ref?: string | null;
+  project_title?: string | null;
   shipment_id?: OpaqueId | null;
   shipment_ref?: string | null;
   report_id?: OpaqueId | null;

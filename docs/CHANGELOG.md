@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-08-31 — M070 local clean composite source reconstruction
+
+- Reconstructed the accepted Dolibarr custom runtime from current main/M062 plus the exact 39-file M061 Staging layer without merging the stale M061 or failed M068 branches wholesale.
+- Preserved CP Kanban project-sync ownership, canonical module symlinks, the accepted Logistics upload boundary, M062 Alexandria Old Port/TMT separation, and the source-only Mobile parity layer.
+- Reconstructed the accepted React Staging commit on top of the Production/SEO head while preserving the permanent China Guide changes outside the clean worktree; the canonical WordPress planner remains version 1.9.4 with no delta.
+- Added deterministic source/runtime manifests and local composite regression coverage. No migration, helper, database, configuration, runtime, Staging, Production, email, business-record, upload, push, or deployment action occurred.
+- M071 quotation-lifecycle work, M072 release/version controls, and M073 isolated runtime acceptance remain separate approval gates.
+
 ## 2026-08-31 — M069 clean composite baseline evidence census
 
 - Pinned the current canonical Dolibarr, React and WordPress plugin remote heads without merging or modifying protected permanent worktrees.

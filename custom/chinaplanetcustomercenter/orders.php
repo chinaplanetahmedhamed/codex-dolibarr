@@ -142,7 +142,7 @@ $orderStatuses = array(
 					<tr>
 						<td><a class="cpcc-order-ref" href="<?php echo dol_escape_htmltag($orderUrl); ?>"><?php echo dol_escape_htmltag($obj->ref); ?></a></td>
 						<?php if (!$isExternal) { ?><td><?php echo dol_escape_htmltag($obj->customer_name ?: '-'); ?></td><?php } ?>
-						<td><?php echo !empty($obj->date_commande) ? dol_print_date($obj->date_commande, 'day') : '-'; ?></td>
+						<td><?php echo !empty($obj->date_commande) ? dol_escape_htmltag(cpcc_portal_date($obj->date_commande)) : '-'; ?></td>
 						<td class="money"><?php echo cpcc_portal_money($obj->total_ttc); ?></td>
 						<td><span class="cpcc-order-status status-<?php echo (int) $obj->fk_statut; ?>"><?php echo dol_escape_htmltag(isset($orderStatuses[(int) $obj->fk_statut]) ? $orderStatuses[(int) $obj->fk_statut] : (string) $obj->fk_statut); ?></span></td>
 						<td><a class="cpcc-order-open" href="<?php echo dol_escape_htmltag($orderUrl); ?>">فتح / Open</a><?php if ($canOpenCoreOrder) { ?> <a class="cpcc-order-core" target="_blank" rel="noopener" href="<?php echo dol_escape_htmltag(dol_buildpath('/commande/card.php', 1).'?id='.(int) $obj->rowid); ?>">Vision Advanced ↗</a><?php } ?></td>

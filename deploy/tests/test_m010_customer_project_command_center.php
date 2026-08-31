@@ -69,12 +69,12 @@ foreach (array('cpcc_financial_project_charges', 'cpcc_financial_commitment_rows
 }
 m010Assert(strpos($helper, 'cpcc_financial_customer_invoices') !== false && strpos($helper, 'cpkanban_customer_invoice_totals') !== false, 'financial view uses customer invoices and per-currency totals');
 m010Assert(strpos($helper, "method=\"") === false && strpos($helper, '<form') === false, 'phase-one command center is read only');
-m010Assert(strpos($card, 'cpkanban_render_customer_project_center') !== false && strpos($card, 'if ($is_external)') !== false, 'customer view uses the command-center renderer');
-m010Assert(strpos($card, 'if ($displayColumnId <= 0)') !== false, 'direct customer access to deliberately hidden columns fails closed');
+m010Assert(strpos($card, 'M061 keeps CP Kanban staff-only') !== false && strpos($card, "dol_buildpath('/chinaplanetcustomercenter/project.php'") !== false && strpos($card, "header('Location: '.\$customerProjectUrl") !== false, 'owned legacy customer Kanban links redirect to the operational project page');
+m010Assert(strpos($card, '$object->fetch($id, $socid) <= 0') !== false, 'forged legacy Kanban card IDs fail closed before redirect');
 m010Assert(strpos($card, "if (\$action == 'update' && \$canwrite") !== false, 'internal edit behavior remains available');
 m010Assert(strpos($projects, 'if (!$is_external) {'.PHP_EOL.'        foreach ($projectIds as $projectId)') !== false, 'external project listing performs no automatic write-side synchronization');
 m010Assert(strpos($projects, 'cc.entity=p.entity AND cc.fk_soc=p.fk_soc') !== false && strpos($projects, 'c.entity=p.entity AND c.fk_soc=p.fk_soc') !== false, 'project-to-card joins require matching entity and customer');
-m010Assert(strpos($projects, 'class="cpk-project-modal-host"') !== false && strpos($projects, 'class="cpk-card-link"') !== false && strpos($boardJs, '.cpk-project-modal-host') !== false, 'customer project list opens the command center in the accessible modal');
+m010Assert(strpos($projects, "dol_buildpath('/chinaplanetcustomercenter/project.php'") !== false && strpos($projects, 'class="cpk-project-modal-host"') === false && strpos($projects, 'class="cpk-card-link"') === false, 'M061 customer project list opens the operational lifecycle page without exposing the Kanban modal');
 m010Assert(strpos($projects, 'class="cpcc-page-head"') !== false && strpos($documents, 'class="cpcc-page-head"') !== false && strpos($orders, 'class="cpcc-page-head"') !== false, 'projects documents and orders share the customer portal hero component');
 m010Assert(strpos($projects, 'customer_dashboard.css') !== false && strpos($documents, 'customer_dashboard.css') !== false, 'projects and documents load the shared customer hero stylesheet');
 
@@ -83,7 +83,7 @@ foreach (array('cpk-project-timeline', 'cpk-project-gallery', 'cpk-shipment-grid
 }
 m010Assert(strpos($css, '@media(max-width:760px)') !== false && strpos($css, 'grid-template-columns:1fr') !== false, 'command center has a single-column mobile layout');
 m010Assert(strpos($portal, 'cpcc-portal-menu-toggle') !== false && strpos($portal, 'aria-controls="cpcc-portal-menu"') !== false, 'customer portal renders an accessible mobile menu toggle');
-m010Assert(strpos($portalCss, '@media(max-width:900px)') !== false && strpos($portalCss, '.cpcc-portal-nav.is-open{display:grid}') !== false, 'customer portal menu collapses into a mobile grid');
+m010Assert(strpos($portalCss, '@media(max-width:1180px)') !== false && strpos($portalCss, '.cpcc-portal-nav.is-open{display:grid}') !== false, 'customer portal menu collapses into a mobile grid');
 m010Assert(strpos($portalJs, "toggle.setAttribute('aria-expanded', open ? 'true' : 'false')") !== false && strpos($portalJs, "event.key === 'Escape'") !== false, 'customer portal menu supports state announcement and keyboard close');
 
 print 'M010 customer project command-center tests passed'.PHP_EOL;

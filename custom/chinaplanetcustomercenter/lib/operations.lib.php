@@ -4,13 +4,18 @@ require_once __DIR__.'/financial.lib.php';
 require_once __DIR__.'/export.lib.php';
 require_once __DIR__.'/../../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 
-function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
+function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback, $entity = null)
 {
+    $entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
+    $projectClosed = false;
+    $res = $db->query("SELECT fk_statut FROM ".MAIN_DB_PREFIX."projet WHERE rowid=".(int)$projectid." AND entity=".$entity." AND fk_soc=".(int)$socid." LIMIT 1");
+    if ($res && ($project = $db->fetch_object($res))) $projectClosed = (int) $project->fk_statut === 2;
+
     $orderConfirmed = false;
-    $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."commande WHERE entity=".(int)$GLOBALS['conf']->entity." AND fk_soc=".(int)$socid." AND fk_projet=".(int)$projectid." AND fk_statut>0 LIMIT 1");
+    $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."commande WHERE entity=".$entity." AND fk_soc=".(int)$socid." AND fk_projet=".(int)$projectid." AND fk_statut>0 LIMIT 1");
     $orderConfirmed = $res && $db->num_rows($res) > 0;
 
-    $charges = cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid);
+    $charges = cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid, '', $entity);
     $supplierCharges = array_values(array_filter($charges, function ($row) { return !empty($row['is_supplier']); }));
     $supplierPaidAny = false;
     $supplierFullyPaid = !empty($supplierCharges);
@@ -21,16 +26,15 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
 
     $invoiceCount = 0;
     $invoiceOpen = 0;
-    $res = $db->query("SELECT COUNT(*) total,SUM(CASE WHEN fk_statut=1 AND paye=0 THEN 1 ELSE 0 END) open_count FROM ".MAIN_DB_PREFIX."facture WHERE entity=".(int)$GLOBALS['conf']->entity." AND fk_soc=".(int)$socid." AND fk_projet=".(int)$projectid." AND fk_statut>0 AND type IN (0,1,5)");
+    $res = $db->query("SELECT COUNT(*) total,SUM(CASE WHEN fk_statut=1 AND paye=0 THEN 1 ELSE 0 END) open_count FROM ".MAIN_DB_PREFIX."facture WHERE entity=".$entity." AND fk_soc=".(int)$socid." AND fk_projet=".(int)$projectid." AND fk_statut>0 AND type IN (0,1,5)");
     if ($res && ($obj=$db->fetch_object($res))) {$invoiceCount=(int)$obj->total;$invoiceOpen=(int)$obj->open_count;}
 
     $shipmentCount = 0;
     $shipmentClosed = 0;
-    $res = $db->query("SELECT COUNT(*) total,SUM(CASE WHEN fk_statut IN (".chinaplanetlogistics_status_sql_list('terminal').") THEN 1 ELSE 0 END) closed_count FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$GLOBALS['conf']->entity." AND fk_soc=".(int)$socid." AND fk_project=".(int)$projectid);
+    $res = $db->query("SELECT COUNT(*) total,SUM(CASE WHEN fk_statut IN (".chinaplanetlogistics_status_sql_list('terminal').") THEN 1 ELSE 0 END) closed_count FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".$entity." AND fk_soc=".(int)$socid." AND fk_project=".(int)$projectid);
     if ($res && ($obj=$db->fetch_object($res))) {$shipmentCount=(int)$obj->total;$shipmentClosed=(int)$obj->closed_count;}
 
-    $documents = cpcc_export_documents($db,$socid,$projectid,0,true);
-    $documentCount = count($documents);
+    $documents = cpcc_export_documents($db,$socid,$projectid,0,true,$entity);
     $hasCommercialInvoice = false;
     $hasPackingList = false;
     foreach ($documents as $document) {
@@ -40,7 +44,7 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
     $documentsComplete = $hasCommercialInvoice && $hasPackingList;
     $funded = false;
     if (cpcc_financial_schema_ready($db)) {
-        $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".(int)$GLOBALS['conf']->entity." AND fk_soc=".(int)$socid." AND fk_project=".(int)$projectid." AND entry_type IN ('customer_receipt','opening_balance') AND direction='C' AND status=1 LIMIT 1");
+        $res = $db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".$entity." AND fk_soc=".(int)$socid." AND fk_project=".(int)$projectid." AND entry_type IN ('customer_receipt','opening_balance') AND direction='C' AND status=1 LIMIT 1");
         $funded = $res && $db->num_rows($res)>0;
     }
 
@@ -52,6 +56,46 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
         array('key'=>'service_invoice','label'=>'صدرت الفاتورة','en'=>'Invoice issued','done'=>$invoiceCount>0,'rule'=>'فاتورة عميل معتمدة مرتبطة بالمشروع / Validated customer invoice linked to project'),
         array('key'=>'shipment','label'=>'تم إنشاء الشحنة','en'=>'Shipment created','done'=>$shipmentCount>0,'rule'=>'وجود شحنة مرتبطة بالعميل والمشروع / Shipment linked to customer and project'),
         array('key'=>'documents','label'=>'اكتملت المستندات','en'=>'Documents complete','done'=>$documentsComplete,'rule'=>'فاتورة تجارية وقائمة تعبئة ظاهرتان للعميل / Customer-visible Commercial Invoice and Packing List'),
-        array('key'=>'closed','label'=>'تمت العملية','en'=>'Operation finished','done'=>$orderConfirmed&&$funded&&$supplierFullyPaid&&$invoiceCount>0&&$invoiceOpen===0&&$shipmentCount>0&&$shipmentClosed===$shipmentCount&&$documentsComplete,'rule'=>'اكتمال كل المتطلبات وإغلاق كل الشحنات وسداد الفواتير / All requirements complete'),
+        array('key'=>'closed','label'=>'تمت العملية','en'=>'Operation finished','done'=>$projectClosed&&$orderConfirmed&&$funded&&$supplierFullyPaid&&$invoiceCount>0&&$invoiceOpen===0&&$shipmentCount>0&&$shipmentClosed===$shipmentCount&&$documentsComplete,'rule'=>'اكتمال المتطلبات وإغلاق مشروع Dolibarr وكل الشحنات وسداد الفواتير / Requirements complete and Dolibarr project closed'),
+    );
+}
+
+/** Convert evidence-backed lifecycle stages into one customer-safe read model. */
+function cpcc_project_lifecycle_projection($stages)
+{
+    $stages = array_values(is_array($stages) ? $stages : array());
+    $total = count($stages);
+    $done = 0;
+    $current = null;
+    $next = null;
+
+    foreach ($stages as $index => $stage) {
+        if (!empty($stage['done'])) {
+            $done++;
+            continue;
+        }
+        if ($current === null) $current = $index;
+        elseif ($next === null) $next = $index;
+    }
+
+    $timeline = array();
+    foreach ($stages as $index => $stage) {
+        if (!empty($stage['done'])) $state = 'completed';
+        elseif ($index === $current) $state = 'current';
+        elseif ($index === $next) $state = 'next';
+        else $state = 'planned';
+        $stage['state'] = $state;
+        $timeline[] = $stage;
+    }
+
+    $complete = $total > 0 && $done === $total;
+    $currentStage = $current !== null ? $timeline[$current] : ($total ? $timeline[$total - 1] : null);
+    $nextStage = $next !== null ? $timeline[$next] : null;
+    return array(
+        'progress_percent' => $total ? (int) round(($done * 100) / $total) : 0,
+        'completed' => $complete,
+        'current_stage' => $currentStage,
+        'next_stage' => $nextStage,
+        'timeline' => $timeline,
     );
 }

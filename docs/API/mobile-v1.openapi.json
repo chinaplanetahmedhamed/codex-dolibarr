@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "China Planet Customer Mobile API",
-    "version": "1.0.0-m017",
-    "description": "Read-only customer API. Entity and customer ownership are always derived server-side from the authenticated external Dolibarr user."
+    "version": "1.0.1-m061",
+    "description": "Read-only customer API. Entity and customer ownership are always derived server-side from the authenticated external Dolibarr user. Project progress is derived from the eight operational evidence stages shared with the web portal; internal Kanban progress is not exposed."
   },
   "servers": [
     {
@@ -220,6 +220,22 @@
           "401": {"$ref": "#/components/responses/Unauthorized"},
           "404": {"$ref": "#/components/responses/NotFound"},
           "422": {"$ref": "#/components/responses/Validation"},
+          "500": {"$ref": "#/components/responses/ServerError"}
+        }
+      }
+    },
+    "/service-invoices/{opaqueId}": {
+      "get": {
+        "operationId": "getServiceInvoice",
+        "parameters": [
+          {"$ref": "#/components/parameters/OpaqueId"},
+          {"$ref": "#/components/parameters/IfNoneMatch"}
+        ],
+        "responses": {
+          "200": {"description": "Owned validated invoice detail, line items and public payment notes", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ServiceInvoiceDetailEnvelope"}}}},
+          "304": {"$ref": "#/components/responses/NotModified"},
+          "401": {"$ref": "#/components/responses/Unauthorized"},
+          "404": {"$ref": "#/components/responses/NotFound"},
           "500": {"$ref": "#/components/responses/ServerError"}
         }
       }
@@ -459,17 +475,17 @@
       },
       "MeEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/Me"}, "request_id": {"type": "string"}}},
       "Balance": {
-        "type": "object", "additionalProperties": false, "required": ["currency", "debit", "credit", "balance", "updated_at"],
-        "properties": {"currency": {"$ref": "#/components/schemas/Currency"}, "debit": {"$ref": "#/components/schemas/Decimal"}, "credit": {"$ref": "#/components/schemas/Decimal"}, "balance": {"$ref": "#/components/schemas/Decimal"}, "updated_at": {"type": "string", "format": "date-time"}}
+        "type": "object", "additionalProperties": false, "required": ["currency", "total_invoiced", "paid_or_funded", "outstanding", "debit", "credit", "balance", "updated_at"],
+        "properties": {"currency": {"$ref": "#/components/schemas/Currency"}, "total_invoiced": {"$ref": "#/components/schemas/Decimal"}, "paid_or_funded": {"$ref": "#/components/schemas/Decimal"}, "outstanding": {"$ref": "#/components/schemas/Decimal"}, "debit": {"$ref": "#/components/schemas/Decimal"}, "credit": {"$ref": "#/components/schemas/Decimal"}, "balance": {"$ref": "#/components/schemas/Decimal"}, "updated_at": {"type": "string", "format": "date-time"}}
       },
       "BalanceListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Balance"}}, "request_id": {"type": "string"}}},
-      "ProjectStatusCode": {"type": "string", "enum": ["draft", "validated", "in_progress", "completed", "closed"]},
+      "ProjectStatusCode": {"type": "string", "enum": ["draft", "validated", "in_progress", "completed", "closed"], "description": "Operational customer status. completed requires all eight evidence stages, including Dolibarr project closure."},
       "ProjectSummary": {
         "type": "object", "additionalProperties": false, "required": ["id", "ref", "title", "status", "progress_percent", "updated_at"],
         "properties": {
           "id": {"$ref": "#/components/schemas/OpaqueId"}, "ref": {"type": "string", "maxLength": 100}, "title": {"type": "string", "maxLength": 255},
           "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/ProjectStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}},
-          "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100}, "current_step": {"$ref": "#/components/schemas/BilingualLabel"}, "next_step": {"$ref": "#/components/schemas/BilingualLabel"},
+          "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100, "description": "Rounded completion percentage across the eight operational evidence stages."}, "current_step": {"$ref": "#/components/schemas/BilingualLabel"}, "next_step": {"$ref": "#/components/schemas/BilingualLabel"},
           "expected_next_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_by": {"$ref": "#/components/schemas/BilingualLabel"}, "updated_at": {"type": "string", "format": "date-time"}
         }
       },
@@ -483,7 +499,7 @@
         "properties": {
           "id": {"$ref": "#/components/schemas/OpaqueId"}, "ref": {"type": "string", "maxLength": 100}, "title": {"type": "string", "maxLength": 255},
           "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/ProjectStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}},
-          "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100}, "current_step": {"$ref": "#/components/schemas/BilingualLabel"}, "next_step": {"$ref": "#/components/schemas/BilingualLabel"},
+          "progress_percent": {"type": "integer", "minimum": 0, "maximum": 100, "description": "Rounded completion percentage across the eight operational evidence stages."}, "current_step": {"$ref": "#/components/schemas/BilingualLabel"}, "next_step": {"$ref": "#/components/schemas/BilingualLabel"},
           "expected_next_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_at": {"type": ["string", "null"], "format": "date-time"}, "latest_update_by": {"$ref": "#/components/schemas/BilingualLabel"}, "updated_at": {"type": "string", "format": "date-time"},
           "description": {"type": "string", "maxLength": 5000}, "start_at": {"type": ["string", "null"], "format": "date-time"}, "end_at": {"type": ["string", "null"], "format": "date-time"}, "timeline": {"type": "array", "items": {"$ref": "#/components/schemas/TimelineStep"}}, "shipment_ids": {"type": "array", "items": {"$ref": "#/components/schemas/OpaqueId"}}, "document_ids": {"type": "array", "items": {"$ref": "#/components/schemas/OpaqueId"}}, "report_ids": {"type": "array", "items": {"$ref": "#/components/schemas/OpaqueId"}}, "balances": {"type": "array", "items": {"$ref": "#/components/schemas/Balance"}}
         }
@@ -538,7 +554,7 @@
       "OrderListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/OrderSummary"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
       "Transaction": {
         "type": "object", "additionalProperties": false, "required": ["id", "occurred_at", "description", "direction", "amount", "updated_at"],
-        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "occurred_at": {"type": "string", "format": "date-time"}, "description": {"type": "string", "maxLength": 500}, "direction": {"type": "string", "enum": ["debit", "credit"]}, "amount": {"$ref": "#/components/schemas/Money"}, "reference": {"type": ["string", "null"], "maxLength": 100}, "updated_at": {"type": "string", "format": "date-time"}}
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "occurred_at": {"type": "string", "format": "date-time"}, "description": {"type": "string", "maxLength": 500}, "direction": {"type": "string", "enum": ["debit", "credit"]}, "amount": {"$ref": "#/components/schemas/Money"}, "reference": {"type": ["string", "null"], "maxLength": 100}, "public_note": {"type": ["string", "null"], "maxLength": 5000}, "updated_at": {"type": "string", "format": "date-time"}}
       },
       "TransactionListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Transaction"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
       "InvoiceStatusCode": {"type": "string", "enum": ["draft", "validated", "partially_paid", "paid", "overdue", "canceled"]},
@@ -547,9 +563,24 @@
         "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "ref": {"type": "string", "maxLength": 100}, "issued_at": {"type": "string", "format": "date-time"}, "due_at": {"type": ["string", "null"], "format": "date-time"}, "status": {"type": "object", "additionalProperties": false, "required": ["code", "label"], "properties": {"code": {"$ref": "#/components/schemas/InvoiceStatusCode"}, "label": {"$ref": "#/components/schemas/BilingualLabel"}}}, "total": {"$ref": "#/components/schemas/Money"}, "paid": {"$ref": "#/components/schemas/Money"}, "remaining": {"$ref": "#/components/schemas/Money"}, "updated_at": {"type": "string", "format": "date-time"}}
       },
       "InvoiceListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/ServiceInvoice"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
+      "ServiceInvoiceLine": {
+        "type": "object", "additionalProperties": false, "required": ["description", "quantity", "unit_price", "tax_rate", "discount_percent", "total"],
+        "properties": {"description": {"type": "string", "maxLength": 10000}, "quantity": {"$ref": "#/components/schemas/Decimal"}, "unit": {"type": ["string", "null"], "maxLength": 64}, "unit_price": {"$ref": "#/components/schemas/Money"}, "tax_rate": {"$ref": "#/components/schemas/Decimal"}, "discount_percent": {"$ref": "#/components/schemas/Decimal"}, "total": {"$ref": "#/components/schemas/Money"}}
+      },
+      "ServiceInvoicePayment": {
+        "type": "object", "additionalProperties": false, "required": ["date", "reference", "amount"],
+        "properties": {"date": {"type": "string", "format": "date-time"}, "reference": {"type": "string", "maxLength": 100}, "amount": {"$ref": "#/components/schemas/Money"}, "public_note": {"type": ["string", "null"], "maxLength": 5000}}
+      },
+      "ServiceInvoiceDetail": {
+        "allOf": [
+          {"$ref": "#/components/schemas/ServiceInvoice"},
+          {"type": "object", "required": ["subtotal", "discount", "tax", "direct_paid", "applied_credit", "lines", "payments"], "properties": {"subtotal": {"$ref": "#/components/schemas/Money"}, "discount": {"$ref": "#/components/schemas/Money"}, "tax": {"$ref": "#/components/schemas/Money"}, "direct_paid": {"$ref": "#/components/schemas/Money"}, "applied_credit": {"$ref": "#/components/schemas/Money"}, "order_ref": {"type": ["string", "null"], "maxLength": 100}, "public_note": {"type": ["string", "null"], "maxLength": 10000}, "lines": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/components/schemas/ServiceInvoiceLine"}}, "payments": {"type": "array", "maxItems": 1000, "items": {"$ref": "#/components/schemas/ServiceInvoicePayment"}}}}
+        ]
+      },
+      "ServiceInvoiceDetailEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "request_id"], "properties": {"data": {"$ref": "#/components/schemas/ServiceInvoiceDetail"}, "request_id": {"type": "string"}}},
       "Document": {
         "type": "object", "additionalProperties": false, "required": ["id", "source_type", "kind", "name", "mime_type", "size_bytes", "version", "approved_at", "updated_at"],
-        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "source_type": {"type": "string", "enum": ["project_asset", "operation_report_attachment", "shipment_gallery"]}, "kind": {"type": "string", "enum": ["image", "video", "document"]}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "shipment_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "shipment_ref": {"type": ["string", "null"], "maxLength": 100}, "report_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "name": {"type": "string", "maxLength": 255}, "mime_type": {"type": "string", "maxLength": 150}, "size_bytes": {"type": "integer", "minimum": 0}, "version": {"type": "integer", "minimum": 1}, "approved_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}}
+        "properties": {"id": {"$ref": "#/components/schemas/OpaqueId"}, "source_type": {"type": "string", "enum": ["project_asset", "operation_report_attachment", "shipment_gallery", "core_document", "commercial_document"]}, "kind": {"type": "string", "enum": ["image", "video", "document", "record"]}, "project_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "project_ref": {"type": ["string", "null"], "maxLength": 100}, "project_title": {"type": ["string", "null"], "maxLength": 255}, "shipment_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "shipment_ref": {"type": ["string", "null"], "maxLength": 100}, "report_id": {"oneOf": [{"$ref": "#/components/schemas/OpaqueId"}, {"type": "null"}]}, "name": {"type": "string", "maxLength": 255}, "mime_type": {"type": "string", "maxLength": 150}, "size_bytes": {"type": "integer", "minimum": 0}, "version": {"type": "integer", "minimum": 1}, "approved_at": {"type": "string", "format": "date-time"}, "updated_at": {"type": "string", "format": "date-time"}}
       },
       "DocumentListEnvelope": {"type": "object", "additionalProperties": false, "required": ["data", "meta", "request_id"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Document"}}, "meta": {"$ref": "#/components/schemas/PageMeta"}, "request_id": {"type": "string"}}},
       "CommercialDocumentType": {"type": "string", "enum": ["commercial_invoice", "packing_list", "bill_of_lading", "cargox", "certificate_origin", "inspection", "other"]},

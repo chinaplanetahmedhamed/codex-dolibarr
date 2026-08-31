@@ -15,8 +15,8 @@ describe('frozen repository routes', () => {
 
   it('encodes opaque ids before using detail routes', async () => {
     const request = vi.fn(async (_path: string) => ({ data: {}, request_id: 'r' })); const repository = new MobileRepository({ request } as unknown as MobileApiClient);
-    await repository.project('opaque/id'); await repository.shipment('opaque?id'); await repository.report('opaque id');
-    expect(request.mock.calls.map((call) => call[0])).toEqual(['/projects/opaque%2Fid', '/shipments/opaque%3Fid', '/reports/opaque%20id']);
+    await repository.project('opaque/id'); await repository.shipment('opaque?id'); await repository.invoice('invoice id'); await repository.report('opaque id');
+    expect(request.mock.calls.map((call) => call[0])).toEqual(['/projects/opaque%2Fid', '/shipments/opaque%3Fid', '/service-invoices/invoice%20id', '/reports/opaque%20id']);
   });
 
   it('forwards opaque cursors without adding customer authority fields', async () => {

@@ -247,3 +247,4 @@ CPLShipmentFileDelete=Delete / Archive / حذف وأرشفة
 CPLShipmentFileArchiveConfirm=I confirm removing this file from active use and moving it to the private archive.
 CPLShipmentFileArchiveAction=Remove & archive
 CPLShipmentFileArchived=The shipment file was removed from active use and archived safely.
+CPLShipmentFactsNormalized=Operational facts normalized the shipment status or container count before saving.

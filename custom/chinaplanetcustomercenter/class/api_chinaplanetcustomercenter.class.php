@@ -189,6 +189,13 @@ class Chinaplanetcustomercenter extends DolibarrApi
 		return $this->listEtag('service_invoices', $context, cpcc_mobile_service_invoices($this->db, $context, $limit, $cursor, $updated_since));
 	}
 
+	/** @url GET /mobile/v1/service-invoices/{opaqueId} */
+	public function mobileServiceInvoice($opaqueId)
+	{
+		$context = $this->context();
+		return cpcc_mobile_service_invoice_detail($this->db, $context, $opaqueId);
+	}
+
 	/** @url GET /mobile/v1/documents */
 	public function mobileDocuments($limit = 25, $cursor = '', $updated_since = '')
 	{

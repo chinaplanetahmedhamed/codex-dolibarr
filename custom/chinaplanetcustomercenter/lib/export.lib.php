@@ -21,15 +21,16 @@ function cpcc_export_type_label($type)
     return isset($labels[$type]) ? $labels[$type] : $type;
 }
 
-function cpcc_export_documents($db, $socid, $projectid = 0, $shipmentid = 0, $customerVisibleOnly = true)
+function cpcc_export_documents($db, $socid, $projectid = 0, $shipmentid = 0, $customerVisibleOnly = true, $entity = null)
 {
     $rows = array();
     if (!cpcc_export_schema_ready($db) || (int) $socid <= 0) return $rows;
+    $entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
     $sql = "SELECT d.*,p.ref project_ref,p.title project_title,l.ref shipment_ref";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_export_document d";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.entity=d.entity AND p.fk_soc=d.fk_soc";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=d.fk_shipment AND l.entity=d.entity AND l.fk_soc=d.fk_soc";
-    $sql .= " WHERE d.entity=".(int) $GLOBALS['conf']->entity." AND d.fk_soc=".(int) $socid." AND d.status=1";
+    $sql .= " WHERE d.entity=".$entity." AND d.fk_soc=".(int) $socid." AND d.status=1";
     if ((int) $projectid > 0) $sql .= " AND d.fk_project=".(int) $projectid;
     if ((int) $shipmentid > 0) $sql .= " AND d.fk_shipment=".(int) $shipmentid;
     if ($customerVisibleOnly) $sql .= " AND d.customer_visible=1";

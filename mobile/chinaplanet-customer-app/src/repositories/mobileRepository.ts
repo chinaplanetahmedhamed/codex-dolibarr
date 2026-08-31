@@ -16,6 +16,7 @@ import {
   ReportDetail,
   ReportSummary,
   ServiceInvoice,
+  ServiceInvoiceDetail,
   ShipmentDetail,
   ShipmentSummary,
   Transaction,
@@ -35,6 +36,7 @@ export class MobileRepository {
   balances() { return this.cached('balances', () => this.getArray<Balance>('/account/balances')); }
   transactions(query?: ListQuery) { return this.cached(this.pageKey('transactions', query), () => this.getList<Transaction>('/account/transactions', query)); }
   invoices(query?: ListQuery) { return this.cached(this.pageKey('service_invoices', query), () => this.getList<ServiceInvoice>('/service-invoices', query)); }
+  invoice(id: string) { return this.cached(`service_invoice_${id}`, () => this.getOne<ServiceInvoiceDetail>(`/service-invoices/${encodeURIComponent(id)}`)); }
   documents(query?: ListQuery) { return this.cached(this.pageKey('documents', query), () => this.getList<Document>('/documents', query)); }
   shipmentDocuments(query?: ListQuery) {
     return this.cached(this.pageKey('shipment_documents', query), () => this.client.request<ListEnvelope<Document>>('/documents', { query: { ...listQuery(query), scope: 'shipment' } }));

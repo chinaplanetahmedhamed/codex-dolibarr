@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../lib/shipment_customer.lib.php';
+require_once __DIR__.'/../lib/chinaplanetlogistics.lib.php';
 /**
  * Class for China Planet Logistics shipment records.
  * FIXED: Stable CRUD helpers (sqlDate/sqlStr/sqlInt) + new fields (fk_project, customer_note, booking_no, voyage_no, nb_containers, freetime_start)
@@ -47,6 +48,7 @@ class ChinaPlanetLogistics extends CommonObject
     public $audit_reason_public = '';
     public $audit_customer_visible = 1;
     public $last_status_change = null;
+    public $normalization_changes = array();
 
     public function __construct($db)
     {
@@ -83,6 +85,7 @@ class ChinaPlanetLogistics extends CommonObject
     public function create($user, $notrigger = 0)
     {
         global $conf;
+        $this->normalization_changes = array();
 
         if (!cpl_shipment_schema_ready($this->db)) {
             $this->error = 'Shipment command-center schema is not installed.';
@@ -92,6 +95,7 @@ class ChinaPlanetLogistics extends CommonObject
         if (empty($this->ref) || $this->ref == 'AUTO') {
             $this->ref = 'LOG-'.date('Ymd-His');
         }
+        if (!$this->normalizeOperationalFacts()) return -1;
         $this->calculateFreeTimeDates();
         $entity = $this->activeEntity();
 
@@ -125,21 +129,25 @@ class ChinaPlanetLogistics extends CommonObject
         $this->rowid = $this->id;
         $this->entity = $entity;
         $initialEvents = array(array('event_type'=>'baseline','milestone_code'=>cpl_status_milestone($this->fk_statut),'status_to'=>$this->fk_statut));
+        if (isset($this->normalization_changes['container_count'])) $initialEvents[] = array('event_type'=>'data_correction','milestone_code'=>cpl_status_milestone($this->fk_statut),'status_from'=>$this->fk_statut,'status_to'=>$this->fk_statut,'reason_public'=>'M061 automatic operational consistency','customer_visible'=>0);
         if (!empty($this->date_eta)) $initialEvents[] = array('event_type'=>'eta_set','milestone_code'=>'arrived','planned_at'=>$this->date_eta,'date_value_new'=>$this->date_eta);
         if (!empty($this->date_atd)) $initialEvents[] = array('event_type'=>'atd_set','milestone_code'=>'departed','actual_at'=>$this->date_atd,'date_value_new'=>$this->date_atd);
         if (!empty($this->date_ata)) $initialEvents[] = array('event_type'=>'ata_set','milestone_code'=>'arrived','actual_at'=>$this->date_ata,'date_value_new'=>$this->date_ata);
         foreach ($initialEvents as $event) {
             $event['source_type'] = $this->audit_source_type;
             $event['source_label_public'] = $this->audit_source_label;
-            $event['reason_public'] = $this->audit_reason_public;
-            $event['customer_visible'] = $this->audit_customer_visible;
+            if (!isset($event['reason_public'])) $event['reason_public'] = $this->audit_reason_public;
+            if (!isset($event['customer_visible'])) $event['customer_visible'] = $this->audit_customer_visible;
             if (!cpl_shipment_event_insert($this->db, $this, $user, $event)) {
                 $this->error = $this->db->lasterror();
                 $this->db->rollback();
                 return -1;
             }
         }
-        $this->db->commit();
+        if (!$this->db->commit()) {
+            $this->error = 'Shipment creation could not be committed.';
+            return -1;
+        }
         return $this->id;
     }
 
@@ -196,10 +204,12 @@ class ChinaPlanetLogistics extends CommonObject
     public function update($user, $notrigger = 0)
     {
         $this->last_status_change = null;
+        $this->normalization_changes = array();
         if (!cpl_shipment_schema_ready($this->db)) {
             $this->error = 'Shipment command-center schema is not installed; audited shipment changes are blocked.';
             return -1;
         }
+        if (!$this->normalizeOperationalFacts()) return -1;
         $this->calculateFreeTimeDates();
 
         $this->db->begin();
@@ -216,6 +226,7 @@ class ChinaPlanetLogistics extends CommonObject
             $this->db->rollback();
             return -1;
         }
+        $this->preventStatusRegression((int) $old->fk_statut);
 
         $sql  = "UPDATE ".MAIN_DB_PREFIX."chinaplanetlogistics SET ";
         $sql .= "fk_soc = ".$this->sqlInt($this->fk_soc).", ";
@@ -255,6 +266,7 @@ class ChinaPlanetLogistics extends CommonObject
             $this->last_status_change = array('from'=>(int) $old->fk_statut, 'to'=>(int) $this->fk_statut);
             $events[] = array('event_type'=>'status_changed','milestone_code'=>cpl_status_milestone($this->fk_statut),'status_from'=>(int)$old->fk_statut,'status_to'=>(int)$this->fk_statut);
         }
+        if (isset($this->normalization_changes['container_count'])) $events[] = array('event_type'=>'data_correction','milestone_code'=>cpl_status_milestone($this->fk_statut),'status_from'=>$this->fk_statut,'status_to'=>$this->fk_statut,'reason_public'=>'M061 automatic operational consistency','customer_visible'=>0);
         $oldEta = $this->db->jdate($old->date_eta); $newEta = $this->date_eta;
         if ((int) $oldEta !== (int) $newEta) {
             $events[] = array('event_type'=>empty($oldEta)?'eta_set':'eta_changed','milestone_code'=>'arrived','planned_at'=>$newEta,'date_value_old'=>$oldEta,'date_value_new'=>$newEta);
@@ -267,8 +279,8 @@ class ChinaPlanetLogistics extends CommonObject
         foreach ($events as $event) {
             $event['source_type'] = $this->audit_source_type;
             $event['source_label_public'] = $this->audit_source_label;
-            $event['reason_public'] = $this->audit_reason_public;
-            $event['customer_visible'] = $this->audit_customer_visible;
+            if (!isset($event['reason_public'])) $event['reason_public'] = $this->audit_reason_public;
+            if (!isset($event['customer_visible'])) $event['customer_visible'] = $this->audit_customer_visible;
             if (!cpl_shipment_event_insert($this->db, $this, $user, $event)) {
                 $this->error = $this->db->lasterror();
                 $this->db->rollback();
@@ -316,6 +328,37 @@ class ChinaPlanetLogistics extends CommonObject
     }
 
     // ── HELPERS ───────────────────────────────────────────────────────────
+    private function normalizeOperationalFacts()
+    {
+        $normalized = chinaplanetlogistics_normalize_operational_facts(
+            $this->fk_statut,
+            $this->date_atd,
+            $this->date_ata,
+            $this->container_no,
+            $this->nb_containers,
+            function_exists('dol_now') ? dol_now() : time()
+        );
+        if (empty($normalized['ok'])) {
+            $this->error = 'Invalid shipment facts: '.implode(', ', $normalized['errors']).'.';
+            return false;
+        }
+        $this->fk_statut = (int) $normalized['status'];
+        $this->nb_containers = (int) $normalized['container_count'];
+        $this->normalization_changes = $normalized['changes'];
+        return true;
+    }
+
+    /** Keep a stored advanced shipment status when an edit submits an older one. */
+    private function preventStatusRegression($storedStatus)
+    {
+        $storedStatus = (int) $storedStatus;
+        $submittedStatus = isset($this->normalization_changes['status']['from']) ? (int) $this->normalization_changes['status']['from'] : (int) $this->fk_statut;
+        if (chinaplanetlogistics_status_rank($storedStatus) > chinaplanetlogistics_status_rank($this->fk_statut)) {
+            $this->fk_statut = $storedStatus;
+            $this->normalization_changes['status'] = array('from'=>$submittedStatus, 'to'=>$storedStatus, 'reason'=>'no_regression');
+        }
+    }
+
     /**
      * Calculate the free-time window from actual arrival.
      *

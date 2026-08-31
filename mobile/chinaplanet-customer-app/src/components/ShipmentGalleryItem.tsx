@@ -37,6 +37,7 @@ export function ShipmentGalleryItem({ item }: { item: Document }) {
       {preview ? <Image accessibilityLabel={item.name} contentFit="cover" source={{ uri: preview }} style={styles.image} /> : previewError ? <Ionicons name="image-outline" size={42} color={palette.muted} /> : <ActivityIndicator color={palette.brandRed} />}
     </View> : <View style={styles.fileIcon}><Ionicons name={item.kind === 'video' ? 'videocam' : 'document-text'} size={34} color={palette.brandRed} /></View>}
     <Text numberOfLines={3} style={[styles.name, { textAlign: align }]}>{item.name}</Text>
+    {item.project_ref ? <DetailRow label={language === 'ar' ? 'المشروع' : 'Project'} value={`${item.project_ref}${item.project_title ? ` · ${item.project_title}` : ''}`} /> : <DetailRow label={language === 'ar' ? 'المشروع' : 'Project'} value={language === 'ar' ? 'غير مرتبط بمشروع' : 'No related project'} />}
     {item.shipment_ref ? <DetailRow label={language === 'ar' ? 'الشحنة' : 'Shipment'} value={item.shipment_ref} /> : null}
     <DetailRow label={language === 'ar' ? 'الحجم' : 'Size'} value={formatBytes(item.size_bytes)} />
     <DetailRow label={language === 'ar' ? 'تاريخ النشر' : 'Published'} value={formatDate(item.approved_at, language)} />

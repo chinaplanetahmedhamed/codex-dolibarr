@@ -4,6 +4,8 @@
 require_once __DIR__.'/mobile_api.lib.php';
 require_once __DIR__.'/portal.lib.php';
 require_once __DIR__.'/financial.lib.php';
+require_once __DIR__.'/operations.lib.php';
+require_once __DIR__.'/customer_documents.lib.php';
 
 function cpcc_mobile_envelope($data, $meta = null)
 {
@@ -42,13 +44,13 @@ function cpcc_mobile_list_cursor_clause($db, $last, $dateField, $idField)
 	return " AND ((".$dateField." < '".$db->escape((string) $last['date'])."') OR (".$dateField." = '".$db->escape((string) $last['date'])."' AND ".$idField." < ".(int) $last['id']."))";
 }
 
-function cpcc_mobile_project_status($status, $progress = 0)
+function cpcc_mobile_project_status($status, $completed, $progress)
 {
-	$status = (int) $status; $progress = (int) $progress;
-	if ($status <= 0) return array('code' => 'draft', 'label' => cpcc_mobile_label('مسودة', 'Draft'));
-	if ($status === 2 || $progress >= 100) return array('code' => 'completed', 'label' => cpcc_mobile_label('مكتمل', 'Completed'));
-	if ($progress > 0) return array('code' => 'in_progress', 'label' => cpcc_mobile_label('قيد التنفيذ', 'In progress'));
-	return array('code' => 'validated', 'label' => cpcc_mobile_label('معتمد', 'Validated'));
+    $status = (int) $status; $progress = (int) $progress;
+    if ($status <= 0) return array('code' => 'draft', 'label' => cpcc_mobile_label('مسودة', 'Draft'));
+    if (!empty($completed)) return array('code' => 'completed', 'label' => cpcc_mobile_label('مكتمل', 'Completed'));
+    if ($progress > 0) return array('code' => 'in_progress', 'label' => cpcc_mobile_label('قيد التنفيذ', 'In progress'));
+    return array('code' => 'validated', 'label' => cpcc_mobile_label('معتمد', 'Validated'));
 }
 
 function cpcc_mobile_shipment_status($status)
@@ -98,41 +100,42 @@ function cpcc_mobile_me_data($db, $context)
 
 function cpcc_mobile_project_query_base($context)
 {
-	$sql = "SELECT p.rowid,p.ref,p.title,p.description,p.datec,p.dateo,p.datee,p.fk_statut,p.tms,";
-	$sql .= " c.rowid AS card_id,c.progress,c.date_deadline,c.note_public,c.fk_column,col.code AS column_code,col.label AS column_ar,col.label_en AS column_en";
-	$sql .= " FROM ".MAIN_DB_PREFIX."projet p";
-	$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpkanban_card c ON c.rowid=(SELECT MIN(cc.rowid) FROM ".MAIN_DB_PREFIX."cpkanban_card cc WHERE cc.fk_project=p.rowid AND cc.entity=p.entity AND cc.fk_soc=p.fk_soc AND cc.status=1 AND cc.cust_visible=1)";
-	$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpkanban_column col ON col.rowid=c.fk_column AND col.entity=c.entity AND col.active=1";
-	$sql .= " WHERE p.entity=".(int) $context['entity']." AND p.fk_soc=".(int) $context['socid'];
-	return $sql;
+    $sql = "SELECT p.rowid,p.ref,p.title,p.description,p.datec,p.dateo,p.datee,p.fk_statut,p.tms";
+    $sql .= " FROM ".MAIN_DB_PREFIX."projet p";
+    $sql .= " WHERE p.entity=".(int) $context['entity']." AND p.fk_soc=".(int) $context['socid'];
+    return $sql;
+}
+
+function cpcc_mobile_project_projection($db, $context, $projectId)
+{
+    static $cache = array();
+    $key = (int) $context['entity'].':'.(int) $context['socid'].':'.(int) $projectId;
+    if (!isset($cache[$key])) {
+        $currency = cpcc_financial_currency(!empty($GLOBALS['conf']->currency) ? $GLOBALS['conf']->currency : 'USD');
+        $stages = cpcc_project_lifecycle($db, (int) $context['socid'], (int) $projectId, $currency, (int) $context['entity']);
+        $cache[$key] = cpcc_project_lifecycle_projection($stages);
+    }
+    return $cache[$key];
 }
 
 function cpcc_mobile_project_summary($db, $context, $row)
 {
-	$progress = isset($row->progress) ? max(0, min(100, (int) $row->progress)) : ((int) $row->fk_statut === 2 ? 100 : ((int) $row->fk_statut === 1 ? 55 : 5));
-	$currentAr = !empty($row->column_ar) ? (string) $row->column_ar : 'قيد المتابعة';
-	$currentEn = !empty($row->column_en) ? (string) $row->column_en : 'In progress';
-	return array(
+    $projection = cpcc_mobile_project_projection($db, $context, (int) $row->rowid);
+    $current = !empty($projection['current_stage']) ? $projection['current_stage'] : null;
+    $next = !empty($projection['next_stage']) ? $projection['next_stage'] : null;
+    return array(
 		'id' => cpcc_mobile_public_id($db, 'project', $context, (int) $row->rowid),
 		'ref' => (string) $row->ref,
 		'title' => (string) $row->title,
-		'status' => cpcc_mobile_project_status($row->fk_statut, $progress),
-		'progress_percent' => $progress,
-		'current_step' => cpcc_mobile_label($currentAr, $currentEn),
-		'next_step' => cpcc_mobile_project_next_step($db, $context, $row),
-		'expected_next_at' => cpcc_mobile_iso($row->date_deadline),
+        'status' => cpcc_mobile_project_status($row->fk_statut, $projection['completed'], $projection['progress_percent']),
+        'progress_percent' => (int) $projection['progress_percent'],
+        'current_step' => $current ? cpcc_mobile_label((string) $current['label'], (string) $current['en']) : cpcc_mobile_label('بانتظار بيانات التشغيل', 'Awaiting operational data'),
+        'next_step' => $next ? cpcc_mobile_label((string) $next['label'], (string) $next['en']) : cpcc_mobile_label('اكتملت المراحل التشغيلية', 'Operational stages complete'),
+        'expected_next_at' => null,
 		'latest_update_at' => cpcc_mobile_iso(!empty($row->tms) ? $row->tms : $row->datec),
 		'latest_update_by' => cpcc_mobile_label('فريق كوكب الصين', 'China Planet Team'),
 		'updated_at' => cpcc_mobile_iso(!empty($row->tms) ? $row->tms : $row->datec),
 	);
-}
-
-function cpcc_mobile_project_next_step($db, $context, $row)
-{
-	if (empty($row->fk_column)) return cpcc_mobile_label('سيتم التحديث قريبًا', 'To be updated');
-	$sql = "SELECT label,label_en FROM ".MAIN_DB_PREFIX."cpkanban_column WHERE entity=".(int) $context['entity']." AND active=1 AND cust_visible=1 AND position>(SELECT position FROM ".MAIN_DB_PREFIX."cpkanban_column WHERE rowid=".(int) $row->fk_column." AND entity=".(int) $context['entity'].") ORDER BY position,rowid LIMIT 1";
-	$result = $db->query($sql); $next = $result ? $db->fetch_object($result) : null;
-	return $next ? cpcc_mobile_label((string) $next->label, (string) $next->label_en) : cpcc_mobile_label('اكتملت المراحل الحالية', 'Current stages completed');
 }
 
 function cpcc_mobile_projects($db, $context, $limit, $cursor, $updatedSince)
@@ -160,7 +163,7 @@ function cpcc_mobile_project_detail($db, $context, $publicId)
 	$data['description'] = (string) $row->description;
 	$data['start_at'] = cpcc_mobile_iso($row->dateo);
 	$data['end_at'] = cpcc_mobile_iso($row->datee);
-	$data['timeline'] = cpcc_mobile_project_timeline($db, $context, (int) $row->fk_column);
+    $data['timeline'] = cpcc_mobile_project_timeline($db, $context, (int) $row->rowid);
 	$data['shipment_ids'] = cpcc_mobile_related_ids($db, 'shipment', $context, "SELECT rowid FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int) $context['entity']." AND fk_soc=".(int) $context['socid']." AND fk_project=".(int) $id." ORDER BY rowid");
 	$data['document_ids'] = cpcc_mobile_project_document_ids($db, $context, (int) $id);
 	$data['report_ids'] = cpcc_mobile_related_ids($db, 'report', $context, "SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int) $context['entity']." AND fk_soc=".(int) $context['socid']." AND fk_project=".(int) $id." AND status=1 AND customer_visible=1 ORDER BY rowid");
@@ -168,16 +171,14 @@ function cpcc_mobile_project_detail($db, $context, $publicId)
 	return cpcc_mobile_envelope($data);
 }
 
-function cpcc_mobile_project_timeline($db, $context, $currentColumnId)
+function cpcc_mobile_project_timeline($db, $context, $projectId)
 {
-	$sql = "SELECT rowid,code,label,label_en,position FROM ".MAIN_DB_PREFIX."cpkanban_column WHERE entity=".(int) $context['entity']." AND active=1 AND cust_visible=1 ORDER BY position,rowid";
-	$rows = cpcc_mobile_rows($db, $db->query($sql)); $currentIndex = 0;
-	foreach ($rows as $index => $row) if ((int) $row->rowid === (int) $currentColumnId) $currentIndex = $index;
-	$result = array();
-	foreach ($rows as $index => $row) {
-		$state = $index < $currentIndex ? 'completed' : ($index === $currentIndex ? 'current' : ($index === $currentIndex + 1 ? 'next' : 'planned'));
-		$result[] = array('code' => (string) $row->code, 'label' => cpcc_mobile_label((string) $row->label, (string) $row->label_en), 'state' => $state, 'state_label' => cpcc_mobile_timeline_state_label($state), 'occurred_at' => null, 'source' => null, 'location' => null, 'public_note' => null, 'public_reason' => null);
-	}
+    $projection = cpcc_mobile_project_projection($db, $context, (int) $projectId);
+    $result = array();
+    foreach ($projection['timeline'] as $stage) {
+        $state = (string) $stage['state'];
+        $result[] = array('code' => (string) $stage['key'], 'label' => cpcc_mobile_label((string) $stage['label'], (string) $stage['en']), 'state' => $state, 'state_label' => cpcc_mobile_timeline_state_label($state), 'occurred_at' => null, 'source' => null, 'location' => null, 'public_note' => null, 'public_reason' => null);
+    }
 	return $result;
 }
 
@@ -347,7 +348,8 @@ function cpcc_mobile_transaction_rows($db, $context)
 		$row = new stdClass();
 		$row->logical_id = $logicalId; $row->occurred_at = $item['date']; $row->direction = $item['direction'];
 		$row->description = $item['description']; $row->amount = $item['amount']; $row->currency_code = $item['currency'];
-		$row->reference = $item['reference']; $row->fk_project = $item['project_id']; $row->tms = $item['date'];
+			$row->reference = $item['reference']; $row->fk_project = $item['project_id']; $row->tms = $item['date'];
+			$row->public_note = !empty($item['public_note']) ? (string)$item['public_note'] : null;
 		$rows[] = $row;
 	}
 	usort($rows, function ($a, $b) { $cmp = strcmp((string) $b->occurred_at, (string) $a->occurred_at); return $cmp !== 0 ? $cmp : ((int) $b->logical_id <=> (int) $a->logical_id); });
@@ -363,7 +365,8 @@ function cpcc_mobile_transaction_data($db, $context, $row)
 		'description' => (string) $row->description,
 		'direction' => strtoupper((string) $row->direction) === 'C' ? 'credit' : 'debit',
 		'amount' => cpcc_mobile_money($row->amount, $row->currency_code),
-		'reference' => $row->reference !== null && $row->reference !== '' ? (string) $row->reference : null,
+			'reference' => $row->reference !== null && $row->reference !== '' ? (string) $row->reference : null,
+			'public_note' => !empty($row->public_note) ? (string)$row->public_note : null,
 		'updated_at' => cpcc_mobile_iso(!empty($row->tms) ? $row->tms : $row->occurred_at),
 	);
 }
@@ -385,13 +388,15 @@ function cpcc_mobile_transactions($db, $context, $limit, $cursor, $updatedSince)
 function cpcc_mobile_balances_data($db, $context, $projectId = null)
 {
 	$currencies = array(); $latest = '1970-01-01 00:00:00';
+	$invoiceTotals = cpcc_financial_invoice_totals(cpcc_financial_customer_invoices($db, (int)$context['socid'], cpcc_mobile_base_currency(), $projectId !== null ? (int)$projectId : 0));
 	foreach (cpcc_mobile_transaction_rows($db, $context) as $row) {
 		if ($projectId !== null && (int) $row->fk_project !== (int) $projectId) continue;
 		$currency = cpcc_mobile_currency($row->currency_code); if (!isset($currencies[$currency])) $currencies[$currency] = array('debit' => 0.0, 'credit' => 0.0, 'balance' => 0.0);
 		$amount = (float) $row->amount; if (strtoupper((string) $row->direction) === 'C') { $currencies[$currency]['credit'] += $amount; $currencies[$currency]['balance'] += $amount; } else { $currencies[$currency]['debit'] += $amount; $currencies[$currency]['balance'] -= $amount; }
 		$timestamp = !empty($row->tms) ? (string) $row->tms : (string) $row->occurred_at; if (strcmp($timestamp, $latest) > 0) $latest = $timestamp;
 	}
-	ksort($currencies); $result = array(); foreach ($currencies as $currency => $values) $result[] = array('currency' => $currency, 'debit' => cpcc_mobile_decimal($values['debit']), 'credit' => cpcc_mobile_decimal($values['credit']), 'balance' => cpcc_mobile_decimal($values['balance']), 'updated_at' => cpcc_mobile_iso($latest));
+	foreach($invoiceTotals as $currency=>$values) if(!isset($currencies[$currency])) $currencies[$currency]=array('debit'=>0.0,'credit'=>0.0,'balance'=>0.0);
+	ksort($currencies); $result = array(); foreach ($currencies as $currency => $values) { $invoice=isset($invoiceTotals[$currency])?$invoiceTotals[$currency]:array('total'=>0.0,'paid'=>0.0,'remaining'=>0.0); $result[] = array('currency' => $currency, 'total_invoiced'=>cpcc_mobile_decimal($invoice['total']),'paid_or_funded'=>cpcc_mobile_decimal($invoice['paid']),'outstanding'=>cpcc_mobile_decimal($invoice['remaining']),'debit' => cpcc_mobile_decimal($values['debit']), 'credit' => cpcc_mobile_decimal($values['credit']), 'balance' => cpcc_mobile_decimal($values['balance']), 'updated_at' => cpcc_mobile_iso($latest)); }
 	return $result;
 }
 
@@ -402,12 +407,12 @@ function cpcc_mobile_balances($db, $context)
 
 function cpcc_mobile_invoice_rows($db, $context)
 {
-	$sql = "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.fk_statut,f.paye,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc,f.tms,COALESCE(pay.amount,0) AS paid_base,COALESCE(pay.multicurrency_amount,0) AS paid_multi,COALESCE(discount.amount,0) AS discount_base,COALESCE(discount.multicurrency_amount,0) AS discount_multi";
+	$sql = "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.fk_statut,f.paye,f.multicurrency_code,f.total_ht,f.total_tva,f.total_ttc,f.multicurrency_total_ht,f.multicurrency_total_tva,f.multicurrency_total_ttc,f.note_public,f.tms,COALESCE(pay.amount,0) AS paid_base,COALESCE(pay.multicurrency_amount,0) AS paid_multi,COALESCE(discount.amount,0) AS discount_base,COALESCE(discount.multicurrency_amount,0) AS discount_multi";
 	$sql .= " FROM ".MAIN_DB_PREFIX."facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
 	$sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
 	$sql .= " WHERE f.entity=".(int) $context['entity']." AND f.fk_soc=".(int) $context['socid']." AND f.fk_statut>0 AND f.type IN (0,1,5) ORDER BY f.datef DESC,f.rowid DESC";
 	$rows = cpcc_mobile_rows($db, cpcc_mobile_query_or_throw($db, $sql));
-	foreach ($rows as $row) { $multi = trim((string) $row->multicurrency_code) !== ''; $row->display_currency = $multi ? cpcc_mobile_currency($row->multicurrency_code) : cpcc_mobile_base_currency(); $amounts=cpcc_financial_invoice_amounts($multi?(float)$row->multicurrency_total_ttc:(float)$row->total_ttc,$multi?(float)$row->paid_multi:(float)$row->paid_base,$multi?(float)$row->discount_multi:(float)$row->discount_base); $row->display_total=$amounts['total'];$row->display_paid=$amounts['paid'];$row->display_remaining=$amounts['remaining']; }
+	foreach ($rows as $row) { $multi = trim((string) $row->multicurrency_code) !== ''; $row->display_currency = $multi ? cpcc_mobile_currency($row->multicurrency_code) : cpcc_mobile_base_currency(); $amounts=cpcc_financial_invoice_amounts($multi?(float)$row->multicurrency_total_ttc:(float)$row->total_ttc,$multi?(float)$row->paid_multi:(float)$row->paid_base,$multi?(float)$row->discount_multi:(float)$row->discount_base); $row->display_total=$amounts['total'];$row->display_paid=$amounts['paid'];$row->display_remaining=$amounts['remaining'];$row->display_direct_paid=$amounts['direct_paid'];$row->display_applied_credit=$amounts['applied_credit'];$row->display_subtotal=$multi?(float)$row->multicurrency_total_ht:(float)$row->total_ht;$row->display_tax=$multi?(float)$row->multicurrency_total_tva:(float)$row->total_tva; }
 	return $rows;
 }
 
@@ -421,6 +426,32 @@ function cpcc_mobile_service_invoices($db, $context, $limit, $cursor, $updatedSi
 	$limit = cpcc_mobile_list_limit($limit); $updated = cpcc_mobile_updated_since($updatedSince); $filters = array('updated_since' => $updated); $hash = cpcc_mobile_filter_hash('service_invoices', $filters); $last = cpcc_mobile_cursor_decode($cursor, 'service_invoices', $context, $hash, $limit); $wrapped = array();
 	foreach (cpcc_mobile_invoice_rows($db, $context) as $row) { if ($updated !== '' && strcmp((string) $row->tms, $updated) < 0) continue; if ($last !== null && !(strcmp((string) $row->datef, (string) $last['date']) < 0 || ((string) $row->datef === (string) $last['date'] && (int) $row->rowid < (int) $last['id']))) continue; $wrapped[] = array('_row' => $row, 'datef' => (string) $row->datef, 'rowid' => (int) $row->rowid); if (count($wrapped) >= $limit + 1) break; }
 	$page = cpcc_mobile_page_meta($db, 'service_invoices', $context, $filters, $limit, $wrapped, 'datef', 'rowid'); $data = array(); foreach ($page['rows'] as $item) $data[] = cpcc_mobile_invoice_data($db, $context, $item['_row']); return cpcc_mobile_envelope($data, $page['meta']);
+}
+
+function cpcc_mobile_service_invoice_detail($db, $context, $publicId)
+{
+	$invoiceId = cpcc_mobile_resolve_public_id($db, 'invoice', $context, $publicId);
+	if (!$invoiceId) cpcc_mobile_throw(404, 'not_found');
+	$invoice = null;
+	foreach (cpcc_mobile_invoice_rows($db, $context) as $row) if ((int)$row->rowid === (int)$invoiceId) { $invoice = $row; break; }
+	if (!$invoice) cpcc_mobile_throw(404, 'not_found');
+	$data = cpcc_mobile_invoice_data($db, $context, $invoice);
+	$data['subtotal'] = cpcc_mobile_money($invoice->display_subtotal, $invoice->display_currency);
+	$data['tax'] = cpcc_mobile_money($invoice->display_tax, $invoice->display_currency);
+	$data['direct_paid'] = cpcc_mobile_money($invoice->display_direct_paid, $invoice->display_currency);
+	$data['applied_credit'] = cpcc_mobile_money($invoice->display_applied_credit, $invoice->display_currency);
+	$data['public_note'] = trim((string)$invoice->note_public) !== '' ? str_replace('\\n', "\n", (string)$invoice->note_public) : null;
+	$data['order_ref'] = null;
+	$orderSql = "SELECT c.ref FROM ".MAIN_DB_PREFIX."element_element ee INNER JOIN ".MAIN_DB_PREFIX."commande c ON c.rowid=ee.fk_source WHERE ee.sourcetype='commande' AND ee.targettype='facture' AND ee.fk_target=".(int)$invoiceId." AND c.entity=".(int)$context['entity']." AND c.fk_soc=".(int)$context['socid']." ORDER BY c.rowid LIMIT 1";
+	$orderResult=$db->query($orderSql);$order=$orderResult?$db->fetch_object($orderResult):null;if($order)$data['order_ref']=(string)$order->ref;
+	$credits=cpcc_financial_applied_credits($db,(int)$context['socid'],(int)$invoiceId,cpcc_mobile_base_currency());$creditLineIds=array();foreach($credits as $credit)if(!empty($credit['line_id']))$creditLineIds[]=(int)$credit['line_id'];
+	$lineSql="SELECT fd.rowid,fd.description,fd.label,fd.qty,fd.subprice,fd.remise_percent,fd.tva_tx,fd.total_ht,fd.multicurrency_subprice,fd.multicurrency_total_ht,COALESCE(NULLIF(TRIM(u.short_label),''),NULLIF(TRIM(u.label),''),NULLIF(TRIM(u.code),'')) AS unit_public FROM ".MAIN_DB_PREFIX."facturedet fd LEFT JOIN ".MAIN_DB_PREFIX."c_units u ON u.rowid=fd.fk_unit WHERE fd.fk_facture=".(int)$invoiceId;
+	if($creditLineIds)$lineSql.=" AND fd.rowid NOT IN (".implode(',',$creditLineIds).")";$lineSql.=" ORDER BY fd.rang,fd.rowid";
+	$data['lines']=array();$discount=0.0;$lineResult=$db->query($lineSql);while($lineResult&&($line=$db->fetch_object($lineResult))){$multi=trim((string)$invoice->multicurrency_code)!=='';$price=$multi&&(float)$line->multicurrency_subprice!=0.0?(float)$line->multicurrency_subprice:(float)$line->subprice;$total=$multi&&(float)$line->multicurrency_total_ht!=0.0?(float)$line->multicurrency_total_ht:(float)$line->total_ht;$discount+=max(0.0,((float)$line->qty*$price)-$total);$data['lines'][]=array('description'=>str_replace('\\n',"\n",trim((string)($line->description?:$line->label))),'quantity'=>(string)$line->qty,'unit'=>trim((string)$line->unit_public)!==''?(string)$line->unit_public:null,'unit_price'=>cpcc_mobile_money($price,$invoice->display_currency),'tax_rate'=>(string)$line->tva_tx,'discount_percent'=>(string)$line->remise_percent,'total'=>cpcc_mobile_money($total,$invoice->display_currency));}
+	$data['discount']=cpcc_mobile_money($discount,$invoice->display_currency);
+	$publicNoteSql=cpcc_financial_payment_public_note_sql($db,'p','payment_extra');$paymentSql="SELECT p.datep,p.ref,p.num_paiement,pf.amount,pf.multicurrency_amount,".$publicNoteSql['select']." FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid".$publicNoteSql['join']." WHERE pf.fk_facture=".(int)$invoiceId." AND ".cpcc_financial_payment_status_sql('p')." ORDER BY p.datep,p.rowid";
+	$data['payments']=array();$paymentResult=$db->query($paymentSql);while($paymentResult&&($payment=$db->fetch_object($paymentResult))){$amount=trim((string)$invoice->multicurrency_code)!==''&&(float)$payment->multicurrency_amount!=0.0?(float)$payment->multicurrency_amount:(float)$payment->amount;$data['payments'][]=array('date'=>cpcc_mobile_iso($payment->datep),'reference'=>(string)($payment->num_paiement?:$payment->ref),'amount'=>cpcc_mobile_money($amount,$invoice->display_currency),'public_note'=>trim((string)$payment->public_note)!==''?(string)$payment->public_note:null);}
+	return cpcc_mobile_envelope($data);
 }
 
 function cpcc_mobile_orders($db, $context, $limit, $cursor, $updatedSince)
@@ -447,23 +478,40 @@ function cpcc_mobile_document_rows($db, $context, $scope = '')
 	$scope = (string) $scope;
 	if (!in_array($scope, array('', 'shipment'), true)) cpcc_mobile_throw(422, 'validation', array('scope'));
 	$queries = array();
-	$queries[] = "SELECT a.rowid AS source_id,(a.rowid * 2) AS logical_id,'project_asset' AS source_type,p.rowid AS project_id,a.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,a.original_name,a.stored_name,a.mime_type,a.file_size,a.version_no,a.date_creation AS approved_at,a.tms,a.fk_card,NULL AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpkanban_asset a INNER JOIN ".MAIN_DB_PREFIX."cpkanban_card c ON c.rowid=a.fk_card AND c.entity=a.entity AND c.fk_soc=a.fk_soc INNER JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=a.fk_shipment AND s.entity=a.entity AND s.fk_soc=a.fk_soc WHERE a.entity=".(int) $context['entity']." AND a.fk_soc=".(int) $context['socid']." AND c.status=1 AND c.cust_visible=1 AND a.status=1 AND a.customer_visible=1 AND a.review_status IN ('approved','final_received')";
-	$queries[] = "SELECT d.rowid AS source_id,(d.rowid * 2) + 1 AS logical_id,'operation_report_attachment' AS source_type,o.fk_project AS project_id,o.fk_shipment AS shipment_id,s.ref AS shipment_ref,o.rowid AS report_id,d.original_name,d.stored_name,d.mime_type,d.file_size,d.version_no,COALESCE(d.date_review,d.date_creation) AS approved_at,d.tms,NULL AS fk_card,o.ref AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpo_document d INNER JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=d.fk_operation AND o.entity=d.entity LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=o.fk_shipment AND s.entity=o.entity AND s.fk_soc=o.fk_soc WHERE d.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1 AND d.visibility='customer_after_approval' AND d.review_status IN ('approved','final_received') AND d.is_current=1";
+	$queries[] = "SELECT a.rowid AS source_id,(a.rowid * 2) AS logical_id,'project_asset' AS source_type,p.rowid AS project_id,p.ref AS project_ref,p.title AS project_title,a.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,a.original_name,a.stored_name,a.mime_type,a.file_size,a.version_no,a.date_creation AS approved_at,a.tms,a.fk_card,NULL AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpkanban_asset a INNER JOIN ".MAIN_DB_PREFIX."cpkanban_card c ON c.rowid=a.fk_card AND c.entity=a.entity AND c.fk_soc=a.fk_soc INNER JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=a.fk_shipment AND s.entity=a.entity AND s.fk_soc=a.fk_soc WHERE a.entity=".(int) $context['entity']." AND a.fk_soc=".(int) $context['socid']." AND c.status=1 AND c.cust_visible=1 AND a.status=1 AND a.customer_visible=1 AND a.review_status IN ('approved','final_received')";
+	$queries[] = "SELECT d.rowid AS source_id,(d.rowid * 2) + 1 AS logical_id,'operation_report_attachment' AS source_type,o.fk_project AS project_id,p.ref AS project_ref,p.title AS project_title,o.fk_shipment AS shipment_id,s.ref AS shipment_ref,o.rowid AS report_id,d.original_name,d.stored_name,d.mime_type,d.file_size,d.version_no,COALESCE(d.date_review,d.date_creation) AS approved_at,d.tms,NULL AS fk_card,o.ref AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpo_document d INNER JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=d.fk_operation AND o.entity=d.entity LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=o.fk_project AND p.entity=o.entity AND p.fk_soc=o.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=o.fk_shipment AND s.entity=o.entity AND s.fk_soc=o.fk_soc WHERE d.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1 AND d.visibility='customer_after_approval' AND d.review_status IN ('approved','final_received') AND d.is_current=1";
 	if (cpcc_mobile_table_exists($db, 'cpl_shipment_public_document')) {
-		$queries[] = "SELECT g.rowid AS source_id,(0 - g.rowid) AS logical_id,'shipment_gallery' AS source_type,s.fk_project AS project_id,g.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,g.original_name,g.storage_key AS stored_name,g.mime_type,g.file_size,1 AS version_no,g.date_publication AS approved_at,g.tms,NULL AS fk_card,NULL AS operation_ref,g.file_sha256,g.item_kind FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document g INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=g.fk_shipment AND s.entity=g.entity AND s.fk_soc=g.fk_soc WHERE g.entity=".(int) $context['entity']." AND g.fk_soc=".(int) $context['socid']." AND g.customer_visible=1 AND g.status=1";
+			$queries[] = "SELECT g.rowid AS source_id,(0 - g.rowid) AS logical_id,'shipment_gallery' AS source_type,s.fk_project AS project_id,p.ref AS project_ref,p.title AS project_title,g.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,g.original_name,g.storage_key AS stored_name,g.mime_type,g.file_size,1 AS version_no,g.date_publication AS approved_at,g.tms,NULL AS fk_card,NULL AS operation_ref,g.file_sha256,g.item_kind FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document g INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=g.fk_shipment AND s.entity=g.entity AND s.fk_soc=g.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=s.fk_project AND p.entity=s.entity AND p.fk_soc=s.fk_soc WHERE g.entity=".(int) $context['entity']." AND g.fk_soc=".(int) $context['socid']." AND g.customer_visible=1 AND g.status=1";
+		}
+	if (cpcc_mobile_table_exists($db, 'cpcc_customer_document')) {
+			$queries[] = "SELECT d.rowid AS source_id,(0 - 1000000000 - d.rowid) AS logical_id,'core_document' AS source_type,d.fk_project AS project_id,p.ref AS project_ref,p.title AS project_title,d.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,d.original_name,d.relative_path AS stored_name,d.mime_type,d.file_size,1 AS version_no,d.date_publication AS approved_at,d.tms,NULL AS fk_card,d.source_ref AS operation_ref,d.file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpcc_customer_document d LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.entity=d.entity AND p.fk_soc=d.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=d.fk_shipment AND s.entity=d.entity AND s.fk_soc=d.fk_soc WHERE d.entity=".(int)$context['entity']." AND d.fk_soc=".(int)$context['socid']." AND d.customer_visible=1 AND d.status=1";
+		}
+	if (cpcc_mobile_table_exists($db, 'cpcc_export_document')) {
+		$queries[] = "SELECT d.rowid AS source_id,(0 - 2000000000 - d.rowid) AS logical_id,'commercial_document' AS source_type,d.fk_project AS project_id,p.ref AS project_ref,p.title AS project_title,d.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,d.ref AS original_name,'' AS stored_name,'text/html' AS mime_type,0 AS file_size,1 AS version_no,d.document_date AS approved_at,d.tms,NULL AS fk_card,d.document_type AS operation_ref,NULL AS file_sha256,'record' AS item_kind FROM ".MAIN_DB_PREFIX."cpcc_export_document d LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.entity=d.entity AND p.fk_soc=d.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=d.fk_shipment AND s.entity=d.entity AND s.fk_soc=d.fk_soc WHERE d.entity=".(int)$context['entity']." AND d.fk_soc=".(int)$context['socid']." AND d.customer_visible=1 AND d.status=1";
 	}
 	$sql = "SELECT * FROM (".implode(' UNION ALL ', $queries).") mobile_docs";
-	if ($scope === 'shipment') $sql .= " WHERE shipment_id IS NOT NULL";
+	if ($scope === 'shipment') $sql .= " WHERE shipment_id IS NOT NULL AND source_type<>'commercial_document'";
 	$sql .= " ORDER BY tms DESC,logical_id DESC";
 	return cpcc_mobile_rows($db, cpcc_mobile_query_or_throw($db, $sql));
 }
 
 function cpcc_mobile_document_data($db, $context, $row)
 {
-	$resource = $row->source_type === 'shipment_gallery' ? 'shipment_gallery_item' : 'document';
-	$objectId = $row->source_type === 'shipment_gallery' ? (int) $row->source_id : (int) $row->logical_id;
+	$resource = 'document';
+	$objectId = (int) $row->logical_id;
+	if ($row->source_type === 'shipment_gallery') {
+		$resource = 'shipment_gallery_item';
+		$objectId = (int) $row->source_id;
+	} elseif ($row->source_type === 'core_document') {
+		// Core publications use their positive registry ID; negative logical IDs are list-sort keys only.
+		$resource = 'core_customer_document';
+		$objectId = (int) $row->source_id;
+	} elseif ($row->source_type === 'commercial_document') {
+		$resource = 'commercial_document';
+		$objectId = (int) $row->source_id;
+	}
 	$kind = !empty($row->item_kind) ? (string) $row->item_kind : cpcc_portal_gallery_item_kind($row->mime_type);
-	return array('id' => cpcc_mobile_public_id($db, $resource, $context, $objectId), 'source_type' => (string) $row->source_type, 'kind' => $kind, 'project_id' => !empty($row->project_id) ? cpcc_mobile_public_id($db, 'project', $context, (int) $row->project_id) : null, 'shipment_id' => !empty($row->shipment_id) ? cpcc_mobile_public_id($db, 'shipment', $context, (int) $row->shipment_id) : null, 'shipment_ref' => !empty($row->shipment_ref) ? (string) $row->shipment_ref : null, 'report_id' => !empty($row->report_id) ? cpcc_mobile_public_id($db, 'report', $context, (int) $row->report_id) : null, 'name' => basename((string) $row->original_name), 'mime_type' => (string) $row->mime_type, 'size_bytes' => max(0, (int) $row->file_size), 'version' => max(1, (int) $row->version_no), 'approved_at' => cpcc_mobile_iso($row->approved_at), 'updated_at' => cpcc_mobile_iso($row->tms));
+	return array('id' => cpcc_mobile_public_id($db, $resource, $context, $objectId), 'source_type' => (string) $row->source_type, 'kind' => $kind, 'project_id' => !empty($row->project_id) ? cpcc_mobile_public_id($db, 'project', $context, (int) $row->project_id) : null, 'project_ref' => !empty($row->project_ref) ? (string) $row->project_ref : null, 'project_title' => !empty($row->project_title) ? (string) $row->project_title : null, 'shipment_id' => !empty($row->shipment_id) ? cpcc_mobile_public_id($db, 'shipment', $context, (int) $row->shipment_id) : null, 'shipment_ref' => !empty($row->shipment_ref) ? (string) $row->shipment_ref : null, 'report_id' => !empty($row->report_id) ? cpcc_mobile_public_id($db, 'report', $context, (int) $row->report_id) : null, 'name' => basename((string) $row->original_name), 'mime_type' => (string) $row->mime_type, 'size_bytes' => max(0, (int) $row->file_size), 'version' => max(1, (int) $row->version_no), 'approved_at' => cpcc_mobile_iso($row->approved_at), 'updated_at' => cpcc_mobile_iso($row->tms));
 }
 
 function cpcc_mobile_documents($db, $context, $limit, $cursor, $updatedSince, $scope = '')
@@ -486,9 +534,11 @@ function cpcc_mobile_shipment_gallery($db, $context, $shipmentId)
 function cpcc_mobile_document_record($db, $context, $publicId)
 {
 	$logicalId = cpcc_mobile_resolve_public_id($db, 'document', $context, $publicId);
-	if ($logicalId !== null && $logicalId !== 0) foreach (cpcc_mobile_document_rows($db, $context) as $row) if ($row->source_type !== 'shipment_gallery' && (int) $row->logical_id === (int) $logicalId) return $row;
+	if ($logicalId !== null && $logicalId > 0) foreach (cpcc_mobile_document_rows($db, $context) as $row) if ($row->source_type !== 'shipment_gallery' && $row->source_type !== 'core_document' && (int) $row->logical_id === (int) $logicalId) return $row;
 	$galleryId = cpcc_mobile_resolve_public_id($db, 'shipment_gallery_item', $context, $publicId);
 	if ($galleryId !== null && $galleryId > 0) foreach (cpcc_mobile_document_rows($db, $context, 'shipment') as $row) if ($row->source_type === 'shipment_gallery' && (int) $row->source_id === (int) $galleryId) return $row;
+	$coreId = cpcc_mobile_resolve_public_id($db, 'core_customer_document', $context, $publicId);
+	if ($coreId !== null && $coreId > 0) foreach (cpcc_mobile_document_rows($db, $context) as $row) if ($row->source_type === 'core_document' && (int) $row->source_id === (int) $coreId) return $row;
 	return null;
 }
 
@@ -501,6 +551,10 @@ function cpcc_mobile_safe_file_record($db, $context, $publicId, $requiredReportI
 		$path = cpcc_portal_resolve_shipment_doc_path((int) $row->shipment_id, (string) $row->shipment_ref, (string) $row->stored_name);
 		if ($path === '' || !preg_match('/^[a-f0-9]{64}$/', (string) $row->file_sha256)) cpcc_mobile_throw(404, 'not_found');
 		$actualHash = hash_file('sha256', $path); if (!is_string($actualHash) || !hash_equals((string) $row->file_sha256, $actualHash)) cpcc_mobile_throw(404, 'not_found');
+	} elseif ($row->source_type === 'core_document') {
+		$coreFile = cpcc_customer_document_core_file($db, (int)$context['socid'], (int)$row->source_id);
+		if (!$coreFile) cpcc_mobile_throw(404, 'not_found');
+		$path = $coreFile['path'];
 	} elseif ($row->source_type === 'project_asset') {
 		$root = DOL_DATA_ROOT.'/cpkanban/card-'.(int) $row->fk_card;
 		$rootReal = realpath($root); $path = realpath($root.'/'.(string) $row->stored_name);

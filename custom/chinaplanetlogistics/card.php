@@ -130,6 +130,7 @@ if ($action == 'add' && $canwrite && $is_post) {
 
     $newid = $object->create($user);
     if ($newid > 0) {
+        if (!empty($object->normalization_changes)) setEventMessages($langs->trans('CPLShipmentFactsNormalized'), null, 'warnings');
         header("Location: ".$_SERVER['PHP_SELF']."?id=".$newid);
         exit;
     } else {
@@ -174,6 +175,7 @@ if ($action == 'update' && $canwrite && $is_post) {
     $resu = $object->update($user);
     if ($resu >= 0) {
         setEventMessages($langs->trans('CPLShipmentUpdated'), null, 'mesgs');
+        if (!empty($object->normalization_changes)) setEventMessages($langs->trans('CPLShipmentFactsNormalized'), null, 'warnings');
         if ($sendStatusEmail && !$cansendshipmentemail) {
             setEventMessages($langs->trans('CPLStatusEmailPermissionDenied'), null, 'warnings');
         } elseif ($sendStatusEmail && empty($object->audit_customer_visible)) {
@@ -540,6 +542,9 @@ if ($action == 'create' || $action == 'edit') {
     }
 
     if ($is_external_customer) ob_start();
+    if (!$is_external_customer && ($user->admin || $user->hasRight('chinaplanetcustomercenter','email_write'))) {
+        print '<div class="cpl-section-email-action"><a class="button button-save" href="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/section_email.php',1).'?section=shipment&amp;socid='.(int)$object->fk_soc.'&amp;contextid='.(int)$object->id).'"><span class="fas fa-envelope" aria-hidden="true"></span> إرسال ملخص الشحنة / Send shipment summary</a></div>';
+    }
     cpl_render_shipment_command_center($db, $object, array(
         'external'=>$is_external_customer, 'modal'=>$is_modal, 'canwrite'=>$canwrite, 'candelete'=>$candelete, 'cansendshipmentemail'=>$cansendshipmentemail,
         'customer_name'=>$customer_name, 'project_label'=>$project_label, 'listurl'=>$listurl,

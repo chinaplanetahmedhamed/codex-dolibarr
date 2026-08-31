@@ -35,15 +35,15 @@ m031_assert_contains($board, "lib/export.lib.php", 'Commercial document helper l
 m031_assert_contains($board, 'cpcc_portal_customer_document_count($db, $user, $socid)', 'Dashboard shared document count');
 
 $documents = m031_source('custom/chinaplanetcustomercenter/documents.php');
-m031_assert_contains($documents, 'cpcc_export_documents($db, $socid, 0, 0, true)', 'Customer-visible commercial documents');
-m031_assert_contains($documents, '(!$is_external && $socid > 0) ? cpcc_export_documents', 'Admin-only commercial document query');
-m031_assert_contains($documents, 'if (!$is_external && $socid > 0)', 'Admin-only commercial document section');
-m031_assert_contains($documents, 'المستندات التجارية / Commercial Documents', 'Combined Documents page section');
+m031_assert_contains($documents, 'cpcc_customer_documents($db, $socid, $projectid)', 'Unified customer-visible document query');
+m031_assert_contains($documents, 'cpcc_portal_customer_gallery_items($db, $user)', 'Approved shipment publications join the unified results');
+m031_assert_contains($documents, "'commercial_document'=>'Commercial / تجاري'", 'Commercial documents remain an explicit unified source');
+m031_assert_contains($documents, 'المستندات المرتبطة / Linked Documents', 'Unified Documents page section');
 m031_assert_contains($documents, "llxHeader('', 'Documents / المستندات'", 'Generic customer Documents browser title');
 m031_assert_contains($documents, 'cpcc-document-type', 'Compact customer document type');
-m031_assert_contains($documents, "commercial_document->shipment_ref ?: 'غير مرتبط بشحنة / No related shipment'", 'Compact related-shipment field');
+m031_assert_contains($documents, 'غير مرتبط بمشروع / No related project', 'Every document identifies its verified project context or absence');
 m031_assert_contains($documents, '$canwrite = (!$is_external', 'External upload/write restriction');
-m031_assert_contains($documents, 'if ($canwrite && !$is_external)', 'Admin-only shipment upload form');
+m031_assert_contains($documents, 'if ($canpublishcore && $socid > 0)', 'Admin-only core publication form');
 m031_assert_contains($documents, 'cpcc-documents-search', 'Responsive Documents search controls');
 
 echo "M031 customer document count tests passed\n";
