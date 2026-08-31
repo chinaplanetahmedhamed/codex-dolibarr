@@ -10,7 +10,31 @@ Result: **CORRECTION_REQUIRED**
 
 The desired clean baseline cannot be produced by merging the M061 or M068 branches wholesale. Production is represented by the accepted Dolibarr main history through M062-R04, while canonical Staging adds a 39-file M061 overlay and retains additive M068 schema/configuration after M068-R04 code automatically rolled back. React Production and Staging are also intentionally different by one commit.
 
-The source and release ledger is now mapped, but M069 cannot be frozen until a complete current runtime hash inventory is obtained under a separate exact read-only Production approval. Existing helpers verify only their individual release scopes.
+The source and release ledger and complete bounded runtime hash inventory are now mapped. M069 still cannot be frozen because four Staging-only acceptance/demo files cannot be traced to any Git blob reachable from the canonical repository. Existing release records do not yet identify an immutable artifact provenance for those exact hashes.
+
+## M069-C02 runtime census
+
+Ahmed approved one bounded human-run Root command that produced two metadata-only manifests. Agent 007 downloaded them through the restricted account, matched their remote and local SHA-256 values, validated all columns and path boundaries, then deleted exactly the two temporary server files and their empty directory.
+
+| Environment | Runtime records | Manifest SHA-256 |
+|---|---:|---|
+| Canonical `backup-erp` | 325 | `3f24ea9a7a8cfbc5ab8bfd0c3a6378b12eac12e0eca8ba4915aaaee5f0257bfb` |
+| Production | 315 | `4188fc99ad6b13d7a70bf57dc78105c9d11c86b85c886f664170257404f085ca` |
+
+The union contains 327 paths: 313 common, 12 Staging-only, and two Production-only. Thirty-six common paths differ in content and 25 differ in deployed mode; every runtime entry is a regular file owned by UID/GID `33:33`, with mode `0444` or `0644`.
+
+The manifests are `M069_BACKUP_ERP_RUNTIME_MANIFEST.tsv` and `M069_PRODUCTION_RUNTIME_MANIFEST.tsv`. They contain only relative path, file type, mode, UID, GID, size, and SHA-256. Core Dolibarr, configuration, databases, documents, uploads, logs, caches, secrets, credentials, and business data were excluded.
+
+Production provenance is complete: all 315 hashes match reachable canonical-repository Git blobs. Staging provenance is complete for 321 of 325 hashes. The four untraced Staging-only files are:
+
+| Path | SHA-256 |
+|---|---|
+| `custom/chinaplanetcustomercenter/admin/acceptance_demo.php` | `ef26675038d7e1878f461ae9133b1d5e291ef11bd63577ff8e9343672f50d884` |
+| `custom/chinaplanetcustomercenter/admin/demo/seed_customer_portal_demo.php` | `ffad67b0f14b46694581d55714f38a1c2e15338fd56de992036125f2ecfbafb8` |
+| `custom/chinaplanetcustomercenter/admin/demo/seed_full_order_cycles.php` | `d83931588f4c6589260dcb09ceba1f32f96685494168135d45f22a455183d01e` |
+| `custom/chinaplanetcustomercenter/admin/demo/seed_operations_sops.php` | `0d641c624638043750308060c5ec4f773b57475ea163429559bb202ef51f6abf` |
+
+The census also proves a packaging defect class: Git stores `custom/chinaplanetcustomercenter/chinaplanetlogistics` and `custom/chinaplanetcustomercenter/cpkanban` as symlinks, but both runtimes contain 54 expanded regular files at those nested paths. Their contents are traceable, but M070 must preserve the canonical top-level module ownership instead of importing these deployed duplicates as source.
 
 ## Canonical repository pins
 
@@ -125,13 +149,13 @@ The clean rebuild must preserve and test:
 
 ## Why M069 is not frozen
 
-The evidence proves release-layer identity but not a complete current file-by-file runtime tree for Production or Staging. M047 explicitly limited its comparison to six files, and the current helper surface remains release-scoped. Advancing would risk rebuilding from an inferred source tree while silently omitting live-only or staging-only files—the exact failure M069 exists to prevent.
+The complete file-by-file runtime tree is now proven, but four Staging-only hashes have no reachable Git provenance. Advancing would silently legitimize unknown acceptance/demo runtime code or omit behavior without an evidence-backed classification—the exact failure M069 exists to prevent.
 
 ## Next exact gate
 
-Request a separate approval for a bounded read-only runtime manifest of the approved ChinaPlanetOS custom-module roots on canonical Staging and Production. No configuration, database, document, upload, log, cache, secret, core file, email, or business record may be read or changed. The output must be metadata and SHA-256 only.
+Request a separate approval for a bounded read-only provenance search of code-only Staging artifacts/backups for the four exact paths and hashes above. No runtime file, helper, database, configuration, document, upload, log, cache, secret, email, or business record may be read or changed.
 
-After that evidence is compared with this ledger, M069 can either become `ARCHITECT_ACCEPTED` or name an exact correction. M070 remains blocked.
+After that evidence is compared with this ledger, M069 can either become `ARCHITECT_ACCEPTED` or explicitly exclude/quarantine the four files through a separately approved correction. M070 remains blocked.
 
 ## Change and environment statement
 
@@ -142,3 +166,4 @@ After that evidence is compared with this ledger, M069 can either become `ARCHIT
 - Production changed: **NO**
 - Email/business records created: **NO**
 - Git branch/worktree created: **YES**, documentation-only M069 branch from refreshed Dolibarr main
+- Temporary server manifest files created and removed: **YES**, exact M069-C02 approved output files only

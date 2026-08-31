@@ -4,7 +4,7 @@
 
 - **Mission ID:** M069
 - **Type:** DOCUMENTATION / EVIDENCE / ARCHITECTURE / RELEASE_GOVERNANCE
-- **Status:** CORRECTION_REQUIRED — full current runtime manifests remain unverified
+- **Status:** CORRECTION_REQUIRED — runtime census complete; four Staging-only files remain without immutable provenance
 - **Architect and documentation owner:** Agent 007
 - **Approved by:** Ahmed Hamed
 - **Approval date:** 2026-08-31
@@ -65,8 +65,15 @@ M069 can advance only when:
 - React and WordPress canonical remote heads are current and pinned;
 - no protected user work overlaps the future clean reconstruction.
 
-The current census stops at `CORRECTION_REQUIRED` because the restricted helpers expose release-scoped status only. They do not provide a complete current runtime-tree manifest, and no exact Production read-only runtime-inventory approval was granted. M070 must not start.
+M069-C02 completed the full bounded runtime census without reading core, configuration, databases, documents, uploads, logs, caches, secrets, credentials, or business data. Production contains 315 approved custom-runtime files and canonical `backup-erp` contains 325. The two immutable manifests are recorded in `docs/REPORTS/`.
+
+All 315 Production file hashes and 321 of 325 Staging file hashes match Git blobs reachable from the canonical repository. Four Staging-only acceptance/demo scripts do not match any reachable Git blob. M070 must not start until those four hashes are traced to an approved immutable artifact or explicitly classified by a separately approved correction.
 
 ## Required correction approval
 
-A later exact approval may authorize a bounded, non-secret, read-only hash inventory of the approved ChinaPlanetOS runtime roots on canonical `backup-erp` and Production. It must output relative paths, file type, mode, owner/group identifiers, size, and SHA-256 only; it must exclude configuration, documents, uploads, caches, database data, logs, secrets, and core Dolibarr files. It must not install a helper or change either environment unless that installation is separately approved.
+A later exact approval may authorize a bounded read-only provenance search for the following exact Staging hashes inside approved code-only release artifacts and code backups; databases, configuration, documents, logs, secrets, and business data remain forbidden:
+
+- `custom/chinaplanetcustomercenter/admin/acceptance_demo.php` — `ef26675038d7e1878f461ae9133b1d5e291ef11bd63577ff8e9343672f50d884`
+- `custom/chinaplanetcustomercenter/admin/demo/seed_customer_portal_demo.php` — `ffad67b0f14b46694581d55714f38a1c2e15338fd56de992036125f2ecfbafb8`
+- `custom/chinaplanetcustomercenter/admin/demo/seed_full_order_cycles.php` — `d83931588f4c6589260dcb09ceba1f32f96685494168135d45f22a455183d01e`
+- `custom/chinaplanetcustomercenter/admin/demo/seed_operations_sops.php` — `0d641c624638043750308060c5ec4f773b57475ea163429559bb202ef51f6abf`
