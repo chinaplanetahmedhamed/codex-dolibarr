@@ -8,6 +8,7 @@
 - **Composite baseline:** M073 `1bc01214b13ace38d2cec98c7abd1d3b22355328`
 - **Preserved M074 implementation commits:** `b77538bbb3974f9b24d60d2d44c30939350683ed`, `16eef9ec0535179f2d3c4dabe620faf4f20dc2cb`
 - **Composite integration commit:** `a24f0d8ab4cf95277a5986594cc99e3dfe189002`
+- **Composite portal-security correction:** `d94e3ab85b96c50b91c46434438000378795d54a`
 - **Environment:** clean local worktree only
 - **Database/schema/runtime changes:** none executed
 - **External AI:** disabled; no contract or customer data was sent externally
