@@ -101,9 +101,23 @@ def parse_m071_runtime(repo: pathlib.Path, commit: str) -> set[str]:
     }
 
 
+def parse_m074_runtime(repo: pathlib.Path, commit: str, tracked: dict[str, int]) -> set[str]:
+    manifest = "docs/REPORTS/M074_SOURCE_TO_RUNTIME_MANIFEST.tsv"
+    if manifest not in tracked:
+        return set()
+    content = git_blob(repo, commit, manifest).decode("utf-8")
+    rows = csv.DictReader(io.StringIO(content), delimiter="\t")
+    if rows.fieldnames != ["repository", "source_path", "runtime_target", "classification"]:
+        fail("M074_RUNTIME_MAP_HEADER_INVALID")
+    return {
+        row["source_path"] for row in rows
+        if row["repository"] == "dolibarr" and row["classification"] in ("dolibarr_runtime", "schema_baseline_source")
+    }
+
+
 def dolibarr_files(repo: pathlib.Path, commit: str) -> dict[str, tuple[int, str]]:
     tracked = tree_files(repo, commit)
-    runtime = parse_m070_runtime(repo, commit) | parse_m071_runtime(repo, commit)
+    runtime = parse_m070_runtime(repo, commit) | parse_m071_runtime(repo, commit) | parse_m074_runtime(repo, commit, tracked)
     if runtime & M069_C04_RESIDUE:
         fail("M069_C04_RESIDUE_INCLUDED")
     missing = sorted(path for path in runtime if path not in tracked)
@@ -120,9 +134,9 @@ def dolibarr_files(repo: pathlib.Path, commit: str) -> dict[str, tuple[int, str]
     for path, mode in tracked.items():
         if path.startswith(support_prefixes) or path in support_exact:
             selected.setdefault(path, (mode, "support"))
-        if path.startswith("docs/MISSIONS/M069") or path.startswith("docs/MISSIONS/M070") or path.startswith("docs/MISSIONS/M071") or path.startswith("docs/MISSIONS/M072"):
+        if any(path.startswith("docs/MISSIONS/M" + mission) for mission in ("069", "070", "071", "072", "073", "074")):
             selected.setdefault(path, (mode, "evidence"))
-        if path.startswith("docs/REPORTS/M069") or path.startswith("docs/REPORTS/M070") or path.startswith("docs/REPORTS/M071") or path.startswith("docs/REPORTS/M072"):
+        if any(path.startswith("docs/REPORTS/M" + mission) for mission in ("069", "070", "071", "072", "073", "074")):
             selected.setdefault(path, (mode, "evidence"))
     if not any(path.startswith("deploy/migrations/") for path in selected):
         fail("MIGRATIONS_MISSING")
@@ -284,10 +298,11 @@ def main() -> int:
             "react": (react_repo, react_commit),
             "wordpress": (wp_repo, wp_commit),
         }, temporary)
+        binding_status = "TARGET_ADAPTERS_AND_ENVIRONMENT_REQUIRE_M073_APPROVAL" if config["releaseId"] == "M072-R01" else "UNBOUND_REQUIRES_INDEPENDENT_REVIEW_AND_STAGING_APPROVAL"
         bundle = {
             "schemaVersion": 1,
             "releaseId": config["releaseId"],
-            "bindingStatus": "TARGET_ADAPTERS_AND_ENVIRONMENT_REQUIRE_M073_APPROVAL",
+            "bindingStatus": binding_status,
             "components": components,
         }
         (temporary / "release-bundle.json").write_text(json.dumps(bundle, sort_keys=True, indent=2) + "\n", encoding="utf-8")
