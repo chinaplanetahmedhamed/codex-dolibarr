@@ -368,7 +368,7 @@ class QcService
         } catch (Throwable $e) { $this->db->rollback(); throw $e; }
     }
 
-    public function submitInspection($operationId, $packageRevision, $actorId)
+    public function submitInspection($operationId, $packageRevision, $actorId, $acknowledgeInternalOnly = false)
     {
         $this->db->begin();
         try {
@@ -384,7 +384,7 @@ class QcService
                 if (in_array($row['result_code'], array('pass', 'fail'), true) && trim((string) $row['observation']) === '') throw new RuntimeException('Completed checkpoint is missing an observation.');
                 if ($row['result_code'] === 'fail' && $row['severity'] === 'none') throw new RuntimeException('Failed checkpoint is missing severity.');
                 if ($row['result_code'] === 'not_applicable' && (trim((string) $row['internal_note']) === '' || $row['severity'] !== 'none')) throw new RuntimeException('N/A checkpoint is missing its rationale.');
-                $evidence = $this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_evidence WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId.' AND fk_checkpoint='.(int) $row['rowid']." AND upload_status='finalized'");
+                $evidence = $this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_evidence WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId.' AND fk_checkpoint='.(int) $row['rowid']." AND upload_status IN ('finalized','internal_only')");
                 if ($evidence < (int) $row['min_evidence']) throw new RuntimeException('A mandatory checkpoint is missing required evidence.');
             }
             if (!empty($state['aql']['enabled'])) {
@@ -393,7 +393,14 @@ class QcService
                 if ($requiredSample <= 0 || $observedSample < $requiredSample) throw new RuntimeException('Recorded AQL sample size is below the calculated requirement.');
                 $state['aql']['observed'] = array('sample_size'=>$observedSample,'critical'=>$defects['critical'],'major'=>$defects['major'],'minor'=>$defects['minor']); $state['aql']['outcome'] = $outcome;
             }
-            if ($this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_evidence WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId." AND upload_status IN ('pending','uploading','processing')") > 0) throw new RuntimeException('Pending evidence uploads must finish before submission.');
+            if ($this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_evidence WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId." AND upload_status IN ('pending','uploading','processing','reprocessing')") > 0) throw new RuntimeException('Pending evidence uploads must finish before submission.');
+            $internalOnly = $this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_evidence WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId." AND upload_status='internal_only'");
+            if ($internalOnly > 0 && !$acknowledgeInternalOnly) throw new RuntimeException('Internal-only video evidence requires inspector acknowledgement before submission.');
+            if ($internalOnly > 0) {
+                $state['internal_only_evidence_acknowledged_at'] = $this->now();
+                $state['internal_only_evidence_acknowledged_by'] = (int) $actorId;
+                $state['internal_only_evidence_acknowledged_count'] = $internalOnly;
+            }
             $state['state'] = 'submitted'; $state['submitted_at'] = $this->now(); $state['submitted_by'] = (int) $actorId;
             $this->replaceSection($operationId, self::STATE_SECTION, $state, $actorId);
             if (!$this->db->query("UPDATE ".MAIN_DB_PREFIX."cpo_operation SET stage='supervisor_review',progress=85,next_action='Supervisor QC review',fk_user_modif=".(int) $actorId.' WHERE entity='.$this->entity.' AND rowid='.(int) $operationId)) $this->fail();
@@ -422,6 +429,7 @@ class QcService
         $this->db->begin();
         try {
             $this->operationForUpdate($operationId); $state = $this->requireState($operationId, array('submitted'), true);
+            if ($this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_evidence WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId." AND upload_status IN ('internal_only','reprocessing')") > 0) throw new RuntimeException('Internal-only video evidence must be safely reprocessed before supervisor review can complete.');
             if ($this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_checkpoint WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId." AND record_kind='finding' AND review_status='pending'") > 0) throw new RuntimeException('Every unexpected finding requires a disposition.');
             if ($this->count('SELECT COUNT(*) total FROM '.MAIN_DB_PREFIX."cpo_qc_evidence WHERE entity=".$this->entity.' AND fk_operation='.(int) $operationId." AND upload_status='finalized' AND review_status='pending'") > 0) throw new RuntimeException('Every finalized evidence file requires a disposition.');
             $state['review_package_sha256']=$this->reviewPackageHash($operationId);

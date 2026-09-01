@@ -24,4 +24,9 @@ assert.equal(partialMerged.checkpoints.length, 1, 'an idempotently created findi
 assert.equal(partialMerged.checkpoints[0].rowid, 'local:finding-1');
 assert.equal(partialMerged.checkpoints[0].observation, 'offline finding');
 
+assert.deepEqual(support.evidenceSyncOutcome({upload_status: 'internal_only', evidence_id: 42, customer_safe_available: false, customer_safe_reason: 'media_tools_unavailable'}), {state: 'internal_only', evidenceId: 42, reason: 'media_tools_unavailable'}, 'a finalize response must preserve the internal-only warning');
+assert.deepEqual(support.evidenceSyncOutcome({upload_status: 'finalized', evidence_id: 43, customer_safe_available: true}), {state: 'ready', evidenceId: 43, reason: ''}, 'customer-safe evidence may be removed from the local queue');
+assert.equal(support.evidenceSyncOutcome({evidence: {upload_status: 'internal_only', evidence_id: 42, customer_safe_available: false}}).state, 'internal_only', 'a lost finalize response recovered through upload-begin replay must still surface the warning');
+assert.equal(support.evidenceSyncOutcome({upload_status: 'finalized', evidence_id: 44}).state, 'pending', 'ambiguous legacy replay must not silently discard encrypted file data');
+
 console.log('M074_QC_PWA=PASS');

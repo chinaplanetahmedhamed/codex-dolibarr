@@ -37,5 +37,16 @@
         return Number(metadata.checkpoint_id) === Number(checkpoint.rowid);
     }
 
-    return Object.freeze({classifySessionResponse, mergeQueuedPackage, evidenceBelongsToCheckpoint});
+    function evidenceSyncOutcome(payload) {
+        const evidence = payload && payload.evidence ? payload.evidence : (payload || {});
+        if (evidence.upload_status === 'internal_only') {
+            return {state: 'internal_only', evidenceId: Number(evidence.evidence_id || 0), reason: String(evidence.customer_safe_reason || 'media_tools_unavailable')};
+        }
+        if (evidence.upload_status === 'finalized' && evidence.customer_safe_available === true) {
+            return {state: 'ready', evidenceId: Number(evidence.evidence_id || 0), reason: ''};
+        }
+        return {state: 'pending', evidenceId: Number(evidence.evidence_id || 0), reason: ''};
+    }
+
+    return Object.freeze({classifySessionResponse, mergeQueuedPackage, evidenceBelongsToCheckpoint, evidenceSyncOutcome});
 }));
