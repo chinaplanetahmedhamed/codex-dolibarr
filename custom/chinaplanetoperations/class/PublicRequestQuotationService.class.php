@@ -108,11 +108,15 @@ class PublicRequestQuotationService
     {
         $lockName = 'cpo_quote_'.$this->entity.'_'.(int) $requestId;
         $this->acquireLock($lockName);
-        $createdProposal = null;
+        $transactionOpen = false;
         try {
+            $this->beginTransaction();
+            $transactionOpen = true;
             $row = $this->fetchRequest((int) $requestId);
             if (!$row || $row['request_type'] !== 'catalog_order') throw new RuntimeException('quotation_request_not_found');
+            if ((int)($row['schema_version'] ?? 1) === 2 && ((string)($row['qualification_status'] ?? '') !== 'qualified' || empty($row['fk_soc']) || empty($row['fk_socpeople']))) throw new RuntimeException('qualification_required');
             if (!empty($row['fk_soc']) && (int) $row['fk_soc'] !== (int) $socid) throw new RuntimeException('quotation_request_customer_mismatch');
+            if ((int)($row['schema_version'] ?? 1) === 2 && (int)$row['fk_socpeople'] !== (int)$contactId) throw new RuntimeException('quotation_request_contact_mismatch');
             $customer = $this->fetchCustomer((int) $socid);
             if (!$customer) throw new RuntimeException('invalid_customer');
             $contact = $this->fetchContact((int) $contactId, (int) $socid);
@@ -165,7 +169,6 @@ class PublicRequestQuotationService
                 $proposal->multicurrency_tx = $currencyInfo['tx'];
                 $proposalId = $proposal->create($user);
                 if ($proposalId <= 0) throw new RuntimeException($proposal->error ?: 'quotation_create_failed');
-                $createdProposal = $proposal;
                 $sql = "UPDATE ".MAIN_DB_PREFIX."cpo_public_request SET fk_soc=".(int) $socid.",fk_propal=".(int) $proposalId.",fk_user_modif=".(int) $user->id.",date_modification='".$this->db->idate(dol_now())."' WHERE entity=".$this->entity." AND rowid=".(int) $requestId." AND fk_propal IS NULL";
                 $res = $this->db->query($sql);
                 if (!$res || $this->db->affected_rows($res) !== 1) throw new RuntimeException('quotation_link_conflict');
@@ -179,12 +182,11 @@ class PublicRequestQuotationService
             $this->syncProposalContact($proposal, $contact);
             $this->replaceProposalLines($proposal, $validated, $currencyInfo);
             $proposal->fetch($proposal->id);
+            $this->commitTransaction();
+            $transactionOpen = false;
             return $proposal;
         } catch (Throwable $e) {
-            if ($createdProposal && !empty($createdProposal->id)) {
-                $linked = $this->requestHasProposal((int) $requestId, (int) $createdProposal->id);
-                if (!$linked) $createdProposal->delete($user, 1);
-            }
+            if ($transactionOpen) $this->rollbackTransaction($e);
             throw $e;
         } finally {
             $this->releaseLock($lockName);
@@ -454,14 +456,14 @@ class PublicRequestQuotationService
 
     private function releaseLock($name)
     {
-        $this->db->query("SELECT RELEASE_LOCK('".$this->db->escape($name)."')");
+        $res = $this->db->query("SELECT RELEASE_LOCK('".$this->db->escape($name)."') released");
+        $obj = $res ? $this->db->fetch_object($res) : null;
+        if (!$obj || (int)$obj->released !== 1) throw new RuntimeException('quotation_lock_release_failed');
     }
 
-    private function requestHasProposal($requestId, $proposalId)
-    {
-        $res = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_public_request WHERE entity=".$this->entity." AND rowid=".(int) $requestId." AND fk_propal=".(int) $proposalId);
-        return $res && $this->db->fetch_object($res);
-    }
+    private function beginTransaction() { if (!$this->db->begin()) throw new RuntimeException('quotation_transaction_begin_failed'); }
+    private function commitTransaction() { if (!$this->db->commit()) throw new RuntimeException('quotation_transaction_commit_failed'); }
+    private function rollbackTransaction($previous = null) { if (!$this->db->rollback()) throw new RuntimeException('quotation_transaction_rollback_failed', 0, $previous instanceof Throwable ? $previous : null); }
 
     private function clean($value, $limit)
     {

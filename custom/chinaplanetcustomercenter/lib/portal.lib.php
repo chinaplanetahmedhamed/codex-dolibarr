@@ -66,7 +66,12 @@ function cpcc_portal_asset($path)
 
 function cpcc_portal_navigation($user, $active = '')
 {
+    global $langs;
     if (empty($user->id) || empty($user->socid) || !empty($user->admin)) return;
+
+    $locale = strtolower(substr((string) $langs->getDefaultLang(), 0, 2));
+    if (!in_array($locale, array('ar', 'en', 'fr'), true)) $locale = 'en';
+    $direction = $locale === 'ar' ? 'rtl' : 'ltr';
 
     $activeGroups = array(
         'dashboard' => 'home',
@@ -80,41 +85,50 @@ function cpcc_portal_navigation($user, $active = '')
         'commercial_documents' => 'documents',
         'reports' => 'documents',
         'orders' => 'requests',
+        'quotation_requests' => 'quotes',
         'profile' => 'account',
     );
     $activeGroup = isset($activeGroups[$active]) ? $activeGroups[$active] : 'home';
 
     $items = array(
-        'home' => array('الرئيسية', 'Home', 'fa-home', '/chinaplanetcustomercenter/board.php'),
-        'projects' => array('مشاريعي', 'My Projects', 'fa-folder-open', '/chinaplanetcustomercenter/projects.php'),
-        'shipments' => array('الشحنات', 'Shipments', 'fa-ship', '/chinaplanetlogistics/list.php'),
-        'shippingprices' => array('أسعار الشحن', 'Shipping Prices', 'fa-search-dollar', '/chinaplanetshippingprices/index.php'),
-        'account' => array('الحساب المالي', 'Financial Account', 'fa-wallet', '/chinaplanetcustomercenter/balance.php'),
-        'documents' => array('المستندات', 'Documents', 'fa-file-alt', '/chinaplanetcustomercenter/documents.php'),
-        'requests' => array('الطلبات والدعم', 'Orders & Support', 'fa-headset', '/chinaplanetcustomercenter/orders.php'),
+        'home' => array('ar'=>'الرئيسية', 'en'=>'Home', 'fr'=>'Accueil', 'icon'=>'fa-home', 'path'=>'/chinaplanetcustomercenter/board.php'),
+        'projects' => array('ar'=>'مشاريعي', 'en'=>'My Projects', 'fr'=>'Mes projets', 'icon'=>'fa-folder-open', 'path'=>'/chinaplanetcustomercenter/projects.php'),
+        'shipments' => array('ar'=>'الشحنات', 'en'=>'Shipments', 'fr'=>'Expéditions', 'icon'=>'fa-ship', 'path'=>'/chinaplanetlogistics/list.php'),
+        'shippingprices' => array('ar'=>'أسعار الشحن', 'en'=>'Shipping Prices', 'fr'=>'Tarifs de transport', 'icon'=>'fa-search-dollar', 'path'=>'/chinaplanetshippingprices/index.php'),
+        'account' => array('ar'=>'الحساب المالي', 'en'=>'Financial Account', 'fr'=>'Compte financier', 'icon'=>'fa-wallet', 'path'=>'/chinaplanetcustomercenter/balance.php'),
+        'documents' => array('ar'=>'المستندات', 'en'=>'Documents', 'fr'=>'Documents', 'icon'=>'fa-file-alt', 'path'=>'/chinaplanetcustomercenter/documents.php'),
+        'requests' => array('ar'=>'الطلبات والدعم', 'en'=>'Orders & Support', 'fr'=>'Commandes et assistance', 'icon'=>'fa-headset', 'path'=>'/chinaplanetcustomercenter/orders.php'),
+        'quotes' => array('ar'=>'طلبات عروض السعر', 'en'=>'Quotation Requests', 'fr'=>'Demandes de devis', 'icon'=>'fa-file-signature', 'path'=>'/chinaplanetcustomercenter/quotation_requests.php'),
     );
+
+    $interface = array(
+        'ar'=>array('home'=>'الرئيسية', 'menu'=>'القائمة', 'nav'=>'تنقل بوابة العميل', 'logout'=>'تسجيل الخروج', 'confirm'=>'تأكيد تسجيل الخروج', 'question'=>'هل تريد حقًا تسجيل الخروج؟', 'cancel'=>'إلغاء'),
+        'en'=>array('home'=>'Customer Home', 'menu'=>'Menu', 'nav'=>'Customer portal navigation', 'logout'=>'Logout', 'confirm'=>'Confirm logout', 'question'=>'Are you sure you want to log out?', 'cancel'=>'Cancel'),
+        'fr'=>array('home'=>'Accueil client', 'menu'=>'Menu', 'nav'=>'Navigation du portail client', 'logout'=>'Déconnexion', 'confirm'=>'Confirmer la déconnexion', 'question'=>'Voulez-vous vraiment vous déconnecter ?', 'cancel'=>'Annuler'),
+    );
+    $ui = $interface[$locale];
 
     $homeUrl = dol_buildpath('/chinaplanetcustomercenter/board.php', 1);
     print '<link rel="stylesheet" href="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/portal.css')).'">';
-    print '<header class="cpcc-portal-shell" dir="rtl">';
-    print '<a class="cpcc-portal-brand" href="'.dol_escape_htmltag($homeUrl).'" aria-label="الرئيسية / Customer Home"><span class="cpcc-portal-brand-mark" aria-hidden="true">V</span><span><strong>Vision Customer Center</strong><small>مركز العميل</small></span></a>';
-    print '<button type="button" class="cpcc-portal-menu-toggle" aria-expanded="false" aria-controls="cpcc-portal-menu"><span class="fas fa-bars" aria-hidden="true"></span><span>القائمة / Menu</span></button>';
-    print '<nav id="cpcc-portal-menu" class="cpcc-portal-nav" aria-label="تنقل بوابة العميل">';
+    print '<header class="cpcc-portal-shell" dir="'.$direction.'">';
+    print '<a class="cpcc-portal-brand" href="'.dol_escape_htmltag($homeUrl).'" aria-label="'.dol_escape_htmltag($ui['home']).'"><span class="cpcc-portal-brand-mark" aria-hidden="true">V</span><span><strong>Vision Customer Center</strong><small>'.dol_escape_htmltag($ui['home']).'</small></span></a>';
+    print '<button type="button" class="cpcc-portal-menu-toggle" aria-expanded="false" aria-controls="cpcc-portal-menu"><span class="fas fa-bars" aria-hidden="true"></span><span>'.dol_escape_htmltag($ui['menu']).'</span></button>';
+    print '<nav id="cpcc-portal-menu" class="cpcc-portal-nav" aria-label="'.dol_escape_htmltag($ui['nav']).'">';
     foreach ($items as $key => $item) {
         $class = $key === $activeGroup ? ' class="active" aria-current="page"' : '';
-        print '<a'.$class.' href="'.dol_escape_htmltag(dol_buildpath($item[3], 1)).'">';
-        print '<span class="fas '.dol_escape_htmltag($item[2]).'" aria-hidden="true"></span>';
-        print '<span><b>'.dol_escape_htmltag($item[0]).'</b><small lang="en" dir="ltr">'.dol_escape_htmltag($item[1]).'</small></span></a>';
+        print '<a'.$class.' href="'.dol_escape_htmltag(dol_buildpath($item['path'], 1)).'">';
+        print '<span class="fas '.dol_escape_htmltag($item['icon']).'" aria-hidden="true"></span>';
+        print '<span><b>'.dol_escape_htmltag($item[$locale]).'</b><small lang="en" dir="ltr">'.dol_escape_htmltag($item['en']).'</small></span></a>';
     }
-    print '<a class="cpcc-logout-link" data-cpcc-logout href="'.dol_escape_htmltag(DOL_URL_ROOT.'/user/logout.php').'"><span class="fas fa-sign-out-alt" aria-hidden="true"></span><span><b>تسجيل الخروج</b><small lang="en" dir="ltr">Logout</small></span></a>';
+    print '<a class="cpcc-logout-link" data-cpcc-logout href="'.dol_escape_htmltag(DOL_URL_ROOT.'/user/logout.php').'"><span class="fas fa-sign-out-alt" aria-hidden="true"></span><span><b>'.dol_escape_htmltag($ui['logout']).'</b><small lang="en" dir="ltr">Logout</small></span></a>';
     print '</nav></header>';
     print '<dialog class="cpcc-logout-dialog" data-cpcc-logout-dialog aria-labelledby="cpcc-logout-title" aria-describedby="cpcc-logout-message">';
-    print '<form method="dialog" dir="rtl">';
-    print '<h2 id="cpcc-logout-title">تأكيد تسجيل الخروج</h2>';
-    print '<p id="cpcc-logout-message">هل تريد حقًا تسجيل الخروج؟<br><span lang="en" dir="ltr">Are you sure you want to log out?</span></p>';
+    print '<form method="dialog" dir="'.$direction.'">';
+    print '<h2 id="cpcc-logout-title">'.dol_escape_htmltag($ui['confirm']).'</h2>';
+    print '<p id="cpcc-logout-message">'.dol_escape_htmltag($ui['question']).'</p>';
     print '<div class="cpcc-logout-actions">';
-    print '<button type="submit" value="cancel" data-cpcc-logout-cancel>إلغاء / Cancel</button>';
-    print '<button type="button" class="cpcc-logout-confirm" data-cpcc-logout-confirm>تسجيل الخروج / Logout</button>';
+    print '<button type="submit" value="cancel" data-cpcc-logout-cancel>'.dol_escape_htmltag($ui['cancel']).'</button>';
+    print '<button type="button" class="cpcc-logout-confirm" data-cpcc-logout-confirm>'.dol_escape_htmltag($ui['logout']).'</button>';
     print '</div></form></dialog>';
     print '<script src="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/js/portal.js')).'" defer></script>';
     print '<script src="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/js/logout-confirm.js', 1)).'" defer></script>';

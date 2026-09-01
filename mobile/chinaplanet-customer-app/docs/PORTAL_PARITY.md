@@ -1,5 +1,16 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-09-01 — M071 unified B2B quotation request lifecycle
+
+- Source change: `cpo.catalog-order.v2` stores one immutable multi-line catalog request with request-unique `lineId` values, nullable packing values, explicit readiness, exact missing fields, and customer-safe price visibility. Identity qualification and Prospect/Lead creation require a staff action; no account, password, email, order, or confirmed quotation is automatic.
+- Admin ERP: `LOCAL_SOURCE_IMPLEMENTED`; staff can review identity candidates, link the exact existing customer/contact or create a reviewed Prospect/Lead only when no match exists, then create the standard draft quotation under the qualified owner.
+- Customer Portal: `LOCAL_SOURCE_IMPLEMENTED`; authenticated external customers can see only explicitly published requests belonging to their session-derived entity and third party. Approved quotation references appear only after separate staff publication. Arabic, English, French and RTL/LTR navigation are included.
+- Mobile App: `PENDING`; no native route, DTO, repository, or screen was added. Future parity must use opaque customer-safe identifiers and the Customer Center API, not this web page or an internal database row ID.
+- API/data dependency: public discovery remains `React -> secure Node API -> Dolibarr`; WordPress/WooCommerce owns catalog, packing and B2BKing price policy. Unknown packing and hidden prices remain `null`; incomplete lines remain in the request but never enter CBM, weight, capacity or 3D calculations.
+- Design/terminology impact: public submissions are quotation review requests, not confirmed orders, carrier bookings, or final quotations. Customer Center uses the same meaning in Arabic, English and French.
+- Phone verification: deterministic source/UI tests cover 360px and 390px rules locally; authenticated browser and native-device runtime acceptance remain M073 gates.
+- Status: `ADMIN_LOCAL_SOURCE`, `PORTAL_LOCAL_SOURCE`, `MOBILE_PENDING`, `NO_RUNTIME`, `NO_EMAIL`, `NO_BUSINESS_RECORD`, `NO_STAGING_OR_PRODUCTION`.
+
 ## 2026-08-31 — M070 clean composite source reconstruction
 
 - Source change: the final M061 customer-facing Mobile source was reconstructed file-by-file over the accepted current-main/M062 baseline in a fresh M070 worktree. The invoice line unit projection was then corrected to return a customer-safe short label, label, code, or `null` instead of `fk_unit` as an internal database identifier. No runtime, API server, database, configuration, or business record was changed.

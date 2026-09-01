@@ -22,8 +22,9 @@ class ChinaPlanetOperations extends DolibarrApi
     }
 
     /**
-     * Create an internal intake request. This never creates a ThirdParty,
-     * proposal, order, shipment, invoice or accounting entry.
+     * Create an immutable internal intake request. Qualification and any Lead
+     * creation remain separate staff-controlled actions. This endpoint never
+     * creates a proposal, order, shipment, invoice or accounting entry.
      *
      * @return array
      * @url POST website-requests
@@ -50,6 +51,7 @@ class ChinaPlanetOperations extends DolibarrApi
                 'request_ref' => $result['ref'],
                 'status' => $result['status'],
                 'duplicate' => (bool) $result['duplicate'],
+                'schema_version' => isset($result['schema_version']) ? (int)$result['schema_version'] : 1,
             );
         } catch (PublicWebsiteRequestException $e) {
             throw new RestException($e->getHttpStatus(), $e->getPublicCode());

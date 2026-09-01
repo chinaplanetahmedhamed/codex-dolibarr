@@ -1,0 +1,8 @@
+{
+  "contract": "cpo.catalog-order.v2",
+  "cases": [
+    { "name": "fractional_units_per_carton", "unitsPerCarton": 12.5, "expected": "reject" },
+    { "name": "incomplete_line_placement", "lineId": "line-incomplete-001", "expected": "reject" },
+    { "name": "unknown_iso_country", "country_code": "ZZ", "expected": "reject" }
+  ]
+}

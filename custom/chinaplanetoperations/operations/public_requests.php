@@ -6,6 +6,7 @@ require_once __DIR__.'/../lib/main.lib.php';
 require_once __DIR__.'/../class/PublicWebsiteRequestService.class.php';
 require_once __DIR__.'/../class/PublicRequestQuotationService.class.php';
 require_once __DIR__.'/../class/PublicRequestContactService.class.php';
+require_once __DIR__.'/../class/PublicRequestLifecycleService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 function cpo_public_request_has_value($value)
@@ -94,9 +95,35 @@ $langs->load('chinaplanetoperations@chinaplanetoperations');
 $service = new PublicWebsiteRequestService($db);
 $quotationService = new PublicRequestQuotationService($db);
 $contactService = new PublicRequestContactService($db);
+$lifecycleService = new PublicRequestLifecycleService($db);
 $action = GETPOST('action', 'aZ09');
 $id = GETPOSTINT('id');
 $compose = GETPOST('compose', 'aZ09');
+
+if ($action === 'qualify_existing') {
+    cpo_require($user, 'publicrequest_qualify');
+    try {
+        $lifecycleService->qualifyExisting($id, GETPOSTINT('fk_soc'), GETPOSTINT('fk_socpeople'), $user);
+        setEventMessages('Request linked to the reviewed customer identity.', null, 'mesgs');
+        header('Location: public_requests.php?id='.(int)$id); exit;
+    } catch (Throwable $e) { setEventMessages($e->getMessage(), null, 'errors'); }
+}
+if ($action === 'create_reviewed_lead') {
+    cpo_require($user, 'publicrequest_qualify');
+    try {
+        $lifecycleService->createReviewedLead($id, GETPOST('lead_company_name', 'alphanohtml'), $user);
+        setEventMessages('Prospect/Lead created after identity review.', null, 'mesgs');
+        header('Location: public_requests.php?id='.(int)$id); exit;
+    } catch (Throwable $e) { setEventMessages($e->getMessage(), null, 'errors'); }
+}
+if ($action === 'set_customer_visibility') {
+    cpo_require($user, 'publicrequest_publish');
+    try {
+        $lifecycleService->setVisibility($id, GETPOSTINT('request_customer_visible') === 1, GETPOSTINT('proposal_customer_visible') === 1, $user);
+        setEventMessages('Customer Center visibility updated.', null, 'mesgs');
+        header('Location: public_requests.php?id='.(int)$id); exit;
+    } catch (Throwable $e) { setEventMessages($e->getMessage(), null, 'errors'); }
+}
 
 if ($action === 'save_quotation') {
     cpo_require($user, 'publicrequest_quote');
@@ -156,6 +183,7 @@ if ($action === 'anonymize_expired' && !empty($user->admin)) {
 $status = GETPOST('status', 'alphanohtml');
 $requestType = GETPOST('request_type', 'alphanohtml');
 $selected = $id ? $service->get($id) : null;
+$identityMatches = $selected && (int)($selected['schema_version'] ?? 1) === 2 && empty($selected['fk_soc']) ? $lifecycleService->matchCandidates($id) : array('status'=>'linked', 'candidates'=>array());
 $rows = $service->listing(array('status'=>$status, 'request_type'=>$requestType));
 $companies = array();
 $res = $db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (0,".(int) $conf->entity.") AND status=1 ORDER BY nom LIMIT 500");
@@ -176,6 +204,7 @@ if ($selected && !empty($selected['fk_propal'])) {
     $quoteProposal = new Propal($db);
     if ($quoteProposal->fetch((int) $selected['fk_propal']) <= 0 || (int) $quoteProposal->entity !== (int) $conf->entity) $quoteProposal = null;
 }
+$quoteCanPublish = $quoteProposal && in_array((int)$quoteProposal->status, array(1, 2, 4), true);
 $quoteSocId = $quoteProposal ? (int) $quoteProposal->socid : (int) ($selected['fk_soc'] ?? 0);
 $quoteCurrency = $quoteProposal ? strtoupper((string) $quoteProposal->multicurrency_code) : strtoupper((string) ($details['currency'] ?? getDolCurrency()));
 if (!isset($quoteCurrencies[$quoteCurrency])) $quoteCurrency = strtoupper((string) getDolCurrency());
@@ -240,6 +269,32 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
           <?php if($canContactByWhatsApp){ ?><a class="button cpo-whatsapp-button" href="<?php echo dol_escape_htmltag($whatsappUrl); ?>" target="_blank" rel="noopener noreferrer"><span class="fab fa-whatsapp" aria-hidden="true"></span> <?php echo $langs->trans('PublicOpenWhatsApp'); ?><span class="fas fa-external-link-alt cpo-external-icon" aria-hidden="true"></span></a><?php } else { ?><span class="cpo-contact-unavailable"><span class="fab fa-whatsapp" aria-hidden="true"></span> <?php echo $langs->trans('PublicWhatsAppUnavailable'); ?></span><?php } ?>
         </div>
       </article>
+
+      <?php if((int)($selected['schema_version'] ?? 1) === 2){ ?>
+      <article class="cpo-request-block">
+        <h3><span class="fas fa-user-check" aria-hidden="true"></span>Customer qualification</h3>
+        <?php if(empty($selected['fk_soc'])){ ?>
+          <p><?php echo dol_escape_htmltag('Identity review: '.$identityMatches['status'].' ('.count($identityMatches['candidates']).' candidate(s)). No account or email is created automatically.'); ?></p>
+          <?php if(!empty($identityMatches['candidates'])){ ?><ul class="cpo-identity-candidates"><?php foreach($identityMatches['candidates'] as $candidate){ ?><li><strong><?php echo dol_escape_htmltag($candidate['company']); ?></strong><?php echo $candidate['contact'] !== '' ? ' · '.dol_escape_htmltag($candidate['contact']) : ' · '.dol_escape_htmltag('Active contact required before linking'); ?><?php echo $candidate['email'] !== '' ? ' · '.dol_escape_htmltag($candidate['email']) : ''; ?></li><?php } ?></ul><?php } ?>
+          <?php if(cpo_can($user,'publicrequest_qualify')){ ?>
+          <form method="post" class="cpo-request-action-form">
+            <input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="qualify_existing"><input type="hidden" name="id" value="<?php echo (int)$selected['rowid']; ?>">
+            <label><span>Existing customer</span><select name="fk_soc" required><option value="">Select</option><?php foreach($companies as $companyId=>$companyName){ ?><option value="<?php echo (int)$companyId; ?>"><?php echo dol_escape_htmltag($companyName); ?></option><?php } ?></select></label>
+            <label><span>Existing contact</span><select name="fk_socpeople" required><option value="">Select</option><?php foreach($quoteContacts as $contact){ ?><option value="<?php echo (int)$contact['id']; ?>"><?php echo dol_escape_htmltag($contact['name'].' · '.$contact['email']); ?></option><?php } ?></select></label>
+            <button class="button">Link reviewed identity</button>
+          </form>
+          <form method="post" class="cpo-request-action-form">
+            <input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="create_reviewed_lead"><input type="hidden" name="id" value="<?php echo (int)$selected['rowid']; ?>">
+            <label class="is-grow"><span>New Prospect/Lead name</span><input name="lead_company_name" maxlength="190" value="<?php echo dol_escape_htmltag($selected['company_name']); ?>"></label>
+            <button class="button button-save"<?php echo $identityMatches['status'] !== 'none' ? ' disabled title="Resolve existing identity candidates first"' : ''; ?>>Create reviewed Lead</button>
+          </form>
+          <?php } ?>
+        <?php } else { ?>
+          <p>Qualified customer #<?php echo (int)$selected['fk_soc']; ?> · contact #<?php echo (int)$selected['fk_socpeople']; ?></p>
+          <?php if(cpo_can($user,'publicrequest_publish')){ ?><form method="post" class="cpo-request-action-form"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="set_customer_visibility"><input type="hidden" name="id" value="<?php echo (int)$selected['rowid']; ?>"><label><input type="checkbox" name="request_customer_visible" value="1"<?php echo !empty($selected['request_customer_visible'])?' checked':''; ?>> Show safe request in Customer Center</label><label><input type="checkbox" name="proposal_customer_visible" value="1"<?php echo !empty($selected['proposal_customer_visible'])?' checked':''; ?><?php echo !$quoteCanPublish?' disabled':''; ?>> Show approved quotation details</label><button class="button">Save visibility</button></form><?php } ?>
+        <?php } ?>
+      </article>
+      <?php } ?>
 
       <article class="cpo-request-block">
         <h3><span class="fas fa-clipboard-list" aria-hidden="true"></span><?php echo $langs->trans('RequestDetails'); ?></h3>

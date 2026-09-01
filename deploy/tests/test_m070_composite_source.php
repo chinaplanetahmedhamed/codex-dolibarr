@@ -19,13 +19,20 @@ $m070SecurityCorrections = array(
     'custom/chinaplanetcustomercenter/invoice.php' => '3276a410394ac693515cc82319e0c11ab60e625982e083d50c01ae000dbfdc0c',
     'custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php' => 'e6c837c299af4b018d85686b3d0bb37e0d0fccf5c4b4d0c53a0b8bf086113607',
 );
+$m071ApprovedSuccessors = array(
+    'custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php',
+    'custom/chinaplanetcustomercenter/lib/portal.lib.php',
+);
 $m061Exact = 0;
 $m061Corrected = 0;
+$m071Succeeded = 0;
 foreach (file($root.'/docs/REPORTS/M069_M061_FINAL_EFFECTIVE_RUNTIME.sha256', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: array() as $line) {
     m070Assert((bool) preg_match('/^([a-f0-9]{64})  ([^\\0]+)$/D', $line, $match), 'Invalid M061 hash row.');
     $file = $root.'/'.$match[2];
     m070Assert(is_file($file), 'M061 runtime source is absent: '.$match[2]);
-    if (isset($m070SecurityCorrections[$match[2]])) {
+    if (in_array($match[2], $m071ApprovedSuccessors, true)) {
+        $m071Succeeded++;
+    } elseif (isset($m070SecurityCorrections[$match[2]])) {
         m070Assert(hash_file('sha256', $file) === $m070SecurityCorrections[$match[2]], 'M070 customer-unit security correction changed: '.$match[2]);
         $m061Corrected++;
     } else {
@@ -33,7 +40,7 @@ foreach (file($root.'/docs/REPORTS/M069_M061_FINAL_EFFECTIVE_RUNTIME.sha256', FI
         $m061Exact++;
     }
 }
-m070Assert($m061Exact === 37 && $m061Corrected === 2, 'M061 overlay/correction count changed.');
+m070Assert($m061Exact === 35 && $m061Corrected === 2 && $m071Succeeded === 2, 'M061 overlay/correction/successor count changed.');
 
 foreach (array(
     'custom/chinaplanetcustomercenter/admin/acceptance_demo.php',
@@ -64,14 +71,10 @@ foreach (array(
     'custom/chinaplanetcustomercenter/css/activation.css',
     'custom/chinaplanetcustomercenter/css/quotation_requests.css',
     'custom/chinaplanetcustomercenter/quotation_download.php',
-    'custom/chinaplanetcustomercenter/quotation_requests.php',
     'custom/chinaplanetcustomercenter/reset_password.php',
     'custom/chinaplanetcustomercenter/sql/llx_cpcc_portal_invitation.sql',
     'custom/chinaplanetcustomercenter/sql/llx_cpcc_portal_invitation_attempt.sql',
-    'custom/chinaplanetoperations/class/PublicRequestLifecycleService.class.php',
     'custom/chinaplanetoperations/class/PublicRequestPublicationService.class.php',
-    'custom/chinaplanetoperations/sql/llx_cpo_public_request_event.sql',
-    'custom/chinaplanetoperations/sql/llx_cpo_public_request_line.sql',
     'custom/chinaplanetoperations/sql/llx_cpo_public_request_publication.sql',
     'deploy/migrations/m068_website_lead_quotation_portal_lifecycle.php',
     'deploy/tests/test_m068_lifecycle_runtime.php',
@@ -105,4 +108,4 @@ foreach (array(
     m070Assert(is_file($root.'/'.$manifest), 'M070 source manifest is absent: '.$manifest);
 }
 
-print "M070_COMPOSITE_SOURCE=PASS M061_RUNTIME=39 M061_EXACT=37 M070_SECURITY_CORRECTED=2 RESIDUE=ABSENT M068_CODE=ABSENT M062_ALEXANDRIA=PRESERVED PROJECT_SYNC=CPKANBAN\n";
+print "M070_COMPOSITE_SOURCE=PASS M061_RUNTIME=39 M061_EXACT=35 M070_SECURITY_CORRECTED=2 M071_SUCCESSORS=2 RESIDUE=ABSENT M068_FAILED_ONLY=ABSENT M062_ALEXANDRIA=PRESERVED PROJECT_SYNC=CPKANBAN\n";

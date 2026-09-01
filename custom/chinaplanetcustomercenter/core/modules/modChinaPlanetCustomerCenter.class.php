@@ -12,7 +12,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 98;
         $this->description = 'ChinaPlanet Customer Center';
-        $this->version = '2.4.0';
+        $this->version = '2.5.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'project';

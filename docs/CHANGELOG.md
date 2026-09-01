@@ -1,5 +1,12 @@
 # ChinaPlanetOS Change Log
 
+## 2026-09-01 — M071 local unified B2B quotation lifecycle
+
+- Froze and implemented `cpo.catalog-order.v2` across the public React/Node flow, canonical WordPress planner, Dolibarr intake/qualification/quotation services, and authenticated Customer Center projection.
+- Kept incomplete packing rows in the request while excluding them from CBM, weight, capacity, and 3D calculations; unknown packing and hidden prices remain `null`, and duplicate products remain distinct by request-scoped `lineId`.
+- Added staff-reviewed identity qualification, disabled-by-default permissions, audited publication, strict entity/customer ownership, additive schema source, identical cross-repository fixtures, multilingual RTL/LTR and mobile-responsive source contracts.
+- Local source and automated tests pass. Independent Security/QA, authenticated runtime, database, Staging, Production, email, and real business-record acceptance remain separate gates.
+
 ## 2026-08-31 — M070 local clean composite source reconstruction
 
 - Reconstructed the accepted Dolibarr custom runtime from current main/M062 plus the exact 39-file M061 Staging layer without merging the stale M061 or failed M068 branches wholesale.

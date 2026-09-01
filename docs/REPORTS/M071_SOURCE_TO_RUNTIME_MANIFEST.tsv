@@ -1,0 +1,48 @@
+repository	source_path	runtime_target	classification
+react	server/b2b.js	server/b2b.js	runtime_server_source
+react	server/http.js	server/http.js	runtime_server_source
+react	server/index.js	server/index.js	runtime_server_source
+react	src/index.css	compiled client asset	client_build_input
+react	src/lib/b2bPacking.js	compiled client asset	client_build_input
+react	src/lib/b2bSubmission.js	compiled client asset	client_build_input
+react	src/lib/countryCodes.js	compiled client asset	client_build_input
+react	src/components/CartDrawer.jsx	compiled client asset	client_build_input
+react	src/pages/B2BPage.jsx	compiled client asset	client_build_input
+react	server/b2b.test.js	-	local_test_only
+react	server/http.test.js	-	local_test_only
+react	server/cpo_catalog_order_v2.fixture.json	-	shared_contract_fixture
+react	server/cpo_catalog_order_v2.invalid.fixture.json	-	shared_invalid_contract_fixture
+react	src/lib/b2bPacking.test.js	-	local_test_only
+react	src/lib/b2bSubmission.test.js	-	local_test_only
+react	src/pages/PublicSiteIntegrity.test.js	-	local_test_only
+wordpress	b2b-container-loading-planner.php	wp-content/plugins/b2b-container-loading-planner/b2b-container-loading-planner.php	plugin_runtime
+wordpress	includes/class-b2bclp-rest.php	wp-content/plugins/b2b-container-loading-planner/includes/class-b2bclp-rest.php	plugin_runtime
+wordpress	README.md	-	operator_documentation
+wordpress	readme.txt	wp-content/plugins/b2b-container-loading-planner/readme.txt	plugin_metadata
+wordpress	tests/cpo_catalog_order_v2.fixture.json	-	shared_contract_fixture
+wordpress	tests/cpo_catalog_order_v2.invalid.fixture.json	-	shared_invalid_contract_fixture
+wordpress	tests/test-rest-contract.php	-	local_test_only
+dolibarr	custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php	custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php	dolibarr_runtime
+dolibarr	custom/chinaplanetcustomercenter/lib/portal.lib.php	custom/chinaplanetcustomercenter/lib/portal.lib.php	dolibarr_runtime
+dolibarr	custom/chinaplanetcustomercenter/quotation_requests.php	custom/chinaplanetcustomercenter/quotation_requests.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/api/class/api_chinaplanetoperations.class.php	custom/chinaplanetoperations/api/class/api_chinaplanetoperations.class.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/class/CatalogOrderV2Contract.class.php	custom/chinaplanetoperations/class/CatalogOrderV2Contract.class.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/class/PublicRequestLifecycleService.class.php	custom/chinaplanetoperations/class/PublicRequestLifecycleService.class.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/class/PublicRequestQuotationService.class.php	custom/chinaplanetoperations/class/PublicRequestQuotationService.class.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php	custom/chinaplanetoperations/class/PublicWebsiteRequestService.class.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php	custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/operations/public_requests.php	custom/chinaplanetoperations/operations/public_requests.php	dolibarr_runtime
+dolibarr	custom/chinaplanetoperations/sql/llx_cpo_public_request.sql	custom/chinaplanetoperations/sql/llx_cpo_public_request.sql	schema_baseline_source
+dolibarr	custom/chinaplanetoperations/sql/llx_cpo_public_request_event.sql	custom/chinaplanetoperations/sql/llx_cpo_public_request_event.sql	schema_baseline_source
+dolibarr	custom/chinaplanetoperations/sql/llx_cpo_public_request_line.sql	custom/chinaplanetoperations/sql/llx_cpo_public_request_line.sql	schema_baseline_source
+dolibarr	deploy/migrations/m071_catalog_order_v2.php	approved release support path	migration_source_not_executed
+dolibarr	deploy/tests/fixtures/cpo_catalog_order_v2.json	-	shared_contract_fixture
+dolibarr	deploy/tests/fixtures/cpo_catalog_order_v2.invalid.json	-	shared_invalid_contract_fixture
+dolibarr	deploy/tests/test_m070_composite_source.php	-	local_regression_test
+dolibarr	deploy/tests/test_m071_catalog_order_v2_source.php	-	local_test_only
+dolibarr	deploy/tests/test_m071_country_contract.php	-	local_test_only
+dolibarr	docs/CHANGELOG.md	-	governance_documentation
+dolibarr	docs/MISSIONS/M071_UNIFIED_B2B_QUOTATION_CUSTOMER_CENTER_LIFECYCLE.md	-	governance_documentation
+dolibarr	docs/REPORTS/M071_LOCAL_COMPLETION_REPORT.md	-	completion_documentation
+dolibarr	docs/REPORTS/M071_SOURCE_TO_RUNTIME_MANIFEST.tsv	-	traceability_documentation
+dolibarr	mobile/chinaplanet-customer-app/docs/PORTAL_PARITY.md	-	mobile_parity_documentation
