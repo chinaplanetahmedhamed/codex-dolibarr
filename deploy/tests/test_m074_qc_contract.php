@@ -50,6 +50,9 @@ m074(strpos($service,'QC source snapshot integrity check failed')!==false&&strpo
 $migration=file_get_contents($root.'/custom/chinaplanetoperations/class/QcMigration.class.php');
 m074(strpos($migration,'GET_LOCK')!==false&&strpos($migration,'CREATE TABLE IF NOT EXISTS')!==false&&strpos($migration,'schemaReady()')!==false,'M074 schema migration is locked idempotent and readiness-checked');
 m074(strpos($module,'$qcMigration->migrate()')!==false,'module initialization upgrades already-enabled installations with M074 schema');
+$schemaRunner=file_get_contents($root.'/deploy/migrations/m074_qc_schema.php');
+m074(strpos($schemaRunner,"M074_DEPLOY_CONTEXT")!==false&&strpos($schemaRunner,'m074-r02-backup-erp-root-only')!==false&&strpos($schemaRunner,'insert_permissions(1, null, 1)')!==false,'restricted staging schema runner requires root deployment context and registers only the filtered QC rights');
+m074(strpos($schemaRunner,"return (int) \$right[0] >= 500527 && (int) \$right[0] <= 500530")!==false&&strpos($schemaRunner,'RIGHTS_DEFAULT=DISABLED')!==false,'staging schema runner installs exactly four QC definitions disabled by default');
 
 $pwa=file_get_contents($root.'/custom/chinaplanetoperations/qc/qc-field.js');
 m074(strpos($pwa,"algorithm!=='PBKDF2-SHA-256'")!==false&&strpos($pwa,'iterations:310000')!==false&&strpos($pwa,"name:'AES-GCM'")!==false&&strpos($pwa,"get('meta','pin-verifier')")!==false&&strpos($pwa,"seal({identity,version:1},'pin-verifier')")!==false,'field PWA records versioned strong KDF metadata verifies the original PIN and uses AES-256-GCM');
