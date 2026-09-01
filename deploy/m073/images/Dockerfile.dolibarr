@@ -1,0 +1,14 @@
+FROM dolibarr/dolibarr:23.0.3@sha256:f7b61da9fc39a06135c41b8acbc3d1f69f831f055c2918136c257c44be0e7993
+
+USER root
+COPY --chown=www-data:www-data custom/ /var/www/html/custom/
+COPY --chown=root:root deploy/ /opt/chinaplanetos-support/deploy/
+RUN find /var/www/html/custom -type d -exec chmod 0755 {} + \
+    && find /var/www/html/custom -type f -exec chmod 0644 {} + \
+    && test -d /var/www/html/custom/chinaplanetcustomercenter \
+    && test -d /var/www/html/custom/chinaplanetlogistics \
+    && test -d /var/www/html/custom/cpkanban \
+    && ln -s ../chinaplanetlogistics /var/www/html/custom/chinaplanetcustomercenter/chinaplanetlogistics \
+    && ln -s ../cpkanban /var/www/html/custom/chinaplanetcustomercenter/cpkanban \
+    && find /opt/chinaplanetos-support -type d -exec chmod 0755 {} + \
+    && find /opt/chinaplanetos-support -type f -exec chmod 0444 {} +

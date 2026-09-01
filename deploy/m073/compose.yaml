@@ -1,0 +1,224 @@
+name: backup-erp-rebuild
+
+x-security-defaults: &security-defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  networks:
+    - rebuild_internal
+
+services:
+  dolibarr-db:
+    <<: *security-defaults
+    image: mariadb:10.6@sha256:4ba945cc3998b4443d6c6937d9890bb4cf642229f3d95377369645c567a59b91
+    container_name: backup-erp-rebuild-dolibarr-db
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-log-bin
+    environment:
+      MARIADB_DATABASE: cpo_rebuild_dolibarr
+      MARIADB_USER_FILE: /run/secrets/dolibarr_db_user
+      MARIADB_PASSWORD_FILE: /run/secrets/dolibarr_db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/dolibarr_db_root_password
+    secrets:
+      - dolibarr_db_user
+      - dolibarr_db_password
+      - dolibarr_db_root_password
+    volumes:
+      - dolibarr_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+    mem_limit: 640m
+
+  dolibarr:
+    <<: *security-defaults
+    build:
+      context: ./contexts/dolibarr
+      dockerfile: Dockerfile
+    image: chinaplanetos/backup-erp-rebuild-dolibarr:m072-r01
+    container_name: backup-erp-rebuild-dolibarr
+    depends_on:
+      dolibarr-db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      DOLI_INSTALL_AUTO: "1"
+      DOLI_INIT_DEMO: "0"
+      DOLI_PROD: "0"
+      DOLI_DB_HOST: dolibarr-db
+      DOLI_DB_NAME: cpo_rebuild_dolibarr
+      DOLI_DB_USER_FILE: /run/secrets/dolibarr_db_user
+      DOLI_DB_PASSWORD_FILE: /run/secrets/dolibarr_db_password
+      DOLI_ADMIN_LOGIN_FILE: /run/secrets/dolibarr_admin_login
+      DOLI_ADMIN_PASSWORD_FILE: /run/secrets/dolibarr_admin_password
+      DOLI_INSTANCE_UNIQUE_ID_FILE: /run/secrets/dolibarr_instance_id
+      DOLI_CRON: "0"
+      DOLI_URL_ROOT: http://127.0.0.1:28088
+    secrets:
+      - dolibarr_db_user
+      - dolibarr_db_password
+      - dolibarr_admin_login
+      - dolibarr_admin_password
+      - dolibarr_instance_id
+    volumes:
+      - dolibarr_documents:/var/www/documents
+    ports:
+      - 127.0.0.1:28088:80
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 24
+      start_period: 90s
+    mem_limit: 896m
+
+  wordpress-db:
+    <<: *security-defaults
+    image: mariadb:10.6@sha256:4ba945cc3998b4443d6c6937d9890bb4cf642229f3d95377369645c567a59b91
+    container_name: backup-erp-rebuild-wordpress-db
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-log-bin
+    environment:
+      MARIADB_DATABASE: cpo_rebuild_wordpress
+      MARIADB_USER_FILE: /run/secrets/wordpress_db_user
+      MARIADB_PASSWORD_FILE: /run/secrets/wordpress_db_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/wordpress_db_root_password
+    secrets:
+      - wordpress_db_user
+      - wordpress_db_password
+      - wordpress_db_root_password
+    volumes:
+      - wordpress_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+    mem_limit: 640m
+
+  wordpress:
+    <<: *security-defaults
+    build:
+      context: ./contexts/wordpress
+      dockerfile: Dockerfile
+    image: chinaplanetos/backup-erp-rebuild-wordpress:m072-r01
+    container_name: backup-erp-rebuild-wordpress
+    depends_on:
+      wordpress-db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: wordpress-db
+      WORDPRESS_DB_NAME: cpo_rebuild_wordpress
+      WORDPRESS_DB_USER_FILE: /run/secrets/wordpress_db_user
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/wordpress_db_password
+      WORDPRESS_CONFIG_EXTRA: |
+        define('DISABLE_WP_CRON', true);
+        define('AUTOMATIC_UPDATER_DISABLED', true);
+        define('WP_HTTP_BLOCK_EXTERNAL', true);
+        define('WP_ENVIRONMENT_TYPE', 'staging');
+    secrets:
+      - wordpress_db_user
+      - wordpress_db_password
+    volumes:
+      - wordpress_content:/var/www/html/wp-content
+    ports:
+      - 127.0.0.1:28089:80
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/wp-login.php >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 24
+      start_period: 90s
+    mem_limit: 640m
+
+  react:
+    <<: *security-defaults
+    build:
+      context: ./contexts/react
+      dockerfile: Dockerfile.m073
+    image: chinaplanetos/backup-erp-rebuild-react:m072-r01
+    container_name: backup-erp-rebuild-react
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      DEPLOY_SHA: 01c9d872ccdf5664cf470019194156b5503dc74b
+      RELEASE_ID: M072-R01
+      PUBLIC_SITE_ORIGIN: http://127.0.0.1:28180
+      SEO_ALLOW_INDEXING: "false"
+    volumes:
+      - react_data:/app/data
+    ports:
+      - 127.0.0.1:28180:8080
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 18
+      start_period: 45s
+    mem_limit: 512m
+
+  mailpit:
+    <<: *security-defaults
+    image: axllent/mailpit:v1.21.8@sha256:b68fac5c01d90c31cd2dcabed60bec3ca0c9680dadac87c527c6a43c85e5b814
+    container_name: backup-erp-rebuild-mailpit
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_MAX_MESSAGES: "1000"
+    volumes:
+      - mailpit_data:/data
+    ports:
+      - 127.0.0.1:28025:8025
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 256m
+
+networks:
+  rebuild_internal:
+    name: backup-erp-rebuild_internal
+    internal: true
+
+volumes:
+  dolibarr_db:
+    name: backup-erp-rebuild_dolibarr-db
+  dolibarr_documents:
+    name: backup-erp-rebuild_dolibarr-documents
+  wordpress_db:
+    name: backup-erp-rebuild_wordpress-db
+  wordpress_content:
+    name: backup-erp-rebuild_wordpress-content
+  react_data:
+    name: backup-erp-rebuild_react-data
+  mailpit_data:
+    name: backup-erp-rebuild_mailpit-data
+
+secrets:
+  dolibarr_db_user:
+    file: ./secrets/dolibarr_db_user
+  dolibarr_db_password:
+    file: ./secrets/dolibarr_db_password
+  dolibarr_db_root_password:
+    file: ./secrets/dolibarr_db_root_password
+  dolibarr_admin_login:
+    file: ./secrets/dolibarr_admin_login
+  dolibarr_admin_password:
+    file: ./secrets/dolibarr_admin_password
+  dolibarr_instance_id:
+    file: ./secrets/dolibarr_instance_id
+  wordpress_db_user:
+    file: ./secrets/wordpress_db_user
+  wordpress_db_password:
+    file: ./secrets/wordpress_db_password
+  wordpress_db_root_password:
+    file: ./secrets/wordpress_db_root_password
