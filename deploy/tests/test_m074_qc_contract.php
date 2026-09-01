@@ -49,9 +49,11 @@ m074(strpos($pwa,'support.mergeQueuedPackage')!==false&&strpos($pwa,"queuedValue
 m074(substr_count($pwa,'apiResponse(await fetch')>=2&&strpos($pwaSupport,'classifySessionResponse')!==false&&strpos($pwaSupport,"status === 403 && !isJson")!==false,'JSON and binary chunk requests share definitive and ambiguous ERP session handling');
 
 $portal=file_get_contents($root.'/custom/chinaplanetcustomercenter/lib/operation_reports.lib.php');
+$customerDocuments=file_get_contents($root.'/custom/chinaplanetcustomercenter/lib/customer_documents.lib.php');
 $media=file_get_contents($root.'/custom/chinaplanetcustomercenter/qc_media.php');
 $reportList=file_get_contents($root.'/custom/chinaplanetcustomercenter/operation_reports.php');
 m074(strpos($portal,'cpcc_qc_customer_projection')!==false&&strpos($portal,'publication_sha256')!==false,'customer reads use an integrity-checked publication allowlist');
+m074(strpos($customerDocuments,"o.service_type<>'quality_control'")!==false,'generic web document lists exclude QC before and after publication');
 m074(strpos($media,'cpcc_qc_publication_by_uuid')!==false&&strpos($media,'cpcc_qc_private_file')!==false,'customer media rechecks current publication ownership and file integrity');
 m074(strpos($portal,'Accept-Ranges: bytes')!==false&&strpos($portal,'Content-Range: bytes')!==false,'customer media supports validated byte-range streaming');
 m074(strpos($reportList,"'pending_corrective_action'=>'بانتظار الإجراء التصحيحي'")!==false&&strpos($reportList,'strtoupper(str_replace')===false,'customer QC list localizes final results in Arabic and English');

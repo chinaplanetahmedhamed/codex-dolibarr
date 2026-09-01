@@ -27,6 +27,7 @@ $m074ApprovedSuccessors = array(
     'custom/chinaplanetcustomercenter/board.php',
     'custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php',
     'custom/chinaplanetcustomercenter/css/operations.css',
+    'custom/chinaplanetcustomercenter/lib/customer_documents.lib.php',
     'custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php',
     'custom/chinaplanetcustomercenter/operation_report.php',
     'custom/chinaplanetcustomercenter/project.php',
@@ -51,7 +52,7 @@ foreach (file($root.'/docs/REPORTS/M069_M061_FINAL_EFFECTIVE_RUNTIME.sha256', FI
         $m061Exact++;
     }
 }
-m070Assert($m061Exact === 30 && $m061Corrected === 1 && $m071Succeeded === 2 && $m074Succeeded === 6, 'M061 overlay/correction/successor count changed.');
+m070Assert($m061Exact === 29 && $m061Corrected === 1 && $m071Succeeded === 2 && $m074Succeeded === 7, 'M061 overlay/correction/successor count changed.');
 
 foreach (array(
     'custom/chinaplanetcustomercenter/admin/acceptance_demo.php',
@@ -119,4 +120,4 @@ foreach (array(
     m070Assert(is_file($root.'/'.$manifest), 'M070 source manifest is absent: '.$manifest);
 }
 
-print "M070_COMPOSITE_SOURCE=PASS M061_RUNTIME=39 M061_EXACT=30 M070_SECURITY_CORRECTED=1 M071_SUCCESSORS=2 M074_SUCCESSORS=6 RESIDUE=ABSENT M068_FAILED_ONLY=ABSENT M062_ALEXANDRIA=PRESERVED PROJECT_SYNC=CPKANBAN\n";
+print "M070_COMPOSITE_SOURCE=PASS M061_RUNTIME=39 M061_EXACT=29 M070_SECURITY_CORRECTED=1 M071_SUCCESSORS=2 M074_SUCCESSORS=7 RESIDUE=ABSENT M068_FAILED_ONLY=ABSENT M062_ALEXANDRIA=PRESERVED PROJECT_SYNC=CPKANBAN\n";

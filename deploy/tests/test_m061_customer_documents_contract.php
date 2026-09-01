@@ -14,6 +14,7 @@ $mobile = file_get_contents(__DIR__.'/../../custom/chinaplanetcustomercenter/lib
 
 m061DocumentsAssert(strpos($library, "a.customer_visible=1") !== false && strpos($library, "a.review_status IN ('approved','final_received')") !== false, 'project assets require explicit customer visibility and approval');
 m061DocumentsAssert(strpos($library, "d.visibility='customer_after_approval'") !== false && strpos($library, "d.review_status IN ('approved','final_received')") !== false, 'operations documents require explicit customer visibility and approval');
+m061DocumentsAssert(strpos($library, "o.service_type<>'quality_control'") !== false, 'generic web document lists always exclude mutable QC operation documents');
 m061DocumentsAssert(strpos($library, 'fk_soc=') !== false && strpos($library, 'entity=') !== false, 'document sources are customer and entity scoped');
 m061DocumentsAssert(strpos($library, "preg_match('~(^|/)\\.\\.(/|$)~'") !== false, 'core publication rejects traversal');
 m061DocumentsAssert(strpos($library, 'hash_equals') !== false && strpos($library, 'file_sha256') !== false, 'download revalidates immutable file fingerprint');

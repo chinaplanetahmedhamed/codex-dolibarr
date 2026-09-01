@@ -196,10 +196,13 @@ Turn factory quality inspections into a controlled ChinaPlanetOS workflow. Staff
 | Customer Portal + UI/UX | Independent implementation review | PASS_WITH_CONDITIONS | 2026-09-02 | No source blocker; authenticated browser/database, Safari/iPhone, Android, 390px RTL/LTR, PDF/QR and cross-customer acceptance remain required |
 | Security | Independent implementation review | PASS | 2026-09-02 | No remaining source finding after shared definitive/ambiguous session handling was applied to binary chunks; focused security tests pass |
 | QA | Independent operations/QA review | PASS_WITH_CONDITIONS | 2026-09-02 | Source gates pass; database migration/readiness, authenticated end-to-end and real offline/upload/video device tests remain unavailable locally |
-| Architect | Agent 007 | IMPLEMENTED_LOCAL_PENDING_RUNTIME_ACCEPTANCE | 2026-09-02 | Full local implementation and source verification complete; no staging or production action authorized or performed |
+| Architect | Agent 007 | IMPLEMENTED_LOCAL_COMPOSITE_PENDING_RUNTIME_ACCEPTANCE | 2026-09-02 | Corrected composite implementation and source verification complete; no staging or production action authorized or performed |
 | Ahmed | Ahmed Hamed | APPROVED | 2026-09-01 | Requested full implementation and added manual points |
+| Composite Security | Independent composite re-review | PASS | 2026-09-02 | Permission ranges, publication/hash/ownership gates, generic QC download exclusion and staff-original authorization remain fail closed after M073 integration |
+| Composite Operations/QA | Independent composite re-review | PASS_WITH_CONDITIONS | 2026-09-02 | Correct ancestry and local regressions verified; runtime/database/device acceptance and a new checksum-pinned artifact remain required |
+| Composite Customer Portal + UI/UX | Independent composite re-review | PASS | 2026-09-02 | Initial P1 metadata-card exposure was corrected; shared web document aggregation now excludes QC and M061/M070/M074 regressions pass |
 
-The verdicts above cover the preserved M074 implementation. The corrected composite integration is subject to a renewed read-only Security, Customer Portal/UI and Operations/QA review before release packaging.
+The corrected composite integration remains local. Release packaging requires a new checksum-pinned artifact and independent artifact review; staging and production each require their own explicit approval.
 
 ## Completion report contract
 

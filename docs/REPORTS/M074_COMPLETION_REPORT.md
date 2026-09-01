@@ -7,7 +7,7 @@
 - **Branch:** `codex/m074-qc-field-report-composite`
 - **Composite baseline:** M073 `1bc01214b13ace38d2cec98c7abd1d3b22355328`
 - **Preserved M074 implementation commits:** `b77538bbb3974f9b24d60d2d44c30939350683ed`, `16eef9ec0535179f2d3c4dabe620faf4f20dc2cb`
-- **Composite integration commit:** `COMPOSITE_MERGE_COMMIT_PENDING`
+- **Composite integration commit:** `a24f0d8ab4cf95277a5986594cc99e3dfe189002`
 - **Environment:** clean local worktree only
 - **Database/schema/runtime changes:** none executed
 - **External AI:** disabled; no contract or customer data was sent externally
@@ -81,21 +81,20 @@ Passed local source gates:
 - JavaScript syntax check for the staff PWA.
 - M074 behavioral/contract test, including manual/snapshot/revision, supersession, asset hashes, upload restart/quota, bounded media-process timeout, AQL zero tolerance, offline finding evidence, session handling and customer projection/Range checks.
 - Customer operation-report security regression.
-- M017 mobile data, exact 20-route and security regressions.
+- M017 mobile data, exact 21-route, OpenAPI byte-hash and security regressions.
 - M032 admin/customer responsive regression.
 - M070 composite preservation and customer-unit projection regressions.
 - M071 catalog-order-v2 source and country-contract regressions.
 - M072 release-controller/state and M073 isolated-rebuild contract/failure regressions.
-- Customer mobile app lint and TypeScript typecheck.
+- Customer mobile app lint and TypeScript typecheck, run from the composite checkout with the preserved M074 dependency tree mounted temporarily and removed after verification.
 - Customer mobile app: 14 test files / 45 tests, including bounded/final Range, SIDX mapping, video token retry and download safety.
 - `git diff --check`.
 
-The M070 preservation test was advanced narrowly for the six Customer Center files intentionally superseded by M074. It continues to verify the remaining M061 hashes, M070 security corrections, M071 successors, excluded residue, compatibility symlinks and CP Kanban ownership; the M074 contract protects the new QC behavior on those successor surfaces.
+The M070 preservation test was advanced narrowly for the seven Customer Center files intentionally superseded or security-hardened by M074. It continues to verify the remaining M061 hashes, M070 security corrections, M071 successors, excluded residue, compatibility symlinks and CP Kanban ownership; the M061 document and M074 contracts protect the new behavior on those successor surfaces.
 
 Known local limitations are not M074 source failures:
 
 - Database-backed Operations/workflow tests cannot connect to the unavailable local database at `127.0.0.1:8889`.
-- The older M017 OpenAPI byte-hash contract is stale while the OpenAPI file is unchanged from `origin/main`; the exact 20-route and security tests pass.
 - Existing dependency audit findings remain baseline-only; no forced dependency upgrade was made in M074.
 
 ## Independent review
@@ -103,6 +102,12 @@ Known local limitations are not M074 source failures:
 - **Customer Portal/UI/UX:** `PASS_WITH_CONDITIONS`; no source blocker. Requires authenticated database/browser, Safari/iPhone and Android playback/seek/token-refresh, exact failure navigation, 390px RTL/LTR, PDF/QR and cross-customer acceptance before release.
 - **Operations/QA:** `PASS_WITH_CONDITIONS`; no source blocker after queued-package rehydration and superseded-upload locking corrections. Database migration/readiness, authenticated end-to-end and real-device offline/upload/video acceptance remain required.
 - **Security:** `PASS`; no remaining source finding after binary chunks were routed through the shared definitive/ambiguous authentication handler.
+
+Composite integration re-review initially found one release-blocking metadata exposure: the M073 unified web document aggregator could list mutable generic QC document cards even though their download was denied. M074 now excludes `quality_control` from that shared aggregator for both unified and project document views before and after publication, and dedicated M061/M074 regressions protect the boundary. The independent composite verdicts are recorded in the Mission review table.
+
+- **Composite Security:** `PASS`; the corrected permission ranges, customer publication/hash/ownership gates, generic QC exclusion and staff-original authorization remain fail closed.
+- **Composite Customer Portal/UI/UX:** `PASS`; the initial P1 is closed, non-QC document behavior remains intact, and no source-level portal/mobile blocker remains.
+- **Composite Operations/QA:** `PASS_WITH_CONDITIONS`; ancestry and regressions pass, while database, authenticated browser, offline/device and new-artifact acceptance remain required.
 
 ## Changed-file manifest
 
@@ -142,6 +147,7 @@ Known local limitations are not M074 source failures:
 - `custom/chinaplanetcustomercenter/board.php`
 - `custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php`
 - `custom/chinaplanetcustomercenter/css/operations.css`
+- `custom/chinaplanetcustomercenter/lib/customer_documents.lib.php`
 - `custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php`
 - `custom/chinaplanetcustomercenter/lib/operation_reports.lib.php`
 - `custom/chinaplanetcustomercenter/operation_document.php`
@@ -173,6 +179,8 @@ Known local limitations are not M074 source failures:
 
 ### Mission and tests
 
+- `deploy/tests/test_m061_customer_documents_contract.php`
+- `deploy/tests/test_m070_composite_source.php`
 - `deploy/tests/test_m074_qc_contract.php`
 - `deploy/tests/test_m074_qc_pwa.js`
 - `docs/MISSIONS/M074_FIELD_QC_REPORT.md`
