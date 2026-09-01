@@ -3,12 +3,15 @@
 ## Control record
 
 - **Mission/release:** M074 / M074-R01
-- **Status:** `CHECKSUM_PINNED_LOCAL / INDEPENDENT_ARTIFACT_REVIEW_PENDING / NOT_DEPLOYED`
+- **Status:** `CHECKSUM_PINNED_LOCAL / INDEPENDENT_ARTIFACT_REVIEW_PASS / NOT_DEPLOYED`
 - **Source branch:** `codex/m074-qc-field-report-composite`
 - **Pinned Dolibarr/mobile source commit:** `7d1cdcd2f6c1343001449f35a95f4901bf3e0fb7`
 - **React source commit:** `01c9d872ccdf5664cf470019194156b5503dc74b`
 - **WordPress source commit:** `ae273e2d15fa89111336ef74f746a86cc9ac57bd`
 - **Artifact directory:** `deploy/releases/m074-r01`
+- **Release-preparation commit:** `7d1cdcd2f6c1343001449f35a95f4901bf3e0fb7`
+- **Manifest/evidence freeze commit:** `6685e4dd34e9cac26c7f1d4f862cca4b15bbbc7b`
+- **Binary artifact commit:** `37979e5ae0d2cd548c80a2eb13bd92966189a1be`
 - **Staging/production:** not accessed or changed
 
 ## Artifact identity
@@ -35,8 +38,12 @@ The bundle is deliberately marked `UNBOUND_REQUIRES_INDEPENDENT_REVIEW_AND_STAGI
 
 ## Release boundary
 
-No upload, helper installation, `compare`, `preflight`, schema migration, staging apply or production action is included in this preparation. After independent artifact review, the next possible gate is a separately approved staging upload plus remote checksum verification and read-only `compare`/`preflight`. Apply remains a later explicit approval.
+No VPS/staging upload, helper installation, `compare`, `preflight`, schema migration, staging apply or production action is included in this preparation. The next possible gate is a separately approved staging upload plus remote checksum verification and read-only `compare`/`preflight`. Apply remains a later explicit approval.
 
 ## Independent review
 
-Pending review of the frozen bytes, manifest completeness, source ancestry, M074-only publication boundary, M072 reproducibility and absence of credentials/business data.
+- **Security: PASS.** All pins and archive members verify; no credentials, private keys, live configuration, database dumps, customer uploads or business records were found. Archive paths/types/metadata are safe and customer QC publication gates remain present in the frozen bytes.
+- **Operations/QA: PASS.** All 42 M074 runtime/schema files are byte-identical to the pinned source commit, component manifests and member counts match, two independent rebuilds reproduce every frozen byte, M072 remains backward reproducible, and the tarballs are ordinary Git-tracked blobs.
+- **Customer Portal/release scope: PASS.** Customer Center and mobile QC surfaces plus the generic-document QC exclusion are complete; M071/M073 lifecycle surfaces remain present; React is byte-identical to M072-R01 and has no M074-specific change.
+
+These verdicts validate the local frozen artifact only. They do not authorize or prove staging/runtime acceptance.
