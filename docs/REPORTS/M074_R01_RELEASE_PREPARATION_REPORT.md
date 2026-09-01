@@ -40,6 +40,8 @@ The bundle is deliberately marked `UNBOUND_REQUIRES_INDEPENDENT_REVIEW_AND_STAGI
 
 No VPS/staging upload, helper installation, `compare`, `preflight`, schema migration, staging apply or production action is included in this preparation. The next possible gate is a separately approved staging upload plus remote checksum verification and read-only `compare`/`preflight`. Apply remains a later explicit approval.
 
+The required M074-specific read-only helper was subsequently prepared locally and is documented in `docs/REPORTS/M074_STAGING_PREFLIGHT_PREPARATION.md`. That preparation does not change the frozen M074-R01 artifact or authorize an upload, root installation, staging apply or production action.
+
 ## Independent review
 
 - **Security: PASS.** All pins and archive members verify; no credentials, private keys, live configuration, database dumps, customer uploads or business records were found. Archive paths/types/metadata are safe and customer QC publication gates remain present in the frozen bytes.
