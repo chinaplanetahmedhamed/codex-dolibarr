@@ -1,0 +1,6 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-release-controller compare
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-release-controller preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-release-controller apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-release-controller verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-release-controller status
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-release-controller rollback

@@ -39,7 +39,7 @@ if($is_external) cpcc_portal_navigation($user, 'orders'); else cpcc_admin_shell_
   <header class="cpcc-page-head"><div><span class="cpcc-eyebrow"><?php echo dol_escape_htmltag($order->ref); ?></span><h1>تفاصيل الطلب / Order Details</h1><p><?php echo dol_escape_htmltag($orderStatusLabel); ?></p></div></header>
   <?php if ($canOpenCoreOrder) { ?><p><a class="button" target="_blank" rel="noopener" href="<?php echo dol_escape_htmltag(dol_buildpath('/commande/card.php',1).'?id='.(int)$order->id); ?>">Vision Advanced / فتح السجل المتقدم ↗</a></p><?php } ?>
   <section class="cpcc-financial-cards">
-    <div class="cpcc-card"><span>التاريخ</span><strong><?php echo dol_escape_htmltag(dol_print_date($order->date,'day')); ?></strong><small>Order date</small></div>
+    <div class="cpcc-card"><span>التاريخ</span><strong><?php echo dol_escape_htmltag(cpcc_portal_date($order->date)); ?></strong><small>Order date</small></div>
     <div class="cpcc-card"><span>الإجمالي</span><strong><?php echo cpcc_portal_money($order->total_ttc); ?></strong><small>Total incl. tax</small></div>
     <div class="cpcc-card"><span>الحالة / Status</span><strong><?php echo dol_escape_htmltag($orderStatusLabel); ?></strong><small>Current order status / حالة الطلب الحالية</small></div>
   </section>

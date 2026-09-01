@@ -1,5 +1,33 @@
 # ChinaPlanetOS Change Log
 
+## 2026-09-01 — M071 local unified B2B quotation lifecycle
+
+- Froze and implemented `cpo.catalog-order.v2` across the public React/Node flow, canonical WordPress planner, Dolibarr intake/qualification/quotation services, and authenticated Customer Center projection.
+- Kept incomplete packing rows in the request while excluding them from CBM, weight, capacity, and 3D calculations; unknown packing and hidden prices remain `null`, and duplicate products remain distinct by request-scoped `lineId`.
+- Added staff-reviewed identity qualification, disabled-by-default permissions, audited publication, strict entity/customer ownership, additive schema source, identical cross-repository fixtures, multilingual RTL/LTR and mobile-responsive source contracts.
+- Local source and automated tests pass. Independent Security/QA, authenticated runtime, database, Staging, Production, email, and real business-record acceptance remain separate gates.
+
+## 2026-08-31 — M070 local clean composite source reconstruction
+
+- Reconstructed the accepted Dolibarr custom runtime from current main/M062 plus the exact 39-file M061 Staging layer without merging the stale M061 or failed M068 branches wholesale.
+- Preserved CP Kanban project-sync ownership, canonical module symlinks, the accepted Logistics upload boundary, M062 Alexandria Old Port/TMT separation, and the source-only Mobile parity layer.
+- Reconstructed the accepted React Staging commit on top of the Production/SEO head while preserving the permanent China Guide changes outside the clean worktree; the canonical WordPress planner remains version 1.9.4 with no delta.
+- Added deterministic source/runtime manifests and local composite regression coverage. No migration, helper, database, configuration, runtime, Staging, Production, email, business-record, upload, push, or deployment action occurred.
+- M071 quotation-lifecycle work, M072 release/version controls, and M073 isolated runtime acceptance remain separate approval gates.
+
+## 2026-08-31 — M069 clean composite baseline evidence census
+
+- Pinned the current canonical Dolibarr, React and WordPress plugin remote heads without merging or modifying protected permanent worktrees.
+- Recorded the current React Production/Staging SHAs and restricted `backup-erp` M060, M061, M062 and M068 release states without running compare, preflight or any mutating command.
+- Reconstructed the exact final 39-file M061 staging overlay and proved that only one path matches current Dolibarr main while M068 overlaps only two M061 runtime paths.
+- Classified M068 code as automatically rolled back with additive schema retained, and recorded the current React/WordPress `cpo.catalog-order.v2` incompatibilities.
+- Completed the bounded M069-C02 Production/Staging custom-runtime census: 315 Production files and 325 Staging files, with exact metadata-only manifests and verified SHA-256 pins. All Production hashes and 321 Staging hashes are traceable to canonical Git blobs.
+- Proved that deployed Customer Center contains 54 expanded duplicate files where canonical Git owns symlink compatibility paths; these duplicates must not become new canonical source.
+- Scanned 179 code-only Staging archives under M069-C03; none contained any of the four untraced target paths. The metadata-only provenance result is checksum-pinned and the temporary server output was removed.
+- Ahmed's M069-C04 documentation-only decision classified the four exact Staging path/hash pairs as unmanaged acceptance residue, excluded them from the composite baseline and future artifacts, required M073 to prove them absent, and left current Staging untouched.
+- Froze the four authoritative evidence files in `M069_EVIDENCE_FREEZE.sha256`; M069 is `ARCHITECT_ACCEPTED` and `COMPLETED`. M070 remains a separate approval gate.
+- Application code, database, schema, configuration, staging, Production, email and business records were unchanged.
+
 ## 2026-08-28 — M062-R04 separate Alexandria terminal trends
 
 - Replaced the intentionally empty grouped Alexandria history contract with independently queried Old Port, TMT and optional terminal-not-specified series; no terminal prices are averaged together.

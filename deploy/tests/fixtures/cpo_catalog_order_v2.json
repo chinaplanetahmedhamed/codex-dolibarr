@@ -1,0 +1,103 @@
+{
+  "request_type": "catalog_order",
+  "schema_version": 2,
+  "idempotency_key": "m071-fixture-request-0001",
+  "locale": "ar",
+  "contact": {
+    "name": "M071 Test Contact",
+    "company": "M071 Test Company",
+    "phone": "+201001234567",
+    "email": "m071@example.invalid",
+    "country_code": "EG"
+  },
+  "consent": {
+    "privacy": true,
+    "terms_version": "2026-08-29",
+    "accepted_at": "2026-09-01T00:00:00.000Z"
+  },
+  "details": {
+    "message": "Synthetic contract fixture; never submit to a live service.",
+    "currency": "USD",
+    "source_reference": "woocommerce",
+    "lines": [
+      {
+        "lineId": "fixture-line-complete-001",
+        "source": "woocommerce",
+        "productId": 1003,
+        "variationId": 2003,
+        "sku": "WP-E1003",
+        "name": "Synthetic pump",
+        "optionLabel": "560 PCS/CTN",
+        "image": null,
+        "cartons": 2,
+        "unitsPerCarton": 560,
+        "cbmPerCarton": 0.08,
+        "grossWeightKg": 18.5,
+        "packingComplete": true,
+        "packingSource": "woocommerce_variation",
+        "calculationReady": true,
+        "missingFields": [],
+        "price": {
+          "visibility": "public",
+          "mode": "fixed",
+          "unit": "piece",
+          "currency": "USD",
+          "unitPrice": 2.5,
+          "minUnitPrice": null,
+          "maxUnitPrice": null
+        }
+      },
+      {
+        "lineId": "fixture-line-incomplete-002",
+        "source": "woocommerce",
+        "productId": 1003,
+        "variationId": 2004,
+        "sku": "WP-E1003",
+        "name": "Synthetic pump",
+        "optionLabel": "Packing review",
+        "image": null,
+        "cartons": 3,
+        "unitsPerCarton": null,
+        "cbmPerCarton": null,
+        "grossWeightKg": null,
+        "packingComplete": false,
+        "packingSource": "woocommerce_variation",
+        "calculationReady": false,
+        "missingFields": [
+          "unitsPerCarton",
+          "cbmPerCarton",
+          "grossWeightKg",
+          "packingComplete"
+        ],
+        "price": {
+          "visibility": "request_quote",
+          "mode": "request",
+          "unit": "piece",
+          "currency": null,
+          "unitPrice": null,
+          "minUnitPrice": null,
+          "maxUnitPrice": null
+        }
+      }
+    ],
+    "packing_plan": {
+      "container": "40hq",
+      "calculationAvailable": true,
+      "requestCartons": 5,
+      "calculatedCartons": 2,
+      "placements": [],
+      "excludedItems": [
+        {
+          "lineId": "fixture-line-incomplete-002",
+          "reason": "packing_data_missing",
+          "missingFields": [
+            "unitsPerCarton",
+            "cbmPerCarton",
+            "grossWeightKg",
+            "packingComplete"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -7,6 +7,7 @@ require_once $root.'/custom/chinaplanetcustomercenter/lib/operation_reports.lib.
 
 $module=file_get_contents($root.'/custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php');
 foreach(array('qc_plan','qc_execute','qc_review','qc_publish')as$right)m074(strpos($module,"'right'=>'".$right."'")!==false||strpos($module,"'perms'=>'".$right."'")!==false||strpos($module,"'label'=>'".$right."'")!==false||strpos($module,$right)!==false,'module declares '.$right.' permission');
+$rightIds=array(500525=>'publicrequest_qualify',500526=>'publicrequest_publish',500527=>'qc_plan',500528=>'qc_execute',500529=>'qc_review',500530=>'qc_publish');foreach($rightIds as$id=>$code)m074(substr_count($module,'array('.$id.',')===1&&strpos($module,"array(".$id.", '")!==false&&strpos($module,"'".$code."'")!==false,'permission '.$id.' remains uniquely assigned to '.$code);
 $service=file_get_contents($root.'/custom/chinaplanetoperations/class/QcService.class.php');
 m074(strpos($service,'Manual QC checkpoint added')!==false&&strpos($service,"array('draft')")!==false,'manual checkpoints are first-class draft plan records');
 m074(strpos($service,'qc_source_snapshot')!==false&&strpos($service,'qc_plan_state')!==false,'QC source snapshot and lifecycle are separate immutable sections');

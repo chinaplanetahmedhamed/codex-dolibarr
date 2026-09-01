@@ -5,8 +5,8 @@ import { Balance } from '@/src/api/types';
 describe('currency and mobile layout invariants', () => {
   it('keeps balances as independent currency rows without a synthetic grand total', () => {
     const balances: Balance[] = [
-      { currency: 'USD', debit: '100.00', credit: '20.00', balance: '80.00', updated_at: '2026-07-19T00:00:00Z' },
-      { currency: 'CNY', debit: '1000.00', credit: '0.00', balance: '1000.00', updated_at: '2026-07-19T00:00:00Z' },
+      { currency: 'USD', total_invoiced: '500.00', paid_or_funded: '120.00', outstanding: '380.00', debit: '100.00', credit: '20.00', balance: '80.00', updated_at: '2026-07-19T00:00:00Z' },
+      { currency: 'CNY', total_invoiced: '7000.00', paid_or_funded: '1000.00', outstanding: '6000.00', debit: '1000.00', credit: '0.00', balance: '1000.00', updated_at: '2026-07-19T00:00:00Z' },
     ];
     const renderedRows = balances.map((balance) => `${balance.balance} ${balance.currency}`);
     expect(renderedRows).toEqual(['80.00 USD', '1000.00 CNY']);

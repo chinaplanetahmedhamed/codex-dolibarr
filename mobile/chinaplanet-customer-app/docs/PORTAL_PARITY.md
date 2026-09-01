@@ -12,6 +12,27 @@
 - Status: `ADMIN_LOCAL_SOURCE_IMPLEMENTED`, `PORTAL_LOCAL_SOURCE_IMPLEMENTED`, `MOBILE_LOCAL_TESTED`, `RUNTIME_NOT_VERIFIED`, `NO_STAGING_OR_PRODUCTION`.
 - Follow-up: run schema migration and full synthetic customer A/B, offline airplane-mode, real camera/video, Range seek, PDF/QR and AR/EN device acceptance on separately approved staging.
 
+## 2026-09-01 — M071 unified B2B quotation request lifecycle
+
+- Source change: `cpo.catalog-order.v2` stores one immutable multi-line catalog request with request-unique `lineId` values, nullable packing values, explicit readiness, exact missing fields, and customer-safe price visibility. Identity qualification and Prospect/Lead creation require a staff action; no account, password, email, order, or confirmed quotation is automatic.
+- Admin ERP: `LOCAL_SOURCE_IMPLEMENTED`; staff can review identity candidates, link the exact existing customer/contact or create a reviewed Prospect/Lead only when no match exists, then create the standard draft quotation under the qualified owner.
+- Customer Portal: `LOCAL_SOURCE_IMPLEMENTED`; authenticated external customers can see only explicitly published requests belonging to their session-derived entity and third party. Approved quotation references appear only after separate staff publication. Arabic, English, French and RTL/LTR navigation are included.
+- Mobile App: `PENDING`; no native route, DTO, repository, or screen was added. Future parity must use opaque customer-safe identifiers and the Customer Center API, not this web page or an internal database row ID.
+- API/data dependency: public discovery remains `React -> secure Node API -> Dolibarr`; WordPress/WooCommerce owns catalog, packing and B2BKing price policy. Unknown packing and hidden prices remain `null`; incomplete lines remain in the request but never enter CBM, weight, capacity or 3D calculations.
+- Design/terminology impact: public submissions are quotation review requests, not confirmed orders, carrier bookings, or final quotations. Customer Center uses the same meaning in Arabic, English and French.
+- Phone verification: deterministic source/UI tests cover 360px and 390px rules locally; authenticated browser and native-device runtime acceptance remain M073 gates.
+- Status: `ADMIN_LOCAL_SOURCE`, `PORTAL_LOCAL_SOURCE`, `MOBILE_PENDING`, `NO_RUNTIME`, `NO_EMAIL`, `NO_BUSINESS_RECORD`, `NO_STAGING_OR_PRODUCTION`.
+
+## 2026-08-31 — M070 clean composite source reconstruction
+
+- Source change: the final M061 customer-facing Mobile source was reconstructed file-by-file over the accepted current-main/M062 baseline in a fresh M070 worktree. The invoice line unit projection was then corrected to return a customer-safe short label, label, code, or `null` instead of `fk_unit` as an internal database identifier. No runtime, API server, database, configuration, or business record was changed.
+- Admin ERP: `SOURCE_RECONSTRUCTED_TEST_PASS`; 37 exact M061 runtime paths, two pinned M070 customer-unit corrections, and M062 shipping/Alexandria source pass their focused local contracts.
+- Customer Portal: `SOURCE_RECONSTRUCTED_TEST_PASS`; financial, invoice, document, project, shipment, and staff-only email boundaries are preserved, and invoice lines no longer display internal unit IDs. No authenticated runtime acceptance was claimed.
+- Mobile App: `SOURCE_RECONSTRUCTED_TEST_PASS`; typecheck, Expo lint, and all 12 test files / 39 tests pass. The historical Staging Mobile API HTTP 500 remains an explicit M073 blocker.
+- API/data dependency: Mobile consumes the Customer Center API and never selects `entity` or `fk_soc`; no M071 quotation contract or failed M068 invitation/publication source was imported.
+- Design/language impact: no new design was introduced. Existing Arabic/English RTL/LTR and phone-source contracts are preserved; real-device and full AR/EN presentation acceptance remain for M073.
+- Status: `LOCAL_SOURCE_ONLY`, `ADMIN_SOURCE_PASS`, `PORTAL_SOURCE_PASS`, `MOBILE_SOURCE_PASS`, `RUNTIME_NOT_TESTED`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
+
 ## 2026-08-28 — M062 Alexandria public-search grouping
 
 - Source change: the public China Planet website shows one `ALEXANDRIA` POD option, while its public-safe Dolibarr gateway returns separate generic, Old Port and TMT price cards and exact terminal-bound booking tokens.
@@ -24,6 +45,40 @@
 - Phone verification: deterministic UI/library tests and production build pass; real 390px and desktop browser acceptance remains pending a separately approved React staging deployment.
 - Status: `PUBLIC_REACT_LOCAL_VERIFIED`, `ADMIN_DATA_MODEL_UNCHANGED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `STAGING_NOT_DEPLOYED`, `PRODUCTION_NOT_ACCESSED`.
 
+## 2026-08-25 — M061-UI01 section email action contrast
+
+- Source change: staff-only financial, invoice and project email actions use an explicit high-contrast button presentation that cannot be overridden by the Admin ERP shell's generic link color.
+- Admin ERP: `STAGING_DEPLOYED_VISUAL_PASS`; authenticated financial, invoice and project pages passed at 1280x720 and 390x844 with high-contrast buttons, at least 44px height, no page-wide overflow and no console warning/error.
+- Customer Portal: `UNCHANGED`; external customers do not receive this staff-only action and no customer data, calculation, document or navigation contract changed.
+- Mobile App/API: `NOT_APPLICABLE_UNCHANGED`; no route, DTO, repository, screen, permission, schema or API behavior changed.
+- Email behavior: unchanged; recipient, preview, confirmation, send and Agenda boundaries remain server-owned. No real email was sent.
+- Release status: `DEPLOYED_VERIFIED` on canonical `backup-erp`; compare, preflight, code backup, apply, verify, status and authenticated responsive visual acceptance passed. Mailpit remained empty, no real email or database/business-data change occurred, and production was not accessed. The separate M061-R02-C03 Mobile API acceptance blocker remains open.
+
+## 2026-08-19 — M061 customer portal trust and operational consistency
+
+- Source change: replaces customer project Kanban semantics with the same eight evidence-backed operational lifecycle in web and Mobile API, normalizes shipment facts forward, and exposes invoice due/overdue plus safe data-quality empty states.
+- Admin ERP: `SOURCE_IMPLEMENTED_RUNTIME_PENDING`; staff Kanban remains internal, shipment saves reject impossible actual dates and prevent regression, and automatic corrections create audit history without implicit email.
+- Customer Portal: `SOURCE_IMPLEMENTED_RUNTIME_PENDING`; project percentage/status/current/next/timeline are operational, no-shipment projects are explicit, invoice dates/status are truthful, and dates are `YYYY-MM-DD`.
+- Mobile App: `CONTRACT_COMPATIBLE_TESTED`; native source shape is unchanged and consumes the revised API meaning. All 39 tests, typecheck and lint pass. Device/browser runtime acceptance is pending.
+- API/data dependency: Mobile API keeps the same 20 routes, opaque IDs and response structure. `progress_percent`, project status and timeline now come from Dolibarr operational evidence rather than CP Kanban; active entity and authenticated customer ownership remain server-derived.
+- Design/terminology impact: shared Arabic/English lifecycle labels and completion truth; no new navigation, action center, payment, PDF or WhatsApp surface.
+- Phone verification: source responsive regressions pass, but authenticated Arabic/English 390px and 1280px staging acceptance plus forged-scope/download checks remain required.
+- Status: `ADMIN_SOURCE_IMPLEMENTED`, `PORTAL_SOURCE_IMPLEMENTED`, `MOBILE_CONTRACT_TESTED`, `AUTHENTICATED_RUNTIME_PENDING`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: accept M061 on staging first, then create the checksum-pinned M061-R01 wrapper and separately approve historical repair and production release.
+## 2026-08-24 — M061 customer financial clarity, linked documents, and section emails
+
+- M061-C01 email presentation correction: Admin ERP `LOCAL_QA_PASS_AWAITING_AHMED_ACCEPTANCE`; the staff preview and outbound section messages now use one escaped, branded HTML template with a plain-text Agenda copy. Customer Portal data/scope is unchanged, and Mobile App/API is `NOT_APPLICABLE` because no customer DTO, route, repository, screen, or staff action changed. Desktop/390px/360px admin preview passed without visible `\\n`, page-wide overflow, or console errors; no email was sent.
+
+- Source change: adds a shared per-currency invoice summary (`total invoiced → paid/funded → outstanding`), discoverable invoice details and line/payment views, an explicit public payment-note extra field, a unified explicitly published document read model with project context, and staff-only customer section email preview/send boundaries.
+- Admin ERP: `IMPLEMENTED_LOCAL_SOURCE`; authorized staff receive a non-default `email_write` permission, core-document publication/revocation controls, and server-owned customer email previews for financial, invoice, project, and shipment contexts. No real email was sent and no Agenda delivery was claimed in local source testing.
+- Customer Portal: `IMPLEMENTED_LOCAL_SOURCE`; the financial statement and invoice list use one shared calculation, invoice details remain customer/entity scoped, payment notes come only from `cpcc_public_note`, and Linked Documents includes approved project assets, approved operations attachments, published shipment files, commercial documents, and explicitly registered Dolibarr files. Project filtering and verified project/no-project labels are included.
+- Mobile App: `IMPLEMENTED_LOCAL_SOURCE`; account cards mirror total invoiced, paid/funded, outstanding and wallet balance per currency; invoice cards open a scoped detail route with totals, lines, linked payments and public payment notes; the documents screen consumes the unified approved document dataset and shows verified project context. Legacy entry redirects are retained.
+- API/data dependency: `/api/mobile/v1/service-invoices/{opaqueId}` is added to the approved contract; `/account/balances`, `/account/transactions`, and `/documents` receive additive customer-safe fields. Every lookup derives `entity` and `fk_soc` from the authenticated session/token, uses opaque IDs on mobile, and returns 404 for foreign records.
+- Design/terminology impact: the primary order is consistently `Total invoiced / إجمالي الفواتير`, `Paid or funded / المدفوع أو الممول`, then `Outstanding / المتبقي`. Wallet/funding remains a separate secondary concept. Documents always show their verified project or `No related project / غير مرتبط بمشروع`.
+- Phone verification: `PENDING_LOCAL_RUNTIME`; responsive source rules and native layouts were implemented, but authenticated 390px/360px web checks and Android/iPhone runtime acceptance have not yet been completed.
+- Status: `ADMIN_SOURCE_IMPLEMENTED`, `PORTAL_SOURCE_IMPLEMENTED`, `MOBILE_SOURCE_IMPLEMENTED`, `RUNTIME_PENDING`, `NO_REAL_EMAIL_SENT`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: deploy the unified M061-R02 package to canonical `backup-erp` through the separately approved release gates, then run authenticated web/API isolation and responsive acceptance without sending a real email.
+
 ## 2026-08-15 — M060 internal task card collaboration
 
 - Source change: extends the staff-only Dolibarr task card with comments, authorized mentions, internal notifications, checklists, reusable labels, private drag/drop/paste assets, image lightbox and safe board counters.
@@ -35,6 +90,18 @@
 - Phone verification: authenticated admin web passed at 390×844 and 360px with one board column, full-screen task dialogs, 44px controls and no page-wide overflow. Native mobile acceptance is not applicable.
 - Status: `ADMIN_LOCAL_RUNTIME_VERIFIED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `NO_STAGING_OR_PRODUCTION`.
 - Follow-up: complete the separately gated authenticated AR/ZH worker/supervisor and fault/concurrency matrix before any release; never expose internal collaboration to portal/mobile surfaces.
+
+## 2026-08-14 — M057 internal worker Kanban architecture
+
+- Source change: `DOCUMENTATION_ONLY`; ADR-020 accepts Operations `cpo_task` as the sole Phase 1 internal worker-task truth and defines a future task-scoped internal asset model.
+- Admin ERP: `DESIGN_ACCEPTED_NOT_IMPLEMENTED`; the future board is restricted to internal workers, explicitly granted team supervisors, and active-entity administrators.
+- Customer portal: `NOT_APPLICABLE`; no page, permission, count, task, activity, image, file, status, or action is projected to external customers.
+- Mobile app: `NOT_APPLICABLE`; `/api/mobile/v1` and the native app are unchanged and receive no internal task projection.
+- API/data dependency: none changed. Standard Project Tasks and customer/project CP Kanban remain separate; no writable mirror or automatic status synchronization is authorized.
+- Design/terminology impact: future admin-only Arabic/English/Chinese Kanban, RTL/LTR, desktop/390px/360px, keyboard/touch, loading/empty/error/denial/upload/stale states; no portal/mobile design change.
+- Phone verification: `NOT_PERFORMED_NOT_APPLICABLE`; M057 changed documentation only and no runtime UI exists to verify.
+- Status: `ADMIN_DESIGN_ACCEPTED`, `PORTAL_NOT_APPLICABLE`, `MOBILE_NOT_APPLICABLE`, `NO_RUNTIME_CHANGE`.
+- Follow-up: corrected M058 specialist and QA reviews passed and its status is `AWAITING_AHMED_APPROVAL`; no local implementation starts before Ahmed's separate approval, and staging/production remain forbidden.
 
 ## 2026-08-14 — M058 secure internal work Kanban Phase 1
 

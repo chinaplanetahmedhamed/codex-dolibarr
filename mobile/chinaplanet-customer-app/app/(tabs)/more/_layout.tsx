@@ -15,6 +15,7 @@ export default function MoreLayout() {
       <Stack.Screen name="orders" options={{ ...childHeader, title: 'الطلبات / Orders' }} />
       <Stack.Screen name="documents" options={{ ...childHeader, title: 'المستندات / Documents' }} />
       <Stack.Screen name="service-invoices" options={{ ...childHeader, title: 'فواتير الخدمات / Invoices' }} />
+      <Stack.Screen name="service-invoice/[id]" options={{ ...childHeader, title: 'تفاصيل الفاتورة / Invoice Details' }} />
       <Stack.Screen name="commercial-documents" options={{ ...childHeader, title: 'المستندات التجارية / Commercial Documents' }} />
       <Stack.Screen name="commercial-document/[id]" options={{ ...childHeader, title: 'المستند التجاري / Commercial Document' }} />
       <Stack.Screen name="reports" options={{ ...childHeader, title: 'تقارير الجودة والخدمة / Reports' }} />

@@ -247,3 +247,4 @@ CPLShipmentFileDelete=حذف وأرشفة / Delete / Archive
 CPLShipmentFileArchiveConfirm=أؤكد إزالة الملف من الاستخدام النشط ونقله إلى الأرشيف الخاص.
 CPLShipmentFileArchiveAction=إزالة وأرشفة
 CPLShipmentFileArchived=تمت إزالة ملف الشحنة من الاستخدام النشط وأرشفته بأمان.
+CPLShipmentFactsNormalized=تم تصحيح حالة الشحنة أو عدد الحاويات تلقائيًا من الحقائق التشغيلية قبل الحفظ.

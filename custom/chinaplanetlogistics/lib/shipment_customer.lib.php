@@ -100,7 +100,7 @@ function cpl_public_source_label($langs, $type)
 
 function cpl_event_types()
 {
-    return array('baseline', 'status_changed', 'eta_set', 'eta_changed', 'atd_set', 'atd_changed', 'atd_cleared', 'ata_set', 'ata_changed', 'ata_cleared', 'transshipment');
+    return array('baseline', 'status_changed', 'data_correction', 'eta_set', 'eta_changed', 'atd_set', 'atd_changed', 'atd_cleared', 'ata_set', 'ata_changed', 'ata_cleared', 'transshipment');
 }
 
 function cpl_milestones()
@@ -370,7 +370,7 @@ function cpl_public_datetime($value, $format = 'dayhour')
 {
     if (empty($value)) return '';
     $timestamp = is_numeric($value) ? (int) $value : strtotime((string) $value);
-    return $timestamp > 0 ? dol_print_date($timestamp, $format) : '';
+    return $timestamp > 0 ? date($format === 'day' ? 'Y-m-d' : 'Y-m-d H:i', $timestamp) : '';
 }
 
 function cpl_timeline_rows($shipment, $events)

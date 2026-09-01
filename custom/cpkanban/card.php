@@ -112,6 +112,14 @@ if ($is_external && !($action == 'create' && $canwrite)) {
         $db->close();
         exit;
     }
+    // M061 keeps CP Kanban staff-only. Preserve old owned bookmarks without
+    // exposing internal progress: send the customer to the operational page.
+    $customerProjectUrl = !empty($object->fk_project)
+        ? dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int) $object->fk_project
+        : dol_buildpath('/chinaplanetcustomercenter/projects.php', 1);
+    header('Location: '.$customerProjectUrl, true, 302);
+    $db->close();
+    exit;
 }
 
 if ($is_modal) {

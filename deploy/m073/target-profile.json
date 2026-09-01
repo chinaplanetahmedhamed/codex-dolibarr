@@ -1,0 +1,15 @@
+{
+  "canonicalStagingTouched": false,
+  "componentRelease": "M072-R01",
+  "environment": "backup-erp-rebuild",
+  "externalWrites": "disabled-by-internal-network",
+  "hostnameBinding": null,
+  "mobileRuntime": "source-artifact-only",
+  "outboundEmail": "captured-internal-mailpit-no-send-test",
+  "productionData": "absent",
+  "productionTouched": false,
+  "releaseId": "M073-R01",
+  "releaseLedger": "/var/lib/chinaplanetos-backup-erp-rebuild/release-ledger.json",
+  "runtimeRoot": "/opt/chinaplanetos/backup-erp-rebuild",
+  "schemaVersion": 1
+}

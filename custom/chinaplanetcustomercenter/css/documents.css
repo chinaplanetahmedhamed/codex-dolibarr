@@ -17,6 +17,7 @@
 .cpcc-documents-search{display:flex;justify-content:flex-end;gap:.55rem;flex-wrap:wrap;margin:0 0 10px}
 .cpcc-documents-search .flat{min-width:min(260px,100%)}
 .cpcc-documents-page .div-table-responsive-no-min{clear:both}
+.cpcc-unified-document-filters{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr)) minmax(220px,2fr) auto;gap:.65rem;margin:0 0 1rem;padding:1rem;border:1px solid #d8e5ea;border-radius:14px;background:#f7fafb}.cpcc-unified-document-filters select,.cpcc-unified-document-filters input,.cpcc-unified-document-filters button{box-sizing:border-box;width:100%;min-width:0;min-height:44px}.cpcc-core-publication{margin:0 0 1rem;border:1px solid #c8dce4;border-radius:14px;background:#fff}.cpcc-core-publication summary{cursor:pointer;padding:1rem;color:#173e56;font-weight:800}.cpcc-core-publication form{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:.75rem;padding:0 1rem 1rem}.cpcc-core-publication form>*{box-sizing:border-box;min-width:0;min-height:44px}.cpcc-core-publication form p{grid-column:1/-1;min-height:0;margin:0;color:#647b87;font-size:.8rem}.cpcc-unified-document-grid .cpcc-document-card{display:flex;flex-direction:column;gap:.5rem}.cpcc-unified-document-grid .cpcc-document-card>.button{box-sizing:border-box;width:100%;margin-top:.35rem;text-align:center}.cpcc-unified-document-grid .cpcc-document-card>form,.cpcc-unified-document-grid .cpcc-document-card>form button{box-sizing:border-box;width:100%;margin:0}
 
 /*
  * Customer shipment files are content-heavy and do not fit a fixed table.
@@ -50,6 +51,8 @@
  .cpcc-document-count{align-self:flex-start}
  .cpcc-commercial-documents .cpcc-document-grid{grid-template-columns:1fr}
  .cpcc-commercial-documents .cpcc-document-card{min-height:0}
+ .cpcc-unified-document-filters,.cpcc-core-publication form{grid-template-columns:1fr}
+ .cpcc-core-publication form p{grid-column:1}
  .cpcc-documents-search{float:none!important;display:grid;grid-template-columns:1fr;width:100%;margin:0 0 .85rem}
  .cpcc-documents-search .flat,.cpcc-documents-search .button{box-sizing:border-box;width:100%;max-width:none;margin:0}
  .cpcc-documents-page .div-table-responsive-no-min{overflow:visible}

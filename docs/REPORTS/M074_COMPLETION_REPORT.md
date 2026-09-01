@@ -3,14 +3,23 @@
 ## Control record
 
 - **Mission:** M074
-- **Result:** `IMPLEMENTED_LOCAL / SOURCE_GATES_PASS / PENDING_RUNTIME_AND_DEVICE_ACCEPTANCE`
-- **Branch:** `codex/m074-qc-field-report`
-- **Baseline:** `057af0f205f819c685869b3ee6aa1aea31ea549e`
-- **Implementation commit:** `b77538bbb3974f9b24d60d2d44c30939350683ed`
+- **Result:** `IMPLEMENTED_LOCAL_COMPOSITE / SOURCE_GATES_PASS / PENDING_RUNTIME_AND_DEVICE_ACCEPTANCE`
+- **Branch:** `codex/m074-qc-field-report-composite`
+- **Composite baseline:** M073 `1bc01214b13ace38d2cec98c7abd1d3b22355328`
+- **Preserved M074 implementation commits:** `b77538bbb3974f9b24d60d2d44c30939350683ed`, `16eef9ec0535179f2d3c4dabe620faf4f20dc2cb`
+- **Composite integration commit:** `COMPOSITE_MERGE_COMMIT_PENDING`
 - **Environment:** clean local worktree only
 - **Database/schema/runtime changes:** none executed
 - **External AI:** disabled; no contract or customer data was sent externally
 - **Staging/production:** not accessed or changed
+
+## Lineage correction
+
+The first M074 implementation was locally correct in isolation but was based on cached `origin/main` (`057af0f`) instead of the accepted M069-M073 sequence. A direct release from that branch would therefore remove later accepted Customer Center, quotation-lifecycle and release-system work.
+
+The old branch is retained unchanged for audit and is explicitly non-releasable. The corrected branch merges the full M073 head into M074, preserves the six overlapping Customer Center/mobile surfaces deliberately, and remaps the QC rights after discovering that M071 already owns `500525` and `500526`. The M074 contract now asserts that all six M071/M074 right IDs are uniquely assigned.
+
+The M072-R01 and M073-R01 archives and checksum pins remain valid only as historical evidence for their original missions. They do not contain M074 and must not be reused for a staging deployment. M074 requires a new independently reviewed, checksum-pinned artifact after this composite source is accepted.
 
 ## Delivered scope
 
@@ -35,10 +44,10 @@ Four collision-checked rights are additive and default-disabled:
 
 | ID | Code | Purpose |
 |---:|---|---|
-| 500525 | `qc_plan` | Prepare and freeze QC plans |
-| 500526 | `qc_execute` | Execute the assigned field inspection |
-| 500527 | `qc_review` | Review results and evidence |
-| 500528 | `qc_publish` | Publish immutable customer reports |
+| 500527 | `qc_plan` | Prepare and freeze QC plans |
+| 500528 | `qc_execute` | Execute the assigned field inspection |
+| 500529 | `qc_review` | Review results and evidence |
+| 500530 | `qc_publish` | Publish immutable customer reports |
 
 Optional configuration is fail-closed:
 
@@ -74,9 +83,14 @@ Passed local source gates:
 - Customer operation-report security regression.
 - M017 mobile data, exact 20-route and security regressions.
 - M032 admin/customer responsive regression.
+- M070 composite preservation and customer-unit projection regressions.
+- M071 catalog-order-v2 source and country-contract regressions.
+- M072 release-controller/state and M073 isolated-rebuild contract/failure regressions.
 - Customer mobile app lint and TypeScript typecheck.
 - Customer mobile app: 14 test files / 45 tests, including bounded/final Range, SIDX mapping, video token retry and download safety.
 - `git diff --check`.
+
+The M070 preservation test was advanced narrowly for the six Customer Center files intentionally superseded by M074. It continues to verify the remaining M061 hashes, M070 security corrections, M071 successors, excluded residue, compatibility symlinks and CP Kanban ownership; the M074 contract protects the new QC behavior on those successor surfaces.
 
 Known local limitations are not M074 source failures:
 
@@ -165,6 +179,8 @@ Known local limitations are not M074 source failures:
 - `docs/REPORTS/M074_COMPLETION_REPORT.md`
 
 The public React website has no M074 source change.
+
+The numerous M069-M073 paths present in the composite merge are inherited lineage, not newly authored M074 scope. They are intentionally excluded from the M074 changed-file manifest above and remain attributable to their original mission commits.
 
 ## Rollback and release gates
 

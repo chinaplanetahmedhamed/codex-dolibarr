@@ -4,11 +4,11 @@
 
 - **Mission ID:** M074
 - **Type:** IMPLEMENTATION
-- **Status:** IMPLEMENTED_LOCAL_PENDING_RUNTIME_ACCEPTANCE
+- **Status:** IMPLEMENTED_LOCAL_COMPOSITE_PENDING_RUNTIME_ACCEPTANCE
 - **Architect owner:** Agent 007
 - **Implementation owner:** Agent 007
 - **Required reviewers:** Internal Operations, Customer Portal, UI/UX, Security, QA, Architect
-- **Dependencies:** Existing `chinaplanetoperations`, Customer Center operational reports, and customer mobile API
+- **Dependencies:** Accepted M069 -> M070 -> M071 -> M072 -> M073 composite lineage, existing `chinaplanetoperations`, Customer Center operational reports, and customer mobile API
 - **Target environment:** Local development only
 - **Production:** Forbidden
 - **Ahmed approval:** Approved in the 2026-09-01 implementation request, including manual QC points
@@ -24,6 +24,13 @@ Turn factory quality inspections into a controlled ChinaPlanetOS workflow. Staff
 - **Verified source:** Customer Center and the customer mobile API already enforce `entity`, `fk_soc`, `customer_visible`, document visibility, approval and current-version filters.
 - **Verified gap:** QC is currently flat operation data plus generic documents. It has no requirement-by-requirement model, immutable publication, checkpoint evidence, inspector PWA, offline synchronization, or inline report media.
 - **Unknown runtime:** Local HTTP runtime at `127.0.0.1:8088` was unavailable on 2026-09-01. Module enablement and deployed table state must be verified before runtime/schema acceptance.
+
+## Composite-lineage correction
+
+- The first local M074 implementation commits (`b77538b`, `16eef9e`) were created directly from cached `origin/main` (`057af0f`). They remain preserved as implementation/audit evidence, but they are not a releasable branch because deploying them alone would omit the accepted M069-M073 composite work.
+- The release-eligible local source is reconstructed on `codex/m074-qc-field-report-composite` by merging the complete M073 head `1bc01214b13ace38d2cec98c7abd1d3b22355328` into the preserved M074 implementation and resolving only the overlapping Customer Center, mobile-contract and module-permission surfaces.
+- M071 already owns right IDs `500525` and `500526`. M074 therefore owns the next collision-free default-disabled range, `500527` through `500530`.
+- The frozen M072-R01 and M073-R01 artifacts predate M074. They are historical evidence only and must not be used to deploy M074. A new checksum-pinned release artifact and independent release review are required before any staging action.
 
 ## Scope
 
@@ -191,6 +198,8 @@ Turn factory quality inspections into a controlled ChinaPlanetOS workflow. Staff
 | QA | Independent operations/QA review | PASS_WITH_CONDITIONS | 2026-09-02 | Source gates pass; database migration/readiness, authenticated end-to-end and real offline/upload/video device tests remain unavailable locally |
 | Architect | Agent 007 | IMPLEMENTED_LOCAL_PENDING_RUNTIME_ACCEPTANCE | 2026-09-02 | Full local implementation and source verification complete; no staging or production action authorized or performed |
 | Ahmed | Ahmed Hamed | APPROVED | 2026-09-01 | Requested full implementation and added manual points |
+
+The verdicts above cover the preserved M074 implementation. The corrected composite integration is subject to a renewed read-only Security, Customer Portal/UI and Operations/QA review before release packaging.
 
 ## Completion report contract
 

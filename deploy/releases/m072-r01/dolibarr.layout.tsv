@@ -1,0 +1,3 @@
+runtime_path	entry_type	link_target	source_sha256
+custom/chinaplanetcustomercenter/chinaplanetlogistics	symlink	../chinaplanetlogistics	ff849783043d111acc12817d02817c0216551747e03701622006c7d92ff5cbf8
+custom/chinaplanetcustomercenter/cpkanban	symlink	../cpkanban	f2f54b296d42ddc86eac8a070d938983640f12be21b22f8c54374aacb692307a

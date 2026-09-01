@@ -91,12 +91,14 @@ if (is_string($apiBase) && $apiBase !== '' && is_string($credentialFile) && is_f
 		$ordersA = m017_http_call('GET', rtrim($apiBase, '/').'/orders', null, $accessA);
 		$balancesA = m017_http_call('GET', rtrim($apiBase, '/').'/account/balances', null, $accessA);
 		$transactionsA = m017_http_call('GET', rtrim($apiBase, '/').'/account/transactions', null, $accessA);
-		$invoicesA = m017_http_call('GET', rtrim($apiBase, '/').'/service-invoices', null, $accessA);
+			$invoicesA = m017_http_call('GET', rtrim($apiBase, '/').'/service-invoices', null, $accessA);
+			$invoiceDetailId = !empty($invoicesA['json']['data'][0]['id']) ? $invoicesA['json']['data'][0]['id'] : '';
+			$invoiceDetailA = m017_http_call('GET', rtrim($apiBase, '/').'/service-invoices/'.rawurlencode($invoiceDetailId), null, $accessA);
 		$commercialDetailA = m017_http_call('GET', rtrim($apiBase, '/').'/commercial-documents/'.rawurlencode($foreignCommercialId), null, $accessA);
 		$reportDetailA = m017_http_call('GET', rtrim($apiBase, '/').'/reports/'.rawurlencode($foreignReportId), null, $accessA);
 		$reportDocumentId = !empty($reportDetailA['json']['data']['documents'][0]['id']) ? $reportDetailA['json']['data']['documents'][0]['id'] : '';
 		$reportContentA = m017_http_call('GET', rtrim($apiBase, '/').'/reports/'.rawurlencode($foreignReportId).'/documents/'.rawurlencode($reportDocumentId).'/content', null, $accessA);
-		foreach (array('dashboard'=>$dashboardA,'project detail'=>$projectDetailA,'shipment detail'=>$shipmentDetailA,'orders'=>$ordersA,'balances'=>$balancesA,'transactions'=>$transactionsA,'service invoices'=>$invoicesA,'commercial detail'=>$commercialDetailA,'report detail'=>$reportDetailA,'report content'=>$reportContentA) as $routeName => $routeResponse) {
+			foreach (array('dashboard'=>$dashboardA,'project detail'=>$projectDetailA,'shipment detail'=>$shipmentDetailA,'orders'=>$ordersA,'balances'=>$balancesA,'transactions'=>$transactionsA,'service invoices'=>$invoicesA,'invoice detail'=>$invoiceDetailA,'commercial detail'=>$commercialDetailA,'report detail'=>$reportDetailA,'report content'=>$reportContentA) as $routeName => $routeResponse) {
 			m017_route_assert($routeResponse['status'] === 200, 'Owned HTTP route is reachable: '.$routeName.' (actual '.$routeResponse['status'].')');
 		}
 
@@ -118,7 +120,7 @@ if (is_string($apiBase) && $apiBase !== '' && is_string($credentialFile) && is_f
 		foreach (array('customer'=>$cursorCustomerB,'entity'=>$cursorEntityC,'resource'=>$cursorResource,'filter'=>$cursorFilter,'limit'=>$cursorLimit) as $binding => $cursorResponse) m017_route_assert($cursorResponse['status'] === 404 && $cursorResponse['json']['error']['code'] === 'not_found', 'Opaque cursor rejects different '.$binding.' binding');
 		$foreignRead = m017_http_call('GET', rtrim($apiBase, '/').'/projects/'.rawurlencode($foreignProjectId), null, $accessB);
 		m017_route_assert($loginB['status'] === 200 && $foreignRead['status'] === 404 && isset($foreignRead['json']['error']['code']) && $foreignRead['json']['error']['code'] === 'not_found', 'Valid foreign opaque IDs are non-disclosing over HTTP');
-		foreach (array('shipments/'.$foreignShipmentId,'commercial-documents/'.$foreignCommercialId,'reports/'.$foreignReportId) as $foreignPath) {
+			foreach (array('shipments/'.$foreignShipmentId,'service-invoices/'.$invoiceDetailId,'commercial-documents/'.$foreignCommercialId,'reports/'.$foreignReportId) as $foreignPath) {
 			$foreignResponse = m017_http_call('GET', rtrim($apiBase, '/').'/'.$foreignPath, null, $accessB);
 			m017_route_assert($foreignResponse['status'] === 404 && $foreignResponse['json']['error']['code'] === 'not_found', 'Foreign detail is non-disclosing: '.$foreignPath);
 		}
@@ -177,10 +179,10 @@ if (is_string($apiBase) && $apiBase !== '' && is_string($credentialFile) && is_f
 		$logoutA = m017_http_call('POST', rtrim($apiBase, '/').'/auth/logout/revoke', null, $accessA); $afterLogout = m017_http_call('GET', rtrim($apiBase, '/').'/me', null, $accessA);
 		m017_route_assert($logoutA['status'] === 204 && $logoutA['body'] === '' && $afterLogout['status'] === 401, 'Logout returns 204 and invalidates the device family');
 		$httpRouteStatuses = array(
-			$loginA['status'],$refreshB['status'],$logoutA['status'],$meA['status'],$dashboardA['status'],$projectsA['status'],$projectDetailA['status'],$shipmentsA['status'],$shipmentDetailA['status'],$ordersA['status'],$balancesA['status'],$transactionsA['status'],$invoicesA['status'],$documentsA['status'],$contentB['status'],$commercialA['status'],$commercialDetailA['status'],$reportsA['status'],$reportDetailA['status'],$reportContentA['status'],
-		);
-		m017_route_assert(count($httpRouteStatuses) === 20 && !array_diff($httpRouteStatuses, array(200,204)), 'All 20 frozen routes are exercised successfully over local HTTP');
+				$loginA['status'],$refreshB['status'],$logoutA['status'],$meA['status'],$dashboardA['status'],$projectsA['status'],$projectDetailA['status'],$shipmentsA['status'],$shipmentDetailA['status'],$ordersA['status'],$balancesA['status'],$transactionsA['status'],$invoicesA['status'],$invoiceDetailA['status'],$documentsA['status'],$contentB['status'],$commercialA['status'],$commercialDetailA['status'],$reportsA['status'],$reportDetailA['status'],$reportContentA['status'],
+			);
+			m017_route_assert(count($httpRouteStatuses) === 21 && !array_diff($httpRouteStatuses, array(200,204)), 'All 21 approved routes are exercised successfully over local HTTP');
 	}
 }
 if ($failures) { fwrite(STDERR, "M017_ROUTE=FAIL\n- ".implode("\n- ", $failures)."\n"); exit(1); }
-echo "M017_ROUTE=PASS ROUTES=".count($actual).($apiBase ? ' HTTP_ROUTES=20 HTTP_INTEGRATION=PASS' : '')."\n";
+echo "M061_ROUTE=PASS ROUTES=".count($actual).($apiBase ? ' HTTP_ROUTES=21 HTTP_INTEGRATION=PASS' : '')."\n";
