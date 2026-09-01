@@ -6,6 +6,7 @@
 - **Result:** `IMPLEMENTED_LOCAL / SOURCE_GATES_PASS / PENDING_RUNTIME_AND_DEVICE_ACCEPTANCE`
 - **Branch:** `codex/m074-qc-field-report`
 - **Baseline:** `057af0f205f819c685869b3ee6aa1aea31ea549e`
+- **Implementation commit:** `b77538bbb3974f9b24d60d2d44c30939350683ed`
 - **Environment:** clean local worktree only
 - **Database/schema/runtime changes:** none executed
 - **External AI:** disabled; no contract or customer data was sent externally
