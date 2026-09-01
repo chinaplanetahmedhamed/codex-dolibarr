@@ -1,13 +1,13 @@
 <?php
 
-if (PHP_SAPI !== 'cli' || $argc !== 2 || !in_array($argv[1], array('check', 'apply'), true)) {
+if (PHP_SAPI !== 'cli' || $argc !== 2 || !in_array($argv[1], array('identity', 'check', 'apply'), true)) {
     fwrite(STDERR, "M074_SCHEMA=FAIL REASON=INVALID_COMMAND\n");
     exit(64);
 }
 
 if ($argv[1] === 'apply') {
     $effectiveUid = function_exists('posix_geteuid') ? posix_geteuid() : -1;
-    if ($effectiveUid !== 0 || getenv('M074_DEPLOY_CONTEXT') !== 'm074-r02-backup-erp-root-only') {
+    if ($effectiveUid !== 0 || getenv('M074_DEPLOY_CONTEXT') !== 'm074-r03-backup-erp-root-only') {
         fwrite(STDERR, "M074_SCHEMA=FAIL REASON=DEPLOYMENT_CONTEXT_REQUIRED\n");
         exit(66);
     }
@@ -55,11 +55,17 @@ function m074ModuleEnabled($db, $entity)
 
 function m074RightsReady($db)
 {
-    foreach (QcMigration::rightCodes() as $rightId => $rightCode) {
-        $sql = 'SELECT COUNT(*) count_rows FROM '.MAIN_DB_PREFIX.'rights_def WHERE id='.(int) $rightId." AND module='chinaplanetoperations' AND perms='".$db->escape($rightCode)."' AND bydefault=0";
-        if (m074SchemaCount($db, $sql) !== 1) return false;
-    }
-    return true;
+    $migration = new QcMigration($db);
+    return $migration->rightsReady();
+}
+
+function m074DatabaseIdentity($db)
+{
+    $res = $db->query("SELECT LOWER(SHA2(CONCAT(DATABASE(),CHAR(31),@@hostname,CHAR(31),@@port),256)) database_identity");
+    $row = $res ? $db->fetch_object($res) : null;
+    $identity = $row ? strtolower((string) $row->database_identity) : '';
+    if (!preg_match('/^[0-9a-f]{64}$/', $identity)) m074SchemaFail('DATABASE_IDENTITY_UNAVAILABLE');
+    return $identity;
 }
 
 function m074LoadAdministrator($db, $entity)
@@ -75,11 +81,16 @@ function m074LoadAdministrator($db, $entity)
 
 global $db, $conf;
 $entity = (int) $conf->entity;
-if ($entity <= 0 || !m074ModuleEnabled($db, $entity)) m074SchemaFail('MODULE_NOT_ENABLED');
+if ($entity <= 0) m074SchemaFail('ENTITY_INVALID');
+if ($argv[1] === 'identity') {
+    echo 'M074_SCHEMA_DATABASE_IDENTITY='.m074DatabaseIdentity($db)."\n";
+    exit(0);
+}
+if (!m074ModuleEnabled($db, $entity)) m074SchemaFail('MODULE_NOT_ENABLED');
 
 $migration = new QcMigration($db);
 foreach (QcMigration::rightCodes() as $rightId => $rightCode) {
-    if ($migration->rightCollision($rightId)) m074SchemaFail('RIGHT_COLLISION_'.$rightId);
+    if ($migration->rightDefinitionCollision($rightId, $rightCode)) m074SchemaFail('RIGHT_COLLISION_'.$rightId);
 }
 
 if ($argv[1] === 'check') {

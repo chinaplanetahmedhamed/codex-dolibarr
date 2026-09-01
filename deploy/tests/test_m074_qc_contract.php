@@ -49,10 +49,13 @@ m074(strpos($service,'QC source snapshot integrity check failed')!==false&&strpo
 
 $migration=file_get_contents($root.'/custom/chinaplanetoperations/class/QcMigration.class.php');
 m074(strpos($migration,'GET_LOCK')!==false&&strpos($migration,'CREATE TABLE IF NOT EXISTS')!==false&&strpos($migration,'schemaReady()')!==false,'M074 schema migration is locked idempotent and readiness-checked');
+m074(strpos($migration,'schemaContract()')!==false&&strpos($migration,"'indexes' => array(")!==false&&strpos($migration,'SHOW COLUMNS FROM')!==false&&strpos($migration,'SHOW INDEX FROM')!==false,'M074 readiness validates the complete column and index contract');
+m074(strpos($migration,'rightDefinitionCollision')!==false&&strpos($migration,"OR (module='chinaplanetoperations' AND perms='")!==false&&strpos($migration,'rightsReady()')!==false,'M074 rejects permission IDs and codes that collide in either direction');
 m074(strpos($module,'$qcMigration->migrate()')!==false,'module initialization upgrades already-enabled installations with M074 schema');
 $schemaRunner=file_get_contents($root.'/deploy/migrations/m074_qc_schema.php');
-m074(strpos($schemaRunner,"M074_DEPLOY_CONTEXT")!==false&&strpos($schemaRunner,'m074-r02-backup-erp-root-only')!==false&&strpos($schemaRunner,'insert_permissions(1, null, 1)')!==false,'restricted staging schema runner requires root deployment context and registers only the filtered QC rights');
+m074(strpos($schemaRunner,"M074_DEPLOY_CONTEXT")!==false&&strpos($schemaRunner,'m074-r03-backup-erp-root-only')!==false&&strpos($schemaRunner,'insert_permissions(1, null, 1)')!==false,'restricted staging schema runner requires root deployment context and registers only the filtered QC rights');
 m074(strpos($schemaRunner,"return (int) \$right[0] >= 500527 && (int) \$right[0] <= 500530")!==false&&strpos($schemaRunner,'RIGHTS_DEFAULT=DISABLED')!==false,'staging schema runner installs exactly four QC definitions disabled by default');
+m074(strpos($schemaRunner,"array('identity', 'check', 'apply')")!==false&&strpos($schemaRunner,'M074_SCHEMA_DATABASE_IDENTITY=')!==false&&strpos($schemaRunner,'@@hostname')!==false,'staging schema runner exposes a non-secret database identity for backup binding');
 
 $pwa=file_get_contents($root.'/custom/chinaplanetoperations/qc/qc-field.js');
 m074(strpos($pwa,"algorithm!=='PBKDF2-SHA-256'")!==false&&strpos($pwa,'iterations:310000')!==false&&strpos($pwa,"name:'AES-GCM'")!==false&&strpos($pwa,"get('meta','pin-verifier')")!==false&&strpos($pwa,"seal({identity,version:1},'pin-verifier')")!==false,'field PWA records versioned strong KDF metadata verifies the original PIN and uses AES-256-GCM');
