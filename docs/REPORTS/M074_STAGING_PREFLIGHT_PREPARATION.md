@@ -3,7 +3,7 @@
 ## Control record
 
 - **Mission/release:** M074 / M074-R01
-- **Status:** `LOCAL_READ_ONLY_HELPER_PREPARED / NOT_UPLOADED / NOT_INSTALLED / NOT_EXECUTED`
+- **Status:** `READ_ONLY_HELPER_INSTALLED_AND_VERIFIED / RELEASE_NOT_UPLOADED / COMPARE_NOT_RUN / PREFLIGHT_NOT_RUN`
 - **Target:** canonical `backup-erp` staging only
 - **Authorized command surface:** `compare`, `preflight`, `status`
 - **Apply/verify/rollback:** unavailable
@@ -12,7 +12,7 @@
 
 ## Why a mission-specific helper is required
 
-The frozen M074 bundle is deliberately unbound. The canonical staging server does not currently have the unified M072 release controller or an M074 helper. The installed historical `chinaplanetos-backup-erp-deploy` helper is pinned to M004 and has no `compare` command; the M073 helper targets the separate isolated rebuild environment. Neither is safe or authorized for M074. The legacy general staging wrappers target a noncanonical duplicate stack and remain forbidden.
+The frozen M074 bundle is deliberately unbound. Before this gate, the canonical staging server did not have the unified M072 release controller or an M074 helper. The installed historical `chinaplanetos-backup-erp-deploy` helper is pinned to M004 and has no `compare` command; the M073 helper targets the separate isolated rebuild environment. Neither is safe or authorized for M074. The legacy general staging wrappers target a noncanonical duplicate stack and remain forbidden.
 
 The local M074 helper therefore exposes read-only inspection only. It cannot install application files, run schema migration, change the database, create a backup, restart a container or access production.
 
@@ -63,12 +63,23 @@ This is a successful read-only diagnostic result, not deployment authorization. 
 
 ## Gate status
 
-No release file or install file has been uploaded. The root installer has not run. No sudoers grant has been added. No `compare` or `preflight` command has run. The next action requires exact approval for the checksum-pinned upload and root installation of this read-only helper, followed by independent verification of the installed hashes and sudo surface before `compare` is invoked.
+Ahmed approved the Git push and read-only staging-helper installation on 2026-09-02. Preparation commit `46d84233c251bef883c93196847930666f2aac3e` is pushed to `origin/codex/m074-qc-field-report-composite`.
+
+Only the three installer inputs were uploaded to `/home/codex-deploy/m074-qc-preflight-install`; their remote hashes matched the table above and their metadata was `codex-deploy:codex-deploy`, directory `0700`, files `0644`. The checksum-pinned transactional root installer completed. Independent restricted verification established:
+
+- helper `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight`: `root:root 0755`, 16,956 bytes, SHA-256 `2f1f9f24ed2f0a1bda121190f41d5a6c73bf6c01fab209c877b03bfd4ef16e39`;
+- sudoers `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight`: `root:root 0440`, 304 bytes, SHA-256 `777217564edf5a9b1dd67617e73cdf4e8f7fe3f90c3095ccc1930d1016fdbf38`;
+- active M074 sudo surface: exactly `compare`, `preflight`, and `status`;
+- non-mutating `status`: `PREFLIGHT_ONLY`, `APPLY_AVAILABLE=NO`, `DATABASE_CHANGED=NO`, `PRODUCTION_ACCESSED=NO`.
+
+No M074 release artifact, manifest, layout, bundle or pin file has been uploaded to the staging inbox. `compare` and `preflight` have not run. Application runtime, database, schema, documents, containers and customer data were unchanged; production was not accessed. The next action requires a separate exact approval for the five checksum-pinned release inputs followed by remote verification, `compare`, and conditional `preflight` only.
 
 ## Independent review
 
 - **Security: PASS.** The initial review found that inherited M017 variables could activate integration branches and that installer failure could leave partial state. Both findings are closed: the helper forcibly unsets all three integration variables, the exact candidate passes with hostile outer values, and the installer prevalidates/stages/rolls back newly created hash-matching targets transactionally. No apply, database, restart or production command is exposed.
 - **Operations/QA: PASS.** The initial review identified two tests whose external dependencies are not in the Dolibarr archive, missing mode comparison, and the same installer partial-state issue. The remote list now contains nine self-contained tests proven against the reconstructed archive; hash and Unix mode are both compared; installer transaction guards pass review. Counts, pins, syntax, contract and diff checks pass.
 - **Customer Portal/release scope: PASS.** The helper consumes and inspects only the ERP/Dolibarr artifact and canonical staging custom volume. React, WordPress and customer mobile artifacts are unchanged; customer/runtime acceptance remains a later gate.
+- **Installed-state Security: PASS.** Independent restricted verification confirmed the exact helper hash/metadata, the three-command sudo surface and `APPLY_AVAILABLE=NO`; neither `compare` nor `preflight` ran and no runtime, database or production state changed.
+- **Installed-state Operations/QA: PASS.** Independent restricted verification confirmed all three remote install-input hashes/metadata, helper size/hash, exact sudo surface, non-mutating status and absence of M074 release files from the staging inbox.
 
-These verdicts approve the local read-only helper source only. They do not approve its upload or root installation and do not prove staging acceptance.
+These are the pre-install source verdicts. Ahmed separately approved the completed upload/root-install gate recorded above. They do not approve release upload, `compare`, `preflight`, apply, schema mutation or production and do not prove staging acceptance.
