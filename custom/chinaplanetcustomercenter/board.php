@@ -85,10 +85,11 @@ if ($socid > 0) {
     if ($resql && ($obj=$db->fetch_object($resql))) $projectsTotal=(int)$obj->nb;
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."facture WHERE entity IN (".getEntity('invoice').") AND fk_soc=".$socid." AND fk_statut>0");
     if ($resql && ($obj=$db->fetch_object($resql))) $invoiceTotal=(int)$obj->nb;
-	$documentTotal = cpcc_portal_customer_document_count($db, $user, $socid);
+    $documentTotal = cpcc_portal_customer_document_count($db, $user, $socid);
     if (cpcc_operation_reports_schema_ready($db)) {
-        $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND status=1 AND customer_visible=1");
-        if ($resql && ($obj=$db->fetch_object($resql))) $operationReportTotal=(int)$obj->nb;
+        // Reuse the publication-gated projection so draft QC operations never
+        // inflate the customer-facing approved report count.
+        $operationReportTotal = count(cpcc_operation_reports($db, $socid));
     }
     if ($canViewShippingOrders) {
         $shippingOperations = new OperationsService($db);

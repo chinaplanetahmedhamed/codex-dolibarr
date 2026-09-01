@@ -8,7 +8,9 @@ import { customerCache } from '@/src/storage/customerCache';
 
 export type DownloadTarget =
   | { kind: 'document'; id: string }
-  | { kind: 'report-document'; reportId: string; documentId: string };
+  | { kind: 'report-document'; reportId: string; documentId: string }
+  | { kind: 'qc-evidence'; reportId: string; evidenceId: string }
+  | { kind: 'qc-pdf'; reportId: string; publicationId: string };
 
 type DownloadAuthClient = {
   getAccessToken: () => Promise<string>;
@@ -22,7 +24,9 @@ export function safeDownloadName(name: string) {
 
 export function targetPath(target: DownloadTarget) {
   if (target.kind === 'document') return `/documents/${encodeURIComponent(target.id)}/content`;
-  return `/reports/${encodeURIComponent(target.reportId)}/documents/${encodeURIComponent(target.documentId)}/content`;
+  if (target.kind === 'report-document') return `/reports/${encodeURIComponent(target.reportId)}/documents/${encodeURIComponent(target.documentId)}/content`;
+  if (target.kind === 'qc-evidence') return `/reports/${encodeURIComponent(target.reportId)}/documents/${encodeURIComponent(target.evidenceId)}/content`;
+  return `/reports/${encodeURIComponent(target.reportId)}/documents/${encodeURIComponent(target.publicationId)}/content`;
 }
 
 export async function downloadAndShare(
@@ -62,6 +66,29 @@ export async function fetchAuthenticatedDownload(
       credentials: 'omit',
     },
   );
+  let response = await request(await client.getAccessToken());
+  if (response.status === 401) {
+    await client.request('/me');
+    response = await request(await client.getAccessToken());
+  }
+  return response;
+}
+
+export async function fetchAuthenticatedRange(
+  target: DownloadTarget,
+  start: number,
+  end: number,
+  client: DownloadAuthClient = mobileApiClient,
+  fetcher: typeof fetch = fetch,
+  signal?: AbortSignal,
+) {
+  const request = (accessToken: string) => fetcher(`${environment.apiBaseUrl}${targetPath(target)}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'video/mp4', Range: `bytes=${start}-${end}` },
+    cache: 'no-store',
+    credentials: 'omit',
+    signal,
+  });
   let response = await request(await client.getAccessToken());
   if (response.status === 401) {
     await client.request('/me');

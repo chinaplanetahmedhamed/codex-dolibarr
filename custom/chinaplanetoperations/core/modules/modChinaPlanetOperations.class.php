@@ -13,7 +13,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.7.0';
+        $this->version = '2.8.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
@@ -50,6 +50,10 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500522, 'Administer internal task board and team grants', 'task_admin'),
             array(500523, 'Comment on readable internal tasks', 'task_comment'),
             array(500524, 'Manage checklists on scoped internal tasks', 'task_checklist'),
+            array(500525, 'Plan and freeze quality-control inspections', 'qc_plan'),
+            array(500526, 'Execute assigned quality-control inspections', 'qc_execute'),
+            array(500527, 'Review quality-control results and evidence', 'qc_review'),
+            array(500528, 'Publish immutable quality-control reports', 'qc_publish'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;
@@ -172,12 +176,21 @@ class modChinaPlanetOperations extends DolibarrModules
                 return -1;
             }
         }
+        require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/QcMigration.class.php';
+        $qcMigration = new QcMigration($this->db);
+        foreach (QcMigration::rightCodes() as $rightId => $rightCode) {
+            if ($qcMigration->rightCollision($rightId)) {
+                $this->error = 'QC right ID collision: '.(int) $rightId;
+                return -1;
+            }
+        }
         $result = $this->_load_tables('/chinaplanetoperations/sql/');
         if ($result <= 0) return $result;
         try {
             $migration->migrate();
+            $qcMigration->migrate();
         } catch (Throwable $e) {
-            $this->error = 'Unable to install the internal task board: '.$e->getMessage();
+            $this->error = 'Unable to install Operations schema: '.$e->getMessage();
             return -1;
         }
         require_once DOL_DOCUMENT_ROOT.'/core/lib/admin.lib.php';

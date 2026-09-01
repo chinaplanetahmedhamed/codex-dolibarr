@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNetInfo } from '@react-native-community/netinfo';
-import { PropsWithChildren, ReactNode } from 'react';
+import { PropsWithChildren, ReactNode, RefObject } from 'react';
 import {
   Pressable,
   Image,
@@ -21,13 +21,14 @@ import { palette, radii, shadows } from '@/src/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-export function AppScreen({ children, contentStyle, refreshing = false, onRefresh }: PropsWithChildren<{ contentStyle?: StyleProp<ViewStyle>; refreshing?: boolean; onRefresh?: () => void }>) {
+export function AppScreen({ children, contentStyle, refreshing = false, onRefresh, scrollRef }: PropsWithChildren<{ contentStyle?: StyleProp<ViewStyle>; refreshing?: boolean; onRefresh?: () => void; scrollRef?: RefObject<ScrollView | null> }>) {
   const network = useNetInfo();
   const { isRtl } = useI18n();
   const offline = network.isConnected === false || network.isInternetReachable === false;
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.screen, contentStyle]}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.brandRed} /> : undefined}
         showsVerticalScrollIndicator={false}>

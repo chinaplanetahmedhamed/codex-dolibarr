@@ -118,6 +118,16 @@ class OperationsService
         if (!$operation) { $this->db->rollback(); throw new RuntimeException('Operation not found'); }
         $lock = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_operation WHERE rowid=".(int)$id." AND entity=".$this->entity." FOR UPDATE");
         if (!$lock || $this->db->num_rows($lock) !== 1) $this->fail();
+        if ((string) $operation['service_type'] === 'quality_control' && $this->hasSection($id, 'qc_source_snapshot', true)) {
+            foreach (array('fk_soc', 'fk_project', 'fk_commande') as $frozenField) {
+                $current = !empty($operation[$frozenField]) ? (int) $operation[$frozenField] : 0;
+                $requested = !empty($data[$frozenField]) ? (int) $data[$frozenField] : 0;
+                if ($current !== $requested) { $this->db->rollback(); throw new RuntimeException('QC customer, Sales Order and project are frozen after snapshot creation.'); }
+            }
+            $currentInspector = !empty($operation['fk_user_assign']) ? (int) $operation['fk_user_assign'] : 0;
+            $requestedInspector = !empty($data['fk_user_assign']) ? (int) $data['fk_user_assign'] : 0;
+            if ($currentInspector !== $requestedInspector) { $this->db->rollback(); throw new RuntimeException('Use the QC planner to assign or revise the inspector.'); }
+        }
         $currentShipment = !empty($operation['fk_shipment']) ? (int) $operation['fk_shipment'] : 0;
         $requestedShipment = !empty($data['fk_shipment']) ? (int) $data['fk_shipment'] : 0;
         if ($currentShipment > 0 && $requestedShipment !== $currentShipment) {
@@ -369,6 +379,7 @@ class OperationsService
 
     private function saveSection($id,$code,array $data,$userId,$log=true){$json=json_encode($data,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$sql="INSERT INTO ".MAIN_DB_PREFIX."cpo_operation_data(entity,fk_operation,section_code,data_json,fk_user_modif) VALUES(".$this->entity.",".(int)$id.",".$this->q($code).",".$this->q($json).",".(int)$userId.") ON DUPLICATE KEY UPDATE data_json=VALUES(data_json),fk_user_modif=VALUES(fk_user_modif)";if(!$this->db->query($sql))$this->fail();}
     private function getSection($id,$code){$res=$this->db->query("SELECT data_json FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".$this->entity." AND fk_operation=".(int)$id." AND section_code=".$this->q($code));$o=$res?$this->db->fetch_object($res):null;$data=$o?json_decode($o->data_json,true):array();return is_array($data)?$data:array();}
+    private function hasSection($id,$code,$forUpdate=false){$sql="SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_operation_data WHERE entity=".$this->entity." AND fk_operation=".(int)$id." AND section_code=".$this->q($code);if($forUpdate)$sql.=" FOR UPDATE";$res=$this->db->query($sql);return $res&&$this->db->num_rows($res)>0;}
     private function log($operationId,$taskId,$action,$message,$visibility,$userId,$transaction=true){$sql="INSERT INTO ".MAIN_DB_PREFIX."cpo_activity(entity,fk_operation,fk_task,action_code,message,visibility,fk_user,date_action) VALUES(".$this->entity.",".($operationId?(int)$operationId:'NULL').",".($taskId?(int)$taskId:'NULL').",".$this->q($action).",".$this->q($message).",".$this->q($visibility).",".(int)$userId.",".$this->q($this->now()).")";if(!$this->db->query($sql))$this->fail();}
     private function nextRef($type){$prefix=array('shipping_booking'=>'SB','factory_audit'=>'FA','quality_control'=>'QC','order'=>'OR','shipping_inquiry'=>'SI')[$type]??'OP';$year=date('Y');$like='CP-'.$prefix.'-'.$year.'-%';$res=$this->db->query("SELECT ref FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".$this->entity." AND ref LIKE ".$this->q($like)." ORDER BY ref DESC LIMIT 1 FOR UPDATE");$o=$res?$this->db->fetch_object($res):null;$number=$o?(int)substr($o->ref,-6)+1:1;return 'CP-'.$prefix.'-'.$year.'-'.str_pad((string)$number,6,'0',STR_PAD_LEFT);}
     private function validateShipmentLink(array $data)

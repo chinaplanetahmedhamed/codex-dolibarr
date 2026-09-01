@@ -4,6 +4,7 @@
 require_once __DIR__.'/mobile_api.lib.php';
 require_once __DIR__.'/portal.lib.php';
 require_once __DIR__.'/financial.lib.php';
+require_once __DIR__.'/operation_reports.lib.php';
 
 function cpcc_mobile_envelope($data, $meta = null)
 {
@@ -163,9 +164,14 @@ function cpcc_mobile_project_detail($db, $context, $publicId)
 	$data['timeline'] = cpcc_mobile_project_timeline($db, $context, (int) $row->fk_column);
 	$data['shipment_ids'] = cpcc_mobile_related_ids($db, 'shipment', $context, "SELECT rowid FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int) $context['entity']." AND fk_soc=".(int) $context['socid']." AND fk_project=".(int) $id." ORDER BY rowid");
 	$data['document_ids'] = cpcc_mobile_project_document_ids($db, $context, (int) $id);
-	$data['report_ids'] = cpcc_mobile_related_ids($db, 'report', $context, "SELECT rowid FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int) $context['entity']." AND fk_soc=".(int) $context['socid']." AND fk_project=".(int) $id." AND status=1 AND customer_visible=1 ORDER BY rowid");
+	$data['report_ids'] = cpcc_mobile_project_report_ids($db, $context, $id);
 	$data['balances'] = cpcc_mobile_balances_data($db, $context, (int) $id);
 	return cpcc_mobile_envelope($data);
+}
+
+function cpcc_mobile_project_report_ids($db, $context, $projectId)
+{
+	$qcReady=cpcc_qc_reports_schema_ready($db);$sql="SELECT o.rowid FROM ".MAIN_DB_PREFIX."cpo_operation o";if($qcReady)$sql.=" LEFT JOIN ".MAIN_DB_PREFIX."cpo_qc_publication q ON q.entity=o.entity AND q.fk_operation=o.rowid AND q.fk_soc=o.fk_soc AND q.is_current=1";$sql.=" WHERE o.entity=".(int)$context['entity']." AND o.fk_soc=".(int)$context['socid']." AND o.fk_project=".(int)$projectId." AND o.status=1 AND o.customer_visible=1";$sql.=$qcReady?" AND (o.service_type<>'quality_control' OR q.rowid IS NOT NULL)":" AND o.service_type<>'quality_control'";$sql.=" ORDER BY o.rowid";return cpcc_mobile_related_ids($db,'report',$context,$sql);
 }
 
 function cpcc_mobile_project_timeline($db, $context, $currentColumnId)
@@ -448,7 +454,7 @@ function cpcc_mobile_document_rows($db, $context, $scope = '')
 	if (!in_array($scope, array('', 'shipment'), true)) cpcc_mobile_throw(422, 'validation', array('scope'));
 	$queries = array();
 	$queries[] = "SELECT a.rowid AS source_id,(a.rowid * 2) AS logical_id,'project_asset' AS source_type,p.rowid AS project_id,a.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,a.original_name,a.stored_name,a.mime_type,a.file_size,a.version_no,a.date_creation AS approved_at,a.tms,a.fk_card,NULL AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpkanban_asset a INNER JOIN ".MAIN_DB_PREFIX."cpkanban_card c ON c.rowid=a.fk_card AND c.entity=a.entity AND c.fk_soc=a.fk_soc INNER JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=a.fk_shipment AND s.entity=a.entity AND s.fk_soc=a.fk_soc WHERE a.entity=".(int) $context['entity']." AND a.fk_soc=".(int) $context['socid']." AND c.status=1 AND c.cust_visible=1 AND a.status=1 AND a.customer_visible=1 AND a.review_status IN ('approved','final_received')";
-	$queries[] = "SELECT d.rowid AS source_id,(d.rowid * 2) + 1 AS logical_id,'operation_report_attachment' AS source_type,o.fk_project AS project_id,o.fk_shipment AS shipment_id,s.ref AS shipment_ref,o.rowid AS report_id,d.original_name,d.stored_name,d.mime_type,d.file_size,d.version_no,COALESCE(d.date_review,d.date_creation) AS approved_at,d.tms,NULL AS fk_card,o.ref AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpo_document d INNER JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=d.fk_operation AND o.entity=d.entity LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=o.fk_shipment AND s.entity=o.entity AND s.fk_soc=o.fk_soc WHERE d.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1 AND d.visibility='customer_after_approval' AND d.review_status IN ('approved','final_received') AND d.is_current=1";
+	$queries[] = "SELECT d.rowid AS source_id,(d.rowid * 2) + 1 AS logical_id,'operation_report_attachment' AS source_type,o.fk_project AS project_id,o.fk_shipment AS shipment_id,s.ref AS shipment_ref,o.rowid AS report_id,d.original_name,d.stored_name,d.mime_type,d.file_size,d.version_no,COALESCE(d.date_review,d.date_creation) AS approved_at,d.tms,NULL AS fk_card,o.ref AS operation_ref,NULL AS file_sha256,NULL AS item_kind FROM ".MAIN_DB_PREFIX."cpo_document d INNER JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=d.fk_operation AND o.entity=d.entity LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=o.fk_shipment AND s.entity=o.entity AND s.fk_soc=o.fk_soc WHERE d.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1 AND o.service_type<>'quality_control' AND d.visibility='customer_after_approval' AND d.review_status IN ('approved','final_received') AND d.is_current=1";
 	if (cpcc_mobile_table_exists($db, 'cpl_shipment_public_document')) {
 		$queries[] = "SELECT g.rowid AS source_id,(0 - g.rowid) AS logical_id,'shipment_gallery' AS source_type,s.fk_project AS project_id,g.fk_shipment AS shipment_id,s.ref AS shipment_ref,NULL AS report_id,g.original_name,g.storage_key AS stored_name,g.mime_type,g.file_size,1 AS version_no,g.date_publication AS approved_at,g.tms,NULL AS fk_card,NULL AS operation_ref,g.file_sha256,g.item_kind FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document g INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics s ON s.rowid=g.fk_shipment AND s.entity=g.entity AND s.fk_soc=g.fk_soc WHERE g.entity=".(int) $context['entity']." AND g.fk_soc=".(int) $context['socid']." AND g.customer_visible=1 AND g.status=1";
 	}
@@ -580,14 +586,28 @@ function cpcc_mobile_report_stage($stage)
 
 function cpcc_mobile_report_summary($db, $context, $row)
 {
-	return array('id' => cpcc_mobile_public_id($db, 'report', $context, (int) $row->rowid), 'project_id' => !empty($row->fk_project) ? cpcc_mobile_public_id($db, 'project', $context, (int) $row->fk_project) : null, 'ref' => (string) $row->ref, 'report_type' => cpcc_mobile_report_type($row->service_type), 'title' => (string) $row->title, 'stage' => cpcc_mobile_report_stage($row->stage), 'progress_percent' => max(0, min(100, (int) $row->progress)), 'next_action' => $row->next_action !== null && $row->next_action !== '' ? (string) $row->next_action : null, 'due_at' => cpcc_mobile_iso($row->date_deadline), 'updated_at' => cpcc_mobile_iso($row->tms));
+	$isQc = (string) $row->service_type === 'quality_control' && !empty($row->publication_uuid);
+	$projection = null;
+	if ($isQc && isset($row->publication_json, $row->publication_sha256) && preg_match('/^[a-f0-9]{64}$/', (string)$row->publication_sha256) && hash_equals((string)$row->publication_sha256, hash('sha256', (string)$row->publication_json))) {
+		$decoded = json_decode((string)$row->publication_json, true);
+		if (is_array($decoded)) $projection = cpcc_qc_customer_projection($decoded);
+	}
+	$ref = $projection ? $projection['operation']['ref'] : (string)$row->ref;
+	$title = $projection ? $projection['operation']['title'] : (string)$row->title;
+	$data = array('id' => cpcc_mobile_public_id($db, 'report', $context, (int) $row->rowid), 'project_id' => !empty($row->fk_project) ? cpcc_mobile_public_id($db, 'project', $context, (int) $row->fk_project) : null, 'ref' => $ref, 'report_type' => cpcc_mobile_report_type($row->service_type), 'title' => $title, 'stage' => $isQc ? array('code'=>'published','label'=>cpcc_mobile_label('منشور','Published')) : cpcc_mobile_report_stage($row->stage), 'progress_percent' => $isQc ? 100 : max(0, min(100, (int) $row->progress)), 'next_action' => $isQc ? null : ($row->next_action !== null && $row->next_action !== '' ? (string) $row->next_action : null), 'due_at' => $isQc ? null : cpcc_mobile_iso($row->date_deadline), 'updated_at' => cpcc_mobile_iso($row->tms));
+	if ($isQc) { $data['overall_result'] = (string) $row->overall_result; $data['publication_version'] = (int) $row->publication_version; $data['inspection_at'] = cpcc_mobile_iso($row->inspection_at); $data['published_at'] = cpcc_mobile_iso($row->date_publication); }
+	return $data;
 }
 
 function cpcc_mobile_reports($db, $context, $limit, $cursor, $updatedSince)
 {
 	$limit = cpcc_mobile_list_limit($limit); $updated = cpcc_mobile_updated_since($updatedSince); $filters = array('updated_since' => $updated); $hash = cpcc_mobile_filter_hash('reports', $filters); $last = cpcc_mobile_cursor_decode($cursor, 'reports', $context, $hash, $limit);
-	$sql = "SELECT o.rowid,o.ref,o.service_type,o.title,o.fk_project,o.stage,o.progress,o.next_action,o.date_deadline,o.tms FROM ".MAIN_DB_PREFIX."cpo_operation o WHERE o.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1"; if ($updated !== '') $sql .= " AND o.tms>='".$db->escape($updated)."'"; $sql .= cpcc_mobile_list_cursor_clause($db, $last, 'o.tms', 'o.rowid')." ORDER BY o.tms DESC,o.rowid DESC LIMIT ".($limit + 1);
-	$raw = cpcc_mobile_rows($db, cpcc_mobile_query_or_throw($db, $sql)); $wrapped = array(); foreach ($raw as $row) $wrapped[] = array('_row' => $row, 'tms' => (string) $row->tms, 'rowid' => (int) $row->rowid); $page = cpcc_mobile_page_meta($db, 'reports', $context, $filters, $limit, $wrapped, 'tms', 'rowid'); $data = array(); foreach ($page['rows'] as $item) $data[] = cpcc_mobile_report_summary($db, $context, $item['_row']); return cpcc_mobile_envelope($data, $page['meta']);
+	$qcReady = cpcc_qc_reports_schema_ready($db); $sql = "SELECT o.rowid,o.ref,o.service_type,o.title,o.fk_project,o.stage,o.progress,o.next_action,o.date_deadline,";
+	if ($qcReady) $sql .= "CASE WHEN o.service_type='quality_control' THEN q.date_publication ELSE o.tms END tms,q.public_uuid publication_uuid,q.overall_result,q.version_no publication_version,q.inspection_at,q.date_publication,q.publication_json,q.publication_sha256";
+	else $sql .= "o.tms,NULL publication_uuid,NULL overall_result,NULL publication_version,NULL inspection_at,NULL date_publication,NULL publication_json,NULL publication_sha256";
+	$sql .= " FROM ".MAIN_DB_PREFIX."cpo_operation o"; if ($qcReady) $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpo_qc_publication q ON q.entity=o.entity AND q.fk_operation=o.rowid AND q.fk_soc=o.fk_soc AND q.is_current=1";
+	$sql .= " WHERE o.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1"; $sql .= $qcReady ? " AND (o.service_type<>'quality_control' OR q.rowid IS NOT NULL)" : " AND o.service_type<>'quality_control'"; if ($updated !== '') $sql .= " AND ".($qcReady ? "(CASE WHEN o.service_type='quality_control' THEN q.date_publication ELSE o.tms END)" : "o.tms").">='".$db->escape($updated)."'"; $sortField=$qcReady?"(CASE WHEN o.service_type='quality_control' THEN q.date_publication ELSE o.tms END)":"o.tms"; $sql .= cpcc_mobile_list_cursor_clause($db, $last, $sortField, 'o.rowid')." ORDER BY tms DESC,o.rowid DESC LIMIT ".($limit + 1);
+	$raw = cpcc_mobile_rows($db, cpcc_mobile_query_or_throw($db, $sql)); $wrapped = array(); foreach ($raw as $row) { if ((string)$row->service_type === 'quality_control' && (!preg_match('/^[a-f0-9]{64}$/', (string)$row->publication_sha256) || !hash_equals((string)$row->publication_sha256, hash('sha256', (string)$row->publication_json)) || !is_array(json_decode((string)$row->publication_json, true)))) continue; $wrapped[] = array('_row' => $row, 'tms' => (string) $row->tms, 'rowid' => (int) $row->rowid); } $page = cpcc_mobile_page_meta($db, 'reports', $context, $filters, $limit, $wrapped, 'tms', 'rowid'); $data = array(); foreach ($page['rows'] as $item) $data[] = cpcc_mobile_report_summary($db, $context, $item['_row']); return cpcc_mobile_envelope($data, $page['meta']);
 }
 
 function cpcc_mobile_report_field_allowlist()
@@ -622,12 +642,43 @@ function cpcc_mobile_report_shipping_line_visible($db, $context, $shipmentId, $v
 function cpcc_mobile_report_detail($db, $context, $publicId)
 {
 	$id = cpcc_mobile_resolve_public_id($db, 'report', $context, $publicId); if (!$id) cpcc_mobile_throw(404, 'not_found');
-	$sql = "SELECT o.rowid,o.ref,o.service_type,o.title,o.fk_project,o.fk_shipment,o.stage,o.progress,o.next_action,o.date_deadline,o.note_public,o.tms,d.data_json FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation_data d ON d.entity=o.entity AND d.fk_operation=o.rowid AND d.section_code='service' WHERE o.rowid=".(int) $id." AND o.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1 LIMIT 1";
+	$qcReady = cpcc_qc_reports_schema_ready($db); $sql = "SELECT o.rowid,o.ref,o.service_type,o.title,o.fk_project,o.fk_shipment,o.stage,o.progress,o.next_action,o.date_deadline,o.note_public,";
+	if ($qcReady) $sql .= "CASE WHEN o.service_type='quality_control' THEN q.date_publication ELSE o.tms END tms,q.public_uuid publication_uuid,q.overall_result,q.version_no publication_version,q.inspection_at,q.date_publication,q.publication_json,q.publication_sha256";
+	else $sql .= "o.tms,NULL publication_uuid,NULL overall_result,NULL publication_version,NULL inspection_at,NULL date_publication,NULL publication_json,NULL publication_sha256";
+	$sql .= ",d.data_json FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation_data d ON d.entity=o.entity AND d.fk_operation=o.rowid AND d.section_code='service'";
+	if ($qcReady) $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpo_qc_publication q ON q.entity=o.entity AND q.fk_operation=o.rowid AND q.fk_soc=o.fk_soc AND q.is_current=1";
+	$sql .= " WHERE o.rowid=".(int) $id." AND o.entity=".(int) $context['entity']." AND o.fk_soc=".(int) $context['socid']." AND o.status=1 AND o.customer_visible=1"; $sql .= $qcReady ? " AND (o.service_type<>'quality_control' OR q.rowid IS NOT NULL)" : " AND o.service_type<>'quality_control'"; $sql .= " LIMIT 1";
 	$result = cpcc_mobile_query_or_throw($db, $sql); $row = $db->fetch_object($result); if (!$row) cpcc_mobile_throw(404, 'not_found'); $data = cpcc_mobile_report_summary($db, $context, $row); $data['public_note'] = $row->note_public !== null && $row->note_public !== '' ? (string) $row->note_public : null; $data['fields'] = array();
+	if ((string)$row->service_type === 'quality_control') {
+		if (!preg_match('/^[a-f0-9]{64}$/', (string)$row->publication_sha256) || !hash_equals((string)$row->publication_sha256, hash('sha256', (string)$row->publication_json))) cpcc_mobile_throw(404, 'not_found');
+		$publication = json_decode((string)$row->publication_json, true); if (!is_array($publication)) cpcc_mobile_throw(404, 'not_found'); $projection = cpcc_qc_customer_projection($publication);
+		$data['ref']=$projection['operation']['ref']; $data['title']=$projection['operation']['title'];
+		$data['public_note'] = $projection['public_note']; foreach ($projection['fields'] as $field) $data['fields'][] = array('code'=>$field['code'],'label'=>cpcc_mobile_report_field_label($field['code']),'value'=>$field['value']);
+		$pdfDocument = !empty($projection['documents'][0]) ? $projection['documents'][0] : array('id'=>(string)$row->publication_uuid,'name'=>'QC-'.$data['ref'].'-v'.(int)$row->publication_version.'.pdf','size_bytes'=>0,'version'=>(int)$row->publication_version,'approved_at'=>$row->date_publication);
+		$data['overall_result'] = $projection['overall_result']; $data['inspection'] = $projection['inspection']; $data['summary'] = $projection['summary']; $data['sections'] = $projection['sections']; $data['publication_id'] = (string)$row->publication_uuid; $data['pdf'] = array('id'=>(string)$pdfDocument['id'],'name'=>(string)$pdfDocument['name']); $data['documents'] = array(array('id'=>(string)$pdfDocument['id'],'source_type'=>'operation_report_attachment','kind'=>'document','project_id'=>!empty($row->fk_project)?cpcc_mobile_public_id($db,'project',$context,(int)$row->fk_project):null,'shipment_id'=>null,'shipment_ref'=>null,'report_id'=>$data['id'],'name'=>(string)$pdfDocument['name'],'mime_type'=>'application/pdf','size_bytes'=>max(0,(int)$pdfDocument['size_bytes']),'version'=>max(1,(int)$pdfDocument['version']),'approved_at'=>cpcc_mobile_iso($pdfDocument['approved_at']),'updated_at'=>cpcc_mobile_iso($row->date_publication)));
+		return cpcc_mobile_envelope($data);
+	}
 	$decoded = json_decode((string) $row->data_json, true); if (!is_array($decoded)) $decoded = array(); $allowed = array_flip(cpcc_mobile_report_field_allowlist());
 	foreach ($decoded as $code => $value) { if (!isset($allowed[$code]) || is_array($value) || is_object($value) || $value === null || $value === '') continue; if ($code === 'shipping_line' && !cpcc_mobile_report_shipping_line_visible($db, $context, (int) $row->fk_shipment, (string) $value)) continue; $data['fields'][] = array('code' => (string) $code, 'label' => cpcc_mobile_report_field_label((string) $code), 'value' => substr((string) $value, 0, 10000)); }
 	$data['documents'] = array(); foreach (cpcc_mobile_document_rows($db, $context) as $document) if ((int) $document->report_id === (int) $id) $data['documents'][] = cpcc_mobile_document_data($db, $context, $document);
 	return cpcc_mobile_envelope($data);
+}
+
+function cpcc_mobile_qc_publication($db, $context, $reportPublicId)
+{
+	$id = cpcc_mobile_resolve_public_id($db, 'report', $context, $reportPublicId); if (!$id || !cpcc_qc_reports_schema_ready($db)) cpcc_mobile_throw(404, 'not_found');
+	$sql = "SELECT q.*,o.ref operation_ref FROM ".MAIN_DB_PREFIX."cpo_qc_publication q INNER JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.rowid=q.fk_operation AND o.entity=q.entity AND o.fk_soc=q.fk_soc WHERE q.entity=".(int)$context['entity']." AND q.fk_soc=".(int)$context['socid']." AND q.fk_operation=".(int)$id." AND q.is_current=1 AND o.status=1 AND o.customer_visible=1 AND o.service_type='quality_control' LIMIT 1";
+	$res=$db->query($sql);$row=$res?$db->fetch_object($res):null;if(!$row||!preg_match('/^[a-f0-9]{64}$/',(string)$row->publication_sha256)||!hash_equals((string)$row->publication_sha256,hash('sha256',(string)$row->publication_json)))cpcc_mobile_throw(404,'not_found');$decoded=json_decode((string)$row->publication_json,true);if(!is_array($decoded))cpcc_mobile_throw(404,'not_found');$row->customer_projection=cpcc_qc_customer_projection($decoded);return$row;
+}
+
+function cpcc_mobile_qc_evidence_file($db, $context, $reportPublicId, $evidenceUuid)
+{
+	$publication=cpcc_mobile_qc_publication($db,$context,$reportPublicId);$evidence=cpcc_qc_customer_evidence($db,$publication,$evidenceUuid);if(!$evidence)cpcc_mobile_throw(404,'not_found');$path=cpcc_qc_private_file($evidence->safe_stored_name,'evidence',$evidence->safe_size,$evidence->safe_sha256);if(!$path)cpcc_mobile_throw(404,'not_found');return array('path'=>$path,'size'=>(int)$evidence->safe_size,'filename'=>'QC-'.$publication->operation_ref.'-'.$evidence->client_uuid.($evidence->evidence_type==='video'?'.mp4':'.jpg'),'mime_type'=>(string)$evidence->safe_mime);
+}
+
+function cpcc_mobile_qc_pdf_file($db, $context, $reportPublicId)
+{
+	$publication=cpcc_mobile_qc_publication($db,$context,$reportPublicId);$path=cpcc_qc_private_file($publication->pdf_stored_name,'publications',$publication->pdf_size,$publication->pdf_sha256);if(!$path)cpcc_mobile_throw(404,'not_found');return array('path'=>$path,'size'=>(int)$publication->pdf_size,'filename'=>'QC-'.$publication->operation_ref.'-v'.(int)$publication->version_no.'.pdf','mime_type'=>'application/pdf');
 }
 
 function cpcc_mobile_dashboard($db, $context)

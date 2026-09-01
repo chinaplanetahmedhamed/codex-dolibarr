@@ -1,5 +1,17 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-09-02 — M074 field QC report
+
+- Source change: extends the existing `quality_control` operation into an immutable Sales Order snapshot, manual/template/accepted-proposal checkpoints, encrypted offline field PWA, resumable evidence upload, supervisor review and versioned customer publication.
+- Admin ERP: `LOCAL_SOURCE_IMPLEMENTED`; separate `qc_plan`, `qc_execute`, `qc_review` and `qc_publish` rights control the workflow. Field results and originals never enter customer surfaces.
+- Customer Portal: `LOCAL_SOURCE_IMPLEMENTED`; only the current hashed publication is listed. It shows overall result, version, dates, counts, requirement versus actual, approved safe images/video and protected PDF; mutable progress and unpublished QC are excluded.
+- Mobile App: `LOCAL_IMPLEMENTED_AND_TESTED`; QC adds optional report fields while legacy report DTOs remain valid. Approved images and authenticated Range video render in the report; the existing protected report-document route carries QC evidence/PDF without adding a new M017 endpoint.
+- API/data dependency: Dolibarr owns snapshots, review and publication. Portal/mobile enforce `entity + fk_soc + current publication + approved derivative`, verify publication/file hashes and never expose originals, suppliers, costs, margins, internal notes, override rationale or licensed AQL dataset metadata.
+- Design/terminology impact: QC cards replace mutable progress with final result/version/publication dates. Arabic derives RTL and English derives LTR; result meaning is rendered as text as well as color.
+- Phone verification: mobile typecheck, lint and 39 tests pass. Source contains 390px portal rules, but authenticated browser/iPhone/Android runtime acceptance is pending because the local Dolibarr runtime is unavailable.
+- Status: `ADMIN_LOCAL_SOURCE_IMPLEMENTED`, `PORTAL_LOCAL_SOURCE_IMPLEMENTED`, `MOBILE_LOCAL_TESTED`, `RUNTIME_NOT_VERIFIED`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: run schema migration and full synthetic customer A/B, offline airplane-mode, real camera/video, Range seek, PDF/QR and AR/EN device acceptance on separately approved staging.
+
 ## 2026-08-28 — M062 Alexandria public-search grouping
 
 - Source change: the public China Planet website shows one `ALEXANDRIA` POD option, while its public-safe Dolibarr gateway returns separate generic, Old Port and TMT price cards and exact terminal-bound booking tokens.

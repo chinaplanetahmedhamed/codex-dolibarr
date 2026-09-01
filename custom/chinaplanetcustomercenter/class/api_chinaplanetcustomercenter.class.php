@@ -236,6 +236,8 @@ class Chinaplanetcustomercenter extends DolibarrApi
 	{
 		$context = $this->context();
 		$reportId = cpcc_mobile_resolve_public_id($this->db, 'report', $context, $opaqueId); if (!$reportId) cpcc_mobile_throw(404, 'not_found');
+		$typeResult=$this->db->query("SELECT service_type FROM ".MAIN_DB_PREFIX."cpo_operation WHERE rowid=".(int)$reportId." AND entity=".(int)$context['entity']." AND fk_soc=".(int)$context['socid']." AND status=1 AND customer_visible=1 LIMIT 1");$typeRow=$typeResult?$this->db->fetch_object($typeResult):null;
+		if($typeRow&&(string)$typeRow->service_type==='quality_control'){$publication=cpcc_mobile_qc_publication($this->db,$context,$opaqueId);if(hash_equals((string)$publication->public_uuid,(string)$documentOpaqueId))cpcc_mobile_stream_file(cpcc_mobile_qc_pdf_file($this->db,$context,$opaqueId));cpcc_mobile_stream_file(cpcc_mobile_qc_evidence_file($this->db,$context,$opaqueId,$documentOpaqueId));}
 		cpcc_mobile_stream_file(cpcc_mobile_safe_file_record($this->db, $context, $documentOpaqueId, $reportId));
 	}
 }

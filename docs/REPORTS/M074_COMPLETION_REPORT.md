@@ -1,0 +1,172 @@
+# M074 Local Completion Report — Field QC Report
+
+## Control record
+
+- **Mission:** M074
+- **Result:** `IMPLEMENTED_LOCAL / SOURCE_GATES_PASS / PENDING_RUNTIME_AND_DEVICE_ACCEPTANCE`
+- **Branch:** `codex/m074-qc-field-report`
+- **Baseline:** `057af0f205f819c685869b3ee6aa1aea31ea549e`
+- **Environment:** clean local worktree only
+- **Database/schema/runtime changes:** none executed
+- **External AI:** disabled; no contract or customer data was sent externally
+- **Staging/production:** not accessed or changed
+
+## Delivered scope
+
+M074 extends the existing `chinaplanetoperations` quality-control operation. A QC plan can freeze a Sales Order/customer/project snapshot, generate points from order lines or a hash-pinned template, accept separately approved contract proposals, and create, edit, reorder, duplicate or remove fully manual checkpoints before the plan is locked.
+
+The field PWA provides one-checkpoint-at-a-time inspection, encrypted local recovery, locally navigable unexpected findings, photo/video capture, idempotent synchronization, optimistic conflict detection, resumable chunk uploads and a pending-work gate before submission. Supervisor review separates evidence approval from publishing and supports Pass, Fail, Pending corrective action and Reinspection required.
+
+Publication creates an immutable, hashed customer projection and PDF. Customer Center and the existing customer mobile app receive backward-compatible structured inspection data, approved customer-safe images, authenticated Range-capable video and an authenticated PDF/QR path. Drafts, originals, internal notes, suppliers, costs and margins remain outside customer projections.
+
+## Architecture and data
+
+- `cpo_operation` remains the entity/customer/order/project-owned QC header.
+- `cpo_qc_checkpoint` stores requirements, findings, results, AQL observations, revisions and bounded mutation receipts.
+- `cpo_qc_evidence` stores resumable-upload ownership/manifests, internal originals, sanitized derivatives, hashes, review state and revisions.
+- `cpo_qc_publication` stores immutable versions, the current marker, overall result, canonical JSON hash and PDF metadata.
+- `qc_source_snapshot` and `qc_plan_state` are stored as immutable/locked operation-data sections. A requirement revision creates a linked operation, copies the exact prior frozen snapshot and verifies every copied asset hash. Superseded plans reject execution, review and publication.
+- Customer reads require matching operation, publication, `entity` and `fk_soc`; only current approved safe derivatives are routable.
+
+## Rights and configuration
+
+Four collision-checked rights are additive and default-disabled:
+
+| ID | Code | Purpose |
+|---:|---|---|
+| 500525 | `qc_plan` | Prepare and freeze QC plans |
+| 500526 | `qc_execute` | Execute the assigned field inspection |
+| 500527 | `qc_review` | Review results and evidence |
+| 500528 | `qc_publish` | Publish immutable customer reports |
+
+Optional configuration is fail-closed:
+
+- `CHINAPLANETOPERATIONS_QC_TEMPLATE_PATH` and `CHINAPLANETOPERATIONS_QC_TEMPLATE_SHA256` select an approved checkpoint-template dataset.
+- `CHINAPLANETOPERATIONS_AQL_DATASET_PATH` and `CHINAPLANETOPERATIONS_AQL_DATASET_SHA256` select an independently validated/licensed ISO 2859-1:2026 dataset. Without it, manual inspection remains available and AQL calculation is disabled.
+- `CHINAPLANETOPERATIONS_FFMPEG_PATH` and `CHINAPLANETOPERATIONS_FFPROBE_PATH` select approved absolute media-tool paths. Missing tooling blocks customer video publication; it never exposes the original.
+
+No configuration value, right grant or module state was changed in a running environment.
+
+## Security, offline and media controls
+
+- Staff mutations are same-origin, internal-session, exact-right, entity/assignment and CSRF checked.
+- Local records/files use versioned PBKDF2-HMAC-SHA-256 (310,000 iterations), AES-256-GCM, per-record IV and context AAD. The PIN verifier rejects a wrong PIN before online refresh; lock removes plaintext/key material.
+- Definitive authentication loss clears the encrypted cache. Ambiguous redirect/non-JSON session responses lock plaintext while preserving encrypted unsynchronized work for safe recovery.
+- Upload IDs and mutation IDs are idempotent and owner-bound. Chunks are capped at 20 MiB and complete files at 200 MiB; offsets, indexes, sizes, MIME/decode/probe and SHA-256 are verified.
+- Images are decoded/re-encoded to strip metadata. Videos are processed without a shell, with memory/thread/time/output limits, metadata removal and fragmented MP4 global SIDX output for indexed authenticated Range seeking.
+- Originals stay private. Customer media and PDF routes reauthorize every request, verify immutable hash/size/path, return private no-store responses and expose no bearer token in a URL.
+
+## Customer parity
+
+- Legacy `fields` and `documents` remain available; QC adds `overall_result`, `inspection` and `sections[].checkpoints[].evidence[]`.
+- Customer web, project cards, CP Kanban and the native app use publication-owned result/version/identity and localized Arabic RTL or English LTR labels.
+- Failure summaries navigate to exact checkpoint cards. The native video retry guard is bounded per incident and resets after successful playback; the web player uses immutable-size-bounded Range requests and SIDX time-to-byte mapping with a secure download fallback.
+- The PDF contains result/version, summary, checkpoint rows, approved image thumbnails and a login-gated QR URL; video is not embedded.
+
+## Verification
+
+Passed local source gates:
+
+- PHP lint for all `custom/**/*.php` files.
+- JavaScript syntax check for the staff PWA.
+- M074 behavioral/contract test, including manual/snapshot/revision, supersession, asset hashes, upload restart/quota, bounded media-process timeout, AQL zero tolerance, offline finding evidence, session handling and customer projection/Range checks.
+- Customer operation-report security regression.
+- M017 mobile data, exact 20-route and security regressions.
+- M032 admin/customer responsive regression.
+- Customer mobile app lint and TypeScript typecheck.
+- Customer mobile app: 14 test files / 45 tests, including bounded/final Range, SIDX mapping, video token retry and download safety.
+- `git diff --check`.
+
+Known local limitations are not M074 source failures:
+
+- Database-backed Operations/workflow tests cannot connect to the unavailable local database at `127.0.0.1:8889`.
+- The older M017 OpenAPI byte-hash contract is stale while the OpenAPI file is unchanged from `origin/main`; the exact 20-route and security tests pass.
+- Existing dependency audit findings remain baseline-only; no forced dependency upgrade was made in M074.
+
+## Independent review
+
+- **Customer Portal/UI/UX:** `PASS_WITH_CONDITIONS`; no source blocker. Requires authenticated database/browser, Safari/iPhone and Android playback/seek/token-refresh, exact failure navigation, 390px RTL/LTR, PDF/QR and cross-customer acceptance before release.
+- **Operations/QA:** `PASS_WITH_CONDITIONS`; no source blocker after queued-package rehydration and superseded-upload locking corrections. Database migration/readiness, authenticated end-to-end and real-device offline/upload/video acceptance remain required.
+- **Security:** `PASS`; no remaining source finding after binary chunks were routed through the shared definitive/ambiguous authentication handler.
+
+## Changed-file manifest
+
+### Operations module and staff PWA
+
+- `custom/chinaplanetoperations/class/OperationsService.class.php`
+- `custom/chinaplanetoperations/class/QcAqlService.class.php`
+- `custom/chinaplanetoperations/class/QcContractProposalAdapter.class.php`
+- `custom/chinaplanetoperations/class/QcEvidenceService.class.php`
+- `custom/chinaplanetoperations/class/QcMigration.class.php`
+- `custom/chinaplanetoperations/class/QcPublicationService.class.php`
+- `custom/chinaplanetoperations/class/QcService.class.php`
+- `custom/chinaplanetoperations/class/QcTemplateService.class.php`
+- `custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php`
+- `custom/chinaplanetoperations/css/operations.css`
+- `custom/chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang`
+- `custom/chinaplanetoperations/langs/en_US/chinaplanetoperations.lang`
+- `custom/chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang`
+- `custom/chinaplanetoperations/operations/view.php`
+- `custom/chinaplanetoperations/qc/api.php`
+- `custom/chinaplanetoperations/qc/app.php`
+- `custom/chinaplanetoperations/qc/manifest.php`
+- `custom/chinaplanetoperations/qc/media.php`
+- `custom/chinaplanetoperations/qc/plan.php`
+- `custom/chinaplanetoperations/qc/qc-field.css`
+- `custom/chinaplanetoperations/qc/qc-field.js`
+- `custom/chinaplanetoperations/qc/qc-icon.svg`
+- `custom/chinaplanetoperations/qc/qc-support.js`
+- `custom/chinaplanetoperations/qc/review.php`
+- `custom/chinaplanetoperations/qc/service-worker.js`
+- `custom/chinaplanetoperations/sql/llx_cpo_qc_checkpoint.sql`
+- `custom/chinaplanetoperations/sql/llx_cpo_qc_evidence.sql`
+- `custom/chinaplanetoperations/sql/llx_cpo_qc_publication.sql`
+
+### Customer Center and project surfaces
+
+- `custom/chinaplanetcustomercenter/board.php`
+- `custom/chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php`
+- `custom/chinaplanetcustomercenter/css/operations.css`
+- `custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php`
+- `custom/chinaplanetcustomercenter/lib/operation_reports.lib.php`
+- `custom/chinaplanetcustomercenter/operation_document.php`
+- `custom/chinaplanetcustomercenter/operation_report.php`
+- `custom/chinaplanetcustomercenter/operation_reports.php`
+- `custom/chinaplanetcustomercenter/project.php`
+- `custom/chinaplanetcustomercenter/qc_media.php`
+- `custom/chinaplanetcustomercenter/qc_pdf.php`
+- `custom/chinaplanetcustomercenter/qc_report.php`
+- `custom/cpkanban/lib/customer_project_center.lib.php`
+
+### Customer mobile app
+
+- `mobile/chinaplanet-customer-app/app/(tabs)/more/report/[id].tsx`
+- `mobile/chinaplanet-customer-app/app/(tabs)/more/reports.tsx`
+- `mobile/chinaplanet-customer-app/docs/PORTAL_PARITY.md`
+- `mobile/chinaplanet-customer-app/package-lock.json`
+- `mobile/chinaplanet-customer-app/package.json`
+- `mobile/chinaplanet-customer-app/src/api/types.ts`
+- `mobile/chinaplanet-customer-app/src/components.tsx`
+- `mobile/chinaplanet-customer-app/src/components/QcEvidenceItem.tsx`
+- `mobile/chinaplanet-customer-app/src/files/authenticatedDownload.ts`
+- `mobile/chinaplanet-customer-app/src/files/authenticatedPreview.ts`
+- `mobile/chinaplanet-customer-app/src/files/fragmentedMp4.ts`
+- `mobile/chinaplanet-customer-app/src/files/videoAuthRetry.ts`
+- `mobile/chinaplanet-customer-app/tests/downloadSafety.test.ts`
+- `mobile/chinaplanet-customer-app/tests/fragmentedMp4.test.ts`
+- `mobile/chinaplanet-customer-app/tests/videoAuthRetry.test.ts`
+
+### Mission and tests
+
+- `deploy/tests/test_m074_qc_contract.php`
+- `deploy/tests/test_m074_qc_pwa.js`
+- `docs/MISSIONS/M074_FIELD_QC_REPORT.md`
+- `docs/REPORTS/M074_COMPLETION_REPORT.md`
+
+The public React website has no M074 source change.
+
+## Rollback and release gates
+
+Source rollback is to revert the M074 commits. Additive QC tables and any later QC records remain dormant; they must not be dropped or deleted without separate destructive-data approval. No automatic evidence deletion is introduced.
+
+Before staging, freeze and independently review a checksum-pinned artifact, verify module/schema readiness and configured private storage/tooling, grant the four rights deliberately, then exercise a synthetic multi-product order end to end. Required acceptance includes full offline close/resume/reconnect, duplicate/conflict/chunk tamper, Pass/Fail publication, customer A/B isolation, PDF/QR, Arabic/English desktop and 390px, and real iPhone/Android video seek and token refresh. Production requires a separate approval after staging acceptance.

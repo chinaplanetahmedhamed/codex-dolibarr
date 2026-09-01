@@ -30,7 +30,7 @@ export async function loadAuthenticatedPreview(
   let result = await FileSystem.downloadAsync(
     `${environment.apiBaseUrl}${targetPath(target)}`,
     destination,
-    { headers: { Authorization: `Bearer ${await client.getAccessToken()}`, Accept: 'image/*' } },
+    { headers: { Authorization: `Bearer ${await client.getAccessToken()}`, Accept: '*/*' } },
   );
   if (result.status === 401) {
     await FileSystem.deleteAsync(destination, { idempotent: true });
@@ -38,7 +38,7 @@ export async function loadAuthenticatedPreview(
     result = await FileSystem.downloadAsync(
       `${environment.apiBaseUrl}${targetPath(target)}`,
       destination,
-      { headers: { Authorization: `Bearer ${await client.getAccessToken()}`, Accept: 'image/*' } },
+      { headers: { Authorization: `Bearer ${await client.getAccessToken()}`, Accept: '*/*' } },
     );
   }
   if (result.status !== 200 && result.status !== 206) {

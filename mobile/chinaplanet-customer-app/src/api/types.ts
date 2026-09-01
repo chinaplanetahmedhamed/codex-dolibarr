@@ -266,12 +266,25 @@ export type ReportSummary = {
   next_action?: string | null;
   due_at?: string | null;
   updated_at: string;
+  overall_result?: 'pass' | 'fail' | 'pending_corrective_action' | 'reinspection_required';
+  publication_version?: number;
+  inspection_at?: string | null;
+  published_at?: string | null;
 };
+
+export type QcEvidence = { id: string; kind: 'image' | 'video'; caption?: string | null; mime_type: string; size_bytes: number; sha256: string };
+export type QcCheckpoint = { id: string; requirement: string; expected_value?: string | null; tolerance?: string | null; observation?: string | null; result: 'pass' | 'fail' | 'not_applicable' | 'pending'; severity: 'none' | 'critical' | 'major' | 'minor'; public_note?: string | null; evidence: QcEvidence[] };
+export type QcAql = { standard?: string; edition?: string; sampling?: string; inspection?: string; level?: string; lot_size?: number; classes: Record<string, { aql?: string; code_letter?: string; sample_size?: number; accept?: number; reject?: number; inspect_all?: boolean }>; observed: Record<string, number>; outcome?: string };
 
 export type ReportDetail = ReportSummary & {
   public_note: string | null;
   fields: { code: string; label: BilingualLabel; value: string }[];
   documents: Document[];
+  publication_id?: string;
+  inspection?: { inspected_at?: string | null; reviewed_at?: string | null; published_at?: string | null; reviewed_by?: string | null; version: number; aql?: QcAql | null };
+  summary?: { total: number; pass: number; fail: number; not_applicable: number; critical: number; major: number; minor: number };
+  sections?: { code: string; title: string; checkpoints: QcCheckpoint[] }[];
+  pdf?: { id: string; name: string };
 };
 
 export type Dashboard = {
