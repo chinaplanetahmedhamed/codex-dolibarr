@@ -87,4 +87,26 @@ with tempfile.TemporaryDirectory(prefix="m074-layout-") as temporary:
         overlay_blocked = True
     require(overlay_blocked, "UNMANAGED_OVERLAY_DRIFT_ACCEPTED")
 
-print("M074_COMPATIBILITY_LAYOUT=PASS DEPLOY_TARGETS=378 OVERLAYS=70 TREE_PIN=EXACT UNMANAGED_DRIFT=REJECTED")
+    # Missing declared parent directories are managed additions; unrelated additions remain forbidden.
+    (legacy / "extra.txt").write_bytes(b"preserve-me\n")
+    missing_tree = module.directory_tree_snapshot("chinaplanetcustomercenter/cpkanban")
+    managed_release = b"managed-release\n"
+    managed_row = {"source_path": "custom/cpkanban/new/asset.php",
+                   "runtime_target": "custom/chinaplanetcustomercenter/cpkanban/new/asset.php",
+                   "classification": "runtime", "mode": "644", "size": str(len(managed_release)),
+                   "sha256": module.hashlib.sha256(managed_release).hexdigest()}
+    managed_candidate = types.SimpleNamespace(runtime_rows=[managed_row])
+    managed_item = {"path": "chinaplanetcustomercenter/cpkanban", "state": "OVERLAY_DIRECTORY",
+                    "expected": "../cpkanban", "actual": "NON_SYMLINK_DIRECTORY", "tree": missing_tree}
+    (legacy / "new").mkdir(mode=0o755)
+    (legacy / "new/asset.php").write_bytes(managed_release)
+    module.verify_overlay_preserved(managed_candidate, managed_item)
+    (legacy / "new/unmanaged.txt").write_bytes(b"forbidden\n")
+    missing_parent_drift_blocked = False
+    try:
+        module.verify_overlay_preserved(managed_candidate, managed_item)
+    except module.ReleaseError:
+        missing_parent_drift_blocked = True
+    require(missing_parent_drift_blocked, "UNMANAGED_FILE_IN_MANAGED_PARENT_ACCEPTED")
+
+print("M074_COMPATIBILITY_LAYOUT=PASS DEPLOY_TARGETS=378 OVERLAYS=70 TREE_PIN=EXACT MANAGED_PARENTS=SAFE UNMANAGED_DRIFT=REJECTED")

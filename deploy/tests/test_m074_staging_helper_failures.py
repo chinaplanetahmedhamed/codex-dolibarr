@@ -98,20 +98,26 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     overlay_target.write_bytes(b"overlay-old"); overlay_target.chmod(0o644)
     overlay_extra.write_bytes(b"preserve"); overlay_extra.chmod(0o640)
     overlay_snapshot = {"files": [{"path": "chinaplanetcustomercenter/cpkanban/index.php", "state": "PRESENT",
-                                   "sha256": hashlib.sha256(b"overlay-old").hexdigest(), "uid": uid, "gid": gid, "mode": 0o644}],
+                                   "sha256": hashlib.sha256(b"overlay-old").hexdigest(), "uid": uid, "gid": gid, "mode": 0o644},
+                                  {"path": "chinaplanetcustomercenter/cpkanban/managed/new.php", "state": "ABSENT"}],
                         "layout": [{"path": "chinaplanetcustomercenter/cpkanban", "state": "OVERLAY_DIRECTORY",
                                     "expected": "../cpkanban", "actual": "NON_SYMLINK_DIRECTORY",
                                     "tree": helper.directory_tree_snapshot("chinaplanetcustomercenter/cpkanban")}]}
     overlay_deployed = {"files": [{"path": "chinaplanetcustomercenter/cpkanban/index.php", "state": "PRESENT",
-                                    "sha256": hashlib.sha256(b"overlay-new").hexdigest(), "uid": uid, "gid": gid, "mode": 0o644}]}
+                                    "sha256": hashlib.sha256(b"overlay-new").hexdigest(), "uid": uid, "gid": gid, "mode": 0o644},
+                                   {"path": "chinaplanetcustomercenter/cpkanban/managed/new.php", "state": "PRESENT",
+                                    "sha256": hashlib.sha256(b"managed-new").hexdigest(), "uid": uid, "gid": gid, "mode": 0o644}]}
     overlay_backup = helper.write_backup(None, overlay_snapshot, "overlay-before")
     overlay_fd = os.open(helper.TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY)
     try:
         helper.atomic_write_target(overlay_fd, "chinaplanetcustomercenter/cpkanban/index.php", b"overlay-new", uid, gid, 0o644)
+        (overlay_root / "managed").mkdir(mode=0o755)
+        (overlay_root / "managed/new.php").write_bytes(b"managed-new")
+        (overlay_root / "managed/new.php").chmod(0o644)
     finally:
         os.close(overlay_fd)
     helper.restore_snapshot(*overlay_backup, allowed_snapshot=overlay_deployed)
-    require(overlay_target.read_bytes() == b"overlay-old" and overlay_extra.read_bytes() == b"preserve",
+    require(overlay_target.read_bytes() == b"overlay-old" and overlay_extra.read_bytes() == b"preserve" and not (overlay_root / "managed").exists(),
             "OVERLAY_ROLLBACK_NOT_EXACT")
 
     # Production live checks bind unmanaged overlay entries to the approved prestate.

@@ -384,17 +384,20 @@ def open_dir_chain(root_fd: int, parts: tuple[str, ...], *, create: bool = False
         for part in parts:
             if not part or part in (".", "..") or "/" in part:
                 fail("TARGET_PATH_INVALID")
+            created = False
             try:
                 next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0), dir_fd=current)
             except FileNotFoundError:
                 if not create:
                     raise
                 os.mkdir(part, 0o755, dir_fd=current)
-                os.chown(part, pwd.getpwnam("www-data").pw_uid, grp.getgrnam("www-data").gr_gid, dir_fd=current, follow_symlinks=False)
-                os.fsync(current)
+                created = True
                 next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0), dir_fd=current)
             if not stat.S_ISDIR(os.fstat(next_fd).st_mode):
                 fail("TARGET_PARENT_INVALID")
+            if created:
+                os.fchown(next_fd, pwd.getpwnam("www-data").pw_uid, grp.getgrnam("www-data").gr_gid)
+                os.fchmod(next_fd, 0o755); os.fsync(next_fd); os.fsync(current)
             os.close(current); current = next_fd
         return current
     except Exception:
@@ -460,6 +463,26 @@ def overlay_parents_exist(tree: list[dict[str, object]], targets: set[str]) -> b
     return True
 
 
+def overlay_managed_directories(targets: set[str]) -> set[str]:
+    directories: set[str] = set()
+    for target in targets:
+        parent = pathlib.PurePosixPath(target).parent
+        while parent.as_posix() != ".":
+            directories.add(parent.as_posix())
+            parent = parent.parent
+    return directories
+
+
+def overlay_managed_parents_ready(tree: list[dict[str, object]], targets: set[str]) -> bool:
+    entries = {str(item["path"]): item for item in tree}
+    existing = {path for path, item in entries.items() if item.get("kind") == "DIRECTORY"}
+    if not (overlay_managed_directories(targets) - existing):
+        return True
+    root = entries.get("")
+    return root is not None and root.get("kind") == "DIRECTORY" and \
+        (root.get("uid"), root.get("gid")) == (pwd.getpwnam("www-data").pw_uid, grp.getgrnam("www-data").gr_gid)
+
+
 def overlay_release_tree_matches(candidate: Candidate, layout_relative: str,
                                  tree: list[dict[str, object]]) -> bool:
     entries = {str(item["path"]): item for item in tree}
@@ -500,7 +523,7 @@ def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
                         expected_tree_sha = EXPECTED_LAYOUT_TREE_SHA.get(source)
                         tree_sha = canonical_sha(tree)
                         targets = overlay_relative_targets(candidate, relative)
-                        baseline_ready = expected_tree_sha == tree_sha and overlay_parents_exist(tree, targets)
+                        baseline_ready = expected_tree_sha == tree_sha and overlay_managed_parents_ready(tree, targets)
                         state = "OVERLAY_DIRECTORY" if baseline_ready or overlay_release_tree_matches(candidate, relative, tree) else "DIFFERENT"
                     else:
                         actual = "NON_DIRECTORY_NON_SYMLINK"; state = "DIFFERENT"
@@ -735,10 +758,18 @@ def overlay_unmanaged_matches(candidate: Candidate, item: dict[str, object],
     after_tree = current_tree if current_tree is not None else directory_tree_snapshot(str(item["path"]))
     after = {str(entry["path"]): entry for entry in after_tree}
     targets = overlay_relative_targets(candidate, str(item["path"]))
-    if not targets or not overlay_parents_exist(list(before.values()), targets):
+    root = before.get("")
+    if not targets or root is None or root.get("kind") != "DIRECTORY":
         return False
     for target in targets:
         before.pop(target, None); after.pop(target, None)
+    for directory in overlay_managed_directories(targets):
+        if directory in before:
+            continue
+        entry = after.pop(directory, None)
+        if entry is None or entry.get("kind") != "DIRECTORY" or entry.get("mode") != 0o755 or \
+                (entry.get("uid"), entry.get("gid")) != (root.get("uid"), root.get("gid")):
+            return False
     return before == after and overlay_release_tree_matches(candidate, str(item["path"]), after_tree)
 
 
@@ -779,13 +810,51 @@ def apply_layout(candidate: Candidate, snapshot: dict[str, object]) -> None:
             raise
 
 
-def restore_layout(snapshot: dict[str, object]) -> None:
+def snapshot_overlay_targets(snapshot: dict[str, object], layout_relative: str) -> set[str]:
+    prefix = layout_relative.rstrip("/") + "/"
+    return {str(item["path"])[len(prefix):] for item in snapshot.get("files", [])
+            if isinstance(item, dict) and isinstance(item.get("path"), str) and str(item["path"]).startswith(prefix)}
+
+
+def remove_managed_overlay_directories(item: dict[str, object], allowed_snapshot: dict[str, object]) -> None:
+    prior_tree = item.get("tree")
+    if not isinstance(prior_tree, list):
+        fail("ROLLBACK_PRESTATE_INVALID")
+    prior = {str(entry["path"]): entry for entry in prior_tree}
+    root = prior.get("")
+    if root is None or root.get("kind") != "DIRECTORY":
+        fail("ROLLBACK_PRESTATE_INVALID")
+    targets = snapshot_overlay_targets(allowed_snapshot, str(item["path"]))
+    if not targets:
+        fail("ROLLBACK_LAYOUT_MISMATCH")
+    current = {str(entry["path"]): entry for entry in directory_tree_snapshot(str(item["path"]))}
+    removable = [path for path in overlay_managed_directories(targets) if path not in prior]
+    for relative in sorted(removable, key=lambda value: (value.count("/"), value), reverse=True):
+        entry = current.get(relative)
+        if entry is None:
+            continue
+        if entry.get("kind") != "DIRECTORY" or entry.get("mode") != 0o755 or \
+                (entry.get("uid"), entry.get("gid")) != (root.get("uid"), root.get("gid")):
+            fail("ROLLBACK_LAYOUT_MISMATCH")
+        target = TARGET_ROOT / str(item["path"]) / relative
+        try:
+            target.rmdir()
+        except OSError:
+            fail("ROLLBACK_LAYOUT_MISMATCH")
+        fsync_path(target.parent)
+
+
+def restore_layout(snapshot: dict[str, object], allowed_snapshot: dict[str, object] | None = None) -> None:
     for item in snapshot.get("layout", []):
         prior = str(item["state"]); target = TARGET_ROOT / str(item["path"])
         if prior == "CURRENT":
             if current_layout_item(item)["state"] != "CURRENT": fail("ROLLBACK_BASELINE_CHANGED")
             continue
         if prior == "OVERLAY_DIRECTORY":
+            if directory_tree_snapshot(str(item["path"])) != item.get("tree"):
+                if allowed_snapshot is None:
+                    fail("ROLLBACK_LAYOUT_MISMATCH")
+                remove_managed_overlay_directories(item, allowed_snapshot)
             if directory_tree_snapshot(str(item["path"])) != item.get("tree"):
                 fail("ROLLBACK_LAYOUT_MISMATCH")
             continue
@@ -894,7 +963,7 @@ def restore_snapshot(archive_path: pathlib.Path, archive_sha: str, prestate_path
             else: fail("PRESTATE_INVALID")
     finally: os.close(target_fd)
     if runtime_snapshot_from_rows(snapshot)["files"] != snapshot["files"]: fail("ROLLBACK_PRESTATE_MISMATCH")
-    restore_layout(snapshot)
+    restore_layout(snapshot, allowed_snapshot)
 
 
 DB_DUMP_SCRIPT = r'''set -eu
