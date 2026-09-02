@@ -1,344 +1,1151 @@
-#!/usr/bin/env bash
-set -Eeuo pipefail
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-umask 077
+#!/usr/bin/env python3
+"""Checksum-pinned, staging-only M074-R06 release controller."""
 
-readonly RELEASE='M074-R01'
-readonly SOURCE_COMMIT='7d1cdcd2f6c1343001449f35a95f4901bf3e0fb7'
-readonly ARTIFACT_SHA='2f7e368dc5c4c1455166a5b6c56c55b33bb32c0ec0a3c14f5d55023f71e68830'
-readonly MANIFEST_SHA='b621576dab047a76188914e9e053752ed3753e06cc685f52854acda5b43f80c7'
-readonly LAYOUT_SHA='a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756'
-readonly BUNDLE_SHA='ffc8a3d00c50a90be0dc7d2e2a64d4eccc14ac9da8aec1c46082b436a2313bfb'
-readonly PINS_SHA='09fbb1f3ad18f43596ebfc09a1e4970932969678949f37839e168ebefe78dd77'
+from __future__ import annotations
 
-readonly INBOX='/home/codex-deploy/staging-inbox'
-readonly ARTIFACT="${INBOX}/m074-r01-dolibarr.tar.gz"
-readonly MANIFEST="${INBOX}/m074-r01-dolibarr.manifest.tsv"
-readonly LAYOUT="${INBOX}/m074-r01-dolibarr.layout.tsv"
-readonly BUNDLE="${INBOX}/m074-r01-release-bundle.json"
-readonly PINS="${INBOX}/m074-r01-release-pins.sha256"
-
-readonly TARGET_CONTAINER='erp-staging-dolibarr-1'
-readonly DB_CONTAINER='erp-staging-mariadb-1'
-readonly MAILPIT_CONTAINER='erp-staging-mailpit-1'
-readonly TARGET_VOLUME='erp-staging_erp-staging_custom'
-readonly TARGET_ROOT='/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data'
-readonly TARGET_HTTP='http://127.0.0.1:18088'
-readonly MIN_FREE_KB=1048576
-
-readonly -a STATIC_TESTS=(
-  'deploy/tests/test_m061_customer_documents_contract.php'
-  'deploy/tests/test_m070_customer_unit_projection.php'
-  'deploy/tests/test_m071_catalog_order_v2_source.php'
-  'deploy/tests/test_m071_country_contract.php'
-  'deploy/tests/test_customer_operation_reports_security.php'
-  'deploy/tests/test_m017_mobile_api_data.php'
-  'deploy/tests/test_m017_mobile_api_security.php'
-  'deploy/tests/test_m032_admin_customer_responsive.php'
-  'deploy/tests/test_m074_qc_contract.php'
-)
-
-CANDIDATE_ROOT=''
-CANDIDATE_REMOTE=''
-PRIVATE_ROOT=''
-ARTIFACT_COPY=''
-MANIFEST_COPY=''
-LAYOUT_COPY=''
-BUNDLE_COPY=''
-PINS_COPY=''
-CURRENT_COUNT=0
-DIFFERENT_COUNT=0
-ABSENT_COUNT=0
-LAYOUT_CURRENT_COUNT=0
-LAYOUT_DIFFERENT_COUNT=0
-LAYOUT_ABSENT_COUNT=0
-
-die() { echo "M074_STAGING_FAIL=$1" >&2; exit 1; }
-sha256() { sha256sum "$1" | awk '{print $1}'; }
-
-cleanup() {
-  local rc=$?
-  trap - EXIT
-  if [[ -n "$CANDIDATE_REMOTE" && "$CANDIDATE_REMOTE" == /tmp/m074-candidate-* ]]; then
-    docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "$PRIVATE_ROOT" && "$PRIVATE_ROOT" == /root/m074-preflight.* && -d "$PRIVATE_ROOT" ]]; then
-    rm -rf "$PRIVATE_ROOT"
-  fi
-  exit "$rc"
-}
-trap cleanup EXIT
-
-require_root() {
-  [[ $(id -u) -eq 0 ]] || die 'ROOT_REQUIRED'
-  [[ $# -eq 1 ]] || die 'EXACTLY_ONE_COMMAND_REQUIRED'
-  [[ $(basename "$0") == 'chinaplanetos-backup-erp-m074-qc-preflight' ]] || die 'HELPER_PATH_NOT_ALLOWED'
-}
-
-check_environment() {
-  command -v docker >/dev/null || die 'DOCKER_ABSENT'
-  command -v python3 >/dev/null || die 'PYTHON3_ABSENT'
-  command -v tar >/dev/null || die 'TAR_ABSENT'
-  command -v sha256sum >/dev/null || die 'SHA256SUM_ABSENT'
-  command -v curl >/dev/null || die 'CURL_ABSENT'
-  [[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" ]] || die 'TARGET_ROOT_INVALID'
-  [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$TARGET_CONTAINER" 2>/dev/null) == 'true|erp-staging|dolibarr' ]] || die 'ERP_IDENTITY_MISMATCH'
-  [[ $(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/www/html/custom"}}{{.Name}}|{{.RW}}{{end}}{{end}}' "$TARGET_CONTAINER") == "${TARGET_VOLUME}|true" ]] || die 'CUSTOM_MOUNT_MISMATCH'
-  [[ $(docker volume inspect -f '{{.Driver}}|{{.Mountpoint}}' "$TARGET_VOLUME" 2>/dev/null) == "local|${TARGET_ROOT}" ]] || die 'CUSTOM_VOLUME_MISMATCH'
-  [[ $(docker port "$TARGET_CONTAINER" 80/tcp 2>/dev/null) == '127.0.0.1:18088' ]] || die 'ERP_PORT_MISMATCH'
-  [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$DB_CONTAINER" 2>/dev/null) == 'true|erp-staging|mariadb' ]] || die 'DB_IDENTITY_MISMATCH'
-  [[ $(docker inspect -f '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' "$MAILPIT_CONTAINER" 2>/dev/null) == 'true|erp-staging|mailpit' ]] || die 'MAILPIT_IDENTITY_MISMATCH'
-  [[ $(docker port "$MAILPIT_CONTAINER" 1025/tcp 2>/dev/null) == '127.0.0.1:11025' ]] || die 'SMTP_PORT_MISMATCH'
-  [[ $(docker port "$MAILPIT_CONTAINER" 8025/tcp 2>/dev/null) == '127.0.0.1:18025' ]] || die 'MAILPIT_PORT_MISMATCH'
-  [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${TARGET_HTTP}/") =~ ^(200|302)$ ]] || die 'ERP_HTTP_UNHEALTHY'
-  [[ -d "$INBOX" && ! -L "$INBOX" && $(stat -c '%U:%G %a' "$INBOX") == 'codex-deploy:codex-deploy 700' ]] || die 'INBOX_METADATA_INVALID'
-  [[ $(df -Pk "$TARGET_ROOT" | awk 'NR==2 {print $4}') -ge $MIN_FREE_KB ]] || die 'TARGET_DISK_LOW'
-}
-
-copy_input() {
-  local source=$1 expected_sha=$2 destination=$3
-  [[ -f "$source" && ! -L "$source" ]] || die 'RELEASE_INPUT_ABSENT'
-  [[ $(stat -c '%U:%G %a' "$source") == 'codex-deploy:codex-deploy 644' ]] || die 'RELEASE_INPUT_METADATA_INVALID'
-  install -o root -g root -m 0600 "$source" "$destination"
-  [[ $(sha256 "$destination") == "$expected_sha" ]] || die 'RELEASE_INPUT_HASH_MISMATCH'
-}
-
-validate_release() {
-  PRIVATE_ROOT=$(mktemp -d /root/m074-preflight.XXXXXX)
-  ARTIFACT_COPY="${PRIVATE_ROOT}/dolibarr.tar.gz"
-  MANIFEST_COPY="${PRIVATE_ROOT}/dolibarr.manifest.tsv"
-  LAYOUT_COPY="${PRIVATE_ROOT}/dolibarr.layout.tsv"
-  BUNDLE_COPY="${PRIVATE_ROOT}/release-bundle.json"
-  PINS_COPY="${PRIVATE_ROOT}/release-pins.sha256"
-  copy_input "$ARTIFACT" "$ARTIFACT_SHA" "$ARTIFACT_COPY"
-  copy_input "$MANIFEST" "$MANIFEST_SHA" "$MANIFEST_COPY"
-  copy_input "$LAYOUT" "$LAYOUT_SHA" "$LAYOUT_COPY"
-  copy_input "$BUNDLE" "$BUNDLE_SHA" "$BUNDLE_COPY"
-  copy_input "$PINS" "$PINS_SHA" "$PINS_COPY"
-
-  local listing verbose tar_stderr
-  listing="${PRIVATE_ROOT}/archive.list"
-  verbose="${PRIVATE_ROOT}/archive.verbose"
-  tar_stderr="${PRIVATE_ROOT}/archive.stderr"
-  tar -tzf "$ARTIFACT_COPY" >"$listing" 2>"$tar_stderr" || die 'ARTIFACT_TAR_INVALID'
-  [[ ! -s "$tar_stderr" ]] || die 'ARTIFACT_TAR_METADATA_UNSUPPORTED'
-  tar -tvzf "$ARTIFACT_COPY" >"$verbose" 2>"$tar_stderr" || die 'ARTIFACT_TAR_INVALID'
-  [[ ! -s "$tar_stderr" ]] || die 'ARTIFACT_TAR_METADATA_UNSUPPORTED'
-  [[ $(wc -l <"$listing") -eq 514 ]] || die 'ARTIFACT_MEMBER_COUNT_INVALID'
-  [[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ || /\/$/ || /\/\._/ || /\.DS_Store/ {print; exit}' "$listing") ]] || die 'ARTIFACT_PATH_UNSAFE'
-  [[ -z $(awk 'substr($1,1,10)!="-rw-r--r--" && substr($1,1,10)!="-rwxr-xr-x" {print; exit}' "$verbose") ]] || die 'ARTIFACT_TYPE_OR_MODE_FORBIDDEN'
-  [[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die 'ARTIFACT_DUPLICATE_ENTRY'
-
-  CANDIDATE_ROOT="${PRIVATE_ROOT}/candidate"
-  install -d -o root -g root -m 0700 "$CANDIDATE_ROOT"
-  tar -xzf "$ARTIFACT_COPY" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT" 2>"$tar_stderr" || die 'ARTIFACT_EXTRACT_FAILED'
-  [[ ! -s "$tar_stderr" ]] || die 'ARTIFACT_EXTRACT_METADATA_UNSUPPORTED'
-  [[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) ]] || die 'ARTIFACT_SYMLINK_FORBIDDEN'
-  [[ -z $(find "$CANDIDATE_ROOT" ! -type d ! -type f -print -quit) ]] || die 'ARTIFACT_TYPE_FORBIDDEN'
-
-  python3 - "$CANDIDATE_ROOT" "$MANIFEST_COPY" "$LAYOUT_COPY" "$BUNDLE_COPY" "$PINS_COPY" <<'PY' || die 'RELEASE_CONTRACT_INVALID'
 import csv
+import ctypes
+import datetime as dt
+import gzip
 import hashlib
+import io
 import json
 import os
 import pathlib
+import pwd
+import grp
 import re
+import secrets
+import shutil
+import stat
+import subprocess
 import sys
+import tarfile
+import tempfile
+import urllib.error
+import urllib.request
 
-root = pathlib.Path(sys.argv[1])
-manifest_path = pathlib.Path(sys.argv[2])
-layout_path = pathlib.Path(sys.argv[3])
-bundle_path = pathlib.Path(sys.argv[4])
-pins_path = pathlib.Path(sys.argv[5])
-hex64 = re.compile(r"^[0-9a-f]{64}$")
-safe_path = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
 
-def fail(reason):
-    raise SystemExit(reason)
+RELEASE = "M074-R06"
+SOURCE_COMMIT = "d58fb5602e0d2019eaac47316550ab9574045b46"
+ARTIFACT_SHA = "849f8885833a299b8ec8934c4fdd9ef42c968ccf6dc48bf836f1bbbd4612504f"
+MANIFEST_SHA = "f5a01d59ab61fb9429d84eecec9e0590554e7eedbef3ca8becc088b1e9dab3c6"
+LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
+BUNDLE_SHA = "7bdbe6dd77d72301f1eda2de384be5bf8b7506d2cb6017ce7ae3b84fec06f90b"
+PINS_SHA = "0688ba9a503f154a5f9c7a488acac708277109929194b5ef56404d0dfc7a90ed"
 
-bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
-if bundle.get("releaseId") != "M074-R01" or bundle.get("schemaVersion") != 1:
-    fail("bundle identity")
-if bundle.get("bindingStatus") != "UNBOUND_REQUIRES_INDEPENDENT_REVIEW_AND_STAGING_APPROVAL":
-    fail("bundle binding")
-components = {item.get("id"): item for item in bundle.get("components", [])}
-if set(components) != {"dolibarr", "react", "wordpress", "mobile"}:
-    fail("bundle components")
-dolibarr = components["dolibarr"]
-expected = {
-    "artifact": "dolibarr.tar.gz",
-    "artifactSha256": "2f7e368dc5c4c1455166a5b6c56c55b33bb32c0ec0a3c14f5d55023f71e68830",
-    "commit": "7d1cdcd2f6c1343001449f35a95f4901bf3e0fb7",
-    "manifest": "dolibarr.manifest.tsv",
-    "manifestSha256": "b621576dab047a76188914e9e053752ed3753e06cc685f52854acda5b43f80c7",
-    "layout": "dolibarr.layout.tsv",
-    "layoutSha256": "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756",
-    "members": 514,
-    "configPolicy": "external-retain",
-    "dataPolicy": "retain",
-    "schemaPolicy": "additive-retain-on-code-rollback",
+INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
+INPUTS = {
+    "dolibarr.tar.gz": ("m074-r06-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r06-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r06-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r06-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r06-release-pins.sha256", PINS_SHA),
 }
-if any(dolibarr.get(key) != value for key, value in expected.items()):
-    fail("dolibarr bundle record")
-
-pin_lines = set(pins_path.read_text(encoding="utf-8").splitlines())
-required_pins = {
-    "2f7e368dc5c4c1455166a5b6c56c55b33bb32c0ec0a3c14f5d55023f71e68830  dolibarr.tar.gz",
-    "b621576dab047a76188914e9e053752ed3753e06cc685f52854acda5b43f80c7  dolibarr.manifest.tsv",
-    "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756  dolibarr.layout.tsv",
-    "ffc8a3d00c50a90be0dc7d2e2a64d4eccc14ac9da8aec1c46082b436a2313bfb  release-bundle.json",
-}
-if not required_pins <= pin_lines:
-    fail("release pins")
-
-with manifest_path.open(newline="", encoding="utf-8") as handle:
-    rows = list(csv.DictReader(handle, delimiter="\t"))
-if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"]:
-    fail("manifest header")
-if len(rows) != 514:
-    fail("manifest count")
-counts = {"runtime": 0, "support": 0, "evidence": 0}
-seen = set()
-for row in rows:
-    source = row["source_path"]
-    target = row["runtime_target"]
-    classification = row["classification"]
-    if not safe_path.fullmatch(source) or source.startswith("/") or ".." in pathlib.PurePosixPath(source).parts:
-        fail("manifest source path")
-    if source in seen:
-        fail("manifest duplicate")
-    seen.add(source)
-    if classification not in counts:
-        fail("manifest classification")
-    counts[classification] += 1
-    if classification == "runtime":
-        if target != source or not source.startswith("custom/"):
-            fail("runtime target")
-    elif target != "-":
-        fail("nonruntime target")
-    if row["mode"] not in {"644", "755"} or not row["size"].isdigit() or not hex64.fullmatch(row["sha256"]):
-        fail("manifest metadata")
-    candidate = root / source
-    if not candidate.is_file() or candidate.is_symlink():
-        fail("candidate type")
-    if candidate.stat().st_size != int(row["size"]):
-        fail("candidate size")
-    if hashlib.sha256(candidate.read_bytes()).hexdigest() != row["sha256"]:
-        fail("candidate hash")
-actual = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
-if actual != seen or counts != {"runtime": 298, "support": 193, "evidence": 23}:
-    fail("candidate allowlist")
-
-with layout_path.open(newline="", encoding="utf-8") as handle:
-    layout = list(csv.DictReader(handle, delimiter="\t"))
-if not layout or list(layout[0]) != ["runtime_path", "entry_type", "link_target", "source_sha256"]:
-    fail("layout header")
-expected_layout = {
-    ("custom/chinaplanetcustomercenter/chinaplanetlogistics", "symlink", "../chinaplanetlogistics", "ff849783043d111acc12817d02817c0216551747e03701622006c7d92ff5cbf8"),
-    ("custom/chinaplanetcustomercenter/cpkanban", "symlink", "../cpkanban", "f2f54b296d42ddc86eac8a070d938983640f12be21b22f8c54374aacb692307a"),
-}
-actual_layout = {(r["runtime_path"], r["entry_type"], r["link_target"], r["source_sha256"]) for r in layout}
-if actual_layout != expected_layout or len(layout) != 2:
-    fail("layout contract")
-for _, _, link_target, source_hash in actual_layout:
-    if hashlib.sha256(link_target.encode("utf-8")).hexdigest() != source_hash:
-        fail("layout source hash")
-PY
+TARGET_CONTAINER = "erp-staging-dolibarr-1"
+DB_CONTAINER = "erp-staging-mariadb-1"
+MAILPIT_CONTAINER = "erp-staging-mailpit-1"
+TARGET_VOLUME = "erp-staging_erp-staging_custom"
+DB_VOLUME = "erp-staging_erp-staging_mariadb_data"
+TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data")
+TARGET_HTTP = "http://127.0.0.1:18088"
+BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
+DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r06")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r06-staging")
+STATE_FILE = STATE_ROOT / "state.json"
+PLAN_FILE = STATE_ROOT / "preflight-plan.json"
+LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
+MIGRATION = "deploy/migrations/m074_qc_schema.php"
+DEPLOY_CONTEXT = "m074-r06-backup-erp-root-only"
+MIN_FREE_KB = 2 * 1024 * 1024
+PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
+STATIC_TESTS = (
+    "deploy/tests/test_m061_customer_documents_contract.php",
+    "deploy/tests/test_m070_customer_unit_projection.php",
+    "deploy/tests/test_m071_catalog_order_v2_source.php",
+    "deploy/tests/test_m071_country_contract.php",
+    "deploy/tests/test_customer_operation_reports_security.php",
+    "deploy/tests/test_m017_mobile_api_data.php",
+    "deploy/tests/test_m017_mobile_api_security.php",
+    "deploy/tests/test_m032_admin_customer_responsive.php",
+    "deploy/tests/test_m074_qc_contract.php",
+)
+ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+SAFE_ARCHIVE_PATH = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
+SAFE_REQUEST_ID = re.compile(r"^m074-r06-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+EXPECTED_LAYOUT = {
+    "custom/chinaplanetcustomercenter/chinaplanetlogistics": "../chinaplanetlogistics",
+    "custom/chinaplanetcustomercenter/cpkanban": "../cpkanban",
 }
 
-candidate_checks() {
-  CANDIDATE_REMOTE="/tmp/m074-candidate-$$"
-  docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE"
-  docker exec "$TARGET_CONTAINER" mkdir -p "$CANDIDATE_REMOTE"
-  docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
-  docker exec "$TARGET_CONTAINER" ln -s ../chinaplanetlogistics "$CANDIDATE_REMOTE/custom/chinaplanetcustomercenter/chinaplanetlogistics"
-  docker exec "$TARGET_CONTAINER" ln -s ../cpkanban "$CANDIDATE_REMOTE/custom/chinaplanetcustomercenter/cpkanban"
-  docker exec "$TARGET_CONTAINER" sh -c 'find "$1/custom" "$1/deploy" -type f -name "*.php" -exec php -l {} \; >/dev/null' sh "$CANDIDATE_REMOTE" || die 'CANDIDATE_LINT_FAILED'
-  local test_file
-  for test_file in "${STATIC_TESTS[@]}"; do
-    docker exec -e M074_DOL_DOCUMENT_ROOT="$CANDIDATE_REMOTE" "$TARGET_CONTAINER" env -u M017_DOL_DOCUMENT_ROOT -u M017_CREDENTIAL_FILE -u M017_API_BASE php "$CANDIDATE_REMOTE/$test_file" >/dev/null || die "CANDIDATE_TEST_FAILED_${test_file//\//_}"
-  done
-}
 
-compare_runtime() {
-  local source target classification mode size release_hash target_path target_hash target_mode state
-  CURRENT_COUNT=0
-  DIFFERENT_COUNT=0
-  ABSENT_COUNT=0
-  while IFS=$'\t' read -r source target classification mode size release_hash; do
-    [[ "$classification" == 'runtime' ]] || continue
-    target_path="$TARGET_ROOT/${target#custom/}"
-    if [[ ! -e "$target_path" && ! -L "$target_path" ]]; then
-      state='ABSENT'
-      ((ABSENT_COUNT+=1))
-      echo "M074_STAGING_COMPARE FILE=$source STATE=$state RELEASE_SHA=$release_hash RELEASE_MODE=$mode"
-      continue
-    fi
-    [[ -f "$target_path" && ! -L "$target_path" ]] || die 'TARGET_FILE_INVALID'
-    target_hash=$(sha256 "$target_path")
-    target_mode=$(stat -c '%a' "$target_path")
-    if [[ "$target_hash" == "$release_hash" && "$target_mode" == "$mode" ]]; then
-      state='CURRENT'
-      ((CURRENT_COUNT+=1))
-    else
-      state='DIFFERENT'
-      ((DIFFERENT_COUNT+=1))
-    fi
-    echo "M074_STAGING_COMPARE FILE=$source STATE=$state TARGET_SHA=$target_hash RELEASE_SHA=$release_hash TARGET_MODE=$target_mode RELEASE_MODE=$mode"
-  done < <(tail -n +2 "$MANIFEST_COPY")
+class ReleaseError(RuntimeError):
+    pass
 
-  LAYOUT_CURRENT_COUNT=0
-  LAYOUT_DIFFERENT_COUNT=0
-  LAYOUT_ABSENT_COUNT=0
-  local runtime_path entry_type link_target source_hash link_path actual_target
-  while IFS=$'\t' read -r runtime_path entry_type link_target source_hash; do
-    link_path="$TARGET_ROOT/${runtime_path#custom/}"
-    actual_target='ABSENT'
-    if [[ ! -e "$link_path" && ! -L "$link_path" ]]; then
-      state='ABSENT'
-      ((LAYOUT_ABSENT_COUNT+=1))
-    elif [[ -L "$link_path" ]]; then
-      actual_target=$(readlink "$link_path")
-      if [[ "$actual_target" == "$link_target" ]]; then
-        state='CURRENT'
-        ((LAYOUT_CURRENT_COUNT+=1))
-      else
-        state='DIFFERENT'
-        ((LAYOUT_DIFFERENT_COUNT+=1))
-      fi
-    else
-      state='DIFFERENT'
-      ((LAYOUT_DIFFERENT_COUNT+=1))
-      actual_target='NON_SYMLINK'
-    fi
-    echo "M074_STAGING_COMPARE LAYOUT=$runtime_path STATE=$state EXPECTED_TARGET=$link_target ACTUAL_TARGET=${actual_target:-ABSENT}"
-  done < <(tail -n +2 "$LAYOUT_COPY")
-}
 
-command_compare() {
-  check_environment
-  validate_release
-  candidate_checks
-  compare_runtime
-  echo "M074_STAGING_COMPARE=PASS RELEASE=$RELEASE SOURCE_COMMIT=$SOURCE_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CURRENT=$CURRENT_COUNT DIFFERENT=$DIFFERENT_COUNT ABSENT=$ABSENT_COUNT LAYOUT_CURRENT=$LAYOUT_CURRENT_COUNT LAYOUT_DIFFERENT=$LAYOUT_DIFFERENT_COUNT LAYOUT_ABSENT=$LAYOUT_ABSENT_COUNT APPLY_READY=NO BASELINE_REVIEW_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
-}
+def fail(reason: str) -> None:
+    raise ReleaseError(reason)
 
-command_preflight() {
-  check_environment
-  validate_release
-  candidate_checks
-  compare_runtime
-  echo "M074_STAGING_PREFLIGHT=PASS RELEASE=$RELEASE SOURCE_COMMIT=$SOURCE_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CANDIDATE_TESTS=PASS CURRENT=$CURRENT_COUNT DIFFERENT=$DIFFERENT_COUNT ABSENT=$ABSENT_COUNT LAYOUT_CURRENT=$LAYOUT_CURRENT_COUNT LAYOUT_DIFFERENT=$LAYOUT_DIFFERENT_COUNT LAYOUT_ABSENT=$LAYOUT_ABSENT_COUNT SCHEMA=NOT_INSPECTED APPLY_READY=NO BASELINE_REVIEW_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
-}
 
-command_status() {
-  echo "M074_STAGING_STATUS=PREFLIGHT_ONLY RELEASE=$RELEASE SOURCE_COMMIT=$SOURCE_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA COMMANDS=compare,preflight,status APPLY_AVAILABLE=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"
-}
+def sha256_file(path: pathlib.Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
-require_root "$@"
-case "$1" in
-  compare) command_compare ;;
-  preflight) command_preflight ;;
-  status) command_status ;;
-  *) die 'COMMAND_NOT_ALLOWED' ;;
-esac
+
+def canonical_sha(value: object) -> str:
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def run(args: list[str], *, input_file=None, capture: bool = True, check: bool = True) -> subprocess.CompletedProcess:
+    env = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
+    return subprocess.run(args, stdin=input_file, stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+                          stderr=subprocess.PIPE, text=False, check=check, env=env)
+
+
+def run_text(args: list[str], *, check: bool = True) -> str:
+    return run(args, check=check).stdout.decode("utf-8", "strict").strip()
+
+
+def fsync_path(path: pathlib.Path) -> None:
+    flags = os.O_RDONLY | (getattr(os, "O_DIRECTORY", 0) if path.is_dir() else 0)
+    fd = os.open(path, flags)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def atomic_json(path: pathlib.Path, value: object, mode: int = 0o600) -> None:
+    if os.path.lexists(path):
+        validate_root_file(path)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{secrets.token_hex(4)}")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(temporary, flags, mode)
+    try:
+        payload = (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode("ascii")
+        os.write(fd, payload)
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.chmod(temporary, mode)
+    os.replace(temporary, path)
+    fsync_path(path.parent)
+
+
+def validate_root_file(path: pathlib.Path, expected_sha: str | None = None) -> None:
+    info = path.lstat()
+    if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o600 or info.st_uid != 0 or info.st_gid != 0:
+        fail("ROOT_FILE_METADATA_INVALID")
+    if expected_sha and sha256_file(path) != expected_sha:
+        fail("ROOT_FILE_HASH_INVALID")
+
+
+def prepare_roots() -> None:
+    for root in (BACKUP_ROOT, DB_BACKUP_ROOT, ARTIFACT_ROOT.parent, ARTIFACT_ROOT, STATE_ROOT):
+        if not os.path.lexists(root):
+            root.mkdir(mode=0o700)
+        info = root.lstat()
+        if not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o700 or info.st_uid != 0 or info.st_gid != 0:
+            fail("PRIVATE_ROOT_INVALID")
+
+
+def http_status(url: str) -> int:
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, request, fp, code, message, headers, new_url):
+            return None
+
+    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R06"})
+    try:
+        with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()).open(request, timeout=15) as response:
+            return int(response.status)
+    except urllib.error.HTTPError as exc:
+        return int(exc.code)
+
+
+def check_database_target() -> None:
+    if shutil.which("docker") is None:
+        fail("DOCKER_ABSENT")
+    inspect = '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}'
+    if run_text(["docker", "inspect", "-f", inspect, DB_CONTAINER]) != "true|erp-staging|mariadb":
+        fail("DB_IDENTITY_MISMATCH")
+    db_mount = run_text(["docker", "inspect", "-f", '{{range .Mounts}}{{if eq .Destination "/var/lib/mysql"}}{{.Name}}|{{.RW}}{{end}}{{end}}', DB_CONTAINER])
+    if db_mount != DB_VOLUME + "|true":
+        fail("DB_MOUNT_MISMATCH")
+
+
+def check_environment() -> None:
+    if shutil.which("docker") is None:
+        fail("DOCKER_ABSENT")
+    target_info = TARGET_ROOT.lstat()
+    if not stat.S_ISDIR(target_info.st_mode) or stat.S_ISLNK(target_info.st_mode):
+        fail("TARGET_ROOT_INVALID")
+    inspect = '{{.State.Running}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}'
+    if run_text(["docker", "inspect", "-f", inspect, TARGET_CONTAINER]) != "true|erp-staging|dolibarr":
+        fail("ERP_IDENTITY_MISMATCH")
+    mount = run_text(["docker", "inspect", "-f", '{{range .Mounts}}{{if eq .Destination "/var/www/html/custom"}}{{.Name}}|{{.RW}}{{end}}{{end}}', TARGET_CONTAINER])
+    if mount != TARGET_VOLUME + "|true":
+        fail("CUSTOM_MOUNT_MISMATCH")
+    if run_text(["docker", "volume", "inspect", "-f", "{{.Driver}}|{{.Mountpoint}}", TARGET_VOLUME]) != "local|" + str(TARGET_ROOT):
+        fail("CUSTOM_VOLUME_MISMATCH")
+    if run_text(["docker", "port", TARGET_CONTAINER, "80/tcp"]) != "127.0.0.1:18088":
+        fail("ERP_PORT_MISMATCH")
+    check_database_target()
+    if run_text(["docker", "inspect", "-f", inspect, MAILPIT_CONTAINER]) != "true|erp-staging|mailpit":
+        fail("MAILPIT_IDENTITY_MISMATCH")
+    if run_text(["docker", "port", MAILPIT_CONTAINER, "1025/tcp"]) != "127.0.0.1:11025" or run_text(["docker", "port", MAILPIT_CONTAINER, "8025/tcp"]) != "127.0.0.1:18025":
+        fail("MAILPIT_PORT_MISMATCH")
+    if http_status(TARGET_HTTP + "/") not in (200, 302):
+        fail("ERP_HTTP_UNHEALTHY")
+    codex = pwd.getpwnam("codex-deploy")
+    info = INBOX.lstat()
+    if not stat.S_ISDIR(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o700 or (info.st_uid, info.st_gid) != (codex.pw_uid, codex.pw_gid):
+        fail("INBOX_METADATA_INVALID")
+    if shutil.disk_usage(TARGET_ROOT).free // 1024 < MIN_FREE_KB:
+        fail("TARGET_DISK_LOW")
+
+
+def copy_inbox_file(name: str, expected_sha: str, destination: pathlib.Path) -> None:
+    codex = pwd.getpwnam("codex-deploy")
+    parent_fd = os.open(INBOX.parent, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0))
+    inbox_fd = source_fd = destination_fd = -1
+    try:
+        inbox_fd = os.open(INBOX.name, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0), dir_fd=parent_fd)
+        inbox_info = os.fstat(inbox_fd)
+        if stat.S_IMODE(inbox_info.st_mode) != 0o700 or (inbox_info.st_uid, inbox_info.st_gid) != (codex.pw_uid, codex.pw_gid):
+            fail("INBOX_METADATA_INVALID")
+        source_fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=inbox_fd)
+        source_info = os.fstat(source_fd)
+        if not stat.S_ISREG(source_info.st_mode) or stat.S_IMODE(source_info.st_mode) != 0o644 or (source_info.st_uid, source_info.st_gid) != (codex.pw_uid, codex.pw_gid) or source_info.st_nlink != 1:
+            fail("RELEASE_INPUT_METADATA_INVALID")
+        destination_fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        digest = hashlib.sha256()
+        while True:
+            chunk = os.read(source_fd, 1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk); os.write(destination_fd, chunk)
+        os.fsync(destination_fd)
+        if digest.hexdigest() != expected_sha:
+            fail("RELEASE_INPUT_HASH_MISMATCH")
+    finally:
+        for fd in (destination_fd, source_fd, inbox_fd, parent_fd):
+            if fd >= 0:
+                os.close(fd)
+
+
+class Candidate:
+    def __init__(self, work: pathlib.Path, files: dict[str, pathlib.Path], root: pathlib.Path,
+                 rows: list[dict[str, str]], layout: dict[str, str]):
+        self.work = work; self.files = files; self.root = root; self.rows = rows
+        self.runtime_rows = [row for row in rows if row["classification"] == "runtime"]
+        self.layout = layout
+        self.remote = f"/tmp/m074-r06-candidate-{os.getpid()}-{secrets.token_hex(4)}"
+
+    def cleanup(self) -> None:
+        try:
+            run(["docker", "exec", "-u", "0:0", TARGET_CONTAINER, "rm", "-rf", self.remote], capture=False, check=False)
+        finally:
+            shutil.rmtree(self.work, ignore_errors=True)
+
+
+def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
+    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r06-release-", dir="/root")); os.chmod(work, 0o700)
+    files: dict[str, pathlib.Path] = {}
+    try:
+        for canonical, (inbox_name, expected_sha) in INPUTS.items():
+            destination = work / canonical
+            if source_root == INBOX:
+                copy_inbox_file(inbox_name, expected_sha, destination)
+            else:
+                source = source_root / canonical; validate_root_file(source, expected_sha)
+                shutil.copyfile(source, destination, follow_symlinks=False); os.chmod(destination, 0o600); fsync_path(destination)
+            files[canonical] = destination
+        bundle = json.loads(files["release-bundle.json"].read_text("utf-8"))
+        if bundle.get("schemaVersion") != 1 or bundle.get("releaseId") != RELEASE or bundle.get("bindingStatus") != "UNBOUND_REQUIRES_INDEPENDENT_REVIEW_AND_STAGING_APPROVAL":
+            fail("BUNDLE_IDENTITY_INVALID")
+        components = {item.get("id"): item for item in bundle.get("components", [])}
+        if set(components) != {"dolibarr", "react", "wordpress", "mobile"}:
+            fail("BUNDLE_COMPONENTS_INVALID")
+        expected_component = {"artifact": "dolibarr.tar.gz", "artifactSha256": ARTIFACT_SHA, "commit": SOURCE_COMMIT,
+                              "manifest": "dolibarr.manifest.tsv", "manifestSha256": MANIFEST_SHA,
+                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 521,
+                              "configPolicy": "external-retain", "dataPolicy": "retain", "schemaPolicy": "additive-retain-on-code-rollback"}
+        if any(components["dolibarr"].get(key) != value for key, value in expected_component.items()):
+            fail("DOLIBARR_BUNDLE_RECORD_INVALID")
+        pin_lines = set(files["release-pins.sha256"].read_text("ascii").splitlines())
+        required_pins = {f"{ARTIFACT_SHA}  dolibarr.tar.gz", f"{MANIFEST_SHA}  dolibarr.manifest.tsv",
+                         f"{LAYOUT_SHA}  dolibarr.layout.tsv", f"{BUNDLE_SHA}  release-bundle.json"}
+        if not required_pins <= pin_lines:
+            fail("RELEASE_PINS_INVALID")
+        with files["dolibarr.manifest.tsv"].open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle, delimiter="\t"))
+        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 521:
+            fail("MANIFEST_CONTRACT_INVALID")
+        counts = {"runtime": 0, "support": 0, "evidence": 0}; seen: set[str] = set()
+        for row in rows:
+            source = row["source_path"]
+            if not SAFE_ARCHIVE_PATH.fullmatch(source) or source.startswith("/") or ".." in pathlib.PurePosixPath(source).parts or source in seen:
+                fail("MANIFEST_PATH_INVALID")
+            seen.add(source); classification = row["classification"]
+            if classification not in counts:
+                fail("MANIFEST_CLASSIFICATION_INVALID")
+            counts[classification] += 1
+            if classification == "runtime":
+                if row["runtime_target"] != source or not source.startswith("custom/"):
+                    fail("RUNTIME_TARGET_INVALID")
+            elif row["runtime_target"] != "-":
+                fail("NONRUNTIME_TARGET_INVALID")
+            if row["mode"] not in ("644", "755") or not row["size"].isdigit() or not HEX64.fullmatch(row["sha256"]):
+                fail("MANIFEST_METADATA_INVALID")
+        if counts != {"runtime": 298, "support": 198, "evidence": 25}:
+            fail("MANIFEST_COUNTS_INVALID")
+        root = work / "candidate"; root.mkdir(mode=0o700)
+        with gzip.open(files["dolibarr.tar.gz"], "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
+            members = archive.getmembers()
+            if len(members) != 521 or [member.name for member in members] != sorted(seen):
+                fail("ARTIFACT_MEMBER_SET_INVALID")
+            for member in members:
+                if not member.isfile() or member.name not in seen or member.uid != 0 or member.gid != 0 or member.mtime != 0 or stat.S_IMODE(member.mode) not in (0o644, 0o755):
+                    fail("ARTIFACT_ENTRY_INVALID")
+            archive.extractall(root)
+        by_source = {row["source_path"]: row for row in rows}
+        actual = {path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file()}
+        if actual != seen or any(path.is_symlink() for path in root.rglob("*")):
+            fail("CANDIDATE_TREE_INVALID")
+        for source, row in by_source.items():
+            path = root / source
+            if path.stat().st_size != int(row["size"]) or sha256_file(path) != row["sha256"]:
+                fail("CANDIDATE_HASH_INVALID")
+        with files["dolibarr.layout.tsv"].open(newline="", encoding="utf-8") as handle:
+            layout_rows = list(csv.DictReader(handle, delimiter="\t"))
+        layout = {row["runtime_path"]: row["link_target"] for row in layout_rows}
+        if layout != EXPECTED_LAYOUT or len(layout_rows) != 2:
+            fail("LAYOUT_CONTRACT_INVALID")
+        for row in layout_rows:
+            if row["entry_type"] != "symlink" or hashlib.sha256(row["link_target"].encode()).hexdigest() != row["source_sha256"]:
+                fail("LAYOUT_HASH_INVALID")
+        return Candidate(work, files, root, rows, layout)
+    except Exception:
+        shutil.rmtree(work, ignore_errors=True); raise
+
+
+def candidate_checks(candidate: Candidate) -> None:
+    run(["docker", "exec", "-u", "0:0", TARGET_CONTAINER, "rm", "-rf", candidate.remote], capture=False)
+    run(["docker", "exec", "-u", "0:0", TARGET_CONTAINER, "mkdir", "-p", candidate.remote], capture=False)
+    run(["docker", "cp", str(candidate.root) + "/.", TARGET_CONTAINER + ":" + candidate.remote], capture=False)
+    for path, target in candidate.layout.items():
+        run(["docker", "exec", "-u", "0:0", TARGET_CONTAINER, "ln", "-s", target, candidate.remote + "/" + path], capture=False)
+    lint_script = 'find "$1/custom" "$1/deploy" -type f -name "*.php" -exec php -l {} \; >/dev/null'
+    run(["docker", "exec", TARGET_CONTAINER, "sh", "-eu", "-c", lint_script, "sh", candidate.remote], capture=False)
+    for test in STATIC_TESTS:
+        command = ["docker", "exec", "-e", "M074_DOL_DOCUMENT_ROOT=" + candidate.remote, TARGET_CONTAINER,
+                   "env", "-u", "M017_DOL_DOCUMENT_ROOT", "-u", "M017_CREDENTIAL_FILE", "-u", "M017_API_BASE",
+                   "php", candidate.remote + "/" + test]
+        run(command, capture=False)
+
+
+def open_dir_chain(root_fd: int, parts: tuple[str, ...], *, create: bool = False) -> int:
+    current = os.dup(root_fd)
+    try:
+        for part in parts:
+            if not part or part in (".", "..") or "/" in part:
+                fail("TARGET_PATH_INVALID")
+            try:
+                next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0), dir_fd=current)
+            except FileNotFoundError:
+                if not create:
+                    raise
+                os.mkdir(part, 0o755, dir_fd=current)
+                os.chown(part, pwd.getpwnam("www-data").pw_uid, grp.getgrnam("www-data").gr_gid, dir_fd=current, follow_symlinks=False)
+                os.fsync(current)
+                next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0), dir_fd=current)
+            if not stat.S_ISDIR(os.fstat(next_fd).st_mode):
+                fail("TARGET_PARENT_INVALID")
+            os.close(current); current = next_fd
+        return current
+    except Exception:
+        os.close(current); raise
+
+
+def read_file_at(root_fd: int, relative: str) -> tuple[bytes, os.stat_result]:
+    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1])
+    try:
+        fd = os.open(parts[-1], os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=parent)
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                fail("TARGET_FILE_INVALID")
+            data = bytearray()
+            while True:
+                chunk = os.read(fd, 1024 * 1024)
+                if not chunk:
+                    break
+                data.extend(chunk)
+            return bytes(data), info
+        finally:
+            os.close(fd)
+    finally:
+        os.close(parent)
+
+
+def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
+    root_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)); files = []
+    try:
+        for row in candidate.runtime_rows:
+            relative = row["runtime_target"][len("custom/"):]
+            try:
+                data, info = read_file_at(root_fd, relative)
+                files.append({"path": relative, "state": "PRESENT", "sha256": hashlib.sha256(data).hexdigest(),
+                              "uid": info.st_uid, "gid": info.st_gid, "mode": stat.S_IMODE(info.st_mode)})
+            except FileNotFoundError:
+                files.append({"path": relative, "state": "ABSENT"})
+        layout = []
+        for source, expected in sorted(candidate.layout.items()):
+            relative = source[len("custom/"):]; parts = tuple(pathlib.PurePosixPath(relative).parts)
+            try:
+                parent = open_dir_chain(root_fd, parts[:-1])
+                try:
+                    info = os.stat(parts[-1], dir_fd=parent, follow_symlinks=False)
+                    if stat.S_ISLNK(info.st_mode):
+                        actual = os.readlink(parts[-1], dir_fd=parent); state = "CURRENT" if actual == expected else "DIFFERENT"
+                    else:
+                        actual = "NON_SYMLINK"; state = "DIFFERENT"
+                finally:
+                    os.close(parent)
+            except FileNotFoundError:
+                actual = "ABSENT"; state = "ABSENT"
+            layout.append({"path": relative, "state": state, "expected": expected, "actual": actual})
+    finally:
+        os.close(root_fd)
+    return {"files": files, "layout": layout}
+
+
+def compare_summary(candidate: Candidate, snapshot: dict[str, object], *, emit: bool) -> dict[str, int]:
+    expected = {row["runtime_target"][len("custom/"):]: row for row in candidate.runtime_rows}
+    counts = {"current": 0, "different": 0, "absent": 0, "layout_current": 0, "layout_different": 0, "layout_absent": 0}
+    for item in snapshot["files"]:
+        row = expected[item["path"]]
+        if item["state"] == "ABSENT": state = "ABSENT"; counts["absent"] += 1
+        elif item["sha256"] == row["sha256"] and item["mode"] == int(row["mode"], 8): state = "CURRENT"; counts["current"] += 1
+        else: state = "DIFFERENT"; counts["different"] += 1
+        if emit:
+            target_sha = item.get("sha256", "ABSENT")
+            target_mode = format(int(item["mode"]), "03o") if item["state"] == "PRESENT" else "ABSENT"
+            target_uid = item.get("uid", "ABSENT"); target_gid = item.get("gid", "ABSENT")
+            print(f"M074_STAGING_COMPARE FILE=custom/{item['path']} STATE={state} RELEASE_SHA={row['sha256']} RELEASE_MODE={row['mode']} TARGET_SHA={target_sha} TARGET_MODE={target_mode} TARGET_UID={target_uid} TARGET_GID={target_gid}")
+    for item in snapshot["layout"]:
+        counts["layout_" + item["state"].lower()] += 1
+        if emit:
+            print(f"M074_STAGING_COMPARE LAYOUT=custom/{item['path']} STATE={item['state']} EXPECTED_TARGET={item['expected']} ACTUAL_TARGET={item['actual']}")
+    return counts
+
+
+def schema_command(candidate: Candidate, action: str) -> tuple[int, str]:
+    command = ["docker", "exec", "-u", "0:0", "-e", "M074_DOL_DOCUMENT_ROOT=/var/www/html"]
+    if action == "apply": command += ["-e", "M074_DEPLOY_CONTEXT=" + DEPLOY_CONTEXT]
+    command += [TARGET_CONTAINER, "php", candidate.remote + "/" + MIGRATION, action]
+    result = run(command, check=False)
+    return result.returncode, result.stdout.decode("utf-8", "strict").strip()
+
+
+def schema_status(candidate: Candidate) -> str:
+    code, output = schema_command(candidate, "check")
+    if code == 0 and output == "M074_SCHEMA_CHECK=READY RIGHTS_DEFAULT=DISABLED": return "READY"
+    if code == 2 and output == "M074_SCHEMA_CHECK=MIGRATION_REQUIRED": return "MIGRATION_REQUIRED"
+    fail("SCHEMA_CHECK_FAILED")
+
+
+DB_IDENTITY_SCRIPT = r'''set -eu
+db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
+pass=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}
+[ -n "$db" ] && [ -n "$pass" ]
+MYSQL_PWD="$pass" exec mariadb -N -u root "$db" -e "SELECT LOWER(SHA2(CONCAT(DATABASE(),CHAR(31),@@hostname,CHAR(31),@@port),256))"
+'''
+
+
+def database_identity(candidate: Candidate) -> str:
+    code, output = schema_command(candidate, "identity"); prefix = "M074_SCHEMA_DATABASE_IDENTITY="
+    if code != 0 or not output.startswith(prefix) or not HEX64.fullmatch(output[len(prefix):]): fail("ERP_DATABASE_IDENTITY_INVALID")
+    erp_identity = output[len(prefix):]
+    db_identity = run_text(["docker", "exec", DB_CONTAINER, "sh", "-eu", "-c", DB_IDENTITY_SCRIPT])
+    if not HEX64.fullmatch(db_identity) or db_identity != erp_identity: fail("DATABASE_BACKUP_TARGET_MISMATCH")
+    return erp_identity
+
+
+def retain_release(candidate: Candidate) -> None:
+    for canonical, (_, expected_sha) in INPUTS.items():
+        target = ARTIFACT_ROOT / canonical
+        if target.exists() or target.is_symlink(): validate_root_file(target, expected_sha); continue
+        temporary = ARTIFACT_ROOT / ("." + canonical + "." + secrets.token_hex(4))
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        try:
+            with candidate.files[canonical].open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""): os.write(fd, chunk)
+            os.fsync(fd)
+        finally: os.close(fd)
+        if sha256_file(temporary) != expected_sha: temporary.unlink(missing_ok=True); fail("RETAINED_RELEASE_HASH_INVALID")
+        try: os.link(temporary, target, follow_symlinks=False)
+        except FileExistsError: validate_root_file(target, expected_sha)
+        temporary.unlink(missing_ok=True); fsync_path(ARTIFACT_ROOT)
+
+
+def write_backup(candidate: Candidate, snapshot: dict[str, object], prefix: str) -> tuple[pathlib.Path, str, pathlib.Path, str]:
+    archive_path = BACKUP_ROOT / f"{prefix}.tar.gz"; prestate_path = BACKUP_ROOT / f"{prefix}.prestate.json"
+    if archive_path.exists() or prestate_path.exists() or archive_path.is_symlink() or prestate_path.is_symlink(): fail("CODE_BACKUP_COLLISION")
+    atomic_json(prestate_path, snapshot)
+    root_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        archive_fd = os.open(archive_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        try:
+            with os.fdopen(os.dup(archive_fd), "wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as zipped, tarfile.open(fileobj=zipped, mode="w|") as archive:
+                for item in snapshot["files"]:
+                    if item["state"] != "PRESENT": continue
+                    data, info = read_file_at(root_fd, item["path"])
+                    if hashlib.sha256(data).hexdigest() != item["sha256"] or (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)) != (item["uid"], item["gid"], item["mode"]): fail("CODE_BACKUP_SOURCE_CHANGED")
+                    member = tarfile.TarInfo(item["path"]); member.size = len(data); member.uid = item["uid"]; member.gid = item["gid"]; member.mode = item["mode"]; member.mtime = 0
+                    archive.addfile(member, io.BytesIO(data))
+            os.fsync(archive_fd)
+        finally: os.close(archive_fd)
+    finally: os.close(root_fd)
+    fsync_path(BACKUP_ROOT); archive_sha = sha256_file(archive_path); prestate_sha = sha256_file(prestate_path)
+    validate_code_backup(archive_path, archive_sha, prestate_path, prestate_sha)
+    return archive_path, archive_sha, prestate_path, prestate_sha
+
+
+def validate_code_backup(archive_path: pathlib.Path, archive_sha: str, prestate_path: pathlib.Path, prestate_sha: str) -> dict[str, object]:
+    validate_root_file(archive_path, archive_sha); validate_root_file(prestate_path, prestate_sha)
+    snapshot = json.loads(prestate_path.read_text("ascii")); present = {item["path"]: item for item in snapshot.get("files", []) if item.get("state") == "PRESENT"}
+    with gzip.open(archive_path, "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
+        members = archive.getmembers()
+        if len(members) != len(present) or len({member.name for member in members}) != len(members): fail("CODE_BACKUP_MEMBER_SET_INVALID")
+        for member in members:
+            if member.name not in present or not member.isfile(): fail("CODE_BACKUP_ENTRY_INVALID")
+            data = archive.extractfile(member).read(); item = present[member.name]
+            if hashlib.sha256(data).hexdigest() != item["sha256"] or (member.uid, member.gid, stat.S_IMODE(member.mode)) != (item["uid"], item["gid"], item["mode"]): fail("CODE_BACKUP_CONTENT_INVALID")
+    return snapshot
+
+
+RENAME_NOREPLACE = 1
+RENAME_EXCHANGE = 2
+AT_FDCWD = -100
+_LIBC = ctypes.CDLL(None, use_errno=True)
+
+
+def renameat2(old_dir_fd: int, old: str, new_dir_fd: int, new: str, flags: int) -> None:
+    function = getattr(_LIBC, "renameat2", None)
+    if function is None:
+        fail("RENAMEAT2_UNAVAILABLE")
+    result = function(ctypes.c_int(old_dir_fd), ctypes.c_char_p(os.fsencode(old)),
+                      ctypes.c_int(new_dir_fd), ctypes.c_char_p(os.fsencode(new)), ctypes.c_uint(flags))
+    if result != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), old, new)
+
+
+def item_signature(data: bytes, info: os.stat_result) -> dict[str, object]:
+    return {"state": "PRESENT", "sha256": hashlib.sha256(data).hexdigest(), "uid": info.st_uid,
+            "gid": info.st_gid, "mode": stat.S_IMODE(info.st_mode)}
+
+
+def signature_matches(actual: dict[str, object], expected: dict[str, object]) -> bool:
+    if actual.get("state") != expected.get("state"):
+        return False
+    if actual.get("state") == "ABSENT":
+        return True
+    return all(actual.get(key) == expected.get(key) for key in ("sha256", "uid", "gid", "mode"))
+
+
+def atomic_write_target(root_fd: int, relative: str, data: bytes, uid: int, gid: int, mode: int,
+                        expected: dict[str, object] | None = None) -> None:
+    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r06-" + secrets.token_hex(12); fd = -1
+    try:
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=parent)
+        offset = 0
+        while offset < len(data): offset += os.write(fd, data[offset:offset + 1024 * 1024])
+        os.fchown(fd, uid, gid); os.fchmod(fd, mode); os.fsync(fd); os.close(fd); fd = -1
+        if expected is None:
+            os.replace(temporary, parts[-1], src_dir_fd=parent, dst_dir_fd=parent)
+        elif expected.get("state") == "ABSENT":
+            try:
+                renameat2(parent, temporary, parent, parts[-1], RENAME_NOREPLACE)
+            except FileExistsError:
+                fail("TARGET_BASELINE_CHANGED")
+        elif expected.get("state") == "PRESENT":
+            try:
+                renameat2(parent, temporary, parent, parts[-1], RENAME_EXCHANGE)
+            except FileNotFoundError:
+                fail("TARGET_BASELINE_CHANGED")
+            old_data, old_info = read_file_at(parent, temporary)
+            if not signature_matches(item_signature(old_data, old_info), expected):
+                renameat2(parent, temporary, parent, parts[-1], RENAME_EXCHANGE)
+                fail("TARGET_BASELINE_CHANGED")
+            os.unlink(temporary, dir_fd=parent)
+        else:
+            fail("EXPECTED_TARGET_STATE_INVALID")
+        os.fsync(parent)
+    finally:
+        if fd >= 0: os.close(fd)
+        try: os.unlink(temporary, dir_fd=parent)
+        except FileNotFoundError: pass
+        os.close(parent)
+
+
+def release_snapshot(candidate: Candidate) -> dict[str, object]:
+    web_uid = pwd.getpwnam("www-data").pw_uid; web_gid = grp.getgrnam("www-data").gr_gid
+    return {"files": [{"path": row["runtime_target"][len("custom/"):], "state": "PRESENT",
+                        "sha256": row["sha256"], "uid": web_uid, "gid": web_gid,
+                        "mode": int(row["mode"], 8)} for row in candidate.runtime_rows]}
+
+
+def apply_candidate(candidate: Candidate, snapshot: dict[str, object]) -> None:
+    target_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)); candidate_fd = os.open(candidate.root, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0))
+    web_uid = pwd.getpwnam("www-data").pw_uid; web_gid = grp.getgrnam("www-data").gr_gid
+    try:
+        baseline = {item["path"]: item for item in snapshot["files"]}
+        for row in candidate.runtime_rows:
+            data, info = read_file_at(candidate_fd, row["source_path"])
+            if hashlib.sha256(data).hexdigest() != row["sha256"] or stat.S_IMODE(info.st_mode) != int(row["mode"], 8): fail("CANDIDATE_CHANGED_BEFORE_APPLY")
+            relative = row["runtime_target"][len("custom/"):]
+            atomic_write_target(target_fd, relative, data, web_uid, web_gid, int(row["mode"], 8), baseline[relative])
+    finally: os.close(candidate_fd); os.close(target_fd)
+
+
+def runtime_snapshot_from_rows(snapshot: dict[str, object]) -> dict[str, object]:
+    root_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)); files = []
+    try:
+        for prior in snapshot["files"]:
+            try:
+                data, info = read_file_at(root_fd, prior["path"])
+                files.append({"path": prior["path"], "state": "PRESENT", "sha256": hashlib.sha256(data).hexdigest(), "uid": info.st_uid, "gid": info.st_gid, "mode": stat.S_IMODE(info.st_mode)})
+            except FileNotFoundError: files.append({"path": prior["path"], "state": "ABSENT"})
+    finally: os.close(root_fd)
+    return {"files": files}
+
+
+def remove_target_if_expected(root_fd: int, relative: str, expected: dict[str, object]) -> None:
+    parts = tuple(pathlib.PurePosixPath(relative).parts)
+    try:
+        parent = open_dir_chain(root_fd, parts[:-1])
+    except FileNotFoundError:
+        if expected.get("state") == "ABSENT":
+            return
+        fail("ROLLBACK_BASELINE_CHANGED")
+    temporary = ".m074-r06-remove-" + secrets.token_hex(12)
+    try:
+        try:
+            renameat2(parent, parts[-1], parent, temporary, RENAME_NOREPLACE)
+        except FileNotFoundError:
+            if expected.get("state") == "ABSENT":
+                return
+            fail("ROLLBACK_BASELINE_CHANGED")
+        data, info = read_file_at(parent, temporary)
+        if not signature_matches(item_signature(data, info), expected):
+            try:
+                renameat2(parent, temporary, parent, parts[-1], RENAME_NOREPLACE)
+            except FileExistsError:
+                fail("ROLLBACK_BASELINE_CHANGED_RECOVERY_REQUIRED")
+            fail("ROLLBACK_BASELINE_CHANGED")
+        os.unlink(temporary, dir_fd=parent); os.fsync(parent)
+    finally:
+        try: os.unlink(temporary, dir_fd=parent)
+        except FileNotFoundError: pass
+        os.close(parent)
+
+
+def restore_snapshot(archive_path: pathlib.Path, archive_sha: str, prestate_path: pathlib.Path, prestate_sha: str,
+                     allowed_snapshot: dict[str, object] | None = None) -> None:
+    snapshot = validate_code_backup(archive_path, archive_sha, prestate_path, prestate_sha); archived = {}
+    with gzip.open(archive_path, "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
+        for member in archive.getmembers(): archived[member.name] = archive.extractfile(member).read()
+    target_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        current = {item["path"]: item for item in runtime_snapshot_from_rows(snapshot)["files"]}
+        allowed = {item["path"]: item for item in (allowed_snapshot or snapshot)["files"]}
+        for item in snapshot["files"]:
+            actual = current[item["path"]]
+            if signature_matches(actual, item):
+                continue
+            expected = allowed.get(item["path"])
+            if expected is None or not signature_matches(actual, expected):
+                fail("ROLLBACK_BASELINE_CHANGED")
+            if item["state"] == "PRESENT":
+                atomic_write_target(target_fd, item["path"], archived[item["path"]], item["uid"], item["gid"], item["mode"], expected)
+            elif item["state"] == "ABSENT":
+                remove_target_if_expected(target_fd, item["path"], expected)
+            else: fail("PRESTATE_INVALID")
+    finally: os.close(target_fd)
+    if runtime_snapshot_from_rows(snapshot)["files"] != snapshot["files"]: fail("ROLLBACK_PRESTATE_MISMATCH")
+
+
+DB_DUMP_SCRIPT = r'''set -eu
+db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
+pass=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}
+[ -n "$db" ] && [ -n "$pass" ]
+if command -v mariadb-dump >/dev/null 2>&1; then dump=mariadb-dump; else dump=mysqldump; fi
+MYSQL_PWD="$pass" exec "$dump" --single-transaction --quick --skip-lock-tables --hex-blob --routines --triggers --events --default-character-set=utf8mb4 -u root "$db"
+'''
+
+
+def database_fingerprint(database: str, aliases: tuple[str, ...]) -> str:
+    script = r'''set -eu
+db=$M074_FINGERPRINT_DB
+pass=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}
+[ -n "$pass" ]
+case "$db" in *[!A-Za-z0-9_]*) exit 1;; esac
+q(){ MYSQL_PWD="$pass" mariadb -N -u root -e "$1"; }
+q "SELECT TABLE_TYPE,TABLE_NAME,IFNULL(ENGINE,''),IFNULL(TABLE_COLLATION,'') FROM information_schema.tables WHERE table_schema='$db' ORDER BY TABLE_TYPE,TABLE_NAME"
+q "SELECT TABLE_NAME,ORDINAL_POSITION,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,IFNULL(COLUMN_DEFAULT,'<NULL>'),EXTRA,IFNULL(GENERATION_EXPRESSION,'') FROM information_schema.columns WHERE table_schema='$db' ORDER BY TABLE_NAME,ORDINAL_POSITION"
+q "SELECT TABLE_NAME,INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,IFNULL(SUB_PART,0),INDEX_TYPE FROM information_schema.statistics WHERE table_schema='$db' ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX"
+q "SELECT CONSTRAINT_NAME,TABLE_NAME,UNIQUE_CONSTRAINT_NAME,REFERENCED_TABLE_NAME,MATCH_OPTION,UPDATE_RULE,DELETE_RULE FROM information_schema.referential_constraints WHERE constraint_schema='$db' ORDER BY CONSTRAINT_NAME"
+q "SELECT CONSTRAINT_NAME,TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,POSITION_IN_UNIQUE_CONSTRAINT,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.key_column_usage WHERE constraint_schema='$db' AND REFERENCED_TABLE_NAME IS NOT NULL ORDER BY CONSTRAINT_NAME,ORDINAL_POSITION"
+q "SELECT tc.TABLE_NAME,tc.CONSTRAINT_NAME,cc.CHECK_CLAUSE FROM information_schema.table_constraints tc JOIN information_schema.check_constraints cc ON cc.CONSTRAINT_SCHEMA=tc.CONSTRAINT_SCHEMA AND cc.CONSTRAINT_NAME=tc.CONSTRAINT_NAME WHERE tc.CONSTRAINT_SCHEMA='$db' AND tc.CONSTRAINT_TYPE='CHECK' ORDER BY tc.TABLE_NAME,tc.CONSTRAINT_NAME"
+q "SELECT TABLE_NAME,IFNULL(PARTITION_NAME,''),IFNULL(SUBPARTITION_NAME,''),IFNULL(PARTITION_METHOD,''),IFNULL(SUBPARTITION_METHOD,''),IFNULL(PARTITION_EXPRESSION,''),IFNULL(SUBPARTITION_EXPRESSION,''),IFNULL(PARTITION_DESCRIPTION,'') FROM information_schema.partitions WHERE table_schema='$db' ORDER BY TABLE_NAME,PARTITION_ORDINAL_POSITION,SUBPARTITION_ORDINAL_POSITION"
+q "SELECT TABLE_NAME,REPLACE(VIEW_DEFINITION,'$db','<DB>'),CHECK_OPTION,IS_UPDATABLE FROM information_schema.views WHERE table_schema='$db' ORDER BY TABLE_NAME"
+q "SELECT TRIGGER_NAME,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_ORDER,ACTION_CONDITION,REPLACE(ACTION_STATEMENT,'$db','<DB>'),ACTION_ORIENTATION,ACTION_TIMING FROM information_schema.triggers WHERE trigger_schema='$db' ORDER BY TRIGGER_NAME"
+q "SELECT ROUTINE_NAME,ROUTINE_TYPE,DATA_TYPE,IS_DETERMINISTIC,SQL_DATA_ACCESS,SECURITY_TYPE,REPLACE(IFNULL(ROUTINE_DEFINITION,''),'$db','<DB>') FROM information_schema.routines WHERE routine_schema='$db' ORDER BY ROUTINE_TYPE,ROUTINE_NAME"
+q "SELECT EVENT_NAME,EVENT_TYPE,EXECUTE_AT,INTERVAL_VALUE,INTERVAL_FIELD,STARTS,ENDS,STATUS,ON_COMPLETION,REPLACE(EVENT_DEFINITION,'$db','<DB>') FROM information_schema.events WHERE event_schema='$db' ORDER BY EVENT_NAME"
+q "SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema='$db' AND TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME" | while read -r table; do
+  case "$table" in ''|*[!A-Za-z0-9_]*) exit 1;; esac
+  printf 'TABLE=%s\n' "$table"
+  MYSQL_PWD="$pass" mariadb -N -u root "$db" -e "SELECT COUNT(*) FROM \`$table\`"
+  MYSQL_PWD="$pass" mariadb -N -u root "$db" -e "CHECKSUM TABLE \`$table\`" | awk -F '\t' '{print "CHECKSUM=" $2}'
+done
+'''
+    output = run(["docker", "exec", "-e", "M074_FINGERPRINT_DB=" + database, DB_CONTAINER, "sh", "-eu", "-c", script]).stdout
+    for alias in aliases:
+        output = output.replace(alias.encode("ascii"), b"<DB>")
+    return hashlib.sha256(output).hexdigest()
+
+
+def drop_validation_database(database: str) -> None:
+    if not re.fullmatch(r"m074_restore_check_[0-9]+_[0-9a-f]{8}", database):
+        fail("DATABASE_RESTORE_CHECK_NAME_INVALID")
+    check_database_target()
+    script = r'''set -eu
+db=$M074_TEMP_DB
+pass=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}
+[ -n "$pass" ]
+case "$db" in *[!A-Za-z0-9_]*) exit 1;; esac
+MYSQL_PWD="$pass" exec mariadb -u root -e "DROP DATABASE IF EXISTS \`$db\`"
+'''
+    run(["docker", "exec", "-e", "M074_TEMP_DB=" + database, DB_CONTAINER, "sh", "-eu", "-c", script], capture=False)
+
+
+def make_validation_database_name() -> str:
+    return "m074_restore_check_" + str(os.getpid()) + "_" + secrets.token_hex(4)
+
+
+def validate_database_backup(backup: pathlib.Path, backup_sha: str, database: str) -> None:
+    validate_root_file(backup, backup_sha)
+    if not re.fullmatch(r"m074_restore_check_[0-9]+_[0-9a-f]{8}", database):
+        fail("DATABASE_RESTORE_CHECK_NAME_INVALID")
+    create = r'''set -eu
+db=$M074_TEMP_DB
+pass=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}
+[ -n "$pass" ]
+case "$db" in *[!A-Za-z0-9_]*) exit 1;; esac
+MYSQL_PWD="$pass" exec mariadb -u root -e "CREATE DATABASE \`$db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+'''
+    run(["docker", "exec", "-e", "M074_TEMP_DB=" + database, DB_CONTAINER, "sh", "-eu", "-c", create], capture=False)
+    try:
+        import_script = r'''set -eu
+db=$M074_TEMP_DB
+pass=${MARIADB_ROOT_PASSWORD:-${MYSQL_ROOT_PASSWORD:-}}
+[ -n "$pass" ]
+case "$db" in *[!A-Za-z0-9_]*) exit 1;; esac
+MYSQL_PWD="$pass" exec mariadb -u root "$db"
+'''
+        with backup.open("rb") as handle: run(["docker", "exec", "-i", "-e", "M074_TEMP_DB=" + database, DB_CONTAINER, "sh", "-eu", "-c", import_script], input_file=handle, capture=False)
+        database_name = run_text(["docker", "exec", DB_CONTAINER, "sh", "-eu", "-c", 'printf %s "${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}"'])
+        if not re.fullmatch(r"[A-Za-z0-9_]+", database_name): fail("DATABASE_NAME_INVALID")
+        aliases = (database_name, database)
+        if database_fingerprint(database_name, aliases) != database_fingerprint(database, aliases): fail("DATABASE_RESTORE_CHECK_MISMATCH")
+    finally: drop_validation_database(database)
+
+
+def create_database_backup(request_id: str, expected_identity: str) -> tuple[pathlib.Path, str]:
+    backup = DB_BACKUP_ROOT / f"{request_id}.sql"
+    if backup.exists() or backup.is_symlink(): fail("DATABASE_BACKUP_COLLISION")
+    fd = os.open(backup, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        with os.fdopen(os.dup(fd), "wb") as output:
+            result = subprocess.run(["docker", "exec", DB_CONTAINER, "sh", "-eu", "-c", DB_DUMP_SCRIPT], stdout=output, stderr=subprocess.PIPE,
+                                    env={"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"})
+        if result.returncode != 0: fail("DATABASE_BACKUP_FAILED")
+        os.fsync(fd)
+    finally: os.close(fd)
+    if backup.stat().st_size == 0: fail("DATABASE_BACKUP_EMPTY")
+    fsync_path(DB_BACKUP_ROOT); backup_sha = sha256_file(backup)
+    direct_identity = run_text(["docker", "exec", DB_CONTAINER, "sh", "-eu", "-c", DB_IDENTITY_SCRIPT])
+    if direct_identity != expected_identity: fail("DATABASE_IDENTITY_CHANGED_DURING_BACKUP")
+    return backup, backup_sha
+
+
+def state_payload(status: str, **fields) -> dict[str, object]:
+    payload = {"schema": 1, "release": RELEASE, "status": status, "source_commit": SOURCE_COMMIT,
+               "artifact_sha256": ARTIFACT_SHA, "updated_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+    payload.update(fields); return payload
+
+
+def save_state(status: str, **fields) -> dict[str, object]:
+    payload = state_payload(status, **fields); atomic_json(STATE_FILE, payload); return payload
+
+
+def preserve_state(state: dict[str, object], status: str, **fields) -> dict[str, object]:
+    payload = dict(state); payload.update(fields); payload["status"] = status
+    payload["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, payload); return payload
+
+
+def load_state() -> dict[str, object]:
+    validate_root_file(STATE_FILE); state = json.loads(STATE_FILE.read_text("ascii"))
+    if state.get("schema") != 1 or state.get("release") != RELEASE or state.get("source_commit") != SOURCE_COMMIT or state.get("artifact_sha256") != ARTIFACT_SHA: fail("STATE_IDENTITY_INVALID")
+    allowed = {"PENDING_APPLY_PREPARE", "PENDING_APPLY_CODE", "PENDING_APPLY_SCHEMA", "DEPLOYED", "APPLY_FAILED_NO_MUTATION",
+               "APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED", "APPLY_FAILED_RECOVERY_REQUIRED", "PENDING_ROLLBACK_PREPARE",
+               "PENDING_ROLLBACK", "ROLLED_BACK_SCHEMA_RETAINED", "ROLLBACK_FAILED_NO_MUTATION", "ROLLBACK_FAILED_REAPPLIED", "ROLLBACK_FAILED_RECOVERY_REQUIRED"}
+    if state.get("status") not in allowed: fail("STATE_STATUS_INVALID")
+    return state
+
+
+def state_backup(state: dict[str, object], prefix: str = "") -> tuple[pathlib.Path, str, pathlib.Path, str]:
+    def value(name: str) -> str:
+        result = state.get(prefix + name)
+        if not isinstance(result, str) or not result: fail("STATE_BACKUP_FIELD_INVALID")
+        return result
+    archive = pathlib.Path(value("code_backup")); archive_sha = value("code_backup_sha256"); prestate = pathlib.Path(value("prestate")); prestate_sha = value("prestate_sha256")
+    if archive.parent != BACKUP_ROOT or prestate.parent != BACKUP_ROOT or not HEX64.fullmatch(archive_sha) or not HEX64.fullmatch(prestate_sha): fail("STATE_BACKUP_PATH_INVALID")
+    validate_code_backup(archive, archive_sha, prestate, prestate_sha); return archive, archive_sha, prestate, prestate_sha
+
+
+def state_database_backup(state: dict[str, object]) -> tuple[pathlib.Path, str]:
+    path = pathlib.Path(str(state.get("database_backup", ""))); digest = str(state.get("database_backup_sha256", ""))
+    if path.parent != DB_BACKUP_ROOT or not HEX64.fullmatch(digest): fail("STATE_DATABASE_BACKUP_INVALID")
+    validate_root_file(path, digest); return path, digest
+
+
+def require_saved_database_identity(state: dict[str, object], current: str) -> None:
+    saved = state.get("database_identity")
+    if not isinstance(saved, str) or not HEX64.fullmatch(saved) or saved != current:
+        fail("DEPLOYED_DATABASE_IDENTITY_MISMATCH")
+
+
+def deployed_snapshot_matches(candidate: Candidate) -> bool:
+    snapshot = runtime_snapshot(candidate); expected = {row["runtime_target"][len("custom/"):]: row for row in candidate.runtime_rows}
+    web_uid = pwd.getpwnam("www-data").pw_uid; web_gid = grp.getgrnam("www-data").gr_gid
+    for item in snapshot["files"]:
+        row = expected[item["path"]]
+        if item["state"] != "PRESENT" or item["sha256"] != row["sha256"] or item["mode"] != int(row["mode"], 8) or (item["uid"], item["gid"]) != (web_uid, web_gid): return False
+    return all(item["state"] == "CURRENT" for item in snapshot["layout"])
+
+
+def live_checks(candidate: Candidate) -> None:
+    if not deployed_snapshot_matches(candidate): fail("LIVE_RUNTIME_MISMATCH")
+    if schema_status(candidate) != "READY": fail("LIVE_SCHEMA_NOT_READY")
+    if http_status(TARGET_HTTP + "/") not in (200, 302): fail("LIVE_HTTP_FAILED")
+    if http_status(TARGET_HTTP + "/custom/chinaplanetoperations/qc/app.php?id=1") not in (200, 302, 401, 403): fail("LIVE_QC_ROUTE_FAILED")
+
+
+def lint_snapshot(snapshot: dict[str, object]) -> None:
+    for item in snapshot["files"]:
+        if item["state"] != "PRESENT" or not str(item["path"]).endswith(".php"):
+            continue
+        relative = str(item["path"])
+        if not SAFE_ARCHIVE_PATH.fullmatch(relative) or relative.startswith("/") or ".." in pathlib.PurePosixPath(relative).parts:
+            fail("ROLLBACK_LINT_PATH_INVALID")
+        run(["docker", "exec", TARGET_CONTAINER, "php", "-l", "/var/www/html/custom/" + relative], capture=False)
+
+
+def rollback_checks(candidate: Candidate, prior_snapshot: dict[str, object]) -> None:
+    if runtime_snapshot_from_rows(prior_snapshot)["files"] != prior_snapshot["files"]:
+        fail("ROLLBACK_PRESTATE_MISMATCH")
+    lint_snapshot(prior_snapshot)
+    if schema_status(candidate) != "READY": fail("ROLLBACK_SCHEMA_NOT_READY")
+    if http_status(TARGET_HTTP + "/") not in (200, 302): fail("ROLLBACK_HTTP_FAILED")
+    if http_status(TARGET_HTTP + "/custom/chinaplanetoperations/index.php") not in (200, 302, 401, 403):
+        fail("ROLLBACK_OPERATIONS_ROUTE_FAILED")
+
+
+def plan_payload(snapshot: dict[str, object], schema: str, db_identity: str) -> dict[str, object]:
+    return {"schema": 1, "release": RELEASE, "source_commit": SOURCE_COMMIT, "artifact_sha256": ARTIFACT_SHA,
+            "snapshot_sha256": canonical_sha(snapshot), "schema_status": schema, "database_identity": db_identity,
+            "created_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+
+
+def require_plan(snapshot: dict[str, object], schema: str, db_identity: str) -> str:
+    validate_root_file(PLAN_FILE); plan = json.loads(PLAN_FILE.read_text("ascii")); expected = plan_payload(snapshot, schema, db_identity)
+    for key in ("schema", "release", "source_commit", "artifact_sha256", "snapshot_sha256", "schema_status", "database_identity"):
+        if plan.get(key) != expected[key]: fail("PREFLIGHT_PLAN_MISMATCH")
+    created = dt.datetime.fromisoformat(str(plan.get("created_at")))
+    if created.tzinfo is None or (dt.datetime.now(dt.timezone.utc) - created).total_seconds() > PLAN_MAX_AGE_SECONDS: fail("PREFLIGHT_PLAN_EXPIRED")
+    return canonical_sha(plan)
+
+
+def status_plan() -> tuple[str, dt.datetime | None]:
+    if not PLAN_FILE.exists() and not PLAN_FILE.is_symlink():
+        return "ABSENT", None
+    validate_root_file(PLAN_FILE)
+    plan = json.loads(PLAN_FILE.read_text("ascii"))
+    if (plan.get("schema") != 1 or plan.get("release") != RELEASE or plan.get("source_commit") != SOURCE_COMMIT
+            or plan.get("artifact_sha256") != ARTIFACT_SHA or not HEX64.fullmatch(str(plan.get("snapshot_sha256", "")))
+            or plan.get("schema_status") not in ("READY", "MIGRATION_REQUIRED")
+            or not HEX64.fullmatch(str(plan.get("database_identity", "")))):
+        fail("PREFLIGHT_PLAN_STATUS_INVALID")
+    created = dt.datetime.fromisoformat(str(plan.get("created_at")))
+    if created.tzinfo is None:
+        fail("PREFLIGHT_PLAN_STATUS_INVALID")
+    if (dt.datetime.now(dt.timezone.utc) - created).total_seconds() > PLAN_MAX_AGE_SECONDS:
+        return "EXPIRED", created
+    return "READY", created
+
+
+def apply_status(plan_status: str, plan_created: dt.datetime | None, state: dict[str, object] | None) -> tuple[str, str]:
+    if plan_status != "READY" or plan_created is None:
+        return "NO", "PREFLIGHT_" + plan_status
+    if state is None:
+        return "YES", "PREFLIGHT_BOUND"
+    status = str(state.get("status", ""))
+    if status.startswith("PENDING_"):
+        return "NO", "RECONCILIATION_REQUIRED"
+    if status in ("APPLY_FAILED_RECOVERY_REQUIRED", "ROLLBACK_FAILED_RECOVERY_REQUIRED"):
+        return "NO", "RECOVERY_REQUIRED"
+    updated = dt.datetime.fromisoformat(str(state.get("updated_at", "")))
+    if updated.tzinfo is None:
+        fail("STATE_UPDATED_AT_INVALID")
+    if plan_created <= updated:
+        return "NO", "PREFLIGHT_REQUIRED_AFTER_STATE"
+    return "YES", "PREFLIGHT_BOUND"
+
+
+def make_request_id() -> str:
+    value = "m074-r06-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
+    if not SAFE_REQUEST_ID.fullmatch(value): fail("REQUEST_ID_INVALID")
+    return value
+
+
+def common_candidate(*, retained: bool = False) -> Candidate:
+    check_environment(); candidate = validate_release(ARTIFACT_ROOT if retained else INBOX)
+    try:
+        candidate_checks(candidate)
+        return candidate
+    except Exception:
+        candidate.cleanup()
+        raise
+
+
+def acquire_lock() -> int:
+    fd = os.open(LOCK_FILE, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    info = os.fstat(fd)
+    if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) != 0o600 or info.st_uid != 0 or info.st_gid != 0:
+        os.close(fd)
+        fail("LOCK_FILE_INVALID")
+    return fd
+
+
+def command_compare() -> None:
+    candidate = common_candidate()
+    try:
+        snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True); schema = schema_status(candidate); database_identity(candidate)
+        print(f"M074_STAGING_COMPARE=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} LAYOUT_CURRENT={counts['layout_current']} LAYOUT_DIFFERENT={counts['layout_different']} LAYOUT_ABSENT={counts['layout_absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES APPLY_READY=NO PREFLIGHT_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
+    finally: candidate.cleanup()
+
+
+def command_preflight() -> None:
+    prepare_roots(); candidate = common_candidate()
+    try:
+        snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True)
+        if counts["layout_different"] or counts["layout_absent"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
+        schema = schema_status(candidate); identity = database_identity(candidate); plan = plan_payload(snapshot, schema, identity); atomic_json(PLAN_FILE, plan); plan_sha = canonical_sha(plan)
+        print(f"M074_STAGING_PREFLIGHT=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES BASELINE_BOUND=YES APPLY_READY=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
+    finally: candidate.cleanup()
+
+
+def reconcile_pending(state: dict[str, object], deployed_release: dict[str, object] | None = None,
+                      candidate: Candidate | None = None) -> str:
+    status = str(state["status"])
+    if status == "PENDING_APPLY_PREPARE":
+        validation_database = str(state.get("validation_database", ""))
+        try:
+            if validation_database:
+                drop_validation_database(validation_database)
+            preserve_state(state, "APPLY_FAILED_NO_MUTATION", validation_database="", reconciliation="RESTORE_CHECK_DATABASE_REMOVED_NO_RUNTIME_MUTATION")
+            return "APPLY_FAILED_NO_MUTATION"
+        except Exception:
+            preserve_state(state, "APPLY_FAILED_RECOVERY_REQUIRED", reconciliation="RESTORE_CHECK_DATABASE_RECOVERY_REQUIRED")
+            raise
+    if status in ("PENDING_APPLY_CODE", "PENDING_APPLY_SCHEMA"):
+        try:
+            if deployed_release is None: fail("RECONCILIATION_RELEASE_SNAPSHOT_REQUIRED")
+            restore_snapshot(*state_backup(state), allowed_snapshot=deployed_release); database, database_sha = state_database_backup(state)
+            preserve_state(state, "APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED", database_backup=str(database), database_backup_sha256=database_sha, reconciliation="CODE_RESTORED_SCHEMA_RETAINED")
+            return "APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED"
+        except Exception:
+            preserve_state(state, "APPLY_FAILED_RECOVERY_REQUIRED", reconciliation="RECOVERY_REQUIRED"); raise
+    if status == "PENDING_ROLLBACK_PREPARE":
+        try:
+            if candidate is None: fail("RECONCILIATION_CANDIDATE_REQUIRED")
+            identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
+            preserve_state(state, "DEPLOYED", reconciliation="ROLLBACK_NO_MUTATION", last_rollback_result="FAILED_NO_MUTATION")
+            return "ROLLBACK_FAILED_NO_MUTATION_STATE_DEPLOYED"
+        except Exception:
+            preserve_state(state, "ROLLBACK_FAILED_RECOVERY_REQUIRED", reconciliation="RECOVERY_REQUIRED")
+            raise
+    if status == "PENDING_ROLLBACK":
+        try:
+            if candidate is None: fail("RECONCILIATION_CANDIDATE_REQUIRED")
+            prior_snapshot = validate_code_backup(*state_backup(state))
+            restore_snapshot(*state_backup(state, "reapply_"), allowed_snapshot=prior_snapshot)
+            identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
+            preserve_state(state, "DEPLOYED", reconciliation="REAPPLIED_DEPLOYED_CODE", last_rollback_result="FAILED_REAPPLIED")
+            return "ROLLBACK_FAILED_REAPPLIED_STATE_DEPLOYED"
+        except Exception:
+            state["status"] = "ROLLBACK_FAILED_RECOVERY_REQUIRED"; state["reconciliation"] = "RECOVERY_REQUIRED"; atomic_json(STATE_FILE, state); raise
+    fail("STATE_NOT_PENDING")
+
+
+def execute_apply_mutation(candidate: Candidate, snapshot: dict[str, object], identity: str, fields: dict[str, object],
+                           archive: pathlib.Path, archive_sha: str, prestate: pathlib.Path, prestate_sha: str) -> None:
+    try:
+        apply_candidate(candidate, snapshot)
+        if database_identity(candidate) != identity:
+            fail("DATABASE_IDENTITY_CHANGED_BEFORE_SCHEMA_APPLY")
+        save_state("PENDING_APPLY_SCHEMA", **fields); code, output = schema_command(candidate, "apply")
+        if code != 0 or output != "M074_SCHEMA_APPLY=PASS TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED": fail("SCHEMA_APPLY_FAILED")
+        live_checks(candidate)
+        if database_identity(candidate) != identity:
+            fail("DATABASE_IDENTITY_CHANGED_AFTER_SCHEMA_APPLY")
+        save_state("DEPLOYED", **fields, files=298, tables=3, rights=4, rights_default="DISABLED")
+    except Exception:
+        try:
+            restore_snapshot(archive, archive_sha, prestate, prestate_sha, allowed_snapshot=release_snapshot(candidate))
+            save_state("APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED", **fields, reconciliation="CODE_RESTORED_SCHEMA_RETAINED")
+            print("M074_STAGING_AUTO_ROLLBACK=PASS CODE=RESTORED SCHEMA=RETAINED DATA=RETAINED", file=sys.stderr)
+        except Exception:
+            save_state("APPLY_FAILED_RECOVERY_REQUIRED", **fields, reconciliation="RECOVERY_REQUIRED")
+            print("M074_STAGING_AUTO_ROLLBACK=FAIL RECOVERY_REQUIRED=YES", file=sys.stderr)
+        raise
+
+
+def command_apply() -> None:
+    prepare_roots(); lock_fd = acquire_lock()
+    try:
+        import fcntl
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if STATE_FILE.exists() or STATE_FILE.is_symlink():
+            existing = load_state()
+            if str(existing["status"]).startswith("PENDING_"):
+                if existing["status"] == "PENDING_APPLY_PREPARE":
+                    result = reconcile_pending(existing)
+                    print(f"M074_STAGING_RECONCILE=PASS RESULT={result} NEW_APPLY_STARTED=NO PRODUCTION_ACCESSED=NO"); return
+                retained = common_candidate(retained=True)
+                try: result = reconcile_pending(existing, release_snapshot(retained), retained)
+                finally: retained.cleanup()
+                print(f"M074_STAGING_RECONCILE=PASS RESULT={result} NEW_APPLY_STARTED=NO PRODUCTION_ACCESSED=NO"); return
+            if existing["status"] in ("APPLY_FAILED_RECOVERY_REQUIRED", "ROLLBACK_FAILED_RECOVERY_REQUIRED"): fail("RECOVERY_REQUIRED")
+        candidate = common_candidate()
+        try:
+            snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=False)
+            if counts["layout_different"] or counts["layout_absent"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
+            schema = schema_status(candidate); identity = database_identity(candidate); plan_sha = require_plan(snapshot, schema, identity)
+            if STATE_FILE.exists() and load_state()["status"] == "DEPLOYED":
+                live_checks(candidate); state = load_state(); require_saved_database_identity(state, identity); state_database_backup(state); state_backup(state)
+                print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return
+            retain_release(candidate); request_id = make_request_id(); save_state("PENDING_APPLY_PREPARE", request_id=request_id, plan_sha256=plan_sha)
+            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r06-before-" + request_id)
+            database, database_sha = create_database_backup(request_id, identity)
+            validation_database = make_validation_database_name()
+            fields = {"request_id": request_id, "plan_sha256": plan_sha, "code_backup": str(archive), "code_backup_sha256": archive_sha,
+                      "prestate": str(prestate), "prestate_sha256": prestate_sha, "database_backup": str(database), "database_backup_sha256": database_sha,
+                      "database_identity": identity, "validation_database": validation_database}
+            save_state("PENDING_APPLY_PREPARE", **fields)
+            validate_database_backup(database, database_sha, validation_database)
+            fields["validation_database"] = ""
+            save_state("PENDING_APPLY_PREPARE", **fields)
+            if database_identity(candidate) != identity:
+                fail("DATABASE_IDENTITY_CHANGED_AFTER_RESTORE_CHECK")
+            if runtime_snapshot(candidate) != snapshot:
+                fail("BASELINE_CHANGED_AFTER_BACKUP")
+            save_state("PENDING_APPLY_CODE", **fields)
+            execute_apply_mutation(candidate, snapshot, identity, fields, archive, archive_sha, prestate, prestate_sha)
+            print(f"M074_STAGING_APPLY=PASS REQUEST_ID={request_id} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CODE_BACKUP={archive} CODE_BACKUP_SHA={archive_sha} PRESTATE={prestate} PRESTATE_SHA={prestate_sha} DB_BACKUP={database} DB_BACKUP_SHA={database_sha} FILES=298 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED DATABASE_CHANGED=YES PRODUCTION_ACCESSED=NO")
+        finally: candidate.cleanup()
+    finally: os.close(lock_fd)
+
+
+def command_verify() -> None:
+    prepare_roots(); check_environment(); state = load_state()
+    if state["status"] != "DEPLOYED": fail("STATE_NOT_DEPLOYED")
+    state_backup(state); state_database_backup(state); candidate = validate_release(ARTIFACT_ROOT)
+    try:
+        candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
+        print(f"M074_STAGING_VERIFY=PASS STATE=DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state['request_id']} FILES=298 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED CODE_BACKUP_SHA={state['code_backup_sha256']} DB_BACKUP_SHA={state['database_backup_sha256']} BACKUPS_REVALIDATED=YES DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO")
+    finally: candidate.cleanup()
+
+
+def command_rollback() -> None:
+    prepare_roots(); lock_fd = acquire_lock()
+    try:
+        import fcntl
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB); state = load_state()
+        if str(state["status"]).startswith("PENDING_"):
+            if state["status"] == "PENDING_APPLY_PREPARE":
+                result = reconcile_pending(state)
+                print(f"M074_STAGING_RECONCILE=PASS RESULT={result} NEW_ROLLBACK_STARTED=NO PRODUCTION_ACCESSED=NO"); return
+            check_environment()
+            retained = common_candidate(retained=True)
+            try: result = reconcile_pending(state, release_snapshot(retained), retained)
+            finally: retained.cleanup()
+            print(f"M074_STAGING_RECONCILE=PASS RESULT={result} NEW_ROLLBACK_STARTED=NO PRODUCTION_ACCESSED=NO"); return
+        check_environment()
+        if state["status"] != "DEPLOYED": fail("STATE_NOT_DEPLOYED")
+        candidate = validate_release(ARTIFACT_ROOT)
+        try:
+            candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); deployed = release_snapshot(candidate); rollback_id = make_request_id()
+            state["status"] = "PENDING_ROLLBACK_PREPARE"; state["rollback_request_id"] = rollback_id; atomic_json(STATE_FILE, state)
+            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r06-reapply-" + rollback_id)
+            state.update({"status": "PENDING_ROLLBACK", "reapply_code_backup": str(reapply[0]), "reapply_code_backup_sha256": reapply[1], "reapply_prestate": str(reapply[2]), "reapply_prestate_sha256": reapply[3]}); atomic_json(STATE_FILE, state)
+            try:
+                restore_snapshot(*prior, allowed_snapshot=deployed)
+                rollback_checks(candidate, prior_snapshot)
+                state["status"] = "ROLLED_BACK_SCHEMA_RETAINED"; state["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, state)
+            except Exception:
+                try:
+                    restore_snapshot(*reapply, allowed_snapshot=prior_snapshot); live_checks(candidate); require_saved_database_identity(state, database_identity(candidate)); state["status"] = "DEPLOYED"; state["last_rollback_result"] = "FAILED_REAPPLIED"; state["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, state); print("M074_STAGING_ROLLBACK_REAPPLY=PASS STATE=DEPLOYED", file=sys.stderr)
+                except Exception:
+                    state["status"] = "ROLLBACK_FAILED_RECOVERY_REQUIRED"; state["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, state); print("M074_STAGING_ROLLBACK_REAPPLY=FAIL RECOVERY_REQUIRED=YES", file=sys.stderr)
+                raise
+            print(f"M074_STAGING_ROLLBACK=PASS RELEASE={RELEASE} ROLLBACK_REQUEST_ID={rollback_id} CODE=PRESTATE_RESTORED SCHEMA=RETAINED DATA=RETAINED REAPPLY_BACKUP={reapply[0]} REAPPLY_BACKUP_SHA={reapply[1]} DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO")
+        finally: candidate.cleanup()
+    finally: os.close(lock_fd)
+
+
+def command_status() -> None:
+    prepare_roots()
+    plan, plan_created = status_plan()
+    if not STATE_FILE.exists() and not STATE_FILE.is_symlink():
+        available, reason = apply_status(plan, plan_created, None)
+        print(f"M074_STAGING_STATUS=NOT_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PREFLIGHT_PLAN={plan} COMMANDS=compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE={available} APPLY_REASON={reason} DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"); return
+    state = load_state()
+    available, reason = apply_status(plan, plan_created, state)
+    print(f"M074_STAGING_STATUS={state['status']} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state.get('request_id','none')} CODE_BACKUP_SHA={state.get('code_backup_sha256','none')} DB_BACKUP_SHA={state.get('database_backup_sha256','none')} PREFLIGHT_PLAN={plan} COMMANDS=compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE={available} APPLY_REASON={reason} PRODUCTION_ACCESSED=NO")
+
+
+def main() -> int:
+    os.umask(0o077)
+    if os.geteuid() != 0: fail("ROOT_REQUIRED")
+    if len(sys.argv) != 2 or sys.argv[1] not in ALLOWED_COMMANDS: fail("COMMAND_NOT_ALLOWED")
+    if pathlib.Path(sys.argv[0]).name != "chinaplanetos-backup-erp-m074-qc-preflight": fail("HELPER_PATH_NOT_ALLOWED")
+    globals()["command_" + sys.argv[1]](); return 0
+
+
+if __name__ == "__main__":
+    try: raise SystemExit(main())
+    except ReleaseError as exc: print("M074_STAGING_FAIL=" + str(exc), file=sys.stderr); raise SystemExit(1)
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, ValueError, KeyError) as exc:
+        print("M074_STAGING_FAIL=UNEXPECTED_" + exc.__class__.__name__.upper(), file=sys.stderr); raise SystemExit(1)
+    except Exception as exc:
+        print("M074_STAGING_FAIL=UNEXPECTED_" + exc.__class__.__name__.upper(), file=sys.stderr); raise SystemExit(1)

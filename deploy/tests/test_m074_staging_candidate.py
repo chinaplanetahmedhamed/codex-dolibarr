@@ -14,7 +14,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPER = ROOT / "deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh"
-ARTIFACT = ROOT / "deploy/releases/m074-r01/dolibarr.tar.gz"
+ARTIFACT = ROOT / "deploy/releases/m074-r06/dolibarr.tar.gz"
 EXPECTED_TESTS = (
     "deploy/tests/test_m061_customer_documents_contract.php",
     "deploy/tests/test_m070_customer_unit_projection.php",
@@ -34,9 +34,9 @@ def require(condition: bool, reason: str) -> None:
 
 
 source = HELPER.read_text(encoding="utf-8")
-match = re.search(r"readonly -a STATIC_TESTS=\(\n(.*?)\n\)", source, re.DOTALL)
+match = re.search(r"STATIC_TESTS = \(\n(.*?)\n\)", source, re.DOTALL)
 require(match is not None, "STATIC_TEST_LIST_ABSENT")
-tests = tuple(re.findall(r"'([^']+)'", match.group(1)))
+tests = tuple(re.findall(r'"([^"]+)"', match.group(1)))
 require(tests == EXPECTED_TESTS, "STATIC_TEST_LIST_CHANGED")
 php = shutil.which("php")
 require(php is not None, "PHP_ABSENT")
@@ -45,10 +45,13 @@ with tempfile.TemporaryDirectory(prefix="m074-staging-candidate-") as temporary:
     candidate = pathlib.Path(temporary) / "candidate"
     candidate.mkdir()
     with tarfile.open(ARTIFACT, "r:gz") as archive:
+        member_names = set()
         for member in archive.getmembers():
             pure = pathlib.PurePosixPath(member.name)
             require(member.isfile(), "ARTIFACT_TYPE_FORBIDDEN")
             require(not pure.is_absolute() and ".." not in pure.parts, "ARTIFACT_PATH_UNSAFE")
+            member_names.add(member.name)
+        require("custom/chinaplanetoperations/qc/app.php" in member_names, "LIVE_PROBE_TARGET_ABSENT")
         archive.extractall(candidate)
 
     customer_center = candidate / "custom/chinaplanetcustomercenter"
