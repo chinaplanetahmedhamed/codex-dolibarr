@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify frozen M074-R07 artifacts and reproduce them byte-for-byte."""
+"""Verify frozen M074-R08 artifacts and reproduce them byte-for-byte."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 BUILDER = ROOT / "deploy/tools/build_m072_release_artifacts.py"
-FROZEN = ROOT / "deploy/releases/m074-r07"
+FROZEN = ROOT / "deploy/releases/m074-r08"
 SOURCE_MANIFEST = ROOT / "docs/REPORTS/M074_SOURCE_TO_RUNTIME_MANIFEST.tsv"
 COMPONENTS = ("dolibarr", "react", "wordpress", "mobile")
 
@@ -31,7 +31,7 @@ def digest(path: pathlib.Path) -> str:
 
 
 bundle = json.loads((FROZEN / "release-bundle.json").read_text(encoding="utf-8"))
-require(bundle["releaseId"] == "M074-R07", "M074 release ID mismatch")
+require(bundle["releaseId"] == "M074-R08", "M074 release ID mismatch")
 require(bundle["bindingStatus"] == "UNBOUND_REQUIRES_INDEPENDENT_REVIEW_AND_STAGING_APPROVAL", "M074 release is not gated")
 require([item["id"] for item in bundle["components"]] == list(COMPONENTS), "M074 component set mismatch")
 
@@ -80,7 +80,7 @@ require(all(roots.values()), "M074 source roots are required for reproducibility
 commits = {item["id"]: item["commit"] for item in bundle["components"]}
 descriptor = {
     "schemaVersion": 1,
-    "releaseId": "M074-R07",
+    "releaseId": "M074-R08",
     "sources": {name: {"root": roots[name], "commit": commits[name]} for name in COMPONENTS},
 }
 with tempfile.TemporaryDirectory(prefix="m074-repro-") as raw:
@@ -97,5 +97,5 @@ with tempfile.TemporaryDirectory(prefix="m074-repro-") as raw:
         for name in frozen_names:
             require(output.joinpath(name).read_bytes() == FROZEN.joinpath(name).read_bytes(), "rebuild mismatch: " + name)
 
-require(len(packaged_runtime) == 308, "M074-R07 composite runtime count mismatch")
-print("M074_ARTIFACT_REPRODUCIBILITY=PASS RELEASE=M074-R07 RUNTIME_FILES=308 BUILDS=2")
+require(len(packaged_runtime) == 308, "M074-R08 composite runtime count mismatch")
+print("M074_ARTIFACT_REPRODUCIBILITY=PASS RELEASE=M074-R08 RUNTIME_FILES=308 BUILDS=2")

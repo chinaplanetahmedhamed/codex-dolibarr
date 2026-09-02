@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checksum-pinned, staging-only M074-R07 release controller."""
+"""Checksum-pinned, staging-only M074-R08 release controller."""
 
 from __future__ import annotations
 
@@ -26,13 +26,13 @@ import urllib.error
 import urllib.request
 
 
-RELEASE = "M074-R07"
-SOURCE_COMMIT = "fc6f0fe1bfba303ab45ed011d634ec7712b6ccda"
-ARTIFACT_SHA = "3c022220ef7d6d2540d54eedd5d6bac2b2c5c0892d7e5024c5989f25329fbedc"
-MANIFEST_SHA = "b31db80b8a4e9b725d60b0c22dd3cdf1b8aea1814a28ba98d5b90dae5177969f"
+RELEASE = "M074-R08"
+SOURCE_COMMIT = "4abd0e90018fb04f5d9abde3259b4d4925f2847c"
+ARTIFACT_SHA = "b45d6f456e857e1e836da8f0738fde19137d30481f36d1cc3143850c84a3f94b"
+MANIFEST_SHA = "c522c3e9cf4dfc553e5db8812581fecd8af197da1fd5b9b83f881fc7a86c8d4b"
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
-BUNDLE_SHA = "99da1d088fccc8c4c94c335a3809624b70f6c1637e928699b0b0065c65a128eb"
-PINS_SHA = "e86898770a1c809a5749f4950da67cea1dbdbe97b4516814da2bac66755d8153"
+BUNDLE_SHA = "61ee20299c626a2427b752e5c7e0ecfd86903949dbc8e030ec8a9ab59ccb2570"
+PINS_SHA = "96c509d45e7e0f10b44f625555240cfddf8f79754890ed016b2ae1e12dc61850"
 EXPECTED_BASELINE_SHA = "39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094"
 EXPECTED_LAYOUT_TREE_SHA = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "c0144d63da333b4eea47b3687d673d85a23d677cad4e9da0109bc06147501bcd",
@@ -42,11 +42,11 @@ DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
-    "dolibarr.tar.gz": ("m074-r07-dolibarr.tar.gz", ARTIFACT_SHA),
-    "dolibarr.manifest.tsv": ("m074-r07-dolibarr.manifest.tsv", MANIFEST_SHA),
-    "dolibarr.layout.tsv": ("m074-r07-dolibarr.layout.tsv", LAYOUT_SHA),
-    "release-bundle.json": ("m074-r07-release-bundle.json", BUNDLE_SHA),
-    "release-pins.sha256": ("m074-r07-release-pins.sha256", PINS_SHA),
+    "dolibarr.tar.gz": ("m074-r08-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r08-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r08-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r08-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r08-release-pins.sha256", PINS_SHA),
 }
 TARGET_CONTAINER = "erp-staging-dolibarr-1"
 DB_CONTAINER = "erp-staging-mariadb-1"
@@ -57,13 +57,13 @@ TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_cust
 TARGET_HTTP = "http://127.0.0.1:18088"
 BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
 DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
-ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r07")
-STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r07-staging")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r08")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r08-staging")
 STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
-DEPLOY_CONTEXT = "m074-r07-backup-erp-root-only"
+DEPLOY_CONTEXT = "m074-r08-backup-erp-root-only"
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
 STATIC_TESTS = (
@@ -83,7 +83,7 @@ STATIC_TESTS = (
 ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ARCHIVE_PATH = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
-SAFE_REQUEST_ID = re.compile(r"^m074-r07-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+SAFE_REQUEST_ID = re.compile(r"^m074-r08-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 EXPECTED_LAYOUT = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "../chinaplanetlogistics",
     "custom/chinaplanetcustomercenter/cpkanban": "../cpkanban",
@@ -169,7 +169,7 @@ def http_status(url: str) -> int:
         def redirect_request(self, request, fp, code, message, headers, new_url):
             return None
 
-    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R07"})
+    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R08"})
     try:
         with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()).open(request, timeout=15) as response:
             return int(response.status)
@@ -254,7 +254,7 @@ class Candidate:
         self.work = work; self.files = files; self.root = root; self.rows = rows
         self.layout = layout
         self.runtime_rows = deployment_runtime_rows(rows, layout)
-        self.remote = f"/tmp/m074-r07-candidate-{os.getpid()}-{secrets.token_hex(4)}"
+        self.remote = f"/tmp/m074-r08-candidate-{os.getpid()}-{secrets.token_hex(4)}"
 
     def cleanup(self) -> None:
         try:
@@ -283,7 +283,7 @@ def deployment_runtime_rows(rows: list[dict[str, str]], layout: dict[str, str]) 
 
 
 def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
-    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r07-release-", dir="/root")); os.chmod(work, 0o700)
+    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r08-release-", dir="/root")); os.chmod(work, 0o700)
     files: dict[str, pathlib.Path] = {}
     try:
         for canonical, (inbox_name, expected_sha) in INPUTS.items():
@@ -679,7 +679,7 @@ def signature_matches(actual: dict[str, object], expected: dict[str, object]) ->
 
 def atomic_write_target(root_fd: int, relative: str, data: bytes, uid: int, gid: int, mode: int,
                         expected: dict[str, object] | None = None) -> None:
-    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r07-" + secrets.token_hex(12); fd = -1
+    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r08-" + secrets.token_hex(12); fd = -1
     try:
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=parent)
         offset = 0
@@ -793,7 +793,7 @@ def apply_layout(candidate: Candidate, snapshot: dict[str, object]) -> None:
         if current != item:
             fail("TARGET_BASELINE_CHANGED")
         target = TARGET_ROOT / str(item["path"]); parent = target.parent
-        temporary = parent / (".m074-r07-layout-" + secrets.token_hex(12))
+        temporary = parent / (".m074-r08-layout-" + secrets.token_hex(12))
         moved = False; linked = False
         try:
             if state == "CONVERTIBLE":
@@ -840,7 +840,7 @@ def remove_managed_overlay_directories(item: dict[str, object], allowed_snapshot
                 fail("ROLLBACK_LAYOUT_MISMATCH")
             parts = tuple(pathlib.PurePosixPath(str(item["path"]), relative).parts)
             parent = open_dir_chain(target_fd, parts[:-1])
-            quarantine = ".m074-r07-rmdir-" + secrets.token_hex(12)
+            quarantine = ".m074-r08-rmdir-" + secrets.token_hex(12)
             moved = False
             try:
                 renameat2(parent, parts[-1], parent, quarantine, RENAME_NOREPLACE); moved = True
@@ -942,7 +942,7 @@ def remove_target_if_expected(root_fd: int, relative: str, expected: dict[str, o
         if expected.get("state") == "ABSENT":
             return
         fail("ROLLBACK_BASELINE_CHANGED")
-    temporary = ".m074-r07-remove-" + secrets.token_hex(12)
+    temporary = ".m074-r08-remove-" + secrets.token_hex(12)
     try:
         try:
             renameat2(parent, parts[-1], parent, temporary, RENAME_NOREPLACE)
@@ -1254,7 +1254,7 @@ def apply_status(plan_status: str, plan_created: dt.datetime | None, state: dict
 
 
 def make_request_id() -> str:
-    value = "m074-r07-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
+    value = "m074-r08-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
     if not SAFE_REQUEST_ID.fullmatch(value): fail("REQUEST_ID_INVALID")
     return value
 
@@ -1398,7 +1398,7 @@ def command_apply() -> None:
                 live_checks(candidate, prior_snapshot); require_saved_database_identity(state, identity); state_database_backup(state)
                 print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return
             retain_release(candidate); request_id = make_request_id(); save_state("PENDING_APPLY_PREPARE", request_id=request_id, plan_sha256=plan_sha)
-            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r07-before-" + request_id)
+            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r08-before-" + request_id)
             database, database_sha = create_database_backup(request_id, identity)
             validation_database = make_validation_database_name()
             fields = {"request_id": request_id, "plan_sha256": plan_sha, "code_backup": str(archive), "code_backup_sha256": archive_sha,
@@ -1449,7 +1449,7 @@ def command_rollback() -> None:
         try:
             candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); live_checks(candidate, prior_snapshot); deployed = release_snapshot(candidate); rollback_id = make_request_id()
             state["status"] = "PENDING_ROLLBACK_PREPARE"; state["rollback_request_id"] = rollback_id; atomic_json(STATE_FILE, state)
-            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r07-reapply-" + rollback_id)
+            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r08-reapply-" + rollback_id)
             state.update({"status": "PENDING_ROLLBACK", "reapply_code_backup": str(reapply[0]), "reapply_code_backup_sha256": reapply[1], "reapply_prestate": str(reapply[2]), "reapply_prestate_sha256": reapply[3]}); atomic_json(STATE_FILE, state)
             try:
                 restore_snapshot(*prior, allowed_snapshot=deployed)
