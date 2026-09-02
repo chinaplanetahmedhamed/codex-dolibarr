@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault and containment tests for the real M074-R06 file/state primitives."""
+"""Fault and containment tests for the real M074-R07 file/state primitives."""
 
 from __future__ import annotations
 

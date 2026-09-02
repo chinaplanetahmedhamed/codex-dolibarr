@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checksum-pinned, staging-only M074-R06 release controller."""
+"""Checksum-pinned, staging-only M074-R07 release controller."""
 
 from __future__ import annotations
 
@@ -26,21 +26,21 @@ import urllib.error
 import urllib.request
 
 
-RELEASE = "M074-R06"
-SOURCE_COMMIT = "d58fb5602e0d2019eaac47316550ab9574045b46"
-ARTIFACT_SHA = "849f8885833a299b8ec8934c4fdd9ef42c968ccf6dc48bf836f1bbbd4612504f"
-MANIFEST_SHA = "f5a01d59ab61fb9429d84eecec9e0590554e7eedbef3ca8becc088b1e9dab3c6"
+RELEASE = "M074-R07"
+SOURCE_COMMIT = "fc6f0fe1bfba303ab45ed011d634ec7712b6ccda"
+ARTIFACT_SHA = "3c022220ef7d6d2540d54eedd5d6bac2b2c5c0892d7e5024c5989f25329fbedc"
+MANIFEST_SHA = "b31db80b8a4e9b725d60b0c22dd3cdf1b8aea1814a28ba98d5b90dae5177969f"
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
-BUNDLE_SHA = "7bdbe6dd77d72301f1eda2de384be5bf8b7506d2cb6017ce7ae3b84fec06f90b"
-PINS_SHA = "0688ba9a503f154a5f9c7a488acac708277109929194b5ef56404d0dfc7a90ed"
+BUNDLE_SHA = "99da1d088fccc8c4c94c335a3809624b70f6c1637e928699b0b0065c65a128eb"
+PINS_SHA = "e86898770a1c809a5749f4950da67cea1dbdbe97b4516814da2bac66755d8153"
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
-    "dolibarr.tar.gz": ("m074-r06-dolibarr.tar.gz", ARTIFACT_SHA),
-    "dolibarr.manifest.tsv": ("m074-r06-dolibarr.manifest.tsv", MANIFEST_SHA),
-    "dolibarr.layout.tsv": ("m074-r06-dolibarr.layout.tsv", LAYOUT_SHA),
-    "release-bundle.json": ("m074-r06-release-bundle.json", BUNDLE_SHA),
-    "release-pins.sha256": ("m074-r06-release-pins.sha256", PINS_SHA),
+    "dolibarr.tar.gz": ("m074-r07-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r07-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r07-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r07-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r07-release-pins.sha256", PINS_SHA),
 }
 TARGET_CONTAINER = "erp-staging-dolibarr-1"
 DB_CONTAINER = "erp-staging-mariadb-1"
@@ -51,18 +51,21 @@ TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_cust
 TARGET_HTTP = "http://127.0.0.1:18088"
 BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
 DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
-ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r06")
-STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r06-staging")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r07")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r07-staging")
 STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
-DEPLOY_CONTEXT = "m074-r06-backup-erp-root-only"
+DEPLOY_CONTEXT = "m074-r07-backup-erp-root-only"
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
 STATIC_TESTS = (
     "deploy/tests/test_m061_customer_documents_contract.php",
     "deploy/tests/test_m070_customer_unit_projection.php",
+    "deploy/tests/test_m068_lifecycle_source.php",
+    "deploy/tests/test_m068_portal_invitation_security_source.php",
+    "deploy/tests/test_m068_portal_currency_unit.php",
     "deploy/tests/test_m071_catalog_order_v2_source.php",
     "deploy/tests/test_m071_country_contract.php",
     "deploy/tests/test_customer_operation_reports_security.php",
@@ -74,7 +77,7 @@ STATIC_TESTS = (
 ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ARCHIVE_PATH = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
-SAFE_REQUEST_ID = re.compile(r"^m074-r06-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+SAFE_REQUEST_ID = re.compile(r"^m074-r07-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 EXPECTED_LAYOUT = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "../chinaplanetlogistics",
     "custom/chinaplanetcustomercenter/cpkanban": "../cpkanban",
@@ -160,7 +163,7 @@ def http_status(url: str) -> int:
         def redirect_request(self, request, fp, code, message, headers, new_url):
             return None
 
-    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R06"})
+    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R07"})
     try:
         with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()).open(request, timeout=15) as response:
             return int(response.status)
@@ -245,7 +248,7 @@ class Candidate:
         self.work = work; self.files = files; self.root = root; self.rows = rows
         self.runtime_rows = [row for row in rows if row["classification"] == "runtime"]
         self.layout = layout
-        self.remote = f"/tmp/m074-r06-candidate-{os.getpid()}-{secrets.token_hex(4)}"
+        self.remote = f"/tmp/m074-r07-candidate-{os.getpid()}-{secrets.token_hex(4)}"
 
     def cleanup(self) -> None:
         try:
@@ -255,7 +258,7 @@ class Candidate:
 
 
 def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
-    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r06-release-", dir="/root")); os.chmod(work, 0o700)
+    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r07-release-", dir="/root")); os.chmod(work, 0o700)
     files: dict[str, pathlib.Path] = {}
     try:
         for canonical, (inbox_name, expected_sha) in INPUTS.items():
@@ -274,7 +277,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("BUNDLE_COMPONENTS_INVALID")
         expected_component = {"artifact": "dolibarr.tar.gz", "artifactSha256": ARTIFACT_SHA, "commit": SOURCE_COMMIT,
                               "manifest": "dolibarr.manifest.tsv", "manifestSha256": MANIFEST_SHA,
-                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 521,
+                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 553,
                               "configPolicy": "external-retain", "dataPolicy": "retain", "schemaPolicy": "additive-retain-on-code-rollback"}
         if any(components["dolibarr"].get(key) != value for key, value in expected_component.items()):
             fail("DOLIBARR_BUNDLE_RECORD_INVALID")
@@ -285,7 +288,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("RELEASE_PINS_INVALID")
         with files["dolibarr.manifest.tsv"].open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle, delimiter="\t"))
-        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 521:
+        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 553:
             fail("MANIFEST_CONTRACT_INVALID")
         counts = {"runtime": 0, "support": 0, "evidence": 0}; seen: set[str] = set()
         for row in rows:
@@ -303,12 +306,12 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
                 fail("NONRUNTIME_TARGET_INVALID")
             if row["mode"] not in ("644", "755") or not row["size"].isdigit() or not HEX64.fullmatch(row["sha256"]):
                 fail("MANIFEST_METADATA_INVALID")
-        if counts != {"runtime": 298, "support": 198, "evidence": 25}:
+        if counts != {"runtime": 308, "support": 216, "evidence": 29}:
             fail("MANIFEST_COUNTS_INVALID")
         root = work / "candidate"; root.mkdir(mode=0o700)
         with gzip.open(files["dolibarr.tar.gz"], "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
             members = archive.getmembers()
-            if len(members) != 521 or [member.name for member in members] != sorted(seen):
+            if len(members) != 553 or [member.name for member in members] != sorted(seen):
                 fail("ARTIFACT_MEMBER_SET_INVALID")
             for member in members:
                 if not member.isfile() or member.name not in seen or member.uid != 0 or member.gid != 0 or member.mtime != 0 or stat.S_IMODE(member.mode) not in (0o644, 0o755):
@@ -394,6 +397,29 @@ def read_file_at(root_fd: int, relative: str) -> tuple[bytes, os.stat_result]:
         os.close(parent)
 
 
+def directory_tree_snapshot(relative: str) -> list[dict[str, object]]:
+    root = TARGET_ROOT / relative
+    if not root.is_dir() or root.is_symlink():
+        fail("COMPATIBILITY_DIRECTORY_INVALID")
+    entries: list[dict[str, object]] = []
+    for path in [root, *sorted(root.rglob("*"))]:
+        info = path.lstat()
+        item_relative = "" if path == root else path.relative_to(root).as_posix()
+        if stat.S_ISDIR(info.st_mode):
+            kind = "DIRECTORY"; digest = ""
+        elif stat.S_ISREG(info.st_mode):
+            kind = "FILE"; digest = sha256_file(path)
+        else:
+            fail("COMPATIBILITY_DIRECTORY_UNSAFE_ENTRY")
+        entries.append({"path": item_relative, "kind": kind, "sha256": digest,
+                        "uid": info.st_uid, "gid": info.st_gid, "mode": stat.S_IMODE(info.st_mode)})
+    return entries
+
+
+def semantic_tree(tree: list[dict[str, object]]) -> list[dict[str, object]]:
+    return [{key: item[key] for key in ("path", "kind", "sha256", "mode")} for item in tree]
+
+
 def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
     root_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)); files = []
     try:
@@ -414,13 +440,24 @@ def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
                     info = os.stat(parts[-1], dir_fd=parent, follow_symlinks=False)
                     if stat.S_ISLNK(info.st_mode):
                         actual = os.readlink(parts[-1], dir_fd=parent); state = "CURRENT" if actual == expected else "DIFFERENT"
+                    elif stat.S_ISDIR(info.st_mode):
+                        actual = "NON_SYMLINK_DIRECTORY"
+                        tree = directory_tree_snapshot(relative)
+                        canonical = os.path.normpath(os.path.join(os.path.dirname(relative), expected))
+                        if canonical.startswith("../") or canonical == ".." or os.path.isabs(canonical):
+                            fail("COMPATIBILITY_TARGET_INVALID")
+                        canonical_tree = directory_tree_snapshot(canonical)
+                        state = "CONVERTIBLE" if semantic_tree(tree) == semantic_tree(canonical_tree) else "DIFFERENT"
                     else:
-                        actual = "NON_SYMLINK"; state = "DIFFERENT"
+                        actual = "NON_DIRECTORY_NON_SYMLINK"; state = "DIFFERENT"
                 finally:
                     os.close(parent)
             except FileNotFoundError:
                 actual = "ABSENT"; state = "ABSENT"
-            layout.append({"path": relative, "state": state, "expected": expected, "actual": actual})
+            item = {"path": relative, "state": state, "expected": expected, "actual": actual}
+            if state in ("CONVERTIBLE", "DIFFERENT") and actual == "NON_SYMLINK_DIRECTORY":
+                item["tree"] = tree
+            layout.append(item)
     finally:
         os.close(root_fd)
     return {"files": files, "layout": layout}
@@ -428,7 +465,8 @@ def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
 
 def compare_summary(candidate: Candidate, snapshot: dict[str, object], *, emit: bool) -> dict[str, int]:
     expected = {row["runtime_target"][len("custom/"):]: row for row in candidate.runtime_rows}
-    counts = {"current": 0, "different": 0, "absent": 0, "layout_current": 0, "layout_different": 0, "layout_absent": 0}
+    counts = {"current": 0, "different": 0, "absent": 0, "layout_current": 0,
+              "layout_convertible": 0, "layout_different": 0, "layout_absent": 0}
     for item in snapshot["files"]:
         row = expected[item["path"]]
         if item["state"] == "ABSENT": state = "ABSENT"; counts["absent"] += 1
@@ -563,7 +601,7 @@ def signature_matches(actual: dict[str, object], expected: dict[str, object]) ->
 
 def atomic_write_target(root_fd: int, relative: str, data: bytes, uid: int, gid: int, mode: int,
                         expected: dict[str, object] | None = None) -> None:
-    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r06-" + secrets.token_hex(12); fd = -1
+    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r07-" + secrets.token_hex(12); fd = -1
     try:
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=parent)
         offset = 0
@@ -613,7 +651,100 @@ def apply_candidate(candidate: Candidate, snapshot: dict[str, object]) -> None:
             if hashlib.sha256(data).hexdigest() != row["sha256"] or stat.S_IMODE(info.st_mode) != int(row["mode"], 8): fail("CANDIDATE_CHANGED_BEFORE_APPLY")
             relative = row["runtime_target"][len("custom/"):]
             atomic_write_target(target_fd, relative, data, web_uid, web_gid, int(row["mode"], 8), baseline[relative])
+        apply_layout(snapshot)
     finally: os.close(candidate_fd); os.close(target_fd)
+
+
+def current_layout_item(item: dict[str, object]) -> dict[str, object]:
+    path = str(item["path"]); expected = str(item["expected"]); target = TARGET_ROOT / path
+    if target.is_symlink():
+        actual = os.readlink(target)
+        return {"path": path, "state": "CURRENT" if actual == expected else "DIFFERENT",
+                "expected": expected, "actual": actual}
+    if not target.exists():
+        return {"path": path, "state": "ABSENT", "expected": expected, "actual": "ABSENT"}
+    if target.is_dir():
+        tree = directory_tree_snapshot(path)
+        result = {"path": path, "state": "CONVERTIBLE", "expected": expected,
+                  "actual": "NON_SYMLINK_DIRECTORY", "tree": tree}
+        return result
+    return {"path": path, "state": "DIFFERENT", "expected": expected,
+            "actual": "NON_DIRECTORY_NON_SYMLINK"}
+
+
+def apply_layout(snapshot: dict[str, object]) -> None:
+    for item in snapshot["layout"]:
+        state = str(item["state"])
+        if state == "CURRENT":
+            if current_layout_item(item)["state"] != "CURRENT": fail("TARGET_BASELINE_CHANGED")
+            continue
+        if state not in ("ABSENT", "CONVERTIBLE"):
+            fail("COMPATIBILITY_LAYOUT_NOT_READY")
+        current = current_layout_item(item)
+        if current != item:
+            fail("TARGET_BASELINE_CHANGED")
+        target = TARGET_ROOT / str(item["path"]); parent = target.parent
+        temporary = parent / (".m074-r07-layout-" + secrets.token_hex(12))
+        moved = False; linked = False
+        try:
+            if state == "CONVERTIBLE":
+                os.rename(target, temporary); moved = True
+            os.symlink(str(item["expected"]), target); linked = True; fsync_path(parent)
+            if moved:
+                shutil.rmtree(temporary); moved = False; fsync_path(parent)
+        except Exception:
+            if linked and target.is_symlink() and os.readlink(target) == str(item["expected"]):
+                target.unlink(); linked = False
+            if moved and not target.exists() and not target.is_symlink():
+                os.rename(temporary, target); moved = False
+            fsync_path(parent)
+            raise
+
+
+def restore_layout(snapshot: dict[str, object]) -> None:
+    for item in snapshot.get("layout", []):
+        prior = str(item["state"]); target = TARGET_ROOT / str(item["path"])
+        if prior == "CURRENT":
+            if current_layout_item(item)["state"] != "CURRENT": fail("ROLLBACK_BASELINE_CHANGED")
+            continue
+        if prior == "CONVERTIBLE" and target.is_dir() and not target.is_symlink():
+            if current_layout_item(item) == item: continue
+            fail("ROLLBACK_BASELINE_CHANGED")
+        if not target.is_symlink() or os.readlink(target) != str(item["expected"]):
+            fail("ROLLBACK_BASELINE_CHANGED")
+        target.unlink(); fsync_path(target.parent)
+        if prior == "ABSENT":
+            continue
+        if prior != "CONVERTIBLE":
+            fail("ROLLBACK_PRESTATE_INVALID")
+        tree = item.get("tree")
+        if not isinstance(tree, list) or not tree or tree[0].get("path") != "" or tree[0].get("kind") != "DIRECTORY":
+            fail("ROLLBACK_PRESTATE_INVALID")
+        canonical = os.path.normpath(os.path.join(os.path.dirname(str(item["path"])), str(item["expected"])))
+        source_root = TARGET_ROOT / canonical
+        for entry in tree:
+            if entry.get("kind") != "DIRECTORY": continue
+            destination = target / str(entry["path"])
+            destination.mkdir(mode=0o700, parents=True, exist_ok=False)
+            os.chown(destination, int(entry["uid"]), int(entry["gid"]), follow_symlinks=False)
+        for entry in tree:
+            if entry.get("kind") != "FILE": continue
+            relative = str(entry["path"]); source = source_root / relative
+            if not source.is_file() or source.is_symlink() or sha256_file(source) != entry.get("sha256"):
+                fail("ROLLBACK_LAYOUT_SOURCE_MISMATCH")
+            destination = target / relative
+            with source.open("rb") as source_handle, destination.open("xb") as destination_handle:
+                shutil.copyfileobj(source_handle, destination_handle)
+                destination_handle.flush(); os.fsync(destination_handle.fileno())
+            os.chown(destination, int(entry["uid"]), int(entry["gid"]), follow_symlinks=False)
+            os.chmod(destination, int(entry["mode"]), follow_symlinks=False)
+        for entry in reversed(tree):
+            if entry.get("kind") == "DIRECTORY":
+                destination = target / str(entry["path"])
+                os.chmod(destination, int(entry["mode"]), follow_symlinks=False)
+        fsync_path(target.parent)
+        if current_layout_item(item) != item:
+            fail("ROLLBACK_LAYOUT_MISMATCH")
 
 
 def runtime_snapshot_from_rows(snapshot: dict[str, object]) -> dict[str, object]:
@@ -636,7 +767,7 @@ def remove_target_if_expected(root_fd: int, relative: str, expected: dict[str, o
         if expected.get("state") == "ABSENT":
             return
         fail("ROLLBACK_BASELINE_CHANGED")
-    temporary = ".m074-r06-remove-" + secrets.token_hex(12)
+    temporary = ".m074-r07-remove-" + secrets.token_hex(12)
     try:
         try:
             renameat2(parent, parts[-1], parent, temporary, RENAME_NOREPLACE)
@@ -681,6 +812,7 @@ def restore_snapshot(archive_path: pathlib.Path, archive_sha: str, prestate_path
             else: fail("PRESTATE_INVALID")
     finally: os.close(target_fd)
     if runtime_snapshot_from_rows(snapshot)["files"] != snapshot["files"]: fail("ROLLBACK_PRESTATE_MISMATCH")
+    restore_layout(snapshot)
 
 
 DB_DUMP_SCRIPT = r'''set -eu
@@ -922,7 +1054,7 @@ def apply_status(plan_status: str, plan_created: dt.datetime | None, state: dict
 
 
 def make_request_id() -> str:
-    value = "m074-r06-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
+    value = "m074-r07-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
     if not SAFE_REQUEST_ID.fullmatch(value): fail("REQUEST_ID_INVALID")
     return value
 
@@ -950,7 +1082,7 @@ def command_compare() -> None:
     candidate = common_candidate()
     try:
         snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True); schema = schema_status(candidate); database_identity(candidate)
-        print(f"M074_STAGING_COMPARE=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} LAYOUT_CURRENT={counts['layout_current']} LAYOUT_DIFFERENT={counts['layout_different']} LAYOUT_ABSENT={counts['layout_absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES APPLY_READY=NO PREFLIGHT_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
+        print(f"M074_STAGING_COMPARE=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} LAYOUT_CURRENT={counts['layout_current']} LAYOUT_CONVERTIBLE={counts['layout_convertible']} LAYOUT_DIFFERENT={counts['layout_different']} LAYOUT_ABSENT={counts['layout_absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES APPLY_READY=NO PREFLIGHT_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
 
 
@@ -958,7 +1090,7 @@ def command_preflight() -> None:
     prepare_roots(); candidate = common_candidate()
     try:
         snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True)
-        if counts["layout_different"] or counts["layout_absent"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
+        if counts["layout_different"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
         schema = schema_status(candidate); identity = database_identity(candidate); plan = plan_payload(snapshot, schema, identity); atomic_json(PLAN_FILE, plan); plan_sha = canonical_sha(plan)
         print(f"M074_STAGING_PREFLIGHT=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES BASELINE_BOUND=YES APPLY_READY=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
@@ -1018,7 +1150,7 @@ def execute_apply_mutation(candidate: Candidate, snapshot: dict[str, object], id
         live_checks(candidate)
         if database_identity(candidate) != identity:
             fail("DATABASE_IDENTITY_CHANGED_AFTER_SCHEMA_APPLY")
-        save_state("DEPLOYED", **fields, files=298, tables=3, rights=4, rights_default="DISABLED")
+        save_state("DEPLOYED", **fields, files=308, tables=3, rights=4, rights_default="DISABLED")
     except Exception:
         try:
             restore_snapshot(archive, archive_sha, prestate, prestate_sha, allowed_snapshot=release_snapshot(candidate))
@@ -1049,13 +1181,13 @@ def command_apply() -> None:
         candidate = common_candidate()
         try:
             snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=False)
-            if counts["layout_different"] or counts["layout_absent"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
+            if counts["layout_different"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
             schema = schema_status(candidate); identity = database_identity(candidate); plan_sha = require_plan(snapshot, schema, identity)
             if STATE_FILE.exists() and load_state()["status"] == "DEPLOYED":
                 live_checks(candidate); state = load_state(); require_saved_database_identity(state, identity); state_database_backup(state); state_backup(state)
                 print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return
             retain_release(candidate); request_id = make_request_id(); save_state("PENDING_APPLY_PREPARE", request_id=request_id, plan_sha256=plan_sha)
-            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r06-before-" + request_id)
+            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r07-before-" + request_id)
             database, database_sha = create_database_backup(request_id, identity)
             validation_database = make_validation_database_name()
             fields = {"request_id": request_id, "plan_sha256": plan_sha, "code_backup": str(archive), "code_backup_sha256": archive_sha,
@@ -1071,7 +1203,7 @@ def command_apply() -> None:
                 fail("BASELINE_CHANGED_AFTER_BACKUP")
             save_state("PENDING_APPLY_CODE", **fields)
             execute_apply_mutation(candidate, snapshot, identity, fields, archive, archive_sha, prestate, prestate_sha)
-            print(f"M074_STAGING_APPLY=PASS REQUEST_ID={request_id} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CODE_BACKUP={archive} CODE_BACKUP_SHA={archive_sha} PRESTATE={prestate} PRESTATE_SHA={prestate_sha} DB_BACKUP={database} DB_BACKUP_SHA={database_sha} FILES=298 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED DATABASE_CHANGED=YES PRODUCTION_ACCESSED=NO")
+            print(f"M074_STAGING_APPLY=PASS REQUEST_ID={request_id} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CODE_BACKUP={archive} CODE_BACKUP_SHA={archive_sha} PRESTATE={prestate} PRESTATE_SHA={prestate_sha} DB_BACKUP={database} DB_BACKUP_SHA={database_sha} FILES=308 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED DATABASE_CHANGED=YES PRODUCTION_ACCESSED=NO")
         finally: candidate.cleanup()
     finally: os.close(lock_fd)
 
@@ -1082,7 +1214,7 @@ def command_verify() -> None:
     state_backup(state); state_database_backup(state); candidate = validate_release(ARTIFACT_ROOT)
     try:
         candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
-        print(f"M074_STAGING_VERIFY=PASS STATE=DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state['request_id']} FILES=298 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED CODE_BACKUP_SHA={state['code_backup_sha256']} DB_BACKUP_SHA={state['database_backup_sha256']} BACKUPS_REVALIDATED=YES DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO")
+        print(f"M074_STAGING_VERIFY=PASS STATE=DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state['request_id']} FILES=308 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED CODE_BACKUP_SHA={state['code_backup_sha256']} DB_BACKUP_SHA={state['database_backup_sha256']} BACKUPS_REVALIDATED=YES DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
 
 
@@ -1106,7 +1238,7 @@ def command_rollback() -> None:
         try:
             candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); deployed = release_snapshot(candidate); rollback_id = make_request_id()
             state["status"] = "PENDING_ROLLBACK_PREPARE"; state["rollback_request_id"] = rollback_id; atomic_json(STATE_FILE, state)
-            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r06-reapply-" + rollback_id)
+            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r07-reapply-" + rollback_id)
             state.update({"status": "PENDING_ROLLBACK", "reapply_code_backup": str(reapply[0]), "reapply_code_backup_sha256": reapply[1], "reapply_prestate": str(reapply[2]), "reapply_prestate_sha256": reapply[3]}); atomic_json(STATE_FILE, state)
             try:
                 restore_snapshot(*prior, allowed_snapshot=deployed)

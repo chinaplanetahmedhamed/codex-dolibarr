@@ -14,10 +14,13 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPER = ROOT / "deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh"
-ARTIFACT = ROOT / "deploy/releases/m074-r06/dolibarr.tar.gz"
+ARTIFACT = ROOT / "deploy/releases/m074-r07/dolibarr.tar.gz"
 EXPECTED_TESTS = (
     "deploy/tests/test_m061_customer_documents_contract.php",
     "deploy/tests/test_m070_customer_unit_projection.php",
+    "deploy/tests/test_m068_lifecycle_source.php",
+    "deploy/tests/test_m068_portal_invitation_security_source.php",
+    "deploy/tests/test_m068_portal_currency_unit.php",
     "deploy/tests/test_m071_catalog_order_v2_source.php",
     "deploy/tests/test_m071_country_contract.php",
     "deploy/tests/test_customer_operation_reports_security.php",

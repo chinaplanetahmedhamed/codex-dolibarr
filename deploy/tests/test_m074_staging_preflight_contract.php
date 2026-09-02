@@ -13,15 +13,15 @@ function m074PreflightAssert($condition, $message)
     }
 }
 
-m074PreflightAssert(strpos($helper, 'RELEASE = "M074-R06"') !== false, 'RELEASE_PIN');
-m074PreflightAssert(strpos($helper, 'SOURCE_COMMIT = "d58fb5602e0d2019eaac47316550ab9574045b46"') !== false, 'SOURCE_COMMIT_PIN');
-m074PreflightAssert(strpos($helper, 'ARTIFACT_SHA = "849f8885833a299b8ec8934c4fdd9ef42c968ccf6dc48bf836f1bbbd4612504f"') !== false, 'ARTIFACT_PIN');
-m074PreflightAssert(hash('sha256', $helper) === '864e12817fbb997aadfd6cb1fc481c3a790d0a23ebeb29a9ef206f1e2a71d434', 'HELPER_HASH');
+m074PreflightAssert(strpos($helper, 'RELEASE = "M074-R07"') !== false, 'RELEASE_PIN');
+m074PreflightAssert(strpos($helper, 'SOURCE_COMMIT = "fc6f0fe1bfba303ab45ed011d634ec7712b6ccda"') !== false, 'SOURCE_COMMIT_PIN');
+m074PreflightAssert(strpos($helper, 'ARTIFACT_SHA = "3c022220ef7d6d2540d54eedd5d6bac2b2c5c0892d7e5024c5989f25329fbedc"') !== false, 'ARTIFACT_PIN');
+m074PreflightAssert(hash('sha256', $helper) === 'ccd37bc18c582773bde814e36e165b5d36827c1a20c31c8ba047667cfa7f12be', 'HELPER_HASH');
 m074PreflightAssert(hash('sha256', $sudoers) === '3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99', 'SUDOERS_HASH');
-m074PreflightAssert(strpos($installer, "HELPER_SHA='864e12817fbb997aadfd6cb1fc481c3a790d0a23ebeb29a9ef206f1e2a71d434'") !== false, 'INSTALLER_HELPER_PIN');
+m074PreflightAssert(strpos($installer, "HELPER_SHA='ccd37bc18c582773bde814e36e165b5d36827c1a20c31c8ba047667cfa7f12be'") !== false, 'INSTALLER_HELPER_PIN');
 m074PreflightAssert(strpos($installer, "SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_SUDOERS_PIN');
-m074PreflightAssert(strpos($installer, "PREVIOUS_HELPER_SHA='2f1f9f24ed2f0a1bda121190f41d5a6c73bf6c01fab209c877b03bfd4ef16e39'") !== false&&strpos($installer, "PREVIOUS_SUDOERS_SHA='777217564edf5a9b1dd67617e73cdf4e8f7fe3f90c3095ccc1930d1016fdbf38'") !== false, 'INSTALLER_PREDECESSOR_PINS');
-m074PreflightAssert(hash('sha256', $installer) === '9c76a0b94c451c24465d0a3df2dca15f740a596a5be09ee950b7c2720e05330b', 'INSTALLER_HASH');
+m074PreflightAssert(strpos($installer, "PREVIOUS_HELPER_SHA='864e12817fbb997aadfd6cb1fc481c3a790d0a23ebeb29a9ef206f1e2a71d434'") !== false&&strpos($installer, "PREVIOUS_SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_PREDECESSOR_PINS');
+m074PreflightAssert(hash('sha256', $installer) === 'ad3269f6ce66b11c9262ba840f592dadbefb2aee4663ef3dab031c574c4d1dde', 'INSTALLER_HASH');
 m074PreflightAssert(strpos($helper, 'TARGET_CONTAINER = "erp-staging-dolibarr-1"') !== false, 'CANONICAL_ERP_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_VOLUME = "erp-staging_erp-staging_custom"') !== false, 'CANONICAL_VOLUME_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_HTTP = "http://127.0.0.1:18088"') !== false, 'CANONICAL_HTTP_TARGET');

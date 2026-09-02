@@ -51,7 +51,7 @@ def check_repo(repo: pathlib.Path, commit: str) -> None:
     if git(repo, "rev-parse", "--verify", f"{commit}^{{commit}}").strip() != commit:
         fail("SOURCE_COMMIT_MISSING")
     if git(repo, "status", "--porcelain", "--untracked-files=all").strip():
-        fail("SOURCE_WORKTREE_NOT_CLEAN")
+        fail("SOURCE_WORKTREE_NOT_CLEAN_" + repo.name)
 
 
 def git_blob(repo: pathlib.Path, commit: str, path: str) -> bytes:

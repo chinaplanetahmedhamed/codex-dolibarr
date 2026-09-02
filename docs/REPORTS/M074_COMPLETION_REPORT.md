@@ -194,7 +194,7 @@ The numerous M069-M073 paths present in the composite merge are inherited lineag
 
 ## Rollback and release gates
 
-M074-R01 is frozen locally under `deploy/releases/m074-r01` from source commit `7d1cdcd2f6c1343001449f35a95f4901bf3e0fb7`. Security, Operations/QA and Customer Portal artifact reviews passed. The release bundle remains unbound and requires separate staging approval. Artifact identity and reproducibility evidence are recorded in `docs/REPORTS/M074_R01_RELEASE_PREPARATION_REPORT.md`.
+M074-R07 is frozen locally under `deploy/releases/m074-r07` from source commit `fc6f0fe1bfba303ab45ed011d634ec7712b6ccda`. It merges accepted M068, preserves permission `500527` for `publicrequest_invite`, and assigns QC permissions `500528` through `500531`. Artifact identity, reproducibility, helper controls and the staging-only gate are recorded in `docs/REPORTS/M074_R07_RELEASE_PREPARATION_REPORT.md`; live execution evidence is recorded in `docs/REPORTS/M074_R07_STAGING_EXECUTION.md`.
 
 Source rollback is to revert the M074 commits. Additive QC tables and any later QC records remain dormant; they must not be dropped or deleted without separate destructive-data approval. No automatic evidence deletion is introduced.
 
