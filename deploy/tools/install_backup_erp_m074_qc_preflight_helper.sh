@@ -6,7 +6,7 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/m074-qc-preflight-install'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m074_qc_preflight.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-backup-erp-m074-qc-preflight.sudoers"
-readonly HELPER_SHA='13b47aeb0a5d2d9f5360d29d9a3e447f3fc4f83d6bd479431d0429530e541d1b'
+readonly HELPER_SHA='bc168d10991c53996567c5a4048f2003ca81cc40f651cee94df17f1298692753'
 readonly SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'
 readonly PREVIOUS_HELPER_SHA='cc653f486f5d637c93b04d8d4c8585017ca4157304c42de18b350c2d3d2cd361'
 readonly PREVIOUS_SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'

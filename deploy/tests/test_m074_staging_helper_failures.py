@@ -114,6 +114,27 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     require(overlay_target.read_bytes() == b"overlay-old" and overlay_extra.read_bytes() == b"preserve",
             "OVERLAY_ROLLBACK_NOT_EXACT")
 
+    # Production live checks bind unmanaged overlay entries to the approved prestate.
+    overlay_candidate = type("OverlayCandidate", (), {})()
+    overlay_candidate.runtime_rows = [{"runtime_target": "custom/chinaplanetcustomercenter/cpkanban/index.php",
+                                       "sha256": hashlib.sha256(b"overlay-new").hexdigest(), "mode": "644"}]
+    overlay_candidate.layout = {"custom/chinaplanetcustomercenter/cpkanban": "../cpkanban"}
+    overlay_target.write_bytes(b"overlay-new")
+    with unittest.mock.patch.object(helper.pwd, "getpwnam", return_value=type("Pw", (), {"pw_uid": uid})()), \
+         unittest.mock.patch.object(helper.grp, "getgrnam", return_value=type("Gr", (), {"gr_gid": gid})()), \
+         unittest.mock.patch.object(helper, "schema_status", return_value="READY"), \
+         unittest.mock.patch.object(helper, "http_status", return_value=200):
+        helper.live_checks(overlay_candidate, overlay_snapshot)
+        overlay_extra.write_bytes(b"unmanaged-drift")
+        drift_blocked = False
+        try:
+            helper.live_checks(overlay_candidate, overlay_snapshot)
+        except helper.ReleaseError:
+            drift_blocked = True
+        require(drift_blocked, "LIVE_CHECK_ACCEPTED_UNMANAGED_OVERLAY_DRIFT")
+    overlay_extra.write_bytes(b"preserve")
+    overlay_target.write_bytes(b"overlay-old")
+
     # Restore must reject an unknown concurrent value and leave it untouched.
     attacker = b"concurrent-unknown-runtime"
     target.write_bytes(attacker)
@@ -211,7 +232,7 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     real_database_identity = helper.database_identity
     real_live_checks = helper.live_checks
     helper.database_identity = lambda candidate: "a" * 64
-    helper.live_checks = lambda candidate: None
+    helper.live_checks = lambda candidate, baseline_snapshot: None
     result = helper.reconcile_pending(rollback_state, deployed_snapshot, object())
     require(result == "ROLLBACK_FAILED_REAPPLIED_STATE_DEPLOYED" and target.read_bytes() == deployed, "PENDING_ROLLBACK_NOT_REAPPLIED")
     require(saved[-1][0] == "DEPLOYED" and saved[-1][1]["last_rollback_result"] == "FAILED_REAPPLIED", "REAPPLY_STATE_NOT_VERIFIABLE")
@@ -351,4 +372,4 @@ require(source.count('database_identity(candidate) != identity') >= 2, "DATABASE
 require('GENERATION_EXPRESSION' in source and 'CHECK_CLAUSE' in source and 'PARTITION_EXPRESSION' in source, "DATABASE_FINGERPRINT_METADATA_MISSING")
 require("case \"$table\" in ''|*[!A-Za-z0-9_]*) exit 1;; esac" in source, "DATABASE_FINGERPRINT_IDENTIFIER_ALLOWLIST_MISSING")
 
-print("M074_STAGING_HELPER_FAILURES=PASS CASES=23")
+print("M074_STAGING_HELPER_FAILURES=PASS CASES=24")

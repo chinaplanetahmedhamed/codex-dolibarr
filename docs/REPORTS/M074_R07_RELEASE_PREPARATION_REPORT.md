@@ -31,13 +31,13 @@ The Dolibarr manifest contains 553 rows: 308 runtime, 216 support and 29 evidenc
 
 | Local file | Intended server path/use | SHA-256 |
 |---|---|---|
-| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `13b47aeb0a5d2d9f5360d29d9a3e447f3fc4f83d6bd479431d0429530e541d1b` |
+| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `bc168d10991c53996567c5a4048f2003ca81cc40f651cee94df17f1298692753` |
 | `deploy/config/codex-deploy-backup-erp-m074-qc-preflight.sudoers` | `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight` | `3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99` |
-| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `a3bfd504a2c9d37bbc58cb2592cb6f12287b3cb5496cba093c49460bc021e673` |
+| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `f3e043509c032346b6e27991fccfd5f9d18fae0ca4d674106c0a6d1a074cfc3f` |
 
 The current controller is a fail-closed final-layout build: it exposes the fixed six-command sudo surface but `preflight` and `apply` still stop at `BASELINE_NOT_PINNED`. The two reviewed compatibility tree hashes are pinned and it models 308 canonical runtime targets plus 70 compatibility-copy targets. The captured general baseline hash still requires new explicit approval before it may replace `UNBOUND_DIAGNOSTIC_ONLY`; only after that change is repinned and independently reviewed can preflight/apply become reachable. The controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
 
-The two legacy Customer Center compatibility paths are real directories on the accepted staging baseline. Their complete regular-file/directory trees are independently pinned (`c0144d63…` and `346f6860…`). R07 deploys 70 explicit compatibility copies in addition to 308 canonical targets, preserves every unmanaged entry byte-for-byte, and rejects special files, missing parents or unmanaged drift. The exact old copies use the common CAS code backup and are restored during rollback; the directories are not deleted or converted.
+The two legacy Customer Center compatibility paths are real directories on the accepted staging baseline. Their complete regular-file/directory trees are independently pinned (`c0144d63…` and `346f6860…`). R07 deploys 70 explicit compatibility copies in addition to 308 canonical targets, preserves every unmanaged entry byte-for-byte, and rejects special files, missing parents or unmanaged drift during apply, verify and rollback entry. The exact old copies use the common CAS code backup and are restored during rollback; the directories are not deleted or converted.
 
 ## Verification completed locally
 
@@ -46,7 +46,7 @@ The two legacy Customer Center compatibility paths are real directories on the a
 - M061/M070/M071/M074 source, schema, PWA and customer safety tests passed.
 - Exact candidate reconstruction and its 12 archive-contained tests passed.
 - Artifact reproducibility passed with 308 runtime files and two clean rebuilds.
-- Staging helper contract and 23 containment/fault cases passed, including unbound/mismatched baseline, stale-preflight rejection and exact overlay rollback.
+- Staging helper contract and 24 containment/fault cases passed, including unbound/mismatched baseline, stale-preflight rejection, exact overlay rollback and production-path rejection of post-deploy unmanaged overlay drift.
 - Transactional installer partial-publish restoration passed.
 - Compatibility tree pins, 378 unique targets, 70 overlays and unmanaged-drift rejection passed.
 - Mobile `npm run lint` and `npm run typecheck` passed; Vitest passed 45/45 tests.

@@ -727,16 +727,23 @@ def current_layout_item(item: dict[str, object]) -> dict[str, object]:
             "actual": "NON_DIRECTORY_NON_SYMLINK"}
 
 
-def verify_overlay_preserved(candidate: Candidate, item: dict[str, object]) -> None:
+def overlay_unmanaged_matches(candidate: Candidate, item: dict[str, object],
+                              current_tree: list[dict[str, object]] | None = None) -> bool:
+    if item.get("state") != "OVERLAY_DIRECTORY" or not isinstance(item.get("tree"), list):
+        return False
     before = {str(entry["path"]): entry for entry in item.get("tree", [])}
-    after_tree = directory_tree_snapshot(str(item["path"]))
+    after_tree = current_tree if current_tree is not None else directory_tree_snapshot(str(item["path"]))
     after = {str(entry["path"]): entry for entry in after_tree}
     targets = overlay_relative_targets(candidate, str(item["path"]))
     if not targets or not overlay_parents_exist(list(before.values()), targets):
-        fail("COMPATIBILITY_OVERLAY_TARGET_INVALID")
+        return False
     for target in targets:
         before.pop(target, None); after.pop(target, None)
-    if before != after or not overlay_release_tree_matches(candidate, str(item["path"]), after_tree):
+    return before == after and overlay_release_tree_matches(candidate, str(item["path"]), after_tree)
+
+
+def verify_overlay_preserved(candidate: Candidate, item: dict[str, object]) -> None:
+    if not overlay_unmanaged_matches(candidate, item):
         fail("COMPATIBILITY_OVERLAY_CHANGED")
 
 
@@ -1041,17 +1048,30 @@ def require_saved_database_identity(state: dict[str, object], current: str) -> N
         fail("DEPLOYED_DATABASE_IDENTITY_MISMATCH")
 
 
-def deployed_snapshot_matches(candidate: Candidate) -> bool:
+def deployed_snapshot_matches(candidate: Candidate, baseline_snapshot: dict[str, object]) -> bool:
     snapshot = runtime_snapshot(candidate); expected = {row["runtime_target"][len("custom/"):]: row for row in candidate.runtime_rows}
     web_uid = pwd.getpwnam("www-data").pw_uid; web_gid = grp.getgrnam("www-data").gr_gid
     for item in snapshot["files"]:
         row = expected[item["path"]]
         if item["state"] != "PRESENT" or item["sha256"] != row["sha256"] or item["mode"] != int(row["mode"], 8) or (item["uid"], item["gid"]) != (web_uid, web_gid): return False
-    return all(item["state"] in ("CURRENT", "OVERLAY_DIRECTORY") for item in snapshot["layout"])
+    baseline_layout = {str(item.get("path")): item for item in baseline_snapshot.get("layout", [])
+                       if isinstance(item, dict) and isinstance(item.get("path"), str)}
+    if len(baseline_layout) != len(snapshot["layout"]):
+        return False
+    for item in snapshot["layout"]:
+        state = item.get("state")
+        if state == "CURRENT":
+            continue
+        if state != "OVERLAY_DIRECTORY" or not isinstance(item.get("tree"), list):
+            return False
+        baseline_item = baseline_layout.get(str(item["path"]))
+        if baseline_item is None or not overlay_unmanaged_matches(candidate, baseline_item, item["tree"]):
+            return False
+    return True
 
 
-def live_checks(candidate: Candidate) -> None:
-    if not deployed_snapshot_matches(candidate): fail("LIVE_RUNTIME_MISMATCH")
+def live_checks(candidate: Candidate, baseline_snapshot: dict[str, object]) -> None:
+    if not deployed_snapshot_matches(candidate, baseline_snapshot): fail("LIVE_RUNTIME_MISMATCH")
     if schema_status(candidate) != "READY": fail("LIVE_SCHEMA_NOT_READY")
     if http_status(TARGET_HTTP + "/") not in (200, 302): fail("LIVE_HTTP_FAILED")
     if http_status(TARGET_HTTP + "/custom/chinaplanetoperations/qc/app.php?id=1") not in (200, 302, 401, 403): fail("LIVE_QC_ROUTE_FAILED")
@@ -1209,7 +1229,8 @@ def reconcile_pending(state: dict[str, object], deployed_release: dict[str, obje
     if status == "PENDING_ROLLBACK_PREPARE":
         try:
             if candidate is None: fail("RECONCILIATION_CANDIDATE_REQUIRED")
-            identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
+            prior_snapshot = validate_code_backup(*state_backup(state))
+            identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate, prior_snapshot)
             preserve_state(state, "DEPLOYED", reconciliation="ROLLBACK_NO_MUTATION", last_rollback_result="FAILED_NO_MUTATION")
             return "ROLLBACK_FAILED_NO_MUTATION_STATE_DEPLOYED"
         except Exception:
@@ -1220,7 +1241,7 @@ def reconcile_pending(state: dict[str, object], deployed_release: dict[str, obje
             if candidate is None: fail("RECONCILIATION_CANDIDATE_REQUIRED")
             prior_snapshot = validate_code_backup(*state_backup(state))
             restore_snapshot(*state_backup(state, "reapply_"), allowed_snapshot=prior_snapshot)
-            identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
+            identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate, prior_snapshot)
             preserve_state(state, "DEPLOYED", reconciliation="REAPPLIED_DEPLOYED_CODE", last_rollback_result="FAILED_REAPPLIED")
             return "ROLLBACK_FAILED_REAPPLIED_STATE_DEPLOYED"
         except Exception:
@@ -1236,7 +1257,7 @@ def execute_apply_mutation(candidate: Candidate, snapshot: dict[str, object], id
             fail("DATABASE_IDENTITY_CHANGED_BEFORE_SCHEMA_APPLY")
         save_state("PENDING_APPLY_SCHEMA", **fields); code, output = schema_command(candidate, "apply")
         if code != 0 or output != "M074_SCHEMA_APPLY=PASS TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED": fail("SCHEMA_APPLY_FAILED")
-        live_checks(candidate)
+        live_checks(candidate, snapshot)
         if database_identity(candidate) != identity:
             fail("DATABASE_IDENTITY_CHANGED_AFTER_SCHEMA_APPLY")
         save_state("DEPLOYED", **fields, files=DEPLOY_RUNTIME_FILES, tables=3, rights=4, rights_default="DISABLED")
@@ -1280,7 +1301,8 @@ def command_apply() -> None:
                 if minimum_created_at.tzinfo is None: fail("STATE_UPDATED_AT_INVALID")
             plan_sha = require_plan(snapshot, schema, identity, minimum_created_at)
             if STATE_FILE.exists() and load_state()["status"] == "DEPLOYED":
-                live_checks(candidate); state = load_state(); require_saved_database_identity(state, identity); state_database_backup(state); state_backup(state)
+                state = load_state(); prior_snapshot = validate_code_backup(*state_backup(state))
+                live_checks(candidate, prior_snapshot); require_saved_database_identity(state, identity); state_database_backup(state)
                 print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return
             retain_release(candidate); request_id = make_request_id(); save_state("PENDING_APPLY_PREPARE", request_id=request_id, plan_sha256=plan_sha)
             archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r07-before-" + request_id)
@@ -1307,9 +1329,9 @@ def command_apply() -> None:
 def command_verify() -> None:
     prepare_roots(); check_environment(); state = load_state()
     if state["status"] != "DEPLOYED": fail("STATE_NOT_DEPLOYED")
-    state_backup(state); state_database_backup(state); candidate = validate_release(ARTIFACT_ROOT)
+    prior_snapshot = validate_code_backup(*state_backup(state)); state_database_backup(state); candidate = validate_release(ARTIFACT_ROOT)
     try:
-        candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
+        candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate, prior_snapshot)
         print(f"M074_STAGING_VERIFY=PASS STATE=DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state['request_id']} FILES={DEPLOY_RUNTIME_FILES} TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED CODE_BACKUP_SHA={state['code_backup_sha256']} DB_BACKUP_SHA={state['database_backup_sha256']} BACKUPS_REVALIDATED=YES DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
 
@@ -1332,7 +1354,7 @@ def command_rollback() -> None:
         if state["status"] != "DEPLOYED": fail("STATE_NOT_DEPLOYED")
         candidate = validate_release(ARTIFACT_ROOT)
         try:
-            candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); deployed = release_snapshot(candidate); rollback_id = make_request_id()
+            candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); live_checks(candidate, prior_snapshot); deployed = release_snapshot(candidate); rollback_id = make_request_id()
             state["status"] = "PENDING_ROLLBACK_PREPARE"; state["rollback_request_id"] = rollback_id; atomic_json(STATE_FILE, state)
             reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r07-reapply-" + rollback_id)
             state.update({"status": "PENDING_ROLLBACK", "reapply_code_backup": str(reapply[0]), "reapply_code_backup_sha256": reapply[1], "reapply_prestate": str(reapply[2]), "reapply_prestate_sha256": reapply[3]}); atomic_json(STATE_FILE, state)
@@ -1342,7 +1364,7 @@ def command_rollback() -> None:
                 state["status"] = "ROLLED_BACK_SCHEMA_RETAINED"; state["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, state)
             except Exception:
                 try:
-                    restore_snapshot(*reapply, allowed_snapshot=prior_snapshot); live_checks(candidate); require_saved_database_identity(state, database_identity(candidate)); state["status"] = "DEPLOYED"; state["last_rollback_result"] = "FAILED_REAPPLIED"; state["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, state); print("M074_STAGING_ROLLBACK_REAPPLY=PASS STATE=DEPLOYED", file=sys.stderr)
+                    restore_snapshot(*reapply, allowed_snapshot=prior_snapshot); live_checks(candidate, prior_snapshot); require_saved_database_identity(state, database_identity(candidate)); state["status"] = "DEPLOYED"; state["last_rollback_result"] = "FAILED_REAPPLIED"; state["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, state); print("M074_STAGING_ROLLBACK_REAPPLY=PASS STATE=DEPLOYED", file=sys.stderr)
                 except Exception:
                     state["status"] = "ROLLBACK_FAILED_RECOVERY_REQUIRED"; state["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(); atomic_json(STATE_FILE, state); print("M074_STAGING_ROLLBACK_REAPPLY=FAIL RECOVERY_REQUIRED=YES", file=sys.stderr)
                 raise
