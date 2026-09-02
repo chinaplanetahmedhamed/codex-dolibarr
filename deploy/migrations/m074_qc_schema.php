@@ -28,7 +28,6 @@ $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 $_SERVER['SERVER_NAME'] = '127.0.0.1';
 $_SERVER['SERVER_PORT'] = '80';
 require $documentRoot.'/master.inc.php';
-require_once $documentRoot.'/user/class/user.class.php';
 
 $candidateRoot = dirname(__DIR__, 2);
 require_once $candidateRoot.'/custom/chinaplanetoperations/class/QcMigration.class.php';
@@ -68,17 +67,6 @@ function m074DatabaseIdentity($db)
     return $identity;
 }
 
-function m074LoadAdministrator($db, $entity)
-{
-    $res = $db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE entity='.(int) $entity.' AND statut=1 AND admin=1 AND COALESCE(fk_soc,0)=0 ORDER BY rowid LIMIT 1');
-    $row = $res ? $db->fetch_object($res) : null;
-    if (!$row) m074SchemaFail('ACTIVE_ADMINISTRATOR_UNAVAILABLE');
-    $administrator = new User($db);
-    if ($administrator->fetch((int) $row->rowid) <= 0) m074SchemaFail('ADMINISTRATOR_LOAD_FAILED');
-    $administrator->getrights();
-    return $administrator;
-}
-
 global $db, $conf;
 $entity = (int) $conf->entity;
 if ($entity <= 0) m074SchemaFail('ENTITY_INVALID');
@@ -104,12 +92,11 @@ if ($argv[1] === 'check') {
 
 try {
     $migration->migrate();
-    $GLOBALS['user'] = m074LoadAdministrator($db, $entity);
     $module = new modChinaPlanetOperations($db);
     $module->rights = array_values(array_filter($module->rights, function ($right) {
         return (int) $right[0] >= 500528 && (int) $right[0] <= 500531;
     }));
-    if (count($module->rights) !== 4 || $module->insert_permissions(1, null, 1) !== 0) m074SchemaFail('RIGHT_INSTALL_FAILED');
+    if (count($module->rights) !== 4 || !$migration->installRights($module, $entity)) m074SchemaFail('RIGHT_INSTALL_FAILED');
 } catch (Throwable $exception) {
     m074SchemaFail('MIGRATION_FAILED');
 }

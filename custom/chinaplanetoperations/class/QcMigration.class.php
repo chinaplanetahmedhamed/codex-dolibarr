@@ -158,6 +158,57 @@ class QcMigration
         return true;
     }
 
+    /** Install only the four reviewed QC definitions, atomically and disabled by default. */
+    public function installRights($module, $entity)
+    {
+        $entity = (int) $entity;
+        if ($entity <= 0) throw new RuntimeException('QC permission entity is invalid.');
+
+        $expected = self::rightCodes();
+        $definitions = array();
+        foreach ((array) $module->rights as $right) {
+            $id = isset($right[0]) ? (int) $right[0] : 0;
+            if (!isset($expected[$id])) continue;
+            $perms = isset($right[4]) ? (string) $right[4] : '';
+            $byDefault = isset($right[3]) ? (int) $right[3] : 0;
+            if ($perms !== $expected[$id] || $byDefault !== 0 || isset($definitions[$id])) {
+                throw new RuntimeException('QC permission definition is invalid.');
+            }
+            $definitions[$id] = array(
+                'label' => isset($right[1]) ? (string) $right[1] : '',
+                'perms' => $perms,
+            );
+        }
+        if (count($definitions) !== count($expected)) throw new RuntimeException('QC permission definitions are incomplete.');
+
+        $moduleName = !empty($module->rights_class) ? (string) $module->rights_class : strtolower((string) $module->name);
+        $modulePosition = method_exists($module, 'getModulePosition') ? (int) $module->getModulePosition() : (int) $module->module_position;
+        $family = (string) $module->family;
+        if ($moduleName !== 'chinaplanetoperations' || $family !== 'projects') throw new RuntimeException('QC permission module identity is invalid.');
+
+        $this->db->begin();
+        try {
+            foreach ($definitions as $id => $definition) {
+                if ($this->rightDefinitionCollision($id, $definition['perms'])) throw new RuntimeException('QC right definition collision.');
+                $res = $this->db->query('SELECT COUNT(*) count_rows FROM '.$this->prefix.'rights_def WHERE id='.(int) $id." AND module='chinaplanetoperations' AND perms='".$this->db->escape($definition['perms'])."' AND bydefault=0");
+                $row = $res ? $this->db->fetch_object($res) : null;
+                if (!$row) throw new RuntimeException('Unable to inspect QC permission definition.');
+                if ((int) $row->count_rows === 1) continue;
+                if ((int) $row->count_rows !== 0) throw new RuntimeException('QC permission definition count is invalid.');
+
+                $sql = 'INSERT INTO '.$this->prefix.'rights_def (id,entity,libelle,module,module_origin,module_position,family,family_position,type,bydefault,perms,subperms,enabled) VALUES ('
+                    .(int) $id.','.$entity.", '".$this->db->escape($definition['label'])."', 'chinaplanetoperations', '', ".$modulePosition.", '".$this->db->escape($family)."', 0, 'w', 0, '".$this->db->escape($definition['perms'])."', '', '1')";
+                if (!$this->db->query($sql)) throw new RuntimeException('Unable to install QC permission definition.');
+            }
+            if (!$this->rightsReady()) throw new RuntimeException('QC permission readiness check failed after installation.');
+            $this->db->commit();
+        } catch (Throwable $exception) {
+            $this->db->rollback();
+            throw $exception;
+        }
+        return true;
+    }
+
     public function schemaReady()
     {
         foreach (self::tables() as $table) if ($this->tableContractStatus($table) !== 'exact') return false;
