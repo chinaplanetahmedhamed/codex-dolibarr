@@ -829,19 +829,43 @@ def remove_managed_overlay_directories(item: dict[str, object], allowed_snapshot
         fail("ROLLBACK_LAYOUT_MISMATCH")
     current = {str(entry["path"]): entry for entry in directory_tree_snapshot(str(item["path"]))}
     removable = [path for path in overlay_managed_directories(targets) if path not in prior]
-    for relative in sorted(removable, key=lambda value: (value.count("/"), value), reverse=True):
-        entry = current.get(relative)
-        if entry is None:
-            continue
-        if entry.get("kind") != "DIRECTORY" or entry.get("mode") != 0o755 or \
-                (entry.get("uid"), entry.get("gid")) != (root.get("uid"), root.get("gid")):
-            fail("ROLLBACK_LAYOUT_MISMATCH")
-        target = TARGET_ROOT / str(item["path"]) / relative
-        try:
-            target.rmdir()
-        except OSError:
-            fail("ROLLBACK_LAYOUT_MISMATCH")
-        fsync_path(target.parent)
+    target_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        for relative in sorted(removable, key=lambda value: (value.count("/"), value), reverse=True):
+            entry = current.get(relative)
+            if entry is None:
+                continue
+            if entry.get("kind") != "DIRECTORY" or entry.get("mode") != 0o755 or \
+                    (entry.get("uid"), entry.get("gid")) != (root.get("uid"), root.get("gid")):
+                fail("ROLLBACK_LAYOUT_MISMATCH")
+            parts = tuple(pathlib.PurePosixPath(str(item["path"]), relative).parts)
+            parent = open_dir_chain(target_fd, parts[:-1])
+            quarantine = ".m074-r07-rmdir-" + secrets.token_hex(12)
+            moved = False
+            try:
+                renameat2(parent, parts[-1], parent, quarantine, RENAME_NOREPLACE); moved = True
+                directory_fd = os.open(quarantine, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0), dir_fd=parent)
+                try:
+                    info = os.fstat(directory_fd)
+                    named = os.stat(quarantine, dir_fd=parent, follow_symlinks=False)
+                    if not stat.S_ISDIR(info.st_mode) or (info.st_dev, info.st_ino) != (named.st_dev, named.st_ino) or \
+                            stat.S_IMODE(info.st_mode) != 0o755 or (info.st_uid, info.st_gid) != (root.get("uid"), root.get("gid")) or \
+                            os.listdir(directory_fd):
+                        fail("ROLLBACK_LAYOUT_MISMATCH")
+                    os.rmdir(quarantine, dir_fd=parent); moved = False; os.fsync(parent)
+                finally:
+                    os.close(directory_fd)
+            except Exception:
+                if moved:
+                    try:
+                        renameat2(parent, quarantine, parent, parts[-1], RENAME_NOREPLACE); moved = False; os.fsync(parent)
+                    except Exception:
+                        fail("ROLLBACK_LAYOUT_RECOVERY_REQUIRED")
+                raise
+            finally:
+                os.close(parent)
+    finally:
+        os.close(target_fd)
 
 
 def restore_layout(snapshot: dict[str, object], allowed_snapshot: dict[str, object] | None = None) -> None:

@@ -16,12 +16,12 @@ function m074PreflightAssert($condition, $message)
 m074PreflightAssert(strpos($helper, 'RELEASE = "M074-R07"') !== false, 'RELEASE_PIN');
 m074PreflightAssert(strpos($helper, 'SOURCE_COMMIT = "fc6f0fe1bfba303ab45ed011d634ec7712b6ccda"') !== false, 'SOURCE_COMMIT_PIN');
 m074PreflightAssert(strpos($helper, 'ARTIFACT_SHA = "3c022220ef7d6d2540d54eedd5d6bac2b2c5c0892d7e5024c5989f25329fbedc"') !== false, 'ARTIFACT_PIN');
-m074PreflightAssert(hash('sha256', $helper) === '77030272027bf78f297e0ee6cd3660a04e3c714748567be6ef659f0775f74a80', 'HELPER_HASH');
+m074PreflightAssert(hash('sha256', $helper) === '369c86325a303342680598aa8916f23e3a420f66b42a4612862b72e1e412e315', 'HELPER_HASH');
 m074PreflightAssert(hash('sha256', $sudoers) === '3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99', 'SUDOERS_HASH');
-m074PreflightAssert(strpos($installer, "HELPER_SHA='77030272027bf78f297e0ee6cd3660a04e3c714748567be6ef659f0775f74a80'") !== false, 'INSTALLER_HELPER_PIN');
+m074PreflightAssert(strpos($installer, "HELPER_SHA='369c86325a303342680598aa8916f23e3a420f66b42a4612862b72e1e412e315'") !== false, 'INSTALLER_HELPER_PIN');
 m074PreflightAssert(strpos($installer, "SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_SUDOERS_PIN');
 m074PreflightAssert(strpos($installer, "PREVIOUS_HELPER_SHA='bc168d10991c53996567c5a4048f2003ca81cc40f651cee94df17f1298692753'") !== false&&strpos($installer, "PREVIOUS_SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_PREDECESSOR_PINS');
-m074PreflightAssert(hash('sha256', $installer) === '2f1c147f39f4ad9c6c38129727cf4277ddee4a6af8dd4209eb6c120c4e2940d5', 'INSTALLER_HASH');
+m074PreflightAssert(hash('sha256', $installer) === 'e583983e9367612f1f9771e8753ca96f8a95ea60141ac1fc21b97a45c626f917', 'INSTALLER_HASH');
 m074PreflightAssert(strpos($helper, 'TARGET_CONTAINER = "erp-staging-dolibarr-1"') !== false, 'CANONICAL_ERP_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_VOLUME = "erp-staging_erp-staging_custom"') !== false, 'CANONICAL_VOLUME_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_HTTP = "http://127.0.0.1:18088"') !== false, 'CANONICAL_HTTP_TARGET');

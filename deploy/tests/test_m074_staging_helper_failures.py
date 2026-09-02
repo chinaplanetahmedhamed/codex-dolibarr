@@ -120,6 +120,36 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     require(overlay_target.read_bytes() == b"overlay-old" and overlay_extra.read_bytes() == b"preserve" and not (overlay_root / "managed").exists(),
             "OVERLAY_ROLLBACK_NOT_EXACT")
 
+    # Rollback cleanup must not follow an intermediate parent swapped to an external symlink.
+    outside_race = sandbox / "outside-race"; (outside_race / "sub").mkdir(parents=True)
+    race_root = overlay_root / "race"; (race_root / "sub").mkdir(parents=True)
+    race_item = {"path": "chinaplanetcustomercenter/cpkanban", "state": "OVERLAY_DIRECTORY",
+                 "expected": "../cpkanban", "actual": "NON_SYMLINK_DIRECTORY",
+                 "tree": helper.directory_tree_snapshot("chinaplanetcustomercenter/cpkanban")}
+    # The approved prestate did not contain the managed race parents.
+    race_item["tree"] = [entry for entry in race_item["tree"] if entry["path"] not in ("race", "race/sub")]
+    race_allowed = {"files": [{"path": "chinaplanetcustomercenter/cpkanban/race/sub/file.php", "state": "PRESENT"}]}
+    real_directory_tree_snapshot = helper.directory_tree_snapshot
+    swapped = False
+    def swap_parent_after_snapshot(relative):
+        nonlocal_tree = real_directory_tree_snapshot(relative)
+        global swapped
+        if not swapped:
+            race_root.rename(overlay_root / "race-held")
+            race_root.symlink_to(outside_race, target_is_directory=True)
+            swapped = True
+        return nonlocal_tree
+    helper.directory_tree_snapshot = swap_parent_after_snapshot
+    race_blocked = False
+    try:
+        helper.remove_managed_overlay_directories(race_item, race_allowed)
+    except (helper.ReleaseError, OSError):
+        race_blocked = True
+    helper.directory_tree_snapshot = real_directory_tree_snapshot
+    require(race_blocked and (outside_race / "sub").is_dir(), "ROLLBACK_PARENT_SYMLINK_RACE_ESCAPED_TARGET")
+    race_root.unlink(); (overlay_root / "race-held").rename(race_root)
+    (race_root / "sub").rmdir(); race_root.rmdir()
+
     # Production live checks bind unmanaged overlay entries to the approved prestate.
     overlay_candidate = type("OverlayCandidate", (), {})()
     overlay_candidate.runtime_rows = [{"runtime_target": "custom/chinaplanetcustomercenter/cpkanban/index.php",
