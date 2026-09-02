@@ -186,7 +186,7 @@ class QcMigration
         $family = (string) $module->family;
         if ($moduleName !== 'chinaplanetoperations' || $family !== 'projects') throw new RuntimeException('QC permission module identity is invalid.');
 
-        $this->db->begin();
+        if ($this->db->begin() <= 0) throw new RuntimeException('Unable to begin QC permission transaction.');
         try {
             foreach ($definitions as $id => $definition) {
                 if ($this->rightDefinitionCollision($id, $definition['perms'])) throw new RuntimeException('QC right definition collision.');
@@ -201,9 +201,11 @@ class QcMigration
                 if (!$this->db->query($sql)) throw new RuntimeException('Unable to install QC permission definition.');
             }
             if (!$this->rightsReady()) throw new RuntimeException('QC permission readiness check failed after installation.');
-            $this->db->commit();
+            if ($this->db->commit() <= 0) throw new RuntimeException('Unable to commit QC permission transaction.');
         } catch (Throwable $exception) {
-            $this->db->rollback();
+            if ($this->db->rollback() <= 0) {
+                throw new RuntimeException('Unable to roll back QC permission transaction.', 0, $exception);
+            }
             throw $exception;
         }
         return true;

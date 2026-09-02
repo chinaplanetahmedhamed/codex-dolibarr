@@ -79,6 +79,7 @@ STATIC_TESTS = (
     "deploy/tests/test_m017_mobile_api_security.php",
     "deploy/tests/test_m032_admin_customer_responsive.php",
     "deploy/tests/test_m074_qc_contract.php",
+    "deploy/tests/test_m074_rights_transaction.php",
 )
 ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
