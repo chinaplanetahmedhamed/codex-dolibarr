@@ -17,10 +17,11 @@ m074PreflightAssert(strpos($helper, 'RELEASE = "M074-R06"') !== false, 'RELEASE_
 m074PreflightAssert(strpos($helper, 'SOURCE_COMMIT = "d58fb5602e0d2019eaac47316550ab9574045b46"') !== false, 'SOURCE_COMMIT_PIN');
 m074PreflightAssert(strpos($helper, 'ARTIFACT_SHA = "849f8885833a299b8ec8934c4fdd9ef42c968ccf6dc48bf836f1bbbd4612504f"') !== false, 'ARTIFACT_PIN');
 m074PreflightAssert(hash('sha256', $helper) === '864e12817fbb997aadfd6cb1fc481c3a790d0a23ebeb29a9ef206f1e2a71d434', 'HELPER_HASH');
-m074PreflightAssert(hash('sha256', $sudoers) === '777217564edf5a9b1dd67617e73cdf4e8f7fe3f90c3095ccc1930d1016fdbf38', 'SUDOERS_HASH');
-m074PreflightAssert(strpos($installer, "HELPER_SHA='2f1f9f24ed2f0a1bda121190f41d5a6c73bf6c01fab209c877b03bfd4ef16e39'") !== false, 'INSTALLER_HELPER_PIN');
-m074PreflightAssert(strpos($installer, "SUDOERS_SHA='777217564edf5a9b1dd67617e73cdf4e8f7fe3f90c3095ccc1930d1016fdbf38'") !== false, 'INSTALLER_SUDOERS_PIN');
-m074PreflightAssert(hash('sha256', $installer) === '94bb5a839cb93f89e5d3d541a4aa6ac3c9c1f79e2102f98fc4d165d1a5430c1c', 'INSTALLER_HASH');
+m074PreflightAssert(hash('sha256', $sudoers) === '3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99', 'SUDOERS_HASH');
+m074PreflightAssert(strpos($installer, "HELPER_SHA='864e12817fbb997aadfd6cb1fc481c3a790d0a23ebeb29a9ef206f1e2a71d434'") !== false, 'INSTALLER_HELPER_PIN');
+m074PreflightAssert(strpos($installer, "SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_SUDOERS_PIN');
+m074PreflightAssert(strpos($installer, "PREVIOUS_HELPER_SHA='2f1f9f24ed2f0a1bda121190f41d5a6c73bf6c01fab209c877b03bfd4ef16e39'") !== false&&strpos($installer, "PREVIOUS_SUDOERS_SHA='777217564edf5a9b1dd67617e73cdf4e8f7fe3f90c3095ccc1930d1016fdbf38'") !== false, 'INSTALLER_PREDECESSOR_PINS');
+m074PreflightAssert(hash('sha256', $installer) === '9c76a0b94c451c24465d0a3df2dca15f740a596a5be09ee950b7c2720e05330b', 'INSTALLER_HASH');
 m074PreflightAssert(strpos($helper, 'TARGET_CONTAINER = "erp-staging-dolibarr-1"') !== false, 'CANONICAL_ERP_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_VOLUME = "erp-staging_erp-staging_custom"') !== false, 'CANONICAL_VOLUME_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_HTTP = "http://127.0.0.1:18088"') !== false, 'CANONICAL_HTTP_TARGET');
@@ -32,10 +33,12 @@ m074PreflightAssert(strpos($helper, '"env", "-u", "M017_DOL_DOCUMENT_ROOT", "-u"
 m074PreflightAssert(strpos($helper, 'test_m070_composite_source.php') === false && strpos($helper, 'test_m017_mobile_api_route.php') === false, 'NON_SELF_CONTAINED_CANDIDATE_TEST_EXPOSED');
 m074PreflightAssert(strpos($helper, 'TARGET_SHA=') !== false && strpos($helper, 'TARGET_MODE=') !== false && strpos($helper, 'TARGET_UID=') !== false, 'TARGET_BASELINE_COMPARE_MISSING');
 m074PreflightAssert(strpos($helper, 'erp-production') === false && strpos($helper, 'chinaplanet-web-production') === false, 'PRODUCTION_IDENTIFIER_EXPOSED');
-m074PreflightAssert(substr_count($sudoers, "\n") === 3, 'SUDOERS_COMMAND_COUNT');
-m074PreflightAssert(strpos($sudoers, ' apply') === false && strpos($sudoers, ' rollback') === false && strpos($sudoers, ' verify') === false, 'SUDOERS_MUTATION_EXPOSED');
-m074PreflightAssert(strpos($installer, "COMMANDS=compare,preflight,status APPLY_AVAILABLE=NO") !== false, 'ROOT_UPGRADE_REMAINS_UNAPPROVED');
-m074PreflightAssert(strpos($installer, 'GLOBAL_SUDOERS_PRECHECK_FAILED') !== false && strpos($installer, 'created_helper=1') !== false && strpos($installer, 'created_sudoers=1') !== false, 'INSTALLER_TRANSACTION_GUARD_MISSING');
+m074PreflightAssert(substr_count($sudoers, "\n") === 6, 'SUDOERS_COMMAND_COUNT');
+m074PreflightAssert(strpos($sudoers, ' apply') !== false && strpos($sudoers, ' rollback') !== false && strpos($sudoers, ' verify') !== false, 'SUDOERS_FIXED_MUTATION_COMMANDS_MISSING');
+m074PreflightAssert(strpos($installer, "COMMANDS=compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE=YES") !== false, 'INSTALLER_COMMAND_SURFACE_MISSING');
+m074PreflightAssert(strpos($installer, 'GLOBAL_SUDOERS_PRECHECK_FAILED') !== false && strpos($installer, "previous_state='old'") !== false && strpos($installer, 'previous-helper') !== false && strpos($installer, 'published=1') !== false, 'INSTALLER_TRANSACTION_GUARD_MISSING');
+m074PreflightAssert(strpos($installer, '#!/bin/bash') === 0 && strpos($installer, "/usr/bin/python3 -I -c 'import ast,pathlib,sys; ast.parse") !== false && strpos($installer, 'bash -n "$private_helper"') === false, 'INSTALLER_ISOLATED_PYTHON_VALIDATION_MISSING');
+m074PreflightAssert(strpos($installer, 'AUTOMATIC_RESTORE_FAILED RECOVERY_REQUIRED=YES') !== false && strpos($installer, 'M074_INSTALL_FAULT_TEST') !== false && strpos($installer, 'recovery_retained=1') !== false, 'INSTALLER_FAIL_CLOSED_RESTORE_MISSING');
 m074PreflightAssert(strpos($helper, '__ARTIFACT_SHA__') === false && strpos($helper, '__SOURCE_COMMIT__') === false && strpos($installer, '__HELPER_SHA__') === false && strpos($installer, '__SUDOERS_SHA__') === false, 'UNRESOLVED_RELEASE_PLACEHOLDER');
 
 echo "M074_STAGING_PREFLIGHT_CONTRACT=PASS\n";
