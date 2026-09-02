@@ -7,7 +7,7 @@ if (PHP_SAPI !== 'cli' || $argc !== 2 || !in_array($argv[1], array('identity', '
 
 if ($argv[1] === 'apply') {
     $effectiveUid = function_exists('posix_geteuid') ? posix_geteuid() : -1;
-    if ($effectiveUid !== 0 || getenv('M074_DEPLOY_CONTEXT') !== 'm074-r04-backup-erp-root-only') {
+    if ($effectiveUid !== 0 || getenv('M074_DEPLOY_CONTEXT') !== 'm074-r05-backup-erp-root-only') {
         fwrite(STDERR, "M074_SCHEMA=FAIL REASON=DEPLOYMENT_CONTEXT_REQUIRED\n");
         exit(66);
     }

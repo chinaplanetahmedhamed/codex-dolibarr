@@ -171,7 +171,7 @@ class QcMigration
         $physical = $this->prefix.$table;
         if (!$this->tableExists($physical)) return 'missing';
         $contract = $contracts[$table];
-        $status = $this->db->query("SHOW TABLE STATUS LIKE '".$this->db->escape($physical)."'");
+        $status = $this->db->query("SELECT ENGINE FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='".$this->db->escape($physical)."'");
         $statusRow = $status ? $this->db->fetch_object($status) : null;
         if (!$statusRow || strtoupper((string) $statusRow->Engine) !== 'INNODB') return 'collision';
         try {
@@ -216,7 +216,8 @@ class QcMigration
 
     private function tableExists($table)
     {
-        $res = $this->db->query("SHOW TABLES LIKE '".$this->db->escape($table)."'");
-        return $res && $this->db->num_rows($res) === 1;
+        $res = $this->db->query("SELECT COUNT(*) count_rows FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='".$this->db->escape($table)."'");
+        $row = $res ? $this->db->fetch_object($res) : null;
+        return $row && (int) $row->count_rows === 1;
     }
 }
