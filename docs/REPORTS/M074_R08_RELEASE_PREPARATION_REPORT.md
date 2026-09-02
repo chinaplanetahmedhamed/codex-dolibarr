@@ -6,7 +6,7 @@
 - **Status:** `CHECKSUM_PINNED_LOCAL / RENEWED_REVIEW_PENDING / NOT_UPLOADED`
 - **Target:** canonical `backup-erp` staging only
 - **Source branch:** `codex/m074-qc-field-report-composite`
-- **Pinned Dolibarr/mobile source:** `e2ee6db449daacf6781765efc0078276f8ad1cb9`
+- **Pinned Dolibarr/mobile source:** `a2cd4cefac1f3389a535c055d112f537954bb62b`
 - **React source:** `01c9d872ccdf5664cf470019194156b5503dc74b`
 - **WordPress source:** `ae273e2d15fa89111336ef74f746a86cc9ac57bd`
 - **Artifact directory:** `deploy/releases/m074-r08`
@@ -18,19 +18,19 @@ R08 replaces failed-closed R07 after live staging established that the three add
 
 | File | SHA-256 | Bytes |
 |---|---|---:|
-| `dolibarr.tar.gz` | `dab77d8c850fbc15e0e4ee8e8f503cb9852d1a4b8ae702d68afd588015a458c2` | 1,270,656 |
-| `dolibarr.manifest.tsv` | `21dccc9075b9f24884257be8aac13eb51ffa7a292739909abb75573b8a93c092` | 92,824 |
+| `dolibarr.tar.gz` | `2a37f3b13c74bbf98f033a00b2c9df02dea3ffc6108b100f01bbd78ef155c1ee` | 1,270,724 |
+| `dolibarr.manifest.tsv` | `2613b9fc29deddc9b9e3bf812dca9cca1a7b427a7c783782aa6091ab5de0d7b2` | 92,824 |
 | `dolibarr.layout.tsv` | `a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756` | 328 |
-| `release-bundle.json` | `12c49e35f68c1b80e8c7d160c3482ca0214b18f7d2222b6eb893e71ba83e4bc3` | 2,228 |
-| `release-pins.sha256` | `12f21a9f4d17ec850671248aeefe57f01145efa9b4dbad6bc54946d5669d0434` | 951 |
+| `release-bundle.json` | `1d770e76c19850f13e2f3a1302b7dd3813ce2219ca84fd2f6efe781be032199f` | 2,228 |
+| `release-pins.sha256` | `37e5434e675914114a347af2f4ef052a5347a31fceed5e06bbbc5b3bce4c8c1b` | 951 |
 
 ## Staging controller identity
 
 | Local file | Intended server path/use | SHA-256 |
 |---|---|---|
-| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `94c4ca043c3f8c1613bf499d30d9389e4baee0629584db588e04900e9107c986` |
+| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `10192397c88db2d4f8ab0dbc61623a40af62c3bce6ad9a21c21d1790570754f3` |
 | `deploy/config/codex-deploy-backup-erp-m074-qc-preflight.sudoers` | `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight` | `3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99` |
-| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `fab4d505c58f20ba827e3406873387f41ff96bd07ae1d373ff9a2cfc2bdcc959` |
+| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `57cca8416da2dd1f50aa33403d1c9067a84c0695274b65b81a3241a91e5178ce` |
 
 The controller remains baseline-bound to `39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094`, uses a separate R08 state/artifact namespace, and exposes only fixed `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` commands. The rights transaction now checks failure returns from `begin`, `commit`, and `rollback`; its behavioral test injects each failure. The installer accepts only the currently installed R07 helper `91d6bfaca40dde9d0a17e20b825c0c7d265f85f4ee93c808fa587e7a095f53db` with unchanged reviewed sudoers as its predecessor.
 

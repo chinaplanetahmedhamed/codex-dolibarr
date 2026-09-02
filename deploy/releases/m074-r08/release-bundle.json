@@ -3,15 +3,15 @@
   "components": [
     {
       "artifact": "dolibarr.tar.gz",
-      "artifactSha256": "dab77d8c850fbc15e0e4ee8e8f503cb9852d1a4b8ae702d68afd588015a458c2",
-      "commit": "e2ee6db449daacf6781765efc0078276f8ad1cb9",
+      "artifactSha256": "2a37f3b13c74bbf98f033a00b2c9df02dea3ffc6108b100f01bbd78ef155c1ee",
+      "commit": "a2cd4cefac1f3389a535c055d112f537954bb62b",
       "configPolicy": "external-retain",
       "dataPolicy": "retain",
       "id": "dolibarr",
       "layout": "dolibarr.layout.tsv",
       "layoutSha256": "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756",
       "manifest": "dolibarr.manifest.tsv",
-      "manifestSha256": "21dccc9075b9f24884257be8aac13eb51ffa7a292739909abb75573b8a93c092",
+      "manifestSha256": "2613b9fc29deddc9b9e3bf812dca9cca1a7b427a7c783782aa6091ab5de0d7b2",
       "members": 559,
       "schemaPolicy": "additive-retain-on-code-rollback"
     },
@@ -42,7 +42,7 @@
     {
       "artifact": "mobile.tar.gz",
       "artifactSha256": "61440cda9ca820659a6f9e33adc0d06a6204679caec50a53712959b02986116e",
-      "commit": "e2ee6db449daacf6781765efc0078276f8ad1cb9",
+      "commit": "a2cd4cefac1f3389a535c055d112f537954bb62b",
       "configPolicy": "external-retain",
       "dataPolicy": "retain",
       "id": "mobile",

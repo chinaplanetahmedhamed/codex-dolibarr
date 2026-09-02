@@ -11,11 +11,11 @@
 
 | Staging filename | SHA-256 |
 |---|---|
-| `m074-r08-dolibarr.tar.gz` | `dab77d8c850fbc15e0e4ee8e8f503cb9852d1a4b8ae702d68afd588015a458c2` |
-| `m074-r08-dolibarr.manifest.tsv` | `21dccc9075b9f24884257be8aac13eb51ffa7a292739909abb75573b8a93c092` |
+| `m074-r08-dolibarr.tar.gz` | `2a37f3b13c74bbf98f033a00b2c9df02dea3ffc6108b100f01bbd78ef155c1ee` |
+| `m074-r08-dolibarr.manifest.tsv` | `2613b9fc29deddc9b9e3bf812dca9cca1a7b427a7c783782aa6091ab5de0d7b2` |
 | `m074-r08-dolibarr.layout.tsv` | `a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756` |
-| `m074-r08-release-bundle.json` | `12c49e35f68c1b80e8c7d160c3482ca0214b18f7d2222b6eb893e71ba83e4bc3` |
-| `m074-r08-release-pins.sha256` | `12f21a9f4d17ec850671248aeefe57f01145efa9b4dbad6bc54946d5669d0434` |
+| `m074-r08-release-bundle.json` | `1d770e76c19850f13e2f3a1302b7dd3813ce2219ca84fd2f6efe781be032199f` |
+| `m074-r08-release-pins.sha256` | `37e5434e675914114a347af2f4ef052a5347a31fceed5e06bbbc5b3bce4c8c1b` |
 
 ## Execution evidence
 
