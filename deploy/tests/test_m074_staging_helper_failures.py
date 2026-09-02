@@ -91,6 +91,29 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     helper.restore_snapshot(*backup, allowed_snapshot=deployed_snapshot)
     require(target.read_bytes() == original, "REAL_RESTORE_FAILED")
 
+    # Compatibility overlay files use the same CAS backup/restore path while unmanaged files remain exact.
+    overlay_root = helper.TARGET_ROOT / "chinaplanetcustomercenter/cpkanban"
+    overlay_root.mkdir(parents=True)
+    overlay_target = overlay_root / "index.php"; overlay_extra = overlay_root / "extra.txt"
+    overlay_target.write_bytes(b"overlay-old"); overlay_target.chmod(0o644)
+    overlay_extra.write_bytes(b"preserve"); overlay_extra.chmod(0o640)
+    overlay_snapshot = {"files": [{"path": "chinaplanetcustomercenter/cpkanban/index.php", "state": "PRESENT",
+                                   "sha256": hashlib.sha256(b"overlay-old").hexdigest(), "uid": uid, "gid": gid, "mode": 0o644}],
+                        "layout": [{"path": "chinaplanetcustomercenter/cpkanban", "state": "OVERLAY_DIRECTORY",
+                                    "expected": "../cpkanban", "actual": "NON_SYMLINK_DIRECTORY",
+                                    "tree": helper.directory_tree_snapshot("chinaplanetcustomercenter/cpkanban")}]}
+    overlay_deployed = {"files": [{"path": "chinaplanetcustomercenter/cpkanban/index.php", "state": "PRESENT",
+                                    "sha256": hashlib.sha256(b"overlay-new").hexdigest(), "uid": uid, "gid": gid, "mode": 0o644}]}
+    overlay_backup = helper.write_backup(None, overlay_snapshot, "overlay-before")
+    overlay_fd = os.open(helper.TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        helper.atomic_write_target(overlay_fd, "chinaplanetcustomercenter/cpkanban/index.php", b"overlay-new", uid, gid, 0o644)
+    finally:
+        os.close(overlay_fd)
+    helper.restore_snapshot(*overlay_backup, allowed_snapshot=overlay_deployed)
+    require(overlay_target.read_bytes() == b"overlay-old" and overlay_extra.read_bytes() == b"preserve",
+            "OVERLAY_ROLLBACK_NOT_EXACT")
+
     # Restore must reject an unknown concurrent value and leave it untouched.
     attacker = b"concurrent-unknown-runtime"
     target.write_bytes(attacker)
@@ -328,4 +351,4 @@ require(source.count('database_identity(candidate) != identity') >= 2, "DATABASE
 require('GENERATION_EXPRESSION' in source and 'CHECK_CLAUSE' in source and 'PARTITION_EXPRESSION' in source, "DATABASE_FINGERPRINT_METADATA_MISSING")
 require("case \"$table\" in ''|*[!A-Za-z0-9_]*) exit 1;; esac" in source, "DATABASE_FINGERPRINT_IDENTIFIER_ALLOWLIST_MISSING")
 
-print("M074_STAGING_HELPER_FAILURES=PASS CASES=22")
+print("M074_STAGING_HELPER_FAILURES=PASS CASES=23")

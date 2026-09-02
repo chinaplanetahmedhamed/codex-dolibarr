@@ -53,18 +53,38 @@ with tempfile.TemporaryDirectory(prefix="m074-layout-") as temporary:
     candidate = types.SimpleNamespace(runtime_rows=[], layout={
         "custom/chinaplanetcustomercenter/cpkanban": "../cpkanban",
     })
+    baseline_tree = module.directory_tree_snapshot("chinaplanetcustomercenter/cpkanban")
+    module.EXPECTED_LAYOUT_TREE_SHA = {
+        "custom/chinaplanetcustomercenter/cpkanban": module.canonical_sha(baseline_tree),
+    }
     snapshot = module.runtime_snapshot(candidate)
-    require(snapshot["layout"][0]["state"] == "CONVERTIBLE", "IDENTICAL_DIRECTORY_NOT_CONVERTIBLE")
-
-    original = snapshot["layout"][0]
-    module.apply_layout(snapshot)
-    require(legacy.is_symlink() and legacy.readlink().as_posix() == "../cpkanban", "SYMLINK_NOT_APPLIED")
-    module.restore_layout(snapshot)
-    require(legacy.is_dir() and not legacy.is_symlink(), "DIRECTORY_NOT_RESTORED")
-    require(module.current_layout_item(original) == original, "DIRECTORY_PRESTATE_NOT_EXACT")
+    require(snapshot["layout"][0]["state"] == "OVERLAY_DIRECTORY", "PINNED_DIRECTORY_NOT_ACCEPTED")
 
     (legacy / "index.php").write_bytes(b"<?php echo 'different';\n")
     mismatch = module.runtime_snapshot(candidate)
     require(mismatch["layout"][0]["state"] == "DIFFERENT", "MISMATCH_NOT_REJECTED")
 
-print("M074_COMPATIBILITY_LAYOUT=PASS DEPLOY_TARGETS=378 OVERLAYS=70 CONVERT=ATOMIC ROLLBACK=EXACT MISMATCH=REJECTED")
+    # Overlay verification permits only the 70 declared deployment copies to change.
+    (legacy / "index.php").write_bytes(b"old-overlay\n")
+    (legacy / "extra.txt").write_bytes(b"preserve-me\n")
+    baseline_tree = module.directory_tree_snapshot("chinaplanetcustomercenter/cpkanban")
+    release_bytes = b"new-overlay\n"
+    overlay_row = {"source_path": "custom/cpkanban/index.php",
+                   "runtime_target": "custom/chinaplanetcustomercenter/cpkanban/index.php",
+                   "classification": "runtime", "mode": "644", "size": str(len(release_bytes)),
+                   "sha256": module.hashlib.sha256(release_bytes).hexdigest()}
+    overlay_candidate = types.SimpleNamespace(runtime_rows=[overlay_row])
+    overlay_item = {"path": "chinaplanetcustomercenter/cpkanban", "state": "OVERLAY_DIRECTORY",
+                    "expected": "../cpkanban", "actual": "NON_SYMLINK_DIRECTORY", "tree": baseline_tree}
+    (legacy / "index.php").write_bytes(release_bytes)
+    module.verify_overlay_preserved(overlay_candidate, overlay_item)
+    require((legacy / "extra.txt").read_bytes() == b"preserve-me\n", "UNMANAGED_FILE_NOT_PRESERVED")
+    (legacy / "extra.txt").write_bytes(b"unexpected-change\n")
+    overlay_blocked = False
+    try:
+        module.verify_overlay_preserved(overlay_candidate, overlay_item)
+    except module.ReleaseError:
+        overlay_blocked = True
+    require(overlay_blocked, "UNMANAGED_OVERLAY_DRIFT_ACCEPTED")
+
+print("M074_COMPATIBILITY_LAYOUT=PASS DEPLOY_TARGETS=378 OVERLAYS=70 TREE_PIN=EXACT UNMANAGED_DRIFT=REJECTED")

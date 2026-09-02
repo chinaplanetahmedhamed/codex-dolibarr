@@ -34,6 +34,10 @@ LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
 BUNDLE_SHA = "99da1d088fccc8c4c94c335a3809624b70f6c1637e928699b0b0065c65a128eb"
 PINS_SHA = "e86898770a1c809a5749f4950da67cea1dbdbe97b4516814da2bac66755d8153"
 EXPECTED_BASELINE_SHA = "UNBOUND_DIAGNOSTIC_ONLY"
+EXPECTED_LAYOUT_TREE_SHA = {
+    "custom/chinaplanetcustomercenter/chinaplanetlogistics": "c0144d63da333b4eea47b3687d673d85a23d677cad4e9da0109bc06147501bcd",
+    "custom/chinaplanetcustomercenter/cpkanban": "346f68609f447214cd241f4ec11474bb8a19502ba075e25846ac77c415d7374c",
+}
 DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
@@ -441,6 +445,35 @@ def semantic_tree(tree: list[dict[str, object]]) -> list[dict[str, object]]:
     return [{key: item[key] for key in ("path", "kind", "sha256", "mode")} for item in tree]
 
 
+def overlay_relative_targets(candidate: Candidate, layout_relative: str) -> set[str]:
+    prefix = "custom/" + layout_relative.rstrip("/") + "/"
+    return {row["runtime_target"][len(prefix):] for row in candidate.runtime_rows
+            if row["runtime_target"].startswith(prefix)}
+
+
+def overlay_parents_exist(tree: list[dict[str, object]], targets: set[str]) -> bool:
+    directories = {str(item["path"]) for item in tree if item.get("kind") == "DIRECTORY"}
+    for target in targets:
+        parent = pathlib.PurePosixPath(target).parent
+        if ("" if parent.as_posix() == "." else parent.as_posix()) not in directories:
+            return False
+    return True
+
+
+def overlay_release_tree_matches(candidate: Candidate, layout_relative: str,
+                                 tree: list[dict[str, object]]) -> bool:
+    entries = {str(item["path"]): item for item in tree}
+    prefix = "custom/" + layout_relative.rstrip("/") + "/"
+    rows = [row for row in candidate.runtime_rows if row["runtime_target"].startswith(prefix)]
+    if not rows:
+        return False
+    for row in rows:
+        entry = entries.get(row["runtime_target"][len(prefix):])
+        if entry is None or entry.get("kind") != "FILE" or entry.get("sha256") != row["sha256"] or entry.get("mode") != int(row["mode"], 8):
+            return False
+    return True
+
+
 def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
     root_fd = os.open(TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)); files = []
     try:
@@ -464,11 +497,11 @@ def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
                     elif stat.S_ISDIR(info.st_mode):
                         actual = "NON_SYMLINK_DIRECTORY"
                         tree = directory_tree_snapshot(relative)
-                        canonical = os.path.normpath(os.path.join(os.path.dirname(relative), expected))
-                        if canonical.startswith("../") or canonical == ".." or os.path.isabs(canonical):
-                            fail("COMPATIBILITY_TARGET_INVALID")
-                        canonical_tree = directory_tree_snapshot(canonical)
-                        state = "CONVERTIBLE" if semantic_tree(tree) == semantic_tree(canonical_tree) else "DIFFERENT"
+                        expected_tree_sha = EXPECTED_LAYOUT_TREE_SHA.get(source)
+                        tree_sha = canonical_sha(tree)
+                        targets = overlay_relative_targets(candidate, relative)
+                        baseline_ready = expected_tree_sha == tree_sha and overlay_parents_exist(tree, targets)
+                        state = "OVERLAY_DIRECTORY" if baseline_ready or overlay_release_tree_matches(candidate, relative, tree) else "DIFFERENT"
                     else:
                         actual = "NON_DIRECTORY_NON_SYMLINK"; state = "DIFFERENT"
                 finally:
@@ -476,7 +509,7 @@ def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
             except FileNotFoundError:
                 actual = "ABSENT"; state = "ABSENT"
             item = {"path": relative, "state": state, "expected": expected, "actual": actual}
-            if state in ("CONVERTIBLE", "DIFFERENT") and actual == "NON_SYMLINK_DIRECTORY":
+            if state in ("OVERLAY_DIRECTORY", "DIFFERENT") and actual == "NON_SYMLINK_DIRECTORY":
                 item["tree"] = tree
             layout.append(item)
     finally:
@@ -487,7 +520,7 @@ def runtime_snapshot(candidate: Candidate) -> dict[str, object]:
 def compare_summary(candidate: Candidate, snapshot: dict[str, object], *, emit: bool) -> dict[str, int]:
     expected = {row["runtime_target"][len("custom/"):]: row for row in candidate.runtime_rows}
     counts = {"current": 0, "different": 0, "absent": 0, "layout_current": 0,
-              "layout_convertible": 0, "layout_different": 0, "layout_absent": 0}
+              "layout_overlay_directory": 0, "layout_different": 0, "layout_absent": 0}
     for item in snapshot["files"]:
         row = expected[item["path"]]
         if item["state"] == "ABSENT": state = "ABSENT"; counts["absent"] += 1
@@ -673,7 +706,7 @@ def apply_candidate(candidate: Candidate, snapshot: dict[str, object]) -> None:
             if hashlib.sha256(data).hexdigest() != row["sha256"] or stat.S_IMODE(info.st_mode) != int(row["mode"], 8): fail("CANDIDATE_CHANGED_BEFORE_APPLY")
             relative = row["runtime_target"][len("custom/"):]
             atomic_write_target(target_fd, relative, data, web_uid, web_gid, int(row["mode"], 8), baseline[relative])
-        apply_layout(snapshot)
+        apply_layout(candidate, snapshot)
     finally: os.close(candidate_fd); os.close(target_fd)
 
 
@@ -694,11 +727,27 @@ def current_layout_item(item: dict[str, object]) -> dict[str, object]:
             "actual": "NON_DIRECTORY_NON_SYMLINK"}
 
 
-def apply_layout(snapshot: dict[str, object]) -> None:
+def verify_overlay_preserved(candidate: Candidate, item: dict[str, object]) -> None:
+    before = {str(entry["path"]): entry for entry in item.get("tree", [])}
+    after_tree = directory_tree_snapshot(str(item["path"]))
+    after = {str(entry["path"]): entry for entry in after_tree}
+    targets = overlay_relative_targets(candidate, str(item["path"]))
+    if not targets or not overlay_parents_exist(list(before.values()), targets):
+        fail("COMPATIBILITY_OVERLAY_TARGET_INVALID")
+    for target in targets:
+        before.pop(target, None); after.pop(target, None)
+    if before != after or not overlay_release_tree_matches(candidate, str(item["path"]), after_tree):
+        fail("COMPATIBILITY_OVERLAY_CHANGED")
+
+
+def apply_layout(candidate: Candidate, snapshot: dict[str, object]) -> None:
     for item in snapshot["layout"]:
         state = str(item["state"])
         if state == "CURRENT":
             if current_layout_item(item)["state"] != "CURRENT": fail("TARGET_BASELINE_CHANGED")
+            continue
+        if state == "OVERLAY_DIRECTORY":
+            verify_overlay_preserved(candidate, item)
             continue
         if state not in ("ABSENT", "CONVERTIBLE"):
             fail("COMPATIBILITY_LAYOUT_NOT_READY")
@@ -728,6 +777,10 @@ def restore_layout(snapshot: dict[str, object]) -> None:
         prior = str(item["state"]); target = TARGET_ROOT / str(item["path"])
         if prior == "CURRENT":
             if current_layout_item(item)["state"] != "CURRENT": fail("ROLLBACK_BASELINE_CHANGED")
+            continue
+        if prior == "OVERLAY_DIRECTORY":
+            if directory_tree_snapshot(str(item["path"])) != item.get("tree"):
+                fail("ROLLBACK_LAYOUT_MISMATCH")
             continue
         if prior == "CONVERTIBLE" and target.is_dir() and not target.is_symlink():
             if current_layout_item(item) == item: continue
@@ -994,7 +1047,7 @@ def deployed_snapshot_matches(candidate: Candidate) -> bool:
     for item in snapshot["files"]:
         row = expected[item["path"]]
         if item["state"] != "PRESENT" or item["sha256"] != row["sha256"] or item["mode"] != int(row["mode"], 8) or (item["uid"], item["gid"]) != (web_uid, web_gid): return False
-    return all(item["state"] == "CURRENT" for item in snapshot["layout"])
+    return all(item["state"] in ("CURRENT", "OVERLAY_DIRECTORY") for item in snapshot["layout"])
 
 
 def live_checks(candidate: Candidate) -> None:
@@ -1117,7 +1170,7 @@ def command_compare() -> None:
     try:
         snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True); schema = schema_status(candidate); database_identity(candidate); snapshot_sha = canonical_sha(snapshot)
         baseline_match = "YES" if HEX64.fullmatch(EXPECTED_BASELINE_SHA) and snapshot_sha == EXPECTED_BASELINE_SHA else "NO"
-        print(f"M074_STAGING_COMPARE=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} SNAPSHOT_SHA={snapshot_sha} BASELINE_MATCH={baseline_match} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} LAYOUT_CURRENT={counts['layout_current']} LAYOUT_CONVERTIBLE={counts['layout_convertible']} LAYOUT_DIFFERENT={counts['layout_different']} LAYOUT_ABSENT={counts['layout_absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES APPLY_READY=NO PREFLIGHT_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
+        print(f"M074_STAGING_COMPARE=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} SNAPSHOT_SHA={snapshot_sha} BASELINE_MATCH={baseline_match} DEPLOY_FILES={DEPLOY_RUNTIME_FILES} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} LAYOUT_CURRENT={counts['layout_current']} LAYOUT_OVERLAY_DIRECTORY={counts['layout_overlay_directory']} LAYOUT_DIFFERENT={counts['layout_different']} LAYOUT_ABSENT={counts['layout_absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES APPLY_READY=NO PREFLIGHT_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
 
 
@@ -1186,7 +1239,7 @@ def execute_apply_mutation(candidate: Candidate, snapshot: dict[str, object], id
         live_checks(candidate)
         if database_identity(candidate) != identity:
             fail("DATABASE_IDENTITY_CHANGED_AFTER_SCHEMA_APPLY")
-        save_state("DEPLOYED", **fields, files=308, tables=3, rights=4, rights_default="DISABLED")
+        save_state("DEPLOYED", **fields, files=DEPLOY_RUNTIME_FILES, tables=3, rights=4, rights_default="DISABLED")
     except Exception:
         try:
             restore_snapshot(archive, archive_sha, prestate, prestate_sha, allowed_snapshot=release_snapshot(candidate))
@@ -1246,7 +1299,7 @@ def command_apply() -> None:
                 fail("BASELINE_CHANGED_AFTER_BACKUP")
             save_state("PENDING_APPLY_CODE", **fields)
             execute_apply_mutation(candidate, snapshot, identity, fields, archive, archive_sha, prestate, prestate_sha)
-            print(f"M074_STAGING_APPLY=PASS REQUEST_ID={request_id} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CODE_BACKUP={archive} CODE_BACKUP_SHA={archive_sha} PRESTATE={prestate} PRESTATE_SHA={prestate_sha} DB_BACKUP={database} DB_BACKUP_SHA={database_sha} FILES=308 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED DATABASE_CHANGED=YES PRODUCTION_ACCESSED=NO")
+            print(f"M074_STAGING_APPLY=PASS REQUEST_ID={request_id} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CODE_BACKUP={archive} CODE_BACKUP_SHA={archive_sha} PRESTATE={prestate} PRESTATE_SHA={prestate_sha} DB_BACKUP={database} DB_BACKUP_SHA={database_sha} FILES={DEPLOY_RUNTIME_FILES} TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED DATABASE_CHANGED=YES PRODUCTION_ACCESSED=NO")
         finally: candidate.cleanup()
     finally: os.close(lock_fd)
 
@@ -1257,7 +1310,7 @@ def command_verify() -> None:
     state_backup(state); state_database_backup(state); candidate = validate_release(ARTIFACT_ROOT)
     try:
         candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); live_checks(candidate)
-        print(f"M074_STAGING_VERIFY=PASS STATE=DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state['request_id']} FILES=308 TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED CODE_BACKUP_SHA={state['code_backup_sha256']} DB_BACKUP_SHA={state['database_backup_sha256']} BACKUPS_REVALIDATED=YES DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO")
+        print(f"M074_STAGING_VERIFY=PASS STATE=DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state['request_id']} FILES={DEPLOY_RUNTIME_FILES} TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED CODE_BACKUP_SHA={state['code_backup_sha256']} DB_BACKUP_SHA={state['database_backup_sha256']} BACKUPS_REVALIDATED=YES DATABASE_MUTATED_BY_COMMAND=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
 
 

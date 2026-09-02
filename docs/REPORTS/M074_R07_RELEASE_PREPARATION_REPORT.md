@@ -31,13 +31,13 @@ The Dolibarr manifest contains 553 rows: 308 runtime, 216 support and 29 evidenc
 
 | Local file | Intended server path/use | SHA-256 |
 |---|---|---|
-| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `cc653f486f5d637c93b04d8d4c8585017ca4157304c42de18b350c2d3d2cd361` |
+| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `13b47aeb0a5d2d9f5360d29d9a3e447f3fc4f83d6bd479431d0429530e541d1b` |
 | `deploy/config/codex-deploy-backup-erp-m074-qc-preflight.sudoers` | `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight` | `3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99` |
-| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `beb5e27a309aeaea4edf45cd4f7e260062d94c7dbd4123b9aeee41ca2a8ce958` |
+| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `a3bfd504a2c9d37bbc58cb2592cb6f12287b3cb5496cba093c49460bc021e673` |
 
-The current controller is a fail-closed second diagnostic build: it exposes the fixed six-command sudo surface but `preflight` and `apply` stop at `BASELINE_NOT_PINNED`. `compare` discloses the canonical snapshot hash plus a separate tree hash for each legacy compatibility directory. It models the accepted directory deployment as 308 canonical runtime targets plus 70 compatibility-copy targets, while still refusing the directory layout until the two tree hashes are explicitly pinned. After the read-only result is reviewed, the exact general/tree hashes must be bound, the controller must be repinned and independently reviewed, and only then can preflight/apply become reachable. The final controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
+The current controller is a fail-closed final-layout build: it exposes the fixed six-command sudo surface but `preflight` and `apply` still stop at `BASELINE_NOT_PINNED`. The two reviewed compatibility tree hashes are pinned and it models 308 canonical runtime targets plus 70 compatibility-copy targets. The captured general baseline hash still requires new explicit approval before it may replace `UNBOUND_DIAGNOSTIC_ONLY`; only after that change is repinned and independently reviewed can preflight/apply become reachable. The controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
 
-The two legacy Customer Center compatibility paths may be real directories on the accepted staging baseline. R07 treats either path as convertible only when its complete regular-file/directory tree is semantically identical to the canonical target. Apply then atomically replaces it with the expected relative symlink. The exact directory metadata/tree is recorded in prestate and reconstructed during rollback. Symlinks, special files or any content/mode mismatch fail closed.
+The two legacy Customer Center compatibility paths are real directories on the accepted staging baseline. Their complete regular-file/directory trees are independently pinned (`c0144d63…` and `346f6860…`). R07 deploys 70 explicit compatibility copies in addition to 308 canonical targets, preserves every unmanaged entry byte-for-byte, and rejects special files, missing parents or unmanaged drift. The exact old copies use the common CAS code backup and are restored during rollback; the directories are not deleted or converted.
 
 ## Verification completed locally
 
@@ -46,9 +46,9 @@ The two legacy Customer Center compatibility paths may be real directories on th
 - M061/M070/M071/M074 source, schema, PWA and customer safety tests passed.
 - Exact candidate reconstruction and its 12 archive-contained tests passed.
 - Artifact reproducibility passed with 308 runtime files and two clean rebuilds.
-- Staging helper contract and 22 containment/fault cases passed, including unbound/mismatched baseline and stale-preflight rejection.
+- Staging helper contract and 23 containment/fault cases passed, including unbound/mismatched baseline, stale-preflight rejection and exact overlay rollback.
 - Transactional installer partial-publish restoration passed.
-- Compatibility layout conversion, exact rollback and mismatch rejection passed.
+- Compatibility tree pins, 378 unique targets, 70 overlays and unmanaged-drift rejection passed.
 - Mobile `npm run lint` and `npm run typecheck` passed; Vitest passed 45/45 tests.
 
 Dependency installation reported 20 moderate and 14 high npm dependency advisories under the existing lockfile. No dependency was force-upgraded because that would be an unreviewed scope change; the M074 application checks themselves passed.
