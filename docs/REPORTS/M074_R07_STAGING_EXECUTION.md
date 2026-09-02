@@ -5,7 +5,7 @@
 - **Target:** canonical `backup-erp` staging only
 - **Approved actions:** exact input upload, checksum verification, restricted helper update, `compare`, conditional `preflight`, conditional `apply`, and `verify`
 - **Production:** forbidden
-- **Current status:** `LOCAL_FREEZE / REMOTE_EXECUTION_PENDING`
+- **Current status:** `DIAGNOSTIC_HELPER_LOCAL / BASELINE_CAPTURE_PENDING / APPLY_BLOCKED`
 
 ## Expected release inputs
 
@@ -20,4 +20,3 @@
 ## Execution evidence
 
 To be completed from restricted staging output after each gate. A failed `compare` or `preflight` prevents `apply`. Apply must record the request ID, code backup/prestate hashes, database dump hash, successful restore validation, three additive QC tables, four disabled rights, and production non-access. Verify must independently revalidate the retained release, backups, runtime hashes/ownership/modes, schema and protected QC route.
-

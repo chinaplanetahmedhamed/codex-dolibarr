@@ -127,6 +127,33 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
         mismatch = True
     require(mismatch, "PLAN_BASELINE_DRIFT_ACCEPTED")
 
+    # Diagnostic helpers cannot preflight/apply until the reviewed remote baseline is pinned.
+    baseline_blocked = False
+    try:
+        helper.require_expected_baseline(snapshot)
+    except helper.ReleaseError:
+        baseline_blocked = True
+    require(baseline_blocked, "UNBOUND_BASELINE_ACCEPTED")
+    diagnostic_baseline = helper.EXPECTED_BASELINE_SHA
+    helper.EXPECTED_BASELINE_SHA = helper.canonical_sha(snapshot)
+    require(helper.require_expected_baseline(snapshot) == helper.canonical_sha(snapshot), "PINNED_BASELINE_REJECTED")
+    baseline_drift = False
+    try:
+        helper.require_expected_baseline({"files": [], "layout": []})
+    except helper.ReleaseError:
+        baseline_drift = True
+    require(baseline_drift, "UNAPPROVED_BASELINE_DRIFT_ACCEPTED")
+    helper.EXPECTED_BASELINE_SHA = diagnostic_baseline
+
+    # A terminal state invalidates every preflight created at or before its update time.
+    plan_created = dt.datetime.fromisoformat(plan["created_at"])
+    stale_blocked = False
+    try:
+        helper.require_plan(snapshot, "MIGRATION_REQUIRED", "a" * 64, plan_created)
+    except helper.ReleaseError:
+        stale_blocked = True
+    require(stale_blocked, "STALE_PLAN_ACCEPTED_AFTER_TERMINAL_STATE")
+
     # Pending apply reconciles the old code and returns a terminal state; it cannot begin a new apply.
     root_fd = os.open(helper.TARGET_ROOT, os.O_RDONLY | os.O_DIRECTORY)
     try:
@@ -301,4 +328,4 @@ require(source.count('database_identity(candidate) != identity') >= 2, "DATABASE
 require('GENERATION_EXPRESSION' in source and 'CHECK_CLAUSE' in source and 'PARTITION_EXPRESSION' in source, "DATABASE_FINGERPRINT_METADATA_MISSING")
 require("case \"$table\" in ''|*[!A-Za-z0-9_]*) exit 1;; esac" in source, "DATABASE_FINGERPRINT_IDENTIFIER_ALLOWLIST_MISSING")
 
-print("M074_STAGING_HELPER_FAILURES=PASS CASES=20")
+print("M074_STAGING_HELPER_FAILURES=PASS CASES=22")

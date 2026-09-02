@@ -33,6 +33,7 @@ MANIFEST_SHA = "b31db80b8a4e9b725d60b0c22dd3cdf1b8aea1814a28ba98d5b90dae5177969f
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
 BUNDLE_SHA = "99da1d088fccc8c4c94c335a3809624b70f6c1637e928699b0b0065c65a128eb"
 PINS_SHA = "e86898770a1c809a5749f4950da67cea1dbdbe97b4516814da2bac66755d8153"
+EXPECTED_BASELINE_SHA = "UNBOUND_DIAGNOSTIC_ONLY"
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
@@ -1008,12 +1009,24 @@ def plan_payload(snapshot: dict[str, object], schema: str, db_identity: str) -> 
             "created_at": dt.datetime.now(dt.timezone.utc).isoformat()}
 
 
-def require_plan(snapshot: dict[str, object], schema: str, db_identity: str) -> str:
+def require_expected_baseline(snapshot: dict[str, object]) -> str:
+    actual = canonical_sha(snapshot)
+    if EXPECTED_BASELINE_SHA == "UNBOUND_DIAGNOSTIC_ONLY":
+        fail("BASELINE_NOT_PINNED")
+    if not HEX64.fullmatch(EXPECTED_BASELINE_SHA) or actual != EXPECTED_BASELINE_SHA:
+        fail("BASELINE_MISMATCH")
+    return actual
+
+
+def require_plan(snapshot: dict[str, object], schema: str, db_identity: str,
+                 minimum_created_at: dt.datetime | None = None) -> str:
     validate_root_file(PLAN_FILE); plan = json.loads(PLAN_FILE.read_text("ascii")); expected = plan_payload(snapshot, schema, db_identity)
     for key in ("schema", "release", "source_commit", "artifact_sha256", "snapshot_sha256", "schema_status", "database_identity"):
         if plan.get(key) != expected[key]: fail("PREFLIGHT_PLAN_MISMATCH")
     created = dt.datetime.fromisoformat(str(plan.get("created_at")))
     if created.tzinfo is None or (dt.datetime.now(dt.timezone.utc) - created).total_seconds() > PLAN_MAX_AGE_SECONDS: fail("PREFLIGHT_PLAN_EXPIRED")
+    if minimum_created_at is not None and created <= minimum_created_at:
+        fail("PREFLIGHT_REQUIRED_AFTER_STATE")
     return canonical_sha(plan)
 
 
@@ -1081,8 +1094,9 @@ def acquire_lock() -> int:
 def command_compare() -> None:
     candidate = common_candidate()
     try:
-        snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True); schema = schema_status(candidate); database_identity(candidate)
-        print(f"M074_STAGING_COMPARE=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} LAYOUT_CURRENT={counts['layout_current']} LAYOUT_CONVERTIBLE={counts['layout_convertible']} LAYOUT_DIFFERENT={counts['layout_different']} LAYOUT_ABSENT={counts['layout_absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES APPLY_READY=NO PREFLIGHT_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
+        snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True); schema = schema_status(candidate); database_identity(candidate); snapshot_sha = canonical_sha(snapshot)
+        baseline_match = "YES" if HEX64.fullmatch(EXPECTED_BASELINE_SHA) and snapshot_sha == EXPECTED_BASELINE_SHA else "NO"
+        print(f"M074_STAGING_COMPARE=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} SNAPSHOT_SHA={snapshot_sha} BASELINE_MATCH={baseline_match} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} LAYOUT_CURRENT={counts['layout_current']} LAYOUT_CONVERTIBLE={counts['layout_convertible']} LAYOUT_DIFFERENT={counts['layout_different']} LAYOUT_ABSENT={counts['layout_absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES APPLY_READY=NO PREFLIGHT_REQUIRED=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
 
 
@@ -1091,6 +1105,7 @@ def command_preflight() -> None:
     try:
         snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=True)
         if counts["layout_different"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
+        require_expected_baseline(snapshot)
         schema = schema_status(candidate); identity = database_identity(candidate); plan = plan_payload(snapshot, schema, identity); atomic_json(PLAN_FILE, plan); plan_sha = canonical_sha(plan)
         print(f"M074_STAGING_PREFLIGHT=PASS RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} CURRENT={counts['current']} DIFFERENT={counts['different']} ABSENT={counts['absent']} SCHEMA={schema} DATABASE_IDENTITY_BOUND=YES BASELINE_BOUND=YES APPLY_READY=YES APPLY_EXECUTED=NO DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO")
     finally: candidate.cleanup()
@@ -1167,6 +1182,7 @@ def command_apply() -> None:
     try:
         import fcntl
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        existing = None
         if STATE_FILE.exists() or STATE_FILE.is_symlink():
             existing = load_state()
             if str(existing["status"]).startswith("PENDING_"):
@@ -1182,7 +1198,13 @@ def command_apply() -> None:
         try:
             snapshot = runtime_snapshot(candidate); counts = compare_summary(candidate, snapshot, emit=False)
             if counts["layout_different"]: fail("COMPATIBILITY_LAYOUT_NOT_READY")
-            schema = schema_status(candidate); identity = database_identity(candidate); plan_sha = require_plan(snapshot, schema, identity)
+            require_expected_baseline(snapshot)
+            schema = schema_status(candidate); identity = database_identity(candidate)
+            minimum_created_at = None
+            if existing is not None and existing["status"] != "DEPLOYED":
+                minimum_created_at = dt.datetime.fromisoformat(str(existing.get("updated_at", "")))
+                if minimum_created_at.tzinfo is None: fail("STATE_UPDATED_AT_INVALID")
+            plan_sha = require_plan(snapshot, schema, identity, minimum_created_at)
             if STATE_FILE.exists() and load_state()["status"] == "DEPLOYED":
                 live_checks(candidate); state = load_state(); require_saved_database_identity(state, identity); state_database_backup(state); state_backup(state)
                 print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return

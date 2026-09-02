@@ -31,11 +31,11 @@ The Dolibarr manifest contains 553 rows: 308 runtime, 216 support and 29 evidenc
 
 | Local file | Intended server path/use | SHA-256 |
 |---|---|---|
-| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `ccd37bc18c582773bde814e36e165b5d36827c1a20c31c8ba047667cfa7f12be` |
+| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `a879de5b41c68d140c79b71333fa4337bda5451bb4acba0ddad9368aaef57f89` |
 | `deploy/config/codex-deploy-backup-erp-m074-qc-preflight.sudoers` | `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight` | `3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99` |
-| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `ad3269f6ce66b11c9262ba840f592dadbefb2aee4663ef3dab031c574c4d1dde` |
+| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `69aad2e501858502f593492cb2b6a743a45f25e4430a4b0d8f0c56c967779fe8` |
 
-The controller exposes exactly `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status`. It is checksum-pinned to R07, canonical staging container/volume/database identities, a shared deployment lock, full code and database backups, a restore-tested database dump, immutable state, database identity binding and additive schema application.
+The current controller is a fail-closed diagnostic build: it exposes the fixed six-command sudo surface but `preflight` and `apply` stop at `BASELINE_NOT_PINNED`. Only `compare` can disclose the canonical snapshot hash. After that read-only result is reviewed, the exact hash must replace `UNBOUND_DIAGNOSTIC_ONLY`, the controller must be repinned and independently reviewed, and only then can preflight/apply become reachable. The final controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
 
 The two legacy Customer Center compatibility paths may be real directories on the accepted staging baseline. R07 treats either path as convertible only when its complete regular-file/directory tree is semantically identical to the canonical target. Apply then atomically replaces it with the expected relative symlink. The exact directory metadata/tree is recorded in prestate and reconstructed during rollback. Symlinks, special files or any content/mode mismatch fail closed.
 
@@ -46,7 +46,7 @@ The two legacy Customer Center compatibility paths may be real directories on th
 - M061/M070/M071/M074 source, schema, PWA and customer safety tests passed.
 - Exact candidate reconstruction and its 12 archive-contained tests passed.
 - Artifact reproducibility passed with 308 runtime files and two clean rebuilds.
-- Staging helper contract and 20 containment/fault cases passed.
+- Staging helper contract and 22 containment/fault cases passed, including unbound/mismatched baseline and stale-preflight rejection.
 - Transactional installer partial-publish restoration passed.
 - Compatibility layout conversion, exact rollback and mismatch rejection passed.
 - Mobile `npm run lint` and `npm run typecheck` passed; Vitest passed 45/45 tests.
@@ -56,4 +56,3 @@ Dependency installation reported 20 moderate and 14 high npm dependency advisori
 ## Gate
 
 This record freezes local release inputs only. Staging upload and installation may proceed only after independent Security and Operations/QA review of this exact commit. `apply` is allowed only if remote hashes, `compare`, and `preflight` all pass. Production remains forbidden.
-
