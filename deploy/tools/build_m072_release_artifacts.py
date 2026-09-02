@@ -101,6 +101,19 @@ def parse_m071_runtime(repo: pathlib.Path, commit: str) -> set[str]:
     }
 
 
+def parse_m068_runtime(repo: pathlib.Path, commit: str, tracked: dict[str, int]) -> set[str]:
+    manifest = "deploy/releases/m068-runtime-files.txt"
+    if manifest not in tracked:
+        return set()
+    paths = {
+        line.strip() for line in git_blob(repo, commit, manifest).decode("utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+    if any(not path.startswith("custom/") for path in paths):
+        fail("M068_RUNTIME_MAP_PATH_INVALID")
+    return paths
+
+
 def parse_m074_runtime(repo: pathlib.Path, commit: str, tracked: dict[str, int]) -> set[str]:
     manifest = "docs/REPORTS/M074_SOURCE_TO_RUNTIME_MANIFEST.tsv"
     if manifest not in tracked:
@@ -117,7 +130,7 @@ def parse_m074_runtime(repo: pathlib.Path, commit: str, tracked: dict[str, int])
 
 def dolibarr_files(repo: pathlib.Path, commit: str) -> dict[str, tuple[int, str]]:
     tracked = tree_files(repo, commit)
-    runtime = parse_m070_runtime(repo, commit) | parse_m071_runtime(repo, commit) | parse_m074_runtime(repo, commit, tracked)
+    runtime = parse_m070_runtime(repo, commit) | parse_m068_runtime(repo, commit, tracked) | parse_m071_runtime(repo, commit) | parse_m074_runtime(repo, commit, tracked)
     if runtime & M069_C04_RESIDUE:
         fail("M069_C04_RESIDUE_INCLUDED")
     missing = sorted(path for path in runtime if path not in tracked)
@@ -134,9 +147,9 @@ def dolibarr_files(repo: pathlib.Path, commit: str) -> dict[str, tuple[int, str]
     for path, mode in tracked.items():
         if path.startswith(support_prefixes) or path in support_exact:
             selected.setdefault(path, (mode, "support"))
-        if any(path.startswith("docs/MISSIONS/M" + mission) for mission in ("069", "070", "071", "072", "073", "074")):
+        if any(path.startswith("docs/MISSIONS/M" + mission) for mission in ("068", "069", "070", "071", "072", "073", "074")):
             selected.setdefault(path, (mode, "evidence"))
-        if any(path.startswith("docs/REPORTS/M" + mission) for mission in ("069", "070", "071", "072", "073", "074")):
+        if any(path.startswith("docs/REPORTS/M" + mission) for mission in ("068", "069", "070", "071", "072", "073", "074")):
             selected.setdefault(path, (mode, "evidence"))
     if not any(path.startswith("deploy/migrations/") for path in selected):
         fail("MIGRATIONS_MISSING")

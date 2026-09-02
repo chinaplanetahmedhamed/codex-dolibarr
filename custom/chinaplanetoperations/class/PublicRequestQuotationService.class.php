@@ -48,6 +48,31 @@ class PublicRequestQuotationService
                 if (is_array($raw)) $out[] = $this->normalizeCatalogLine($raw, $index);
             }
         }
+        if (!empty($requestRow['rowid']) && (int)($requestRow['schema_version'] ?? 1) === 2) {
+            $working = array();
+            $res = $this->db->query("SELECT * FROM ".MAIN_DB_PREFIX."cpo_public_request_line WHERE entity=".$this->entity." AND fk_request=".(int)$requestRow['rowid']." ORDER BY position,rowid");
+            if ($res) while ($obj = $this->db->fetch_object($res)) $working[(string)$obj->line_key] = (array)$obj;
+            foreach ($out as &$line) {
+                $review = $working[$line['line_key']] ?? null;
+                if (!$review) continue;
+                $line['working_line_id'] = (int)$review['rowid'];
+                $line['review_status'] = (string)$review['review_status'];
+                $line['packing_verified'] = !empty($review['packing_verified']);
+                $line['verified_packing_source'] = (string)$review['verified_packing_source'];
+                $line['staff_note'] = (string)$review['staff_note'];
+                $line['mapped_product_id'] = (int)$review['fk_product'];
+                if ($line['packing_verified']) {
+                    $line['units_per_carton'] = (int)$review['verified_units_per_carton'];
+                    $line['cbm_per_carton'] = (float)$review['verified_cbm_per_carton'];
+                    $line['gross_weight'] = (float)$review['verified_gross_weight_kg'];
+                    $line['total_units'] = $line['cartons'] * $line['units_per_carton'];
+                    $line['total_cbm'] = $line['cartons'] * $line['cbm_per_carton'];
+                    $line['total_gross_weight'] = $line['cartons'] * $line['gross_weight'];
+                    $line['packing_source'] = 'staff_verified';
+                }
+            }
+            unset($line);
+        }
         return $out;
     }
 
@@ -90,7 +115,7 @@ class PublicRequestQuotationService
         $proposalLines = $proposal ? $proposal->lines : array();
         $prepared = array();
         foreach ($this->catalogLines($requestRow) as $index=>$line) {
-            $selectedId = isset($selectedProducts[$index]) ? (int) $selectedProducts[$index] : 0;
+            $selectedId = isset($selectedProducts[$index]) ? (int)$selectedProducts[$index] : (int)($line['mapped_product_id'] ?? 0);
             $product = $this->resolveProduct($line, $selectedId);
             $line = $this->withProductPacking($line, $product);
             $defaultBase = $product ? $this->sellingPrice($product, $customer) : null;
@@ -98,7 +123,7 @@ class PublicRequestQuotationService
             $line['product'] = $product;
             $line['default_price'] = $defaultBase === null ? null : $defaultBase * $currencyInfo['tx'];
             $line['saved_price'] = $saved ? ($currencyInfo['code'] === $currencyInfo['base'] ? (float) $saved->subprice : (float) $saved->multicurrency_subprice) : null;
-            $line['saved_note'] = $saved ? $this->extractStaffLineNote((string) $saved->desc) : '';
+            $line['saved_public_description'] = $saved ? $this->extractPublicLineDescription((string)$saved->desc) : '';
             $prepared[] = $line;
         }
         return $prepared;
@@ -130,6 +155,7 @@ class PublicRequestQuotationService
                 $product = $this->resolveProduct($line, (int) ($input['fk_product'] ?? 0));
                 if (!$product) throw new RuntimeException('quotation_product_mapping_required');
                 $line = $this->withProductPacking($line, $product);
+                if ((int)($row['schema_version'] ?? 1) === 2 && (empty($line['packing_verified']) || (string)($line['review_status'] ?? '') !== 'ready' || (int)($line['mapped_product_id'] ?? 0) !== (int)$product->id)) throw new RuntimeException('quotation_line_review_required');
                 if ($line['units_per_carton'] < 1) throw new RuntimeException('quotation_pieces_per_carton_required');
                 $source = (string) ($input['price_source'] ?? 'dolibarr');
                 if (!in_array($source, array('dolibarr','manual'), true)) throw new RuntimeException('quotation_price_source_invalid');
@@ -149,7 +175,7 @@ class PublicRequestQuotationService
                     'qty'=>$qty,
                     'price_base'=>$priceBase,
                     'price_currency'=>$priceCurrency,
-                    'note'=>$this->clean($input['note'] ?? '', 1000),
+                    'public_description'=>$this->clean($input['public_description'] ?? '', 1000),
                 );
             }
 
@@ -217,6 +243,7 @@ class PublicRequestQuotationService
         $weight = max(0, (float) ($line['grossWeightKg'] ?? $line['gross_weight'] ?? 0));
         return array(
             'index'=>(int) $index,
+            'line_key'=>$this->clean($line['lineId'] ?? ('legacy-'.$index), 100),
             'product_id'=>max(0, (int) ($line['productId'] ?? $line['product_id'] ?? 0)),
             'variation_id'=>max(0, (int) ($line['variationId'] ?? $line['variation_id'] ?? 0)),
             'cartons'=>$cartons,
@@ -231,6 +258,9 @@ class PublicRequestQuotationService
             'gross_weight'=>$weight,
             'total_gross_weight'=>$weight > 0 ? $cartons * $weight : 0,
             'comment'=>$this->clean($line['comment'] ?? '', 1000),
+            'packing_verified'=>false,
+            'review_status'=>'pending',
+            'mapped_product_id'=>0,
         );
     }
 
@@ -312,7 +342,7 @@ class PublicRequestQuotationService
         $existing = (array) $proposal->lines;
         foreach ($validated as $index=>$item) {
             $line = $item['line'];
-            $description = $this->lineDescription($line, $item['note']);
+            $description = $this->lineDescription($line, $item['public_description']);
             $product = $item['product'];
             $vat = function_exists('get_default_tva') ? get_default_tva($GLOBALS['mysoc'], $proposal->thirdparty, $product->id) : '';
             if ($vat === '' || $vat === null) $vat = !empty($product->tva_tx) ? (string) $product->tva_tx : 0.0;
@@ -346,7 +376,7 @@ class PublicRequestQuotationService
         if ($selectedId > 0 && !$alreadyLinked && $proposal->add_contact($selectedId, 'CUSTOMER', 'external') < 0) throw new RuntimeException('quotation_contact_failed');
     }
 
-    private function lineDescription(array $line, $note)
+    private function lineDescription(array $line, $publicDescription)
     {
         $parts = array();
         if ($line['option'] !== '') $parts[] = 'Option: '.$line['option'];
@@ -358,11 +388,11 @@ class PublicRequestQuotationService
         if ($line['total_cbm'] > 0) $parts[] = 'Total CBM: '.round($line['total_cbm'], 4);
         if ($line['total_gross_weight'] > 0) $parts[] = 'Gross weight: '.round($line['total_gross_weight'], 3).' kg';
         $description = implode(' | ', $parts);
-        if ($note !== '') $description .= "\n".$note;
+        if ($publicDescription !== '') $description .= "\n".$publicDescription;
         return $description;
     }
 
-    private function extractStaffLineNote($description)
+    private function extractPublicLineDescription($description)
     {
         $parts = explode("\n", (string) $description, 2);
         return isset($parts[1]) ? $parts[1] : '';

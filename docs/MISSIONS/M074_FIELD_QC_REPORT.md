@@ -8,7 +8,7 @@
 - **Architect owner:** Agent 007
 - **Implementation owner:** Agent 007
 - **Required reviewers:** Internal Operations, Customer Portal, UI/UX, Security, QA, Architect
-- **Dependencies:** Accepted M069 -> M070 -> M071 -> M072 -> M073 composite lineage, existing `chinaplanetoperations`, Customer Center operational reports, and customer mobile API
+- **Dependencies:** Accepted M068 customer-portal lifecycle plus M069 -> M070 -> M071 -> M072 -> M073 composite lineage, existing `chinaplanetoperations`, Customer Center operational reports, and customer mobile API
 - **Target environment:** Local development only
 - **Production:** Forbidden
 - **Ahmed approval:** Approved in the 2026-09-01 implementation request, including manual QC points
@@ -29,7 +29,8 @@ Turn factory quality inspections into a controlled ChinaPlanetOS workflow. Staff
 
 - The first local M074 implementation commits (`b77538b`, `16eef9e`) were created directly from cached `origin/main` (`057af0f`). They remain preserved as implementation/audit evidence, but they are not a releasable branch because deploying them alone would omit the accepted M069-M073 composite work.
 - The release-eligible local source is reconstructed on `codex/m074-qc-field-report-composite` by merging the complete M073 head `1bc01214b13ace38d2cec98c7abd1d3b22355328` into the preserved M074 implementation and resolving only the overlapping Customer Center, mobile-contract and module-permission surfaces.
-- M071 already owns right IDs `500525` and `500526`. M074 therefore owns the next collision-free default-disabled range, `500527` through `500530`.
+- Staging verification found that accepted M068 owns `500527` as `publicrequest_invite`; the earlier M069-M073 ancestry did not contain that accepted branch even though its runtime/schema was already active on staging.
+- R07 merges the accepted M068 head `7afb9415de5108b708b2bc3cb071a09b0b645512`, preserves `500527` for portal invitations, and assigns M074 the collision-free default-disabled range `500528` through `500531`.
 - The frozen M072-R01 and M073-R01 artifacts predate M074. They are historical evidence only and must not be used to deploy M074. A new checksum-pinned release artifact and independent release review are required before any staging action.
 
 ## Scope

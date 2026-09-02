@@ -7,7 +7,7 @@ require_once $root.'/custom/chinaplanetcustomercenter/lib/operation_reports.lib.
 
 $module=file_get_contents($root.'/custom/chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php');
 foreach(array('qc_plan','qc_execute','qc_review','qc_publish')as$right)m074(strpos($module,"'right'=>'".$right."'")!==false||strpos($module,"'perms'=>'".$right."'")!==false||strpos($module,"'label'=>'".$right."'")!==false||strpos($module,$right)!==false,'module declares '.$right.' permission');
-$rightIds=array(500525=>'publicrequest_qualify',500526=>'publicrequest_publish',500527=>'qc_plan',500528=>'qc_execute',500529=>'qc_review',500530=>'qc_publish');foreach($rightIds as$id=>$code)m074(substr_count($module,'array('.$id.',')===1&&strpos($module,"array(".$id.", '")!==false&&strpos($module,"'".$code."'")!==false,'permission '.$id.' remains uniquely assigned to '.$code);
+$rightIds=array(500525=>'publicrequest_qualify',500526=>'publicrequest_publish',500527=>'publicrequest_invite',500528=>'qc_plan',500529=>'qc_execute',500530=>'qc_review',500531=>'qc_publish');foreach($rightIds as$id=>$code){$pattern='/array\\('.$id.",\\s*'[^']*',\\s*'".preg_quote($code,'/')."'\\)/";m074(substr_count($module,'array('.$id.',')===1&&preg_match($pattern,$module)===1,'permission '.$id.' remains uniquely assigned to '.$code);}
 $service=file_get_contents($root.'/custom/chinaplanetoperations/class/QcService.class.php');
 m074(strpos($service,'Manual QC checkpoint added')!==false&&strpos($service,"array('draft')")!==false,'manual checkpoints are first-class draft plan records');
 m074(strpos($service,'qc_source_snapshot')!==false&&strpos($service,'qc_plan_state')!==false,'QC source snapshot and lifecycle are separate immutable sections');
@@ -55,7 +55,7 @@ m074(strpos($migration,'rightDefinitionCollision')!==false&&strpos($migration,"O
 m074(strpos($module,'$qcMigration->migrate()')!==false,'module initialization upgrades already-enabled installations with M074 schema');
 $schemaRunner=file_get_contents($root.'/deploy/migrations/m074_qc_schema.php');
 m074(strpos($schemaRunner,"M074_DEPLOY_CONTEXT")!==false&&strpos($schemaRunner,'m074-r06-backup-erp-root-only')!==false&&strpos($schemaRunner,'insert_permissions(1, null, 1)')!==false,'restricted staging schema runner requires root deployment context and registers only the filtered QC rights');
-m074(strpos($schemaRunner,"return (int) \$right[0] >= 500527 && (int) \$right[0] <= 500530")!==false&&strpos($schemaRunner,'RIGHTS_DEFAULT=DISABLED')!==false,'staging schema runner installs exactly four QC definitions disabled by default');
+m074(strpos($schemaRunner,"return (int) \$right[0] >= 500528 && (int) \$right[0] <= 500531")!==false&&strpos($schemaRunner,'RIGHTS_DEFAULT=DISABLED')!==false,'staging schema runner installs exactly four QC definitions disabled by default');
 m074(strpos($schemaRunner,"array('identity', 'check', 'apply')")!==false&&strpos($schemaRunner,'M074_SCHEMA_DATABASE_IDENTITY=')!==false&&strpos($schemaRunner,'@@hostname')!==false,'staging schema runner exposes a non-secret database identity for backup binding');
 
 $pwa=file_get_contents($root.'/custom/chinaplanetoperations/qc/qc-field.js');

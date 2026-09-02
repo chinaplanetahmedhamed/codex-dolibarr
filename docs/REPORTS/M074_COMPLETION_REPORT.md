@@ -45,10 +45,11 @@ Four collision-checked rights are additive and default-disabled:
 
 | ID | Code | Purpose |
 |---:|---|---|
-| 500527 | `qc_plan` | Prepare and freeze QC plans |
-| 500528 | `qc_execute` | Execute the assigned field inspection |
-| 500529 | `qc_review` | Review results and evidence |
-| 500530 | `qc_publish` | Publish immutable customer reports |
+| 500527 | `publicrequest_invite` | Preserved accepted M068 Customer Center invitation right |
+| 500528 | `qc_plan` | Prepare and freeze QC plans |
+| 500529 | `qc_execute` | Execute the assigned field inspection |
+| 500530 | `qc_review` | Review results and evidence |
+| 500531 | `qc_publish` | Publish immutable customer reports |
 
 Optional configuration is fail-closed:
 

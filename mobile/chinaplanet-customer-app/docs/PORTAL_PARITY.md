@@ -33,6 +33,19 @@
 - Design/language impact: no new design was introduced. Existing Arabic/English RTL/LTR and phone-source contracts are preserved; real-device and full AR/EN presentation acceptance remain for M073.
 - Status: `LOCAL_SOURCE_ONLY`, `ADMIN_SOURCE_PASS`, `PORTAL_SOURCE_PASS`, `MOBILE_SOURCE_PASS`, `RUNTIME_NOT_TESTED`, `STAGING_NOT_ACCESSED`, `PRODUCTION_NOT_ACCESSED`.
 
+## 2026-08-30 — M068 website lead, quotation, and Customer Center lifecycle
+
+- Source change: freezes `cpo.catalog-order.v2`, keeps every submitted product in immutable website evidence, adds staff-reviewed identity qualification and packing completion, one standard draft proposal, hashed one-time portal activation, and explicitly published request/reply/proposal/file visibility.
+- Admin ERP: `LOCAL_RUNTIME_VERIFIED_SYNTHETIC`; exact/ambiguous normalized matches stop for staff choice, Lead/contact creation is reviewed, working lines do not overwrite intake evidence, and native proposal acceptance creates only a draft sales order in the synthetic test.
+- Customer Portal: `LOCAL_RUNTIME_VERIFIED_SYNTHETIC`; tenant denial, customer-visible request/reply/proposal/file projection, one-time activation, email authentication, rate limits, and zero-leftover cleanup passed against the local development database.
+- Mobile App: `PENDING_OUT_OF_SCOPE`; no `/api/mobile/v1` contract or native screen was added. A later Mobile Mission must add a tenant-scoped allowlist projection and native quotation-request journey without copying admin/private fields.
+- API/data dependency: public flow remains `React -> secure Node -> Dolibarr`; WordPress/B2BKing remains the public catalog/price-visibility authority. Customer Center is the only authenticated operational surface in M068.
+- Design/terminology impact: portal label is `Quotation Requests / طلبات عروض الأسعار`; Arabic RTL and English LTR are in scope, French Customer Center is out of scope, and public React retains French ownership.
+- Phone verification: deterministic responsive source rules are present; authenticated 390px browser rendering remains a later staging acceptance item and is not claimed by the CLI runtime matrix.
+- Status: `ADMIN_LOCAL_RUNTIME_VERIFIED`, `PORTAL_LOCAL_RUNTIME_VERIFIED`, `MOBILE_PENDING`, `NO_STAGING_OR_PRODUCTION`.
+- R04 preservation note (2026-08-31): the composite M061/M068 merge retains the deployed customer-section email right, customer-visible payment-note field, portal date formatter, and shipment project metadata while adding M068 quotation behavior. No `/api/mobile/v1` contract or native screen changed; mobile remains `PENDING_OUT_OF_SCOPE` and authenticated staging phone acceptance remains pending.
+- Follow-up: obtain a separate staging approval before deployment or authenticated browser/email-delivery acceptance; create a separate approved Mobile Mission before changing native screens or API.
+
 ## 2026-08-28 — M062 Alexandria public-search grouping
 
 - Source change: the public China Planet website shows one `ALEXANDRIA` POD option, while its public-safe Dolibarr gateway returns separate generic, Old Port and TMT price cards and exact terminal-bound booking tokens.

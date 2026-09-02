@@ -15,10 +15,10 @@ class QcMigration
     public static function rightCodes()
     {
         return array(
-            500527 => 'qc_plan',
-            500528 => 'qc_execute',
-            500529 => 'qc_review',
-            500530 => 'qc_publish',
+            500528 => 'qc_plan',
+            500529 => 'qc_execute',
+            500530 => 'qc_review',
+            500531 => 'qc_publish',
         );
     }
 

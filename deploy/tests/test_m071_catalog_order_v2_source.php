@@ -62,7 +62,7 @@ try {
     $assert(strpos($portal, 'supplier_cost') === false && strpos($portal, 'base_margin') === false && strpos($portal, 'note_private') === false, 'Customer Center leaks private commercial fields');
     $assert(strpos($portal, 'p.fk_statut IN (1,2,4)') !== false && strpos($portal, 'propaldet') !== false && strpos($portal, 'multicurrency_subprice') !== false, 'approved customer-safe quotation detail projection absent');
     $assert(strpos($portal, 'pd.description') === false && strpos($portal, 'pd.label') !== false && strpos($portal, 'product p ON p.rowid=pd.fk_product') !== false, 'staff line description can leak into Customer Center');
-    $assert(strpos($quotation, 'extractStaffLineNote') !== false && strpos($portal, 'extractStaffLineNote') === false, 'staff-only line-note sentinel boundary is not explicit');
+    $assert(strpos($quotation, 'extractPublicLineDescription') !== false && strpos($quotation, "'public_description'=>") !== false && strpos($portal, 'staff_note') === false && strpos($portal, 'note_private') === false, 'staff and customer-visible line notes are not separated');
     $assert(strpos($navigation, "array('ar', 'en', 'fr')") !== false && strpos($navigation, "\$direction = \$locale === 'ar' ? 'rtl' : 'ltr'") !== false, 'Customer Center language/direction contract absent');
 
     echo "M071_SOURCE=PASS contract=cpo.catalog-order.v2 identity=STAFF_REVIEW portal=ENTITY_SCOPED\n";

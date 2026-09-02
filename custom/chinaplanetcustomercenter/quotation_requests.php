@@ -1,71 +1,84 @@
 <?php
-
-require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
+require '../main.inc.php';
 require_once __DIR__.'/lib/portal.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/PublicRequestPublicationService.class.php';
+require_once DOL_DOCUMENT_ROOT.'/comm/propal/class/propal.class.php';
 
 cpcc_portal_require_access($user);
 $scope = cpcc_portal_user_scope($user);
-if (empty($scope['is_external']) || (int)$scope['socid'] <= 0) accessforbidden();
-$entity = (int)$conf->entity;
-$socid = (int)$scope['socid'];
-$requestRef = trim((string) GETPOST('ref', 'alphanohtml'));
-$locale = strtolower(substr((string)$langs->getDefaultLang(), 0, 2));
-$copy = array(
-    'ar'=>array('title'=>'طلبات عروض السعر','empty'=>'لا توجد طلبات منشورة في مركز العميل.','product'=>'المنتج','cartons'=>'كراتين','pieces'=>'قطع','cbm'=>'الحجم م³','weight'=>'الوزن كجم','price'=>'السعر','pending'=>'بانتظار مراجعة بيانات التعبئة أو السعر','quotation'=>'عرض السعر المعتمد','received'=>'تم الاستلام','qty'=>'الكمية','unit_price'=>'سعر الوحدة','line_total'=>'الإجمالي','quotation_total'=>'إجمالي العرض'),
-    'en'=>array('title'=>'Quotation requests','empty'=>'No quotation requests have been published to Customer Center.','product'=>'Product','cartons'=>'Cartons','pieces'=>'Pieces','cbm'=>'CBM','weight'=>'Weight kg','price'=>'Price','pending'=>'Packing or price review pending','quotation'=>'Approved quotation','received'=>'Received','qty'=>'Quantity','unit_price'=>'Unit price','line_total'=>'Total','quotation_total'=>'Quotation total'),
-    'fr'=>array('title'=>'Demandes de devis','empty'=>'Aucune demande de devis n’est publiée dans le Centre Client.','product'=>'Produit','cartons'=>'Cartons','pieces'=>'Pièces','cbm'=>'Volume m³','weight'=>'Poids kg','price'=>'Prix','pending'=>'Vérification emballage ou prix en attente','quotation'=>'Devis approuvé','received'=>'Reçue','qty'=>'Quantité','unit_price'=>'Prix unitaire','line_total'=>'Total','quotation_total'=>'Total du devis'),
-);
-$text = $copy[isset($copy[$locale]) ? $locale : 'en'];
-
-$sql = "SELECT r.ref,r.status,r.request_json,r.fk_propal,r.proposal_customer_visible,r.date_creation,p.rowid AS propal_id,p.ref AS propal_ref,p.fk_statut AS propal_status,p.total_ttc,p.multicurrency_code,p.multicurrency_total_ttc";
+if (empty($scope['is_external']) || (int) $scope['socid'] <= 0) accessforbidden();
+$socid = (int) $scope['socid'];
+$publicRef = trim((string) GETPOST('ref', 'alphanohtml'));
+$sql = "SELECT r.rowid,r.ref,r.status,r.request_json,r.fk_propal,r.proposal_customer_visible,r.date_creation,p.rowid AS propal_id";
 $sql .= " FROM ".MAIN_DB_PREFIX."cpo_public_request r";
 $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."propal p ON p.rowid=r.fk_propal AND p.entity=r.entity AND p.fk_soc=r.fk_soc AND p.fk_statut IN (1,2,4)";
-$sql .= " WHERE r.entity=".$entity." AND r.fk_soc=".$socid." AND r.request_type='catalog_order' AND r.schema_version=2 AND r.request_customer_visible=1";
-if ($requestRef !== '') $sql .= " AND r.ref='".$db->escape($requestRef)."'";
+$sql .= " WHERE r.entity=".(int)$conf->entity." AND r.fk_soc=".$socid." AND r.request_type='catalog_order' AND r.schema_version=2 AND r.request_customer_visible=1";
+if ($publicRef !== '') $sql .= " AND r.ref='".$db->escape($publicRef)."'";
 $sql .= " ORDER BY r.date_creation DESC,r.rowid DESC LIMIT 100";
 $res = $db->query($sql);
-$requests = array();
-if ($res) while ($obj = $db->fetch_object($res)) $requests[] = (array)$obj;
+$rows = array();
+if ($res) while ($obj = $db->fetch_object($res)) $rows[] = (array) $obj;
+if ($publicRef !== '' && empty($rows)) cpcc_portal_access_denied($user, 'quotation_requests');
 
-$morecss = array(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/orders.css'));
-llxHeader('', $text['title'], '', '', 0, 0, array(), $morecss);
+$langs->load('chinaplanetcustomercenter@chinaplanetcustomercenter');
+$activeLanguage = strtolower((string) ($langs->defaultlang ?? 'en_US'));
+$pageDirection = strpos($activeLanguage, 'ar') === 0 ? 'rtl' : 'ltr';
+$statusLabels = array('new'=>'QuotationStatusNew','qualified'=>'QuotationStatusQualified','waiting_information'=>'QuotationStatusWaitingInformation','converted'=>'QuotationStatusConverted','disqualified'=>'QuotationStatusDisqualified','closed'=>'QuotationStatusClosed');
+$missingFieldLabels = array('unitsPerCarton'=>'MissingUnitsPerCarton','cbmPerCarton'=>'MissingCbmPerCarton','grossWeightKg'=>'MissingGrossWeightKg','packingSource'=>'MissingPackingSource','packingComplete'=>'MissingPackingComplete');
+$morecss = array(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/quotation_requests.css'));
+llxHeader('', $langs->trans('QuotationRequests'), '', '', 0, 0, array(), $morecss);
 cpcc_portal_navigation($user, 'quotation_requests');
-print '<main class="cpcc-orders" dir="'.($locale === 'ar' ? 'rtl' : 'ltr').'"><h1>'.dol_escape_htmltag($text['title']).'</h1>';
-if (!$requests) print '<div class="info">'.dol_escape_htmltag($text['empty']).'</div>';
-foreach ($requests as $request) {
-    $payload = json_decode((string)$request['request_json'], true);
-    $lines = is_array($payload['details']['lines'] ?? null) ? $payload['details']['lines'] : array();
-    print '<section class="fichecenter"><h2>'.dol_escape_htmltag($request['ref']).'</h2><p>'.dol_escape_htmltag($text['received']).' · '.dol_escape_htmltag(cpcc_portal_date($request['date_creation'], true)).'</p>';
-    print '<div class="div-table-responsive"><table class="liste centpercent"><thead><tr><th>'.dol_escape_htmltag($text['product']).'</th><th>'.dol_escape_htmltag($text['cartons']).'</th><th>'.dol_escape_htmltag($text['pieces']).'</th><th>'.dol_escape_htmltag($text['cbm']).'</th><th>'.dol_escape_htmltag($text['weight']).'</th><th>'.dol_escape_htmltag($text['price']).'</th></tr></thead><tbody>';
-    foreach ($lines as $line) {
+print '<main class="cpcc-quotes" dir="'.$pageDirection.'"><header><h1>'.$langs->trans('QuotationRequests').'</h1><p>'.$langs->trans('QuotationRequestsIntro').'</p></header>';
+if ($publicRef === '') {
+    print '<div class="cpcc-quote-grid">';
+    foreach ($rows as $row) { $statusKey=$statusLabels[$row['status']] ?? 'QuotationStatusReceived'; print '<a class="cpcc-quote-card" href="?ref='.rawurlencode($row['ref']).'"><strong>'.dol_escape_htmltag($row['ref']).'</strong><span>'.dol_escape_htmltag($langs->trans($statusKey)).'</span><time>'.dol_escape_htmltag($row['date_creation']).'</time></a>'; }
+    if (empty($rows)) print '<p>'.$langs->trans('QuotationRequestsEmpty').'</p>';
+    print '</div>';
+} else {
+    $row = $rows[0];
+    $payload = json_decode($row['request_json'], true);
+    $details = is_array($payload) && isset($payload['details']) && is_array($payload['details']) ? $payload['details'] : array();
+    $backArrow = $pageDirection === 'rtl' ? '&rarr;' : '&larr;';
+    print '<a class="cpcc-back-link" href="quotation_requests.php"><span aria-hidden="true">'.$backArrow.'</span> '.$langs->trans('BackToList').'</a><article class="cpcc-quote-detail"><h2>'.dol_escape_htmltag($row['ref']).'</h2><p>'.$langs->trans('QuotationSubmittedSnapshot').'</p><div class="cpcc-quote-lines">';
+    foreach (($details['lines'] ?? array()) as $line) {
         if (!is_array($line)) continue;
-        $pieces = isset($line['unitsPerCarton']) && $line['unitsPerCarton'] !== null ? (int)$line['unitsPerCarton'] * (int)$line['cartons'] : null;
-        $cbm = !empty($line['calculationReady']) ? (float)$line['cbmPerCarton'] * (int)$line['cartons'] : null;
-        $weight = !empty($line['calculationReady']) ? (float)$line['grossWeightKg'] * (int)$line['cartons'] : null;
-        $price = is_array($line['price'] ?? null) ? $line['price'] : array();
-        $total = ($price['visibility'] ?? '') === 'public' && isset($price['unitPrice']) && $price['unitPrice'] !== null && $pieces !== null ? (float)$price['unitPrice'] * $pieces : null;
-        print '<tr><td><strong>'.dol_escape_htmltag($line['name'] ?? '').'</strong><br><small>'.dol_escape_htmltag($line['optionLabel'] ?? '').'</small>'.(empty($line['calculationReady']) ? '<br><span class="warning">'.dol_escape_htmltag($text['pending']).'</span>' : '').'</td><td>'.(int)($line['cartons'] ?? 0).'</td><td>'.($pieces === null ? '—' : (int)$pieces).'</td><td>'.($cbm === null ? '—' : price($cbm)).'</td><td>'.($weight === null ? '—' : price($weight)).'</td><td>'.($total === null ? dol_escape_htmltag($text['pending']) : price($total).' '.dol_escape_htmltag($price['currency'] ?? '')).'</td></tr>';
-    }
-    print '</tbody></table></div>';
-    if (!empty($request['proposal_customer_visible']) && !empty($request['propal_id']) && !empty($request['propal_ref'])) {
-        $currency = trim((string)$request['multicurrency_code']) !== '' ? (string)$request['multicurrency_code'] : (string)$conf->currency;
-        $proposalTotal = trim((string)$request['multicurrency_code']) !== '' ? (float)$request['multicurrency_total_ttc'] : (float)$request['total_ttc'];
-        print '<h3>'.dol_escape_htmltag($text['quotation']).': '.dol_escape_htmltag($request['propal_ref']).'</h3>';
-        // Staff line notes are stored in propaldet.description and must never be
-        // projected to Customer Center. Use only the product or explicit line label.
-        $lineSql = "SELECT COALESCE(NULLIF(TRIM(p.label),''),NULLIF(TRIM(pd.label),'')) AS public_label,pd.qty,pd.subprice,pd.total_ht,pd.multicurrency_subprice,pd.multicurrency_total_ht FROM ".MAIN_DB_PREFIX."propaldet pd LEFT JOIN ".MAIN_DB_PREFIX."product p ON p.rowid=pd.fk_product WHERE pd.fk_propal=".(int)$request['propal_id']." ORDER BY pd.rang,pd.rowid";
-        $lineRes = $db->query($lineSql);
-        print '<div class="div-table-responsive"><table class="liste centpercent"><thead><tr><th>'.dol_escape_htmltag($text['product']).'</th><th>'.dol_escape_htmltag($text['qty']).'</th><th>'.dol_escape_htmltag($text['unit_price']).'</th><th>'.dol_escape_htmltag($text['line_total']).'</th></tr></thead><tbody>';
-        if ($lineRes) while ($proposalLine = $db->fetch_object($lineRes)) {
-            $multi = trim((string)$request['multicurrency_code']) !== '';
-            $unitPrice = $multi ? (float)$proposalLine->multicurrency_subprice : (float)$proposalLine->subprice;
-            $lineTotal = $multi ? (float)$proposalLine->multicurrency_total_ht : (float)$proposalLine->total_ht;
-            print '<tr><td>'.dol_escape_htmltag($proposalLine->public_label ?: $text['product']).'</td><td>'.dol_escape_htmltag((string)$proposalLine->qty).'</td><td>'.price($unitPrice).' '.dol_escape_htmltag($currency).'</td><td>'.price($lineTotal).' '.dol_escape_htmltag($currency).'</td></tr>';
+        print '<section><h3>'.dol_escape_htmltag($line['name'] ?? $line['sku'] ?? $line['lineId'] ?? 'Product').'</h3><dl>';
+        print '<dt>'.$langs->trans('Cartons').'</dt><dd>'.(int) ($line['cartons'] ?? 0).'</dd>';
+        print '<dt>'.$langs->trans('CalculationReady').'</dt><dd>'.(!empty($line['calculationReady']) ? $langs->trans('Yes') : $langs->trans('No')).'</dd>';
+        if (!empty($line['missingFields']) && is_array($line['missingFields'])) {
+            $safeMissingLabels = array();
+            foreach ($line['missingFields'] as $missingField) $safeMissingLabels[] = $langs->trans($missingFieldLabels[$missingField] ?? 'MissingFieldOther');
+            print '<dt>'.$langs->trans('MissingFields').'</dt><dd>'.dol_escape_htmltag(implode(', ', $safeMissingLabels)).'</dd>';
         }
-        print '</tbody></table></div><p><strong>'.dol_escape_htmltag($text['quotation_total']).': '.price($proposalTotal).' '.dol_escape_htmltag($currency).'</strong></p>';
+        $priceSnapshot = isset($line['price']) && is_array($line['price']) ? $line['price'] : array();
+        $visiblePrice = '';
+        if (($priceSnapshot['visibility'] ?? '') === 'public' && ($priceSnapshot['mode'] ?? '') === 'fixed' && isset($priceSnapshot['unitPrice'])) $visiblePrice = price($priceSnapshot['unitPrice']).' '.($priceSnapshot['currency'] ?? '').' / '.$langs->trans('PublicPiece');
+        elseif (($priceSnapshot['visibility'] ?? '') === 'public' && ($priceSnapshot['mode'] ?? '') === 'range' && isset($priceSnapshot['minUnitPrice'], $priceSnapshot['maxUnitPrice'])) $visiblePrice = price($priceSnapshot['minUnitPrice']).' - '.price($priceSnapshot['maxUnitPrice']).' '.($priceSnapshot['currency'] ?? '').' / '.$langs->trans('PublicPiece');
+        if ($visiblePrice !== '') print '<dt>'.$langs->trans('VisiblePriceSnapshot').'</dt><dd>'.dol_escape_htmltag($visiblePrice).'</dd>';
+        print '</dl></section>';
     }
-    print '</section>';
+    print '</div>';
+    $publications = new PublicRequestPublicationService($db);
+    foreach ($publications->customerItems((int) $row['rowid'], $socid) as $item) {
+        if ($item['item_type'] === 'reply') print '<div class="cpcc-public-reply">'.nl2br(dol_escape_htmltag($item['body_public'])).'</div>';
+        else print '<a class="button" href="quotation_download.php?token='.rawurlencode($item['public_token']).'">'.dol_escape_htmltag($item['original_name']).'</a>';
+    }
+    if (!empty($row['proposal_customer_visible']) && !empty($row['propal_id'])) {
+        $proposal = new Propal($db);
+        if ($proposal->fetch((int)$row['propal_id']) > 0 && (int)$proposal->socid === $socid && (int)$proposal->entity === (int)$conf->entity && in_array((int)$proposal->status, array(1,2,4), true)) {
+            $proposalMoney = cpcc_portal_proposal_money($proposal, $proposal->total_ht, $proposal->multicurrency_total_ht);
+            $proposalCurrency = $proposalMoney['currency'];
+            $proposalStatusLabels = array(Propal::STATUS_DRAFT=>'ProposalStatusDraft',Propal::STATUS_VALIDATED=>'ProposalStatusValidated',Propal::STATUS_SIGNED=>'ProposalStatusAccepted',Propal::STATUS_NOTSIGNED=>'ProposalStatusRefused',Propal::STATUS_BILLED=>'ProposalStatusBilled');
+            $proposalStatus = $langs->trans($proposalStatusLabels[(int)$proposal->status] ?? 'ProposalStatusAvailable');
+            print '<section class="cpcc-proposal"><h3>'.$langs->trans('CommercialProposal').' '.dol_escape_htmltag($proposal->ref).'</h3><p><strong>'.dol_escape_htmltag($proposalStatus).'</strong></p><p>'.dol_escape_htmltag($proposal->note_public).'</p><table><thead><tr><th>'.$langs->trans('Description').'</th><th>'.$langs->trans('Qty').'</th><th>'.$langs->trans('Amount').'</th></tr></thead><tbody>';
+            $lineSql = "SELECT COALESCE(NULLIF(TRIM(p.label),''),NULLIF(TRIM(pd.label),'')) AS public_label,pd.qty,pd.subprice,pd.total_ht,pd.multicurrency_subprice,pd.multicurrency_total_ht FROM ".MAIN_DB_PREFIX."propaldet pd LEFT JOIN ".MAIN_DB_PREFIX."product p ON p.rowid=pd.fk_product WHERE pd.fk_propal=".(int)$proposal->id." ORDER BY pd.rang,pd.rowid";
+            $lineRes = $db->query($lineSql);
+            if ($lineRes) while ($proposalLine = $db->fetch_object($lineRes)) { $lineMoney=cpcc_portal_proposal_money($proposal,$proposalLine->total_ht,$proposalLine->multicurrency_total_ht); print '<tr><td>'.dol_escape_htmltag($proposalLine->public_label ?: $langs->trans('Product')).'</td><td>'.price($proposalLine->qty).'</td><td>'.price($lineMoney['amount']).' '.dol_escape_htmltag($lineMoney['currency']).'</td></tr>'; }
+            $vatMoney=cpcc_portal_proposal_money($proposal,$proposal->total_tva,$proposal->multicurrency_total_tva);$totalMoney=cpcc_portal_proposal_money($proposal,$proposal->total_ttc,$proposal->multicurrency_total_ttc);
+            print '</tbody></table><dl class="cpcc-proposal-totals"><dt>'.$langs->trans('ProposalSubtotal').'</dt><dd>'.price($proposalMoney['amount']).' '.dol_escape_htmltag($proposalCurrency).'</dd><dt>'.$langs->trans('ProposalVAT').'</dt><dd>'.price($vatMoney['amount']).' '.dol_escape_htmltag($vatMoney['currency']).'</dd><dt>'.$langs->trans('ProposalTotal').'</dt><dd>'.price($totalMoney['amount']).' '.dol_escape_htmltag($totalMoney['currency']).'</dd></dl></section>';
+        }
+    }
+    print '</article>';
 }
 print '</main>';
 llxFooter();
-$db->close();

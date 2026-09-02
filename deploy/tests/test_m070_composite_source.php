@@ -95,8 +95,8 @@ foreach (array(
     'deploy/tests/test_m068_portal_invitation_security_source.php',
     'docs/MISSIONS/M068_WEBSITE_LEAD_QUOTATION_CUSTOMER_CENTER_LIFECYCLE.md',
     'docs/REPORTS/M068_LOCAL_COMPLETION_REPORT.md',
-) as $m068Only) {
-    m070Assert(!file_exists($root.'/'.$m068Only), 'Rejected M068-R04-only source exists: '.$m068Only);
+) as $m068Integrated) {
+    m070Assert(is_file($root.'/'.$m068Integrated), 'Accepted M068 lifecycle source is absent: '.$m068Integrated);
 }
 
 foreach (array(
@@ -120,4 +120,4 @@ foreach (array(
     m070Assert(is_file($root.'/'.$manifest), 'M070 source manifest is absent: '.$manifest);
 }
 
-print "M070_COMPOSITE_SOURCE=PASS M061_RUNTIME=39 M061_EXACT=29 M070_SECURITY_CORRECTED=1 M071_SUCCESSORS=2 M074_SUCCESSORS=7 RESIDUE=ABSENT M068_FAILED_ONLY=ABSENT M062_ALEXANDRIA=PRESERVED PROJECT_SYNC=CPKANBAN\n";
+print "M070_COMPOSITE_SOURCE=PASS M061_RUNTIME=39 M061_EXACT=29 M070_SECURITY_CORRECTED=1 M071_SUCCESSORS=2 M074_SUCCESSORS=7 RESIDUE=ABSENT M068_ACCEPTED_LIFECYCLE=PRESERVED M062_ALEXANDRIA=PRESERVED PROJECT_SYNC=CPKANBAN\n";

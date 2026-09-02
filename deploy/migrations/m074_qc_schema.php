@@ -107,7 +107,7 @@ try {
     $GLOBALS['user'] = m074LoadAdministrator($db, $entity);
     $module = new modChinaPlanetOperations($db);
     $module->rights = array_values(array_filter($module->rights, function ($right) {
-        return (int) $right[0] >= 500527 && (int) $right[0] <= 500530;
+        return (int) $right[0] >= 500528 && (int) $right[0] <= 500531;
     }));
     if (count($module->rights) !== 4 || $module->insert_permissions(1, null, 1) !== 0) m074SchemaFail('RIGHT_INSTALL_FAILED');
 } catch (Throwable $exception) {

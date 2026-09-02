@@ -16,9 +16,9 @@ class PublicRequestLifecycleService
         $this->entity = $entity === null ? (int)$GLOBALS['conf']->entity : (int)$entity;
     }
 
-    public function matchCandidates($requestId)
+    public function matchCandidates($requestOrId)
     {
-        $request = $this->request($requestId, false);
+        $request = is_array($requestOrId) ? $requestOrId : $this->request((int)$requestOrId, false);
         if (!$request) throw new PublicWebsiteRequestException('request_not_found', 404);
         $email = strtolower(trim((string)$request['email']));
         $phone = $this->phone($request['phone']);
@@ -52,6 +52,63 @@ class PublicRequestLifecycleService
         }
         $total = count($allCandidates);
         return array('status'=>$total === 0 ? 'none' : ($total === 1 ? 'exact_single' : 'ambiguous'), 'candidates'=>array_slice($allCandidates, 0, 25), 'candidate_count'=>$total, 'truncated'=>$total > 25);
+    }
+
+    /** Seed the mutable review layer without altering the frozen request JSON. */
+    public function ensureWorkingLines($requestId, $userId)
+    {
+        $request = $this->request($requestId, false);
+        if (!$request || (int)($request['schema_version'] ?? 1) !== 2 || $request['request_type'] !== 'catalog_order') return array();
+        $payload = json_decode((string)$request['request_json'], true);
+        $lines = isset($payload['details']['lines']) && is_array($payload['details']['lines']) ? $payload['details']['lines'] : array();
+        foreach ($lines as $position=>$line) {
+            $missing = isset($line['missingFields']) && is_array($line['missingFields']) ? implode(',', $line['missingFields']) : '';
+            $price = isset($line['price']) && is_array($line['price']) ? json_encode($line['price'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '{}';
+            $sql = "INSERT IGNORE INTO ".MAIN_DB_PREFIX."cpo_public_request_line(entity,fk_request,line_key,position,source_product_id,source_variation_id,requested_cartons,submitted_units_per_carton,submitted_cbm_per_carton,submitted_gross_weight_kg,submitted_calculation_ready,submitted_missing_fields,price_snapshot_json,fk_user_creat,date_creation) VALUES(".$this->entity.",".(int)$requestId.",'".$this->db->escape((string)($line['lineId'] ?? ('line-'.$position)))."',".(int)$position.",".(int)($line['productId'] ?? 0).",".$this->nullInt($line['variationId'] ?? null).",".(int)($line['cartons'] ?? 0).",".$this->nullInt($line['unitsPerCarton'] ?? null).",".$this->nullFloat($line['cbmPerCarton'] ?? null).",".$this->nullFloat($line['grossWeightKg'] ?? null).",".(!empty($line['calculationReady']) ? 1 : 0).",'".$this->db->escape($missing)."','".$this->db->escape((string)$price)."',".(int)$userId.",'".$this->db->idate(dol_now())."')";
+            if (!$this->db->query($sql)) throw new RuntimeException('public_request_line_seed_failed');
+        }
+        return $this->workingLines($requestId);
+    }
+
+    public function workingLines($requestId)
+    {
+        $rows = array();
+        $res = $this->db->query("SELECT * FROM ".MAIN_DB_PREFIX."cpo_public_request_line WHERE entity=".$this->entity." AND fk_request=".(int)$requestId." ORDER BY position,rowid");
+        if (!$res) throw new RuntimeException('public_request_lines_unavailable');
+        while ($obj = $this->db->fetch_object($res)) $rows[] = (array)$obj;
+        return $rows;
+    }
+
+    /** Review packing/product mapping under the same entity/request lock as qualification. */
+    public function reviewLine($requestId, $lineId, array $input, $user)
+    {
+        return $this->withLock($requestId, function () use ($requestId, $lineId, $input, $user) {
+            $this->beginTransaction();
+            try {
+                $request = $this->request($requestId, true);
+                if (!$request || (int)($request['schema_version'] ?? 1) !== 2 || $request['request_type'] !== 'catalog_order') throw new PublicWebsiteRequestException('request_not_found', 404);
+                $this->ensureWorkingLines($requestId, (int)$user->id);
+                $verified = !empty($input['packing_verified']);
+                $units = $this->positiveIntOrNull($input['units_per_carton'] ?? null);
+                $cbm = $this->positiveFloatOrNull($input['cbm_per_carton'] ?? null);
+                $weight = $this->positiveFloatOrNull($input['gross_weight_kg'] ?? null);
+                $source = strtolower($this->clean($input['verification_source'] ?? '', 32));
+                $approvedSources = array('woocommerce_product','woocommerce_variation','dolibarr_product','supplier_document','staff_measurement','other_approved');
+                if ($verified && ($units === null || $cbm === null || $weight === null || !in_array($source, $approvedSources, true))) throw new PublicWebsiteRequestException('packing_verification_incomplete', 422);
+                $product = (int)($input['fk_product'] ?? 0);
+                if ($product > 0 && !$this->saleProduct($product)) throw new PublicWebsiteRequestException('quotation_product_mapping_required', 422);
+                $status = $verified && $product > 0 ? 'ready' : 'pending';
+                $sql = "UPDATE ".MAIN_DB_PREFIX."cpo_public_request_line SET fk_product=".($product > 0 ? $product : 'NULL').",verified_units_per_carton=".$this->nullInt($units).",verified_cbm_per_carton=".$this->nullFloat($cbm).",verified_gross_weight_kg=".$this->nullFloat($weight).",verified_packing_source=".$this->qOrNull($verified ? $source : null).",packing_verified=".($verified ? 1 : 0).",review_status='".$status."',staff_note=".$this->qOrNull($this->clean($input['staff_note'] ?? '', 1000)).",fk_user_modif=".(int)$user->id.",date_modification='".$this->db->idate(dol_now())."' WHERE entity=".$this->entity." AND fk_request=".(int)$requestId." AND rowid=".(int)$lineId;
+                $res = $this->db->query($sql);
+                if (!$res || $this->db->affected_rows($res) !== 1) throw new PublicWebsiteRequestException('public_request_line_not_found', 404);
+                $this->event($requestId, 'line_reviewed', null, null, array('line_id'=>(int)$lineId, 'ready'=>$status === 'ready', 'verification_source'=>$verified ? $source : null), (int)$user->id);
+                $this->commitTransaction();
+                return array('line_id'=>(int)$lineId, 'review_status'=>$status);
+            } catch (Throwable $e) {
+                $this->rollbackTransaction($e);
+                throw $e;
+            }
+        });
     }
 
     public function qualifyExisting($requestId, $socid, $contactId, $user)
@@ -163,11 +220,16 @@ class PublicRequestLifecycleService
     private function request($id, $lock) { $res=$this->db->query("SELECT * FROM ".MAIN_DB_PREFIX."cpo_public_request WHERE entity=".$this->entity." AND rowid=".(int)$id.($lock ? ' FOR UPDATE' : '')); $obj=$res?$this->db->fetch_object($res):null; return $obj?(array)$obj:null; }
     private function activeContact($id, $socid) { $res=$this->db->query("SELECT sp.rowid FROM ".MAIN_DB_PREFIX."socpeople sp INNER JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=sp.fk_soc WHERE s.entity=".$this->entity." AND s.status=1 AND sp.statut=1 AND sp.rowid=".(int)$id." AND sp.fk_soc=".(int)$socid); return $res && $this->db->fetch_object($res); }
     private function approvedProposal($id, $socid) { $res=$this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."propal WHERE entity=".$this->entity." AND rowid=".(int)$id." AND fk_soc=".(int)$socid." AND fk_statut IN (1,2,4)"); return $res && $this->db->fetch_object($res); }
+    private function saleProduct($id) { $res=$this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."product WHERE rowid=".(int)$id." AND entity IN (".getEntity('product').") AND tosell=1"); return $res && $this->db->fetch_object($res); }
     private function normalizedPhoneSql($column) { $sql="COALESCE(".$column.",'')"; foreach (array(' ','+','-','(',')','.','/') as $character) $sql="REPLACE(".$sql.",'".$this->db->escape($character)."','')"; return $sql; }
     private function phone($value) { return preg_replace('/\D+/', '', (string)$value); }
     private function clean($value, $max) { $v=trim(strip_tags((string)$value)); return function_exists('mb_substr') ? mb_substr($v,0,$max) : substr($v,0,$max); }
     private function splitName($value) { $parts=preg_split('/\s+/u',trim((string)$value),2); return count($parts)>1 ? array($parts[0],$parts[1]) : array('',($parts[0] ?? 'Website contact')); }
     private function qOrNull($value) { return $value === null || $value === '' ? 'NULL' : "'".$this->db->escape((string)$value)."'"; }
+    private function positiveIntOrNull($value) { if ($value === '' || $value === null) return null; $value=(int)$value; if ($value < 1 || $value > 1000000) throw new PublicWebsiteRequestException('packing_value_invalid', 422); return $value; }
+    private function positiveFloatOrNull($value) { if ($value === '' || $value === null) return null; if (!is_numeric($value) || (float)$value <= 0 || (float)$value > 1000000) throw new PublicWebsiteRequestException('packing_value_invalid', 422); return (float)$value; }
+    private function nullInt($value) { return $value === null || $value === '' ? 'NULL' : (string)(int)$value; }
+    private function nullFloat($value) { return $value === null || $value === '' ? 'NULL' : (string)(float)$value; }
     private function beginTransaction() { if (!$this->db->begin()) throw new RuntimeException('qualification_transaction_begin_failed'); }
     private function commitTransaction() { if (!$this->db->commit()) throw new RuntimeException('qualification_transaction_commit_failed'); }
     private function rollbackTransaction($previous = null) { if (!$this->db->rollback()) throw new RuntimeException('qualification_transaction_rollback_failed', 0, $previous instanceof Throwable ? $previous : null); }

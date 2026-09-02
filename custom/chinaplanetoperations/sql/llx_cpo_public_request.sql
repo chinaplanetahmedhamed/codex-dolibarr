@@ -24,6 +24,7 @@ CREATE TABLE llx_cpo_public_request (
   status varchar(32) NOT NULL DEFAULT 'new',
   qualification_status varchar(32) NOT NULL DEFAULT 'received',
   match_status varchar(32) NOT NULL DEFAULT 'unreviewed',
+  portal_status varchar(32) NOT NULL DEFAULT 'not_invited',
   request_customer_visible tinyint NOT NULL DEFAULT 0,
   proposal_customer_visible tinyint NOT NULL DEFAULT 0,
   internal_reason varchar(255) NULL,

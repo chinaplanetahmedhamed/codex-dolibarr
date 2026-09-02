@@ -52,10 +52,11 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500524, 'Manage checklists on scoped internal tasks', 'task_checklist'),
             array(500525, 'Safely qualify public website requests', 'publicrequest_qualify'),
             array(500526, 'Publish approved request content to Customer Center', 'publicrequest_publish'),
-            array(500527, 'Plan and freeze quality-control inspections', 'qc_plan'),
-            array(500528, 'Execute assigned quality-control inspections', 'qc_execute'),
-            array(500529, 'Review quality-control results and evidence', 'qc_review'),
-            array(500530, 'Publish immutable quality-control reports', 'qc_publish'),
+            array(500527, 'Invite qualified customers to Customer Center', 'publicrequest_invite'),
+            array(500528, 'Plan and freeze quality-control inspections', 'qc_plan'),
+            array(500529, 'Execute assigned quality-control inspections', 'qc_execute'),
+            array(500530, 'Review quality-control results and evidence', 'qc_review'),
+            array(500531, 'Publish immutable quality-control reports', 'qc_publish'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;
