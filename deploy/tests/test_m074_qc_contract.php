@@ -54,7 +54,7 @@ m074(strpos($migration,'tableContractStatus')!==false&&strpos($migration,"QC sch
 m074(strpos($migration,'rightDefinitionCollision')!==false&&strpos($migration,"OR (module='chinaplanetoperations' AND perms='")!==false&&strpos($migration,'rightsReady()')!==false,'M074 rejects permission IDs and codes that collide in either direction');
 m074(strpos($module,'$qcMigration->migrate()')!==false,'module initialization upgrades already-enabled installations with M074 schema');
 $schemaRunner=file_get_contents($root.'/deploy/migrations/m074_qc_schema.php');
-m074(strpos($schemaRunner,"M074_DEPLOY_CONTEXT")!==false&&strpos($schemaRunner,'m074-r06-backup-erp-root-only')!==false&&strpos($schemaRunner,'insert_permissions(1, null, 1)')!==false,'restricted staging schema runner requires root deployment context and registers only the filtered QC rights');
+m074(strpos($schemaRunner,"M074_DEPLOY_CONTEXT")!==false&&strpos($schemaRunner,'m074-r07-backup-erp-root-only')!==false&&strpos($schemaRunner,'insert_permissions(1, null, 1)')!==false,'restricted staging schema runner requires root deployment context and registers only the filtered QC rights');
 m074(strpos($schemaRunner,"return (int) \$right[0] >= 500528 && (int) \$right[0] <= 500531")!==false&&strpos($schemaRunner,'RIGHTS_DEFAULT=DISABLED')!==false,'staging schema runner installs exactly four QC definitions disabled by default');
 m074(strpos($schemaRunner,"array('identity', 'check', 'apply')")!==false&&strpos($schemaRunner,'M074_SCHEMA_DATABASE_IDENTITY=')!==false&&strpos($schemaRunner,'@@hostname')!==false,'staging schema runner exposes a non-secret database identity for backup binding');
 
