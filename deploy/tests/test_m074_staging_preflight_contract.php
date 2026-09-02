@@ -16,12 +16,12 @@ function m074PreflightAssert($condition, $message)
 m074PreflightAssert(strpos($helper, 'RELEASE = "M074-R07"') !== false, 'RELEASE_PIN');
 m074PreflightAssert(strpos($helper, 'SOURCE_COMMIT = "fc6f0fe1bfba303ab45ed011d634ec7712b6ccda"') !== false, 'SOURCE_COMMIT_PIN');
 m074PreflightAssert(strpos($helper, 'ARTIFACT_SHA = "3c022220ef7d6d2540d54eedd5d6bac2b2c5c0892d7e5024c5989f25329fbedc"') !== false, 'ARTIFACT_PIN');
-m074PreflightAssert(hash('sha256', $helper) === 'a879de5b41c68d140c79b71333fa4337bda5451bb4acba0ddad9368aaef57f89', 'HELPER_HASH');
+m074PreflightAssert(hash('sha256', $helper) === 'cc653f486f5d637c93b04d8d4c8585017ca4157304c42de18b350c2d3d2cd361', 'HELPER_HASH');
 m074PreflightAssert(hash('sha256', $sudoers) === '3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99', 'SUDOERS_HASH');
-m074PreflightAssert(strpos($installer, "HELPER_SHA='a879de5b41c68d140c79b71333fa4337bda5451bb4acba0ddad9368aaef57f89'") !== false, 'INSTALLER_HELPER_PIN');
+m074PreflightAssert(strpos($installer, "HELPER_SHA='cc653f486f5d637c93b04d8d4c8585017ca4157304c42de18b350c2d3d2cd361'") !== false, 'INSTALLER_HELPER_PIN');
 m074PreflightAssert(strpos($installer, "SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_SUDOERS_PIN');
-m074PreflightAssert(strpos($installer, "PREVIOUS_HELPER_SHA='864e12817fbb997aadfd6cb1fc481c3a790d0a23ebeb29a9ef206f1e2a71d434'") !== false&&strpos($installer, "PREVIOUS_SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_PREDECESSOR_PINS');
-m074PreflightAssert(hash('sha256', $installer) === '69aad2e501858502f593492cb2b6a743a45f25e4430a4b0d8f0c56c967779fe8', 'INSTALLER_HASH');
+m074PreflightAssert(strpos($installer, "PREVIOUS_HELPER_SHA='a879de5b41c68d140c79b71333fa4337bda5451bb4acba0ddad9368aaef57f89'") !== false&&strpos($installer, "PREVIOUS_SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'") !== false, 'INSTALLER_PREDECESSOR_PINS');
+m074PreflightAssert(hash('sha256', $installer) === 'beb5e27a309aeaea4edf45cd4f7e260062d94c7dbd4123b9aeee41ca2a8ce958', 'INSTALLER_HASH');
 m074PreflightAssert(strpos($helper, 'TARGET_CONTAINER = "erp-staging-dolibarr-1"') !== false, 'CANONICAL_ERP_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_VOLUME = "erp-staging_erp-staging_custom"') !== false, 'CANONICAL_VOLUME_TARGET');
 m074PreflightAssert(strpos($helper, 'TARGET_HTTP = "http://127.0.0.1:18088"') !== false, 'CANONICAL_HTTP_TARGET');
@@ -29,6 +29,7 @@ m074PreflightAssert(strpos($helper, 'command_compare') !== false && strpos($help
 m074PreflightAssert(strpos($helper, 'command_apply') !== false && strpos($helper, 'command_rollback') !== false && strpos($helper, 'command_verify') !== false, 'STAGED_MUTATING_COMMANDS_MISSING');
 m074PreflightAssert(strpos($helper, 'require_plan') !== false && strpos($helper, 'DATABASE_IDENTITY_CHANGED_AFTER_RESTORE_CHECK') !== false && strpos($helper, 'RENAME_EXCHANGE') !== false, 'APPLY_GATES_MISSING');
 m074PreflightAssert(strpos($helper, 'EXPECTED_BASELINE_SHA = "UNBOUND_DIAGNOSTIC_ONLY"') !== false && strpos($helper, 'fail("BASELINE_NOT_PINNED")') !== false && strpos($helper, 'fail("BASELINE_MISMATCH")') !== false, 'BASELINE_GATE_MISSING');
+m074PreflightAssert(strpos($helper, 'DEPLOY_RUNTIME_FILES = 378') !== false && strpos($helper, 'TREE_SHA=') !== false, 'COMPATIBILITY_DIAGNOSTIC_MISSING');
 m074PreflightAssert(strpos($helper, 'fail("PREFLIGHT_REQUIRED_AFTER_STATE")') !== false && strpos($helper, 'minimum_created_at') !== false, 'STALE_PLAN_GATE_MISSING');
 m074PreflightAssert(strpos($helper, 'DATABASE_CHANGED=NO') !== false && strpos($helper, 'PRODUCTION_ACCESSED=NO') !== false, 'SAFETY_MARKERS_MISSING');
 m074PreflightAssert(strpos($helper, '"env", "-u", "M017_DOL_DOCUMENT_ROOT", "-u", "M017_CREDENTIAL_FILE", "-u", "M017_API_BASE"') !== false, 'M017_INTEGRATION_ENV_NOT_CLEARED');

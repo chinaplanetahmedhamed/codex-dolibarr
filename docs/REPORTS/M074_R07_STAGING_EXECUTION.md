@@ -5,7 +5,7 @@
 - **Target:** canonical `backup-erp` staging only
 - **Approved actions:** exact input upload, checksum verification, restricted helper update, `compare`, conditional `preflight`, conditional `apply`, and `verify`
 - **Production:** forbidden
-- **Current status:** `DIAGNOSTIC_HELPER_LOCAL / BASELINE_CAPTURE_PENDING / APPLY_BLOCKED`
+- **Current status:** `SECOND_DIAGNOSTIC_HELPER_LOCAL / COMPATIBILITY_TREE_CAPTURE_PENDING / APPLY_BLOCKED`
 
 ## Expected release inputs
 

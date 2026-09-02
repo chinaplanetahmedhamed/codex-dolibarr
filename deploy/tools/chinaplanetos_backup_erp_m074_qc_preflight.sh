@@ -34,6 +34,7 @@ LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
 BUNDLE_SHA = "99da1d088fccc8c4c94c335a3809624b70f6c1637e928699b0b0065c65a128eb"
 PINS_SHA = "e86898770a1c809a5749f4950da67cea1dbdbe97b4516814da2bac66755d8153"
 EXPECTED_BASELINE_SHA = "UNBOUND_DIAGNOSTIC_ONLY"
+DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
@@ -247,8 +248,8 @@ class Candidate:
     def __init__(self, work: pathlib.Path, files: dict[str, pathlib.Path], root: pathlib.Path,
                  rows: list[dict[str, str]], layout: dict[str, str]):
         self.work = work; self.files = files; self.root = root; self.rows = rows
-        self.runtime_rows = [row for row in rows if row["classification"] == "runtime"]
         self.layout = layout
+        self.runtime_rows = deployment_runtime_rows(rows, layout)
         self.remote = f"/tmp/m074-r07-candidate-{os.getpid()}-{secrets.token_hex(4)}"
 
     def cleanup(self) -> None:
@@ -256,6 +257,25 @@ class Candidate:
             run(["docker", "exec", "-u", "0:0", TARGET_CONTAINER, "rm", "-rf", self.remote], capture=False, check=False)
         finally:
             shutil.rmtree(self.work, ignore_errors=True)
+
+
+def deployment_runtime_rows(rows: list[dict[str, str]], layout: dict[str, str]) -> list[dict[str, str]]:
+    runtime = [dict(row) for row in rows if row["classification"] == "runtime"]
+    expanded = list(runtime)
+    for compatibility, target in sorted(layout.items()):
+        canonical = os.path.normpath(pathlib.PurePosixPath(compatibility).parent.joinpath(target).as_posix())
+        if not canonical.startswith("custom/") or canonical.startswith("custom/../"):
+            fail("COMPATIBILITY_TARGET_INVALID")
+        prefix = canonical + "/"
+        for row in runtime:
+            if row["runtime_target"].startswith(prefix):
+                duplicate = dict(row)
+                duplicate["runtime_target"] = compatibility + "/" + row["runtime_target"][len(prefix):]
+                expanded.append(duplicate)
+    targets = [row["runtime_target"] for row in expanded]
+    if len(expanded) != DEPLOY_RUNTIME_FILES or len(set(targets)) != len(targets):
+        fail("DEPLOYMENT_RUNTIME_EXPANSION_INVALID")
+    return expanded
 
 
 def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
@@ -481,7 +501,8 @@ def compare_summary(candidate: Candidate, snapshot: dict[str, object], *, emit: 
     for item in snapshot["layout"]:
         counts["layout_" + item["state"].lower()] += 1
         if emit:
-            print(f"M074_STAGING_COMPARE LAYOUT=custom/{item['path']} STATE={item['state']} EXPECTED_TARGET={item['expected']} ACTUAL_TARGET={item['actual']}")
+            tree_sha = canonical_sha(item["tree"]) if isinstance(item.get("tree"), list) else "NONE"
+            print(f"M074_STAGING_COMPARE LAYOUT=custom/{item['path']} STATE={item['state']} EXPECTED_TARGET={item['expected']} ACTUAL_TARGET={item['actual']} TREE_SHA={tree_sha}")
     return counts
 
 

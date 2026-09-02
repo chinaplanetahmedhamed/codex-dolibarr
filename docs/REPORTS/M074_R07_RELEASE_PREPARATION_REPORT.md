@@ -31,11 +31,11 @@ The Dolibarr manifest contains 553 rows: 308 runtime, 216 support and 29 evidenc
 
 | Local file | Intended server path/use | SHA-256 |
 |---|---|---|
-| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `a879de5b41c68d140c79b71333fa4337bda5451bb4acba0ddad9368aaef57f89` |
+| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `cc653f486f5d637c93b04d8d4c8585017ca4157304c42de18b350c2d3d2cd361` |
 | `deploy/config/codex-deploy-backup-erp-m074-qc-preflight.sudoers` | `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight` | `3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99` |
-| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `69aad2e501858502f593492cb2b6a743a45f25e4430a4b0d8f0c56c967779fe8` |
+| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `beb5e27a309aeaea4edf45cd4f7e260062d94c7dbd4123b9aeee41ca2a8ce958` |
 
-The current controller is a fail-closed diagnostic build: it exposes the fixed six-command sudo surface but `preflight` and `apply` stop at `BASELINE_NOT_PINNED`. Only `compare` can disclose the canonical snapshot hash. After that read-only result is reviewed, the exact hash must replace `UNBOUND_DIAGNOSTIC_ONLY`, the controller must be repinned and independently reviewed, and only then can preflight/apply become reachable. The final controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
+The current controller is a fail-closed second diagnostic build: it exposes the fixed six-command sudo surface but `preflight` and `apply` stop at `BASELINE_NOT_PINNED`. `compare` discloses the canonical snapshot hash plus a separate tree hash for each legacy compatibility directory. It models the accepted directory deployment as 308 canonical runtime targets plus 70 compatibility-copy targets, while still refusing the directory layout until the two tree hashes are explicitly pinned. After the read-only result is reviewed, the exact general/tree hashes must be bound, the controller must be repinned and independently reviewed, and only then can preflight/apply become reachable. The final controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
 
 The two legacy Customer Center compatibility paths may be real directories on the accepted staging baseline. R07 treats either path as convertible only when its complete regular-file/directory tree is semantically identical to the canonical target. Apply then atomically replaces it with the expected relative symlink. The exact directory metadata/tree is recorded in prestate and reconstructed during rollback. Symlinks, special files or any content/mode mismatch fail closed.
 
