@@ -207,14 +207,17 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
         mismatch = True
     require(mismatch, "PLAN_BASELINE_DRIFT_ACCEPTED")
 
-    # Diagnostic helpers cannot preflight/apply until the reviewed remote baseline is pinned.
+    # An unbound diagnostic helper cannot preflight/apply; the exact reviewed
+    # remote baseline passes and any drift remains fail closed.
+    reviewed_baseline = helper.EXPECTED_BASELINE_SHA
+    require(reviewed_baseline == "39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094", "REVIEWED_BASELINE_PIN_MISMATCH")
+    helper.EXPECTED_BASELINE_SHA = "UNBOUND_DIAGNOSTIC_ONLY"
     baseline_blocked = False
     try:
         helper.require_expected_baseline(snapshot)
     except helper.ReleaseError:
         baseline_blocked = True
     require(baseline_blocked, "UNBOUND_BASELINE_ACCEPTED")
-    diagnostic_baseline = helper.EXPECTED_BASELINE_SHA
     helper.EXPECTED_BASELINE_SHA = helper.canonical_sha(snapshot)
     require(helper.require_expected_baseline(snapshot) == helper.canonical_sha(snapshot), "PINNED_BASELINE_REJECTED")
     baseline_drift = False
@@ -223,7 +226,7 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     except helper.ReleaseError:
         baseline_drift = True
     require(baseline_drift, "UNAPPROVED_BASELINE_DRIFT_ACCEPTED")
-    helper.EXPECTED_BASELINE_SHA = diagnostic_baseline
+    helper.EXPECTED_BASELINE_SHA = reviewed_baseline
 
     # A terminal state invalidates every preflight created at or before its update time.
     plan_created = dt.datetime.fromisoformat(plan["created_at"])

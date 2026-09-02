@@ -33,7 +33,7 @@ MANIFEST_SHA = "b31db80b8a4e9b725d60b0c22dd3cdf1b8aea1814a28ba98d5b90dae5177969f
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
 BUNDLE_SHA = "99da1d088fccc8c4c94c335a3809624b70f6c1637e928699b0b0065c65a128eb"
 PINS_SHA = "e86898770a1c809a5749f4950da67cea1dbdbe97b4516814da2bac66755d8153"
-EXPECTED_BASELINE_SHA = "UNBOUND_DIAGNOSTIC_ONLY"
+EXPECTED_BASELINE_SHA = "39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094"
 EXPECTED_LAYOUT_TREE_SHA = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "c0144d63da333b4eea47b3687d673d85a23d677cad4e9da0109bc06147501bcd",
     "custom/chinaplanetcustomercenter/cpkanban": "346f68609f447214cd241f4ec11474bb8a19502ba075e25846ac77c415d7374c",
@@ -369,7 +369,7 @@ def candidate_checks(candidate: Candidate) -> None:
     run(["docker", "cp", str(candidate.root) + "/.", TARGET_CONTAINER + ":" + candidate.remote], capture=False)
     for path, target in candidate.layout.items():
         run(["docker", "exec", "-u", "0:0", TARGET_CONTAINER, "ln", "-s", target, candidate.remote + "/" + path], capture=False)
-    lint_script = 'find "$1/custom" "$1/deploy" -type f -name "*.php" -exec php -l {} \; >/dev/null'
+    lint_script = r'find "$1/custom" "$1/deploy" -type f -name "*.php" -exec php -l {} \; >/dev/null'
     run(["docker", "exec", TARGET_CONTAINER, "sh", "-eu", "-c", lint_script, "sh", candidate.remote], capture=False)
     for test in STATIC_TESTS:
         command = ["docker", "exec", "-e", "M074_DOL_DOCUMENT_ROOT=" + candidate.remote, TARGET_CONTAINER,

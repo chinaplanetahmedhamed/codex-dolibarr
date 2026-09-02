@@ -3,7 +3,7 @@
 ## Control record
 
 - **Mission/release:** M074 / M074-R07
-- **Status:** `CHECKSUM_PINNED_LOCAL / REVIEW_PENDING / NOT_DEPLOYED`
+- **Status:** `CHECKSUM_PINNED_LOCAL / BASELINE_BOUND_CORRECTION_REVIEW_PENDING / NOT_DEPLOYED`
 - **Target:** canonical `backup-erp` staging only
 - **Source branch:** `codex/m074-qc-field-report-composite`
 - **Pinned Dolibarr/mobile source:** `fc6f0fe1bfba303ab45ed011d634ec7712b6ccda`
@@ -31,11 +31,11 @@ The Dolibarr manifest contains 553 rows: 308 runtime, 216 support and 29 evidenc
 
 | Local file | Intended server path/use | SHA-256 |
 |---|---|---|
-| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `369c86325a303342680598aa8916f23e3a420f66b42a4612862b72e1e412e315` |
+| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `91d6bfaca40dde9d0a17e20b825c0c7d265f85f4ee93c808fa587e7a095f53db` |
 | `deploy/config/codex-deploy-backup-erp-m074-qc-preflight.sudoers` | `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight` | `3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99` |
-| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `e583983e9367612f1f9771e8753ca96f8a95ea60141ac1fc21b97a45c626f917` |
+| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `258b4e7485d1355dfd6884295da5b18529fd87ab8f9919b9b4628aaee7b411a3` |
 
-The current controller is a fail-closed final-layout build: it exposes the fixed six-command sudo surface but `preflight` and `apply` still stop at `BASELINE_NOT_PINNED`. The two reviewed compatibility tree hashes are pinned and it models 308 canonical runtime targets plus 70 compatibility-copy targets. The captured general baseline hash still requires new explicit approval before it may replace `UNBOUND_DIAGNOSTIC_ONLY`; only after that change is repinned and independently reviewed can preflight/apply become reachable. The controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
+The current controller is a fail-closed final-layout build with the fixed six-command sudo surface. Ahmed approved staging deployment on 2026-09-03. A fresh restricted `compare` passed against the already uploaded five R07 inputs and captured canonical general baseline `39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094`: 378 deployment targets, 99 current, 222 different, 57 absent, and two exact pinned compatibility overlay directories. The baseline is now bound locally; preflight/apply remain blocked until renewed independent Security and Operations/QA review passes the exact corrected helper and installer pins. The controller also binds terminal-state time so an old preflight cannot be reused after failure or rollback.
 
 The two legacy Customer Center compatibility paths are real directories on the accepted staging baseline. Their complete regular-file/directory trees are independently pinned (`c0144d63…` and `346f6860…`). R07 deploys 70 explicit compatibility copies in addition to 308 canonical targets, preserves every unmanaged entry byte-for-byte, and rejects special files or unmanaged drift during apply, verify and rollback entry. When a declared compatibility target lacks a parent, the controller may create only that managed parent with fixed ownership/mode; live verification binds it to the approved prestate. Rollback uses fd-relative `O_NOFOLLOW` traversal and CAS quarantine, removes the exact declared parent only when empty, and then requires the exact old tree. The old copies use the common CAS code backup; the compatibility roots are not deleted or converted.
 
