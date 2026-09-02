@@ -55,10 +55,10 @@ class QcMigration
                     'tms'=>array('timestamp','NO','current_timestamp','on update current_timestamp'),
                 ),
                 'indexes' => array(
-                    'PRIMARY'=>array(0,array('rowid')), 'uk_cpo_qc_checkpoint_client'=>array(0,array('entity','fk_operation','client_uuid')),
-                    'idx_cpo_qc_checkpoint_list'=>array(1,array('entity','fk_operation','position','rowid')),
-                    'idx_cpo_qc_checkpoint_review'=>array(1,array('entity','fk_operation','review_status','result_code')),
-                    'idx_cpo_qc_checkpoint_scope'=>array(1,array('entity','fk_operation','scope_type','snapshot_line_key')),
+                    'PRIMARY'=>array(0,array('rowid'),'BTREE',array(null)), 'uk_cpo_qc_checkpoint_client'=>array(0,array('entity','fk_operation','client_uuid'),'BTREE',array(null,null,null)),
+                    'idx_cpo_qc_checkpoint_list'=>array(1,array('entity','fk_operation','position','rowid'),'BTREE',array(null,null,null,null)),
+                    'idx_cpo_qc_checkpoint_review'=>array(1,array('entity','fk_operation','review_status','result_code'),'BTREE',array(null,null,null,null)),
+                    'idx_cpo_qc_checkpoint_scope'=>array(1,array('entity','fk_operation','scope_type','snapshot_line_key'),'BTREE',array(null,null,null,null)),
                 ),
             ),
             'cpo_qc_evidence' => array(
@@ -83,11 +83,11 @@ class QcMigration
                     'tms'=>array('timestamp','NO','current_timestamp','on update current_timestamp'),
                 ),
                 'indexes' => array(
-                    'PRIMARY'=>array(0,array('rowid')), 'uk_cpo_qc_evidence_client'=>array(0,array('entity','fk_operation','client_uuid')),
-                    'uk_cpo_qc_evidence_token'=>array(0,array('entity','upload_token_hash')),
-                    'idx_cpo_qc_evidence_checkpoint'=>array(1,array('entity','fk_operation','fk_checkpoint','upload_status')),
-                    'idx_cpo_qc_evidence_review'=>array(1,array('entity','fk_operation','review_status','customer_visible')),
-                    'idx_cpo_qc_evidence_expiry'=>array(1,array('entity','upload_status','upload_expires_at')),
+                    'PRIMARY'=>array(0,array('rowid'),'BTREE',array(null)), 'uk_cpo_qc_evidence_client'=>array(0,array('entity','fk_operation','client_uuid'),'BTREE',array(null,null,null)),
+                    'uk_cpo_qc_evidence_token'=>array(0,array('entity','upload_token_hash'),'BTREE',array(null,null)),
+                    'idx_cpo_qc_evidence_checkpoint'=>array(1,array('entity','fk_operation','fk_checkpoint','upload_status'),'BTREE',array(null,null,null,null)),
+                    'idx_cpo_qc_evidence_review'=>array(1,array('entity','fk_operation','review_status','customer_visible'),'BTREE',array(null,null,null,null)),
+                    'idx_cpo_qc_evidence_expiry'=>array(1,array('entity','upload_status','upload_expires_at'),'BTREE',array(null,null,null)),
                 ),
             ),
             'cpo_qc_publication' => array(
@@ -105,10 +105,10 @@ class QcMigration
                     'tms'=>array('timestamp','NO','current_timestamp','on update current_timestamp'),
                 ),
                 'indexes' => array(
-                    'PRIMARY'=>array(0,array('rowid')), 'uk_cpo_qc_publication_version'=>array(0,array('entity','fk_operation','version_no')),
-                    'uk_cpo_qc_publication_public'=>array(0,array('entity','public_uuid')),
-                    'idx_cpo_qc_publication_current'=>array(1,array('entity','fk_operation','is_current','version_no')),
-                    'idx_cpo_qc_publication_customer'=>array(1,array('entity','fk_soc','is_current','date_publication')),
+                    'PRIMARY'=>array(0,array('rowid'),'BTREE',array(null)), 'uk_cpo_qc_publication_version'=>array(0,array('entity','fk_operation','version_no'),'BTREE',array(null,null,null)),
+                    'uk_cpo_qc_publication_public'=>array(0,array('entity','public_uuid'),'BTREE',array(null,null)),
+                    'idx_cpo_qc_publication_current'=>array(1,array('entity','fk_operation','is_current','version_no'),'BTREE',array(null,null,null,null)),
+                    'idx_cpo_qc_publication_customer'=>array(1,array('entity','fk_soc','is_current','date_publication'),'BTREE',array(null,null,null,null)),
                 ),
             ),
         );
@@ -120,7 +120,8 @@ class QcMigration
         $lock='cpo_m074_qc_migration';$res=$this->db->query("SELECT GET_LOCK('".$this->db->escape($lock)."',10) acquired");$row=$res?$this->db->fetch_object($res):null;if(!$row||(int)$row->acquired!==1)throw new RuntimeException('QC migration is already running.');
         try{
             foreach(self::rightCodes()as$id=>$code)if($this->rightDefinitionCollision($id,$code))throw new RuntimeException('QC right definition collision.');
-            $root=dirname(__DIR__).'/sql';foreach(self::tables()as$table){$path=$root.'/llx_'.$table.'.sql';if(!is_file($path)||is_link($path))throw new RuntimeException('QC schema source is missing.');$sql=file_get_contents($path);if($sql===false)throw new RuntimeException('Unable to read QC schema source.');$sql=preg_replace('/^CREATE TABLE\s+llx_/i','CREATE TABLE IF NOT EXISTS '.$this->prefix,trim($sql));if(!$this->db->query($sql))throw new RuntimeException('Unable to install '.$table.': '.$this->db->lasterror());}
+            $statuses=array();foreach(self::tables()as$table){$statuses[$table]=$this->tableContractStatus($table);if($statuses[$table]==='collision')throw new RuntimeException('QC schema collision detected before migration.');}
+            $root=dirname(__DIR__).'/sql';foreach(self::tables()as$table){if($statuses[$table]!=='missing')continue;$path=$root.'/llx_'.$table.'.sql';if(!is_file($path)||is_link($path))throw new RuntimeException('QC schema source is missing.');$sql=file_get_contents($path);if($sql===false)throw new RuntimeException('Unable to read QC schema source.');$sql=preg_replace('/^CREATE TABLE\s+llx_/i','CREATE TABLE IF NOT EXISTS '.$this->prefix,trim($sql));if(!$this->db->query($sql))throw new RuntimeException('Unable to install '.$table.': '.$this->db->lasterror());}
             if(!$this->schemaReady())throw new RuntimeException('QC schema readiness check failed after migration.');return true;
         }finally{$this->db->query("SELECT RELEASE_LOCK('".$this->db->escape($lock)."')");}
     }
@@ -159,11 +160,23 @@ class QcMigration
 
     public function schemaReady()
     {
-        foreach (self::schemaContract() as $table => $contract) {
-            $physical = $this->prefix.$table;
-            if (!$this->tableExists($physical)) return false;
+        foreach (self::tables() as $table) if ($this->tableContractStatus($table) !== 'exact') return false;
+        return true;
+    }
+
+    public function tableContractStatus($table)
+    {
+        $contracts = self::schemaContract();
+        if (!isset($contracts[$table])) return 'collision';
+        $physical = $this->prefix.$table;
+        if (!$this->tableExists($physical)) return 'missing';
+        $contract = $contracts[$table];
+        $status = $this->db->query("SHOW TABLE STATUS LIKE '".$this->db->escape($physical)."'");
+        $statusRow = $status ? $this->db->fetch_object($status) : null;
+        if (!$statusRow || strtoupper((string) $statusRow->Engine) !== 'INNODB') return 'collision';
+        try {
             $res = $this->db->query('SHOW COLUMNS FROM '.$physical);
-            if (!$res) return false;
+            if (!$res) return 'collision';
             $actualColumns = array();
             while ($row = $this->db->fetch_object($res)) {
                 $default = $row->Default;
@@ -172,24 +185,27 @@ class QcMigration
                 $extra = str_replace('current_timestamp()', 'current_timestamp', $extra);
                 $actualColumns[(string) $row->Field] = array($this->normalizeType($row->Type), strtoupper((string) $row->Null), $default === null ? null : (string) $default, $extra);
             }
-            if ($actualColumns !== $contract['columns']) return false;
+            if ($actualColumns !== $contract['columns']) return 'collision';
 
             $res = $this->db->query('SHOW INDEX FROM '.$physical);
-            if (!$res) return false;
+            if (!$res) return 'collision';
             $actualIndexes = array();
             while ($row = $this->db->fetch_object($res)) {
                 $name = (string) $row->Key_name;
-                if (!isset($actualIndexes[$name])) $actualIndexes[$name] = array((int) $row->Non_unique, array());
+                if (!isset($actualIndexes[$name])) $actualIndexes[$name] = array((int) $row->Non_unique, array(), strtoupper((string) $row->Index_type), array());
+                if ($actualIndexes[$name][2] !== strtoupper((string) $row->Index_type)) return 'collision';
                 $actualIndexes[$name][1][(int) $row->Seq_in_index] = (string) $row->Column_name;
+                $actualIndexes[$name][3][(int) $row->Seq_in_index] = $row->Sub_part === null ? null : (int) $row->Sub_part;
             }
-            foreach ($actualIndexes as &$index) { ksort($index[1]); $index[1] = array_values($index[1]); }
+            foreach ($actualIndexes as &$index) { ksort($index[1]); $index[1] = array_values($index[1]); ksort($index[3]); $index[3] = array_values($index[3]); }
             unset($index);
             $expectedIndexes = $contract['indexes'];
             ksort($actualIndexes);
             ksort($expectedIndexes);
-            if ($actualIndexes !== $expectedIndexes) return false;
+            return $actualIndexes === $expectedIndexes ? 'exact' : 'collision';
+        } catch (Throwable $exception) {
+            return 'collision';
         }
-        return true;
     }
 
     private function normalizeType($type)
