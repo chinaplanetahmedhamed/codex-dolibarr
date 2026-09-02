@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import importlib.machinery
 import importlib.util
+import csv
 import pathlib
 import tempfile
+import types
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -20,6 +22,18 @@ loader.exec_module(module)
 def require(condition: bool, reason: str) -> None:
     if not condition:
         raise SystemExit("M074_COMPATIBILITY_LAYOUT=FAIL REASON=" + reason)
+
+
+with (ROOT / "deploy/releases/m074-r07/dolibarr.manifest.tsv").open(newline="", encoding="utf-8") as handle:
+    manifest_rows = list(csv.DictReader(handle, delimiter="\t"))
+with (ROOT / "deploy/releases/m074-r07/dolibarr.layout.tsv").open(newline="", encoding="utf-8") as handle:
+    deployment_layout = {row["runtime_path"]: row["link_target"] for row in csv.DictReader(handle, delimiter="\t")}
+expanded = module.deployment_runtime_rows(manifest_rows, deployment_layout)
+expanded_targets = [row["runtime_target"] for row in expanded]
+overlay_targets = [path for path in expanded_targets if path.startswith("custom/chinaplanetcustomercenter/cpkanban/")
+                   or path.startswith("custom/chinaplanetcustomercenter/chinaplanetlogistics/")]
+require(len(expanded_targets) == 378 and len(set(expanded_targets)) == 378, "DEPLOYMENT_TARGET_SET_INVALID")
+require(len(overlay_targets) == 70, "COMPATIBILITY_OVERLAY_COUNT_INVALID")
 
 
 with tempfile.TemporaryDirectory(prefix="m074-layout-") as temporary:
@@ -36,7 +50,7 @@ with tempfile.TemporaryDirectory(prefix="m074-layout-") as temporary:
     (legacy / "nested/value.txt").write_bytes(b"same\n")
 
     module.TARGET_ROOT = target
-    candidate = module.Candidate(pathlib.Path(temporary) / "work", {}, pathlib.Path(temporary), [], {
+    candidate = types.SimpleNamespace(runtime_rows=[], layout={
         "custom/chinaplanetcustomercenter/cpkanban": "../cpkanban",
     })
     snapshot = module.runtime_snapshot(candidate)
@@ -53,4 +67,4 @@ with tempfile.TemporaryDirectory(prefix="m074-layout-") as temporary:
     mismatch = module.runtime_snapshot(candidate)
     require(mismatch["layout"][0]["state"] == "DIFFERENT", "MISMATCH_NOT_REJECTED")
 
-print("M074_COMPATIBILITY_LAYOUT=PASS CONVERT=ATOMIC ROLLBACK=EXACT MISMATCH=REJECTED")
+print("M074_COMPATIBILITY_LAYOUT=PASS DEPLOY_TARGETS=378 OVERLAYS=70 CONVERT=ATOMIC ROLLBACK=EXACT MISMATCH=REJECTED")
