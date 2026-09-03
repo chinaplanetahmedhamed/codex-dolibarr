@@ -20,13 +20,14 @@ class M074FakeDatabase
     public $rollbackCalls = 0;
     public $committed = array();
     public $pending = array();
+    public $initialRows = array();
 
     public function escape($value) { return addslashes((string) $value); }
     public function begin() { return $this->beginResult; }
     public function commit()
     {
         if ($this->commitResult <= 0) return $this->commitResult;
-        $this->committed = $this->pending;
+        $this->committed = array_merge($this->committed, $this->pending);
         $this->pending = array();
         return $this->commitResult;
     }
@@ -44,24 +45,39 @@ class M074FakeDatabase
     }
     public function query($sql)
     {
-        if (strpos($sql, 'SELECT id,module,perms,bydefault') === 0) return new M074FakeResult(array());
-        if (strpos($sql, 'FROM information_schema.tables') !== false) return new M074FakeResult(array(array('count_rows' => 1)));
-        if (strpos($sql, 'SELECT COUNT(*) count_rows') === 0) {
+        if (strpos($sql, 'SELECT id,entity,module,perms,bydefault') === 0) {
             preg_match('/id=([0-9]+)/', $sql, $idMatch);
             preg_match("/perms='([^']+)'/", $sql, $permsMatch);
             $id = isset($idMatch[1]) ? (int) $idMatch[1] : 0;
             $perms = isset($permsMatch[1]) ? $permsMatch[1] : '';
-            $rows = $this->committed + $this->pending;
-            $count = isset($rows[$id]) && $rows[$id] === $perms ? 1 : 0;
+            $matches = array();
+            foreach (array_merge($this->initialRows, $this->committed, $this->pending) as $row) {
+                if ((int) $row['id'] === $id || ((string) $row['module'] === 'chinaplanetoperations' && (string) $row['perms'] === $perms)) $matches[] = $row;
+            }
+            return new M074FakeResult($matches);
+        }
+        if (strpos($sql, 'FROM information_schema.tables') !== false) return new M074FakeResult(array(array('count_rows' => 1)));
+        if (strpos($sql, 'SELECT COUNT(*) count_rows') === 0) {
+            preg_match('/id=([0-9]+)/', $sql, $idMatch);
+            preg_match('/entity=([0-9]+)/', $sql, $entityMatch);
+            preg_match("/perms='([^']+)'/", $sql, $permsMatch);
+            $id = isset($idMatch[1]) ? (int) $idMatch[1] : 0;
+            $entity = isset($entityMatch[1]) ? (int) $entityMatch[1] : 0;
+            $perms = isset($permsMatch[1]) ? $permsMatch[1] : '';
+            $count = 0;
+            foreach (array_merge($this->initialRows, $this->committed, $this->pending) as $row) {
+                if ((int) $row['id'] === $id && (int) $row['entity'] === $entity && (string) $row['module'] === 'chinaplanetoperations' && (string) $row['perms'] === $perms && (int) $row['bydefault'] === 0) $count++;
+            }
             return new M074FakeResult(array(array('count_rows' => $count)));
         }
         if (strpos($sql, 'INSERT INTO llx_rights_def') === 0) {
             $this->insertAttempts++;
             if ($this->failInsertAt === $this->insertAttempts) return false;
-            preg_match('/VALUES \(([0-9]+),/', $sql, $idMatch);
+            preg_match('/VALUES \(([0-9]+),([0-9]+),/', $sql, $matches);
             $codes = array(500528 => 'qc_plan', 500529 => 'qc_execute', 500530 => 'qc_review', 500531 => 'qc_publish');
-            $id = (int) $idMatch[1];
-            $this->pending[$id] = $codes[$id];
+            $id = (int) $matches[1];
+            $entity = (int) $matches[2];
+            $this->pending[] = array('id' => $id, 'entity' => $entity, 'module' => 'chinaplanetoperations', 'perms' => $codes[$id], 'bydefault' => 0);
             return true;
         }
         return false;
@@ -116,4 +132,19 @@ if ($rollbackFailure->insertAttempts !== 2 || $rollbackFailure->rollbackCalls !=
 $success = new M074FakeDatabase();
 if (!(new QcMigration($success))->installRights(m074Module(), 1) || count($success->committed) !== 4 || $success->pending) exit(5);
 
-echo "M074_RIGHTS_TRANSACTION=PASS BEGIN_FAIL=SAFE COMMIT_FAIL=ROLLED_BACK ROLLBACK_FAIL=EXPLICIT SUCCESS=4\n";
+$entityTwoRows = array();
+foreach (QcMigration::rightCodes() as $id => $code) {
+    $entityTwoRows[] = array('id' => $id, 'entity' => 2, 'module' => 'chinaplanetoperations', 'perms' => $code, 'bydefault' => 0);
+}
+$multiEntity = new M074FakeDatabase();
+$multiEntity->initialRows = $entityTwoRows;
+$multiEntityMigration = new QcMigration($multiEntity);
+if ($multiEntityMigration->rightsReady(1) || !$multiEntityMigration->rightsReady(2)) exit(6);
+if (!$multiEntityMigration->installRights(m074Module(), 1) || count($multiEntity->committed) !== 4 || !$multiEntityMigration->rightsReady(1)) exit(7);
+
+$collision = new M074FakeDatabase();
+$collision->initialRows[] = array('id' => 500528, 'entity' => 2, 'module' => 'chinaplanetoperations', 'perms' => 'wrong_code', 'bydefault' => 0);
+m074ExpectFailure($collision, 'right definition collision');
+if ($collision->insertAttempts !== 0) exit(8);
+
+echo "M074_RIGHTS_TRANSACTION=PASS BEGIN_FAIL=SAFE COMMIT_FAIL=ROLLED_BACK ROLLBACK_FAIL=EXPLICIT SUCCESS=4 MULTI_ENTITY=SAFE\n";

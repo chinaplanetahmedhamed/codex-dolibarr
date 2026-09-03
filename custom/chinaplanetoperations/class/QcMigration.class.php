@@ -121,7 +121,7 @@ class QcMigration
         try{
             foreach(self::rightCodes()as$id=>$code)if($this->rightDefinitionCollision($id,$code))throw new RuntimeException('QC right definition collision.');
             $statuses=array();foreach(self::tables()as$table){$statuses[$table]=$this->tableContractStatus($table);if($statuses[$table]==='collision')throw new RuntimeException('QC schema collision detected before migration.');}
-            $root=dirname(__DIR__).'/sql';foreach(self::tables()as$table){if($statuses[$table]!=='missing')continue;$path=$root.'/llx_'.$table.'.sql';if(!is_file($path)||is_link($path))throw new RuntimeException('QC schema source is missing.');$sql=file_get_contents($path);if($sql===false)throw new RuntimeException('Unable to read QC schema source.');$sql=preg_replace('/^CREATE TABLE\s+llx_/i','CREATE TABLE IF NOT EXISTS '.$this->prefix,trim($sql));if(!$this->db->query($sql))throw new RuntimeException('Unable to install '.$table.': '.$this->db->lasterror());}
+            $root=dirname(__DIR__).'/sql';foreach(self::tables()as$table){if($statuses[$table]!=='missing')continue;$path=$root.'/llx_'.$table.'.sql';if(!is_file($path)||is_link($path))throw new RuntimeException('QC schema source is missing.');$sql=file_get_contents($path);if($sql===false)throw new RuntimeException('Unable to read QC schema source.');$sql=preg_replace('/^CREATE TABLE\s+llx_/i','CREATE TABLE IF NOT EXISTS '.$this->prefix,trim($sql));if(!$this->db->query($sql))throw new RuntimeException('Unable to install QC table.');}
             if(!$this->schemaReady())throw new RuntimeException('QC schema readiness check failed after migration.');return true;
         }finally{$this->db->query("SELECT RELEASE_LOCK('".$this->db->escape($lock)."')");}
     }
@@ -136,24 +136,33 @@ class QcMigration
     public function rightDefinitionCollision($rightId, $rightCode)
     {
         if (!$this->tableExists($this->prefix.'rights_def')) return false;
-        $res = $this->db->query('SELECT id,module,perms,bydefault FROM '.$this->prefix.'rights_def WHERE id='.(int) $rightId." OR (module='chinaplanetoperations' AND perms='".$this->db->escape($rightCode)."')");
+        $res = $this->db->query('SELECT id,entity,module,perms,bydefault FROM '.$this->prefix.'rights_def WHERE id='.(int) $rightId." OR (module='chinaplanetoperations' AND perms='".$this->db->escape($rightCode)."')");
         if (!$res) throw new RuntimeException('Unable to inspect QC right definitions.');
-        $matching = 0;
         while ($row = $this->db->fetch_object($res)) {
             if ((int) $row->id !== (int) $rightId || (string) $row->module !== 'chinaplanetoperations' || (string) $row->perms !== (string) $rightCode || (int) $row->bydefault !== 0) return true;
-            $matching++;
         }
-        return $matching > 1;
+        return false;
     }
 
-    public function rightsReady()
+    public function rightDefinitionExists($rightId, $rightCode, $entity)
     {
+        $entity = (int) $entity;
+        if ($entity <= 0) throw new RuntimeException('QC permission entity is invalid.');
+        if (!$this->tableExists($this->prefix.'rights_def')) return false;
+        $res = $this->db->query('SELECT COUNT(*) count_rows FROM '.$this->prefix.'rights_def WHERE id='.(int) $rightId.' AND entity='.$entity." AND module='chinaplanetoperations' AND perms='".$this->db->escape($rightCode)."' AND bydefault=0");
+        if (!$res) throw new RuntimeException('Unable to inspect QC permission definition.');
+        $row = $this->db->fetch_object($res);
+        return $row && (int) $row->count_rows === 1;
+    }
+
+    public function rightsReady($entity)
+    {
+        $entity = (int) $entity;
+        if ($entity <= 0) return false;
         if (!$this->tableExists($this->prefix.'rights_def')) return false;
         foreach (self::rightCodes() as $rightId => $rightCode) {
             if ($this->rightDefinitionCollision($rightId, $rightCode)) return false;
-            $res = $this->db->query('SELECT COUNT(*) count_rows FROM '.$this->prefix.'rights_def WHERE id='.(int) $rightId." AND module='chinaplanetoperations' AND perms='".$this->db->escape($rightCode)."' AND bydefault=0");
-            $row = $res ? $this->db->fetch_object($res) : null;
-            if (!$row || (int) $row->count_rows !== 1) return false;
+            if (!$this->rightDefinitionExists($rightId, $rightCode, $entity)) return false;
         }
         return true;
     }
@@ -190,17 +199,13 @@ class QcMigration
         try {
             foreach ($definitions as $id => $definition) {
                 if ($this->rightDefinitionCollision($id, $definition['perms'])) throw new RuntimeException('QC right definition collision.');
-                $res = $this->db->query('SELECT COUNT(*) count_rows FROM '.$this->prefix.'rights_def WHERE id='.(int) $id." AND module='chinaplanetoperations' AND perms='".$this->db->escape($definition['perms'])."' AND bydefault=0");
-                $row = $res ? $this->db->fetch_object($res) : null;
-                if (!$row) throw new RuntimeException('Unable to inspect QC permission definition.');
-                if ((int) $row->count_rows === 1) continue;
-                if ((int) $row->count_rows !== 0) throw new RuntimeException('QC permission definition count is invalid.');
+                if ($this->rightDefinitionExists($id, $definition['perms'], $entity)) continue;
 
                 $sql = 'INSERT INTO '.$this->prefix.'rights_def (id,entity,libelle,module,module_origin,module_position,family,family_position,type,bydefault,perms,subperms,enabled) VALUES ('
                     .(int) $id.','.$entity.", '".$this->db->escape($definition['label'])."', 'chinaplanetoperations', '', ".$modulePosition.", '".$this->db->escape($family)."', 0, 'w', 0, '".$this->db->escape($definition['perms'])."', '', '1')";
                 if (!$this->db->query($sql)) throw new RuntimeException('Unable to install QC permission definition.');
             }
-            if (!$this->rightsReady()) throw new RuntimeException('QC permission readiness check failed after installation.');
+            if (!$this->rightsReady($entity)) throw new RuntimeException('QC permission readiness check failed after installation.');
             if ($this->db->commit() <= 0) throw new RuntimeException('Unable to commit QC permission transaction.');
         } catch (Throwable $exception) {
             if ($this->db->rollback() <= 0) {
