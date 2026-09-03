@@ -3,7 +3,7 @@
 ## Control record
 
 - **Mission/release:** M074 / M074-R10
-- **Status:** `CHECKSUM_PINNED_LOCAL / SECURITY_PASS / QA_PASS / NOT_UPLOADED`
+- **Status:** `UPLOADED / REMOTE_CHECKSUMS_PASS / NOT_INSTALLED`
 - **Target:** canonical `backup-erp` staging only
 - **Source branch:** `codex/m074-qc-field-report-composite`
 - **Pinned Dolibarr/mobile source:** `7d223fb7983fd2668826cb33587f1a4e8644f1df`
@@ -48,4 +48,6 @@ The installer accepts only the currently installed R09 helper `4a44d556e57212bcc
 
 Independent Security and Operations/QA reviewed exact frozen commit `a70bd2dd4ea55795eaff3c9fd33205e15aa98cf0` read-only and returned `PASS` with no actionable findings. Both independently verified the artifact/controller pins, 561-member contract, deterministic rebuild, R09 predecessor binding, exact six-command sudo surface, PHP diagnostic isolation, allowlisted stderr behavior, canonical staging targets, and Production exclusion. All 11 M074 test programs passed, including 325 PHP lints, 13 frozen candidate tests, 31 helper containment cases, schema/rights transactions, compatibility layout, PWA, and installer recovery.
 
-R10 remains local only. No R10 file may be uploaded or installed, and no restricted R10 command may run, without Ahmed's new exact staging approval. The first future server gate is upload plus checksum verification, then exact root installation, then restricted `compare` only. `preflight` and `apply` remain separate later gates. Production remains forbidden.
+After Ahmed's exact approval, the five R10 release inputs and three controller inputs were uploaded to the two private `codex-deploy` staging inboxes through temporary names and atomically published only after checksum verification. Final remote SHA-256 values match every pin above; all eight files are regular single-link `codex-deploy:codex-deploy` files with mode `0644`.
+
+R10 is uploaded but not installed. The installed server helper remains R09. Exact R10 root installation requires a new approval, and restricted `compare` remains a later separate gate. `preflight` and `apply` remain unauthorized. Production remains forbidden and was not accessed.
