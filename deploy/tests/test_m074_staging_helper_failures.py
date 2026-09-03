@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault and containment tests for the real M074-R08 file/state primitives."""
+"""Fault and containment tests for the real M074-R09 file/state primitives."""
 
 from __future__ import annotations
 
@@ -26,6 +26,13 @@ loader.exec_module(helper)
 def require(condition: bool, reason: str) -> None:
     if not condition:
         raise SystemExit("M074_STAGING_HELPER_FAILURES=FAIL REASON=" + reason)
+
+
+require(helper.schema_diagnostic(b"M074_SCHEMA=FAIL REASON=RIGHT_INSTALL_FAILED\n") == "RIGHT_INSTALL_FAILED", "SCHEMA_REASON_REJECTED")
+require(helper.schema_diagnostic(b"SQL syntax error near customer\n") == "SCHEMA_DIAGNOSTIC_INVALID", "RAW_SCHEMA_ERROR_ACCEPTED")
+require(helper.schema_diagnostic(b"M074_SCHEMA=FAIL REASON=RIGHT_INSTALL_FAILED\nsecond line\n") == "SCHEMA_DIAGNOSTIC_INVALID", "MULTILINE_SCHEMA_ERROR_ACCEPTED")
+require(helper.schema_diagnostic(b"M074_SCHEMA=FAIL REASON=UNKNOWN_STAGE\n") == "SCHEMA_DIAGNOSTIC_INVALID", "UNKNOWN_SCHEMA_REASON_ACCEPTED")
+require(helper.schema_diagnostic(b"x" * 193 + b"\n") == "SCHEMA_DIAGNOSTIC_INVALID", "OVERSIZED_SCHEMA_ERROR_ACCEPTED")
 
 
 with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
@@ -197,12 +204,12 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     require(blocked, "SYMLINK_PARENT_FOLLOWED")
 
     # Preflight plan is bound to exact baseline, schema and database identity.
-    plan = helper.plan_payload(snapshot, "MIGRATION_REQUIRED", "a" * 64)
+    plan = helper.plan_payload(snapshot, "MIGRATION_REQUIRED_RIGHTS_MISSING", "a" * 64)
     helper.atomic_json(helper.PLAN_FILE, plan)
-    require(len(helper.require_plan(snapshot, "MIGRATION_REQUIRED", "a" * 64)) == 64, "PLAN_NOT_ACCEPTED")
+    require(len(helper.require_plan(snapshot, "MIGRATION_REQUIRED_RIGHTS_MISSING", "a" * 64)) == 64, "PLAN_NOT_ACCEPTED")
     mismatch = False
     try:
-        helper.require_plan({"files": [], "layout": []}, "MIGRATION_REQUIRED", "a" * 64)
+        helper.require_plan({"files": [], "layout": []}, "MIGRATION_REQUIRED_RIGHTS_MISSING", "a" * 64)
     except helper.ReleaseError:
         mismatch = True
     require(mismatch, "PLAN_BASELINE_DRIFT_ACCEPTED")
@@ -232,7 +239,7 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     plan_created = dt.datetime.fromisoformat(plan["created_at"])
     stale_blocked = False
     try:
-        helper.require_plan(snapshot, "MIGRATION_REQUIRED", "a" * 64, plan_created)
+        helper.require_plan(snapshot, "MIGRATION_REQUIRED_RIGHTS_MISSING", "a" * 64, plan_created)
     except helper.ReleaseError:
         stale_blocked = True
     require(stale_blocked, "STALE_PLAN_ACCEPTED_AFTER_TERMINAL_STATE")
@@ -389,15 +396,20 @@ with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     output = io.StringIO()
     with contextlib.redirect_stdout(output): helper.command_status()
     require("PREFLIGHT_PLAN=ABSENT" in output.getvalue() and "APPLY_AVAILABLE=NO" in output.getvalue(), "STATUS_ABSENT_PLAN_MISLEADING")
-    helper.atomic_json(helper.PLAN_FILE, helper.plan_payload(snapshot, "MIGRATION_REQUIRED", "a" * 64))
+    helper.atomic_json(helper.PLAN_FILE, helper.plan_payload(snapshot, "MIGRATION_REQUIRED_RIGHTS_MISSING", "a" * 64))
     output = io.StringIO()
     with contextlib.redirect_stdout(output): helper.command_status()
     require("PREFLIGHT_PLAN=READY" in output.getvalue() and "APPLY_AVAILABLE=YES" in output.getvalue(), "STATUS_READY_PLAN_NOT_AVAILABLE")
-    recovery = helper.state_payload("APPLY_FAILED_RECOVERY_REQUIRED", request_id="r")
+    recovery = helper.state_payload("APPLY_FAILED_RECOVERY_REQUIRED", request_id="r", schema_failure_reason="RIGHT_INSTALL_FAILED")
     helper.atomic_json(helper.STATE_FILE, recovery)
     output = io.StringIO()
     with contextlib.redirect_stdout(output): helper.command_status()
-    require("APPLY_AVAILABLE=NO" in output.getvalue() and "APPLY_REASON=RECOVERY_REQUIRED" in output.getvalue(), "STATUS_RECOVERY_STATE_MISLEADING")
+    require("APPLY_AVAILABLE=NO" in output.getvalue() and "APPLY_REASON=RECOVERY_REQUIRED" in output.getvalue() and "SCHEMA_FAILURE_REASON=RIGHT_INSTALL_FAILED" in output.getvalue(), "STATUS_RECOVERY_STATE_MISLEADING")
+    helper.atomic_json(helper.STATE_FILE, helper.state_payload("APPLY_FAILED_RECOVERY_REQUIRED", request_id="r", schema_failure_reason="database leaked"))
+    invalid_state_blocked = False
+    try: helper.load_state()
+    except helper.ReleaseError: invalid_state_blocked = True
+    require(invalid_state_blocked, "UNSAFE_SCHEMA_REASON_ACCEPTED_IN_STATE")
     helper.prepare_roots = real_prepare_roots
 
 source = HELPER.read_text(encoding="utf-8")
@@ -411,4 +423,4 @@ require(source.count('database_identity(candidate) != identity') >= 2, "DATABASE
 require('GENERATION_EXPRESSION' in source and 'CHECK_CLAUSE' in source and 'PARTITION_EXPRESSION' in source, "DATABASE_FINGERPRINT_METADATA_MISSING")
 require("case \"$table\" in ''|*[!A-Za-z0-9_]*) exit 1;; esac" in source, "DATABASE_FINGERPRINT_IDENTIFIER_ALLOWLIST_MISSING")
 
-print("M074_STAGING_HELPER_FAILURES=PASS CASES=24")
+print("M074_STAGING_HELPER_FAILURES=PASS CASES=30")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise safe legacy-directory conversion and exact rollback for M074-R08."""
+"""Exercise safe legacy-directory conversion and exact rollback for M074-R09."""
 
 from __future__ import annotations
 
@@ -24,9 +24,9 @@ def require(condition: bool, reason: str) -> None:
         raise SystemExit("M074_COMPATIBILITY_LAYOUT=FAIL REASON=" + reason)
 
 
-with (ROOT / "deploy/releases/m074-r08/dolibarr.manifest.tsv").open(newline="", encoding="utf-8") as handle:
+with (ROOT / "deploy/releases/m074-r09/dolibarr.manifest.tsv").open(newline="", encoding="utf-8") as handle:
     manifest_rows = list(csv.DictReader(handle, delimiter="\t"))
-with (ROOT / "deploy/releases/m074-r08/dolibarr.layout.tsv").open(newline="", encoding="utf-8") as handle:
+with (ROOT / "deploy/releases/m074-r09/dolibarr.layout.tsv").open(newline="", encoding="utf-8") as handle:
     deployment_layout = {row["runtime_path"]: row["link_target"] for row in csv.DictReader(handle, delimiter="\t")}
 expanded = module.deployment_runtime_rows(manifest_rows, deployment_layout)
 expanded_targets = [row["runtime_target"] for row in expanded]

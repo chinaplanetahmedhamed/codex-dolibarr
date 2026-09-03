@@ -5,7 +5,7 @@
 - **Target:** canonical `backup-erp` staging only
 - **Approved actions:** exact input upload, checksum verification, restricted helper update, `compare`, conditional `preflight`, conditional `apply`, and `verify`
 - **Production:** forbidden
-- **Current status:** `R08_INPUTS_UPLOADED / INITIAL_HELPER_INSTALLED / COMPARE_FAILED_CLOSED / CONTROL_CORRECTION_REVIEW_PENDING`
+- **Current status:** `APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED / R08_RETRY_FORBIDDEN / R09_PREPARATION_IN_PROGRESS`
 
 ## Expected release inputs
 
@@ -28,3 +28,7 @@ Read-only diagnostics established that the three exact QC tables exist, rights `
 The five exact R08 release inputs were uploaded to the private staging inbox and their remote SHA-256 values matched the table above. The initial R08 helper `10192397c88db2d4f8ab0dbc61623a40af62c3bce6ad9a21c21d1790570754f3`, installer `57cca8416da2dd1f50aa33403d1c9067a84c0695274b65b81a3241a91e5178ce`, and unchanged sudoers were also uploaded, checksum-verified, and installed through the approved root session.
 
 Restricted `status` returned `NOT_DEPLOYED`, then `compare` failed closed with `DOLIBARR_BUNDLE_RECORD_INVALID` before preflight or apply. Read-only diagnosis found that the immutable bundle and manifest contain 559 exact members while the initial helper still required the prior 553-member contract. The local correction updates the three total-count gates to 559 and the classification gate to the exact immutable totals of 308 runtime, 218 support, and 33 evidence files; it also pins the installed initial R08 helper as the installer predecessor and adds regression assertions. Renewed independent Security and Operations/QA review of the corrected exact commit is required before installing it. A failed review, checksum, `compare`, or `preflight` prevents `apply`.
+
+The corrected R08 helper `6227ad61ca65c99c135e56be7c22a0ea92f218f6fc08b935438184887c61be94` was subsequently installed. Restricted `compare` passed against baseline `39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094`; restricted `preflight` passed with plan `2ffe23fc011399bed1fa654d2b819ab889d2b201cffe10eec83df52621b4a823`. One exact `apply` attempt failed closed at schema apply. Automatic rollback restored all code targets and retained the additive schema/data. The terminal request is `m074-r08-20260903T112506Z-ea6a6ab45a10`; code backup SHA-256 is `ba4cc6ca21ecf9032d83f8eee4843214db7512bfb6982dd55e41e3c4458f0708`, and database backup SHA-256 is `ad1bb2acc6d4f13a49847f32eb2e57a2a4da8f5820c637401e47c12d264c5a79`.
+
+R08 discarded the apply runner's fixed stderr and collapsed every failure to `SCHEMA_APPLY_FAILED`, so the exact live branch cannot be recovered from that request. Independent QA identified the apply-only `posix_geteuid()` dependency as the strongest immediate fit when the PHP POSIX extension is unavailable; independent Security and QA also confirmed that R08 permission readiness incorrectly omitted Dolibarr entity scoping. R08 must not be retried. A newly pinned successor must make root detection portable, make rights readiness target-entity exact, allow identical definitions across entities while rejecting mismatches globally, and retain only bounded allowlisted diagnostic codes. Production, DNS, proxy, email, and real business records were not accessed or changed.

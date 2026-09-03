@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checksum-pinned, staging-only M074-R08 release controller."""
+"""Checksum-pinned, staging-only M074-R09 release controller."""
 
 from __future__ import annotations
 
@@ -26,13 +26,13 @@ import urllib.error
 import urllib.request
 
 
-RELEASE = "M074-R08"
-SOURCE_COMMIT = "a2cd4cefac1f3389a535c055d112f537954bb62b"
-ARTIFACT_SHA = "2a37f3b13c74bbf98f033a00b2c9df02dea3ffc6108b100f01bbd78ef155c1ee"
-MANIFEST_SHA = "2613b9fc29deddc9b9e3bf812dca9cca1a7b427a7c783782aa6091ab5de0d7b2"
+RELEASE = "M074-R09"
+SOURCE_COMMIT = "7af85bbb32c50833e909ba68dc73b6b6290dbc65"
+ARTIFACT_SHA = "893a72ca12f06bca0721b88dead4e36ff84353d1dbdc57400cad0c1d68cdf27c"
+MANIFEST_SHA = "483919801ee7c0803b822ae279328e57568c2e04910ea7964c323b780e095fb1"
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
-BUNDLE_SHA = "1d770e76c19850f13e2f3a1302b7dd3813ce2219ca84fd2f6efe781be032199f"
-PINS_SHA = "37e5434e675914114a347af2f4ef052a5347a31fceed5e06bbbc5b3bce4c8c1b"
+BUNDLE_SHA = "25cf437d764327bf5d6727674f7ec6030c40d621850bcb6cdec7e8f11e6f8725"
+PINS_SHA = "287fb4d33c5e8a9464343f9fbced000771d365a52ea8027c9133f2b79d20ed65"
 EXPECTED_BASELINE_SHA = "39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094"
 EXPECTED_LAYOUT_TREE_SHA = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "c0144d63da333b4eea47b3687d673d85a23d677cad4e9da0109bc06147501bcd",
@@ -42,11 +42,11 @@ DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
-    "dolibarr.tar.gz": ("m074-r08-dolibarr.tar.gz", ARTIFACT_SHA),
-    "dolibarr.manifest.tsv": ("m074-r08-dolibarr.manifest.tsv", MANIFEST_SHA),
-    "dolibarr.layout.tsv": ("m074-r08-dolibarr.layout.tsv", LAYOUT_SHA),
-    "release-bundle.json": ("m074-r08-release-bundle.json", BUNDLE_SHA),
-    "release-pins.sha256": ("m074-r08-release-pins.sha256", PINS_SHA),
+    "dolibarr.tar.gz": ("m074-r09-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r09-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r09-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r09-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r09-release-pins.sha256", PINS_SHA),
 }
 TARGET_CONTAINER = "erp-staging-dolibarr-1"
 DB_CONTAINER = "erp-staging-mariadb-1"
@@ -57,13 +57,13 @@ TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_cust
 TARGET_HTTP = "http://127.0.0.1:18088"
 BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
 DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
-ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r08")
-STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r08-staging")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r09")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r09-staging")
 STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
-DEPLOY_CONTEXT = "m074-r08-backup-erp-root-only"
+DEPLOY_CONTEXT = "m074-r09-backup-erp-root-only"
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
 STATIC_TESTS = (
@@ -84,7 +84,15 @@ STATIC_TESTS = (
 ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ARCHIVE_PATH = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
-SAFE_REQUEST_ID = re.compile(r"^m074-r08-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+SAFE_REQUEST_ID = re.compile(r"^m074-r09-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+SCHEMA_STATUSES = ("READY", "MIGRATION_REQUIRED_TABLES_MISSING", "MIGRATION_REQUIRED_RIGHTS_MISSING")
+SCHEMA_FAILURE_REASONS = frozenset({
+    "INVALID_COMMAND", "DEPLOYMENT_CONTEXT_REQUIRED", "DOL_DOCUMENT_ROOT_INVALID",
+    "DATABASE_INSPECTION_FAILED", "DATABASE_IDENTITY_UNAVAILABLE", "ENTITY_INVALID",
+    "MODULE_NOT_ENABLED", "ROOT_CONTEXT_UNAVAILABLE", "TABLE_CONTRACT_INVALID",
+    "TABLE_MIGRATION_FAILED", "RIGHT_INSTALL_FAILED", "RIGHTS_NOT_READY", "SCHEMA_NOT_READY",
+    "RIGHT_COLLISION_500528", "RIGHT_COLLISION_500529", "RIGHT_COLLISION_500530", "RIGHT_COLLISION_500531",
+})
 EXPECTED_LAYOUT = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "../chinaplanetlogistics",
     "custom/chinaplanetcustomercenter/cpkanban": "../cpkanban",
@@ -170,7 +178,7 @@ def http_status(url: str) -> int:
         def redirect_request(self, request, fp, code, message, headers, new_url):
             return None
 
-    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R08"})
+    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R09"})
     try:
         with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()).open(request, timeout=15) as response:
             return int(response.status)
@@ -255,7 +263,7 @@ class Candidate:
         self.work = work; self.files = files; self.root = root; self.rows = rows
         self.layout = layout
         self.runtime_rows = deployment_runtime_rows(rows, layout)
-        self.remote = f"/tmp/m074-r08-candidate-{os.getpid()}-{secrets.token_hex(4)}"
+        self.remote = f"/tmp/m074-r09-candidate-{os.getpid()}-{secrets.token_hex(4)}"
 
     def cleanup(self) -> None:
         try:
@@ -284,7 +292,7 @@ def deployment_runtime_rows(rows: list[dict[str, str]], layout: dict[str, str]) 
 
 
 def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
-    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r08-release-", dir="/root")); os.chmod(work, 0o700)
+    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r09-release-", dir="/root")); os.chmod(work, 0o700)
     files: dict[str, pathlib.Path] = {}
     try:
         for canonical, (inbox_name, expected_sha) in INPUTS.items():
@@ -563,18 +571,39 @@ def compare_summary(candidate: Candidate, snapshot: dict[str, object], *, emit: 
     return counts
 
 
-def schema_command(candidate: Candidate, action: str) -> tuple[int, str]:
+def schema_diagnostic(raw: bytes) -> str:
+    if not raw:
+        return ""
+    if len(raw) > 192 or not raw.endswith(b"\n") or raw.count(b"\n") != 1 or b"\r" in raw:
+        return "SCHEMA_DIAGNOSTIC_INVALID"
+    try:
+        line = raw.decode("ascii", "strict").rstrip("\n")
+    except UnicodeDecodeError:
+        return "SCHEMA_DIAGNOSTIC_INVALID"
+    match = re.fullmatch(r"M074_SCHEMA=FAIL REASON=([A-Z0-9_]+)", line)
+    if not match or match.group(1) not in SCHEMA_FAILURE_REASONS:
+        return "SCHEMA_DIAGNOSTIC_INVALID"
+    return match.group(1)
+
+
+def schema_command(candidate: Candidate, action: str) -> tuple[int, str, str]:
     command = ["docker", "exec", "-u", "0:0", "-e", "M074_DOL_DOCUMENT_ROOT=/var/www/html"]
     if action == "apply": command += ["-e", "M074_DEPLOY_CONTEXT=" + DEPLOY_CONTEXT]
     command += [TARGET_CONTAINER, "php", candidate.remote + "/" + MIGRATION, action]
     result = run(command, check=False)
-    return result.returncode, result.stdout.decode("utf-8", "strict").strip()
+    try:
+        output = result.stdout.decode("ascii", "strict").strip()
+    except UnicodeDecodeError:
+        fail("SCHEMA_STDOUT_INVALID")
+    return result.returncode, output, schema_diagnostic(result.stderr)
 
 
 def schema_status(candidate: Candidate) -> str:
-    code, output = schema_command(candidate, "check")
-    if code == 0 and output == "M074_SCHEMA_CHECK=READY RIGHTS_DEFAULT=DISABLED": return "READY"
-    if code == 2 and output == "M074_SCHEMA_CHECK=MIGRATION_REQUIRED": return "MIGRATION_REQUIRED"
+    code, output, diagnostic = schema_command(candidate, "check")
+    if code == 0 and not diagnostic and output == "M074_SCHEMA_CHECK=READY RIGHTS_DEFAULT=DISABLED": return "READY"
+    if code == 2 and not diagnostic and output == "M074_SCHEMA_CHECK=MIGRATION_REQUIRED REASON=TABLES_MISSING": return "MIGRATION_REQUIRED_TABLES_MISSING"
+    if code == 2 and not diagnostic and output == "M074_SCHEMA_CHECK=MIGRATION_REQUIRED REASON=RIGHTS_MISSING": return "MIGRATION_REQUIRED_RIGHTS_MISSING"
+    if diagnostic: fail("SCHEMA_CHECK_FAILED_" + diagnostic)
     fail("SCHEMA_CHECK_FAILED")
 
 
@@ -587,8 +616,8 @@ MYSQL_PWD="$pass" exec mariadb -N -u root "$db" -e "SELECT LOWER(SHA2(CONCAT(DAT
 
 
 def database_identity(candidate: Candidate) -> str:
-    code, output = schema_command(candidate, "identity"); prefix = "M074_SCHEMA_DATABASE_IDENTITY="
-    if code != 0 or not output.startswith(prefix) or not HEX64.fullmatch(output[len(prefix):]): fail("ERP_DATABASE_IDENTITY_INVALID")
+    code, output, diagnostic = schema_command(candidate, "identity"); prefix = "M074_SCHEMA_DATABASE_IDENTITY="
+    if code != 0 or diagnostic or not output.startswith(prefix) or not HEX64.fullmatch(output[len(prefix):]): fail("ERP_DATABASE_IDENTITY_INVALID")
     erp_identity = output[len(prefix):]
     db_identity = run_text(["docker", "exec", DB_CONTAINER, "sh", "-eu", "-c", DB_IDENTITY_SCRIPT])
     if not HEX64.fullmatch(db_identity) or db_identity != erp_identity: fail("DATABASE_BACKUP_TARGET_MISMATCH")
@@ -680,7 +709,7 @@ def signature_matches(actual: dict[str, object], expected: dict[str, object]) ->
 
 def atomic_write_target(root_fd: int, relative: str, data: bytes, uid: int, gid: int, mode: int,
                         expected: dict[str, object] | None = None) -> None:
-    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r08-" + secrets.token_hex(12); fd = -1
+    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r09-" + secrets.token_hex(12); fd = -1
     try:
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=parent)
         offset = 0
@@ -794,7 +823,7 @@ def apply_layout(candidate: Candidate, snapshot: dict[str, object]) -> None:
         if current != item:
             fail("TARGET_BASELINE_CHANGED")
         target = TARGET_ROOT / str(item["path"]); parent = target.parent
-        temporary = parent / (".m074-r08-layout-" + secrets.token_hex(12))
+        temporary = parent / (".m074-r09-layout-" + secrets.token_hex(12))
         moved = False; linked = False
         try:
             if state == "CONVERTIBLE":
@@ -841,7 +870,7 @@ def remove_managed_overlay_directories(item: dict[str, object], allowed_snapshot
                 fail("ROLLBACK_LAYOUT_MISMATCH")
             parts = tuple(pathlib.PurePosixPath(str(item["path"]), relative).parts)
             parent = open_dir_chain(target_fd, parts[:-1])
-            quarantine = ".m074-r08-rmdir-" + secrets.token_hex(12)
+            quarantine = ".m074-r09-rmdir-" + secrets.token_hex(12)
             moved = False
             try:
                 renameat2(parent, parts[-1], parent, quarantine, RENAME_NOREPLACE); moved = True
@@ -943,7 +972,7 @@ def remove_target_if_expected(root_fd: int, relative: str, expected: dict[str, o
         if expected.get("state") == "ABSENT":
             return
         fail("ROLLBACK_BASELINE_CHANGED")
-    temporary = ".m074-r08-remove-" + secrets.token_hex(12)
+    temporary = ".m074-r09-remove-" + secrets.token_hex(12)
     try:
         try:
             renameat2(parent, parts[-1], parent, temporary, RENAME_NOREPLACE)
@@ -1117,6 +1146,9 @@ def load_state() -> dict[str, object]:
                "APPLY_FAILED_AUTO_ROLLED_BACK_SCHEMA_RETAINED", "APPLY_FAILED_RECOVERY_REQUIRED", "PENDING_ROLLBACK_PREPARE",
                "PENDING_ROLLBACK", "ROLLED_BACK_SCHEMA_RETAINED", "ROLLBACK_FAILED_NO_MUTATION", "ROLLBACK_FAILED_REAPPLIED", "ROLLBACK_FAILED_RECOVERY_REQUIRED"}
     if state.get("status") not in allowed: fail("STATE_STATUS_INVALID")
+    schema_reason = state.get("schema_failure_reason")
+    if schema_reason is not None and schema_reason not in SCHEMA_FAILURE_REASONS | {"SCHEMA_DIAGNOSTIC_INVALID", "SCHEMA_RESPONSE_INVALID"}:
+        fail("STATE_SCHEMA_DIAGNOSTIC_INVALID")
     return state
 
 
@@ -1225,7 +1257,7 @@ def status_plan() -> tuple[str, dt.datetime | None]:
     plan = json.loads(PLAN_FILE.read_text("ascii"))
     if (plan.get("schema") != 1 or plan.get("release") != RELEASE or plan.get("source_commit") != SOURCE_COMMIT
             or plan.get("artifact_sha256") != ARTIFACT_SHA or not HEX64.fullmatch(str(plan.get("snapshot_sha256", "")))
-            or plan.get("schema_status") not in ("READY", "MIGRATION_REQUIRED")
+            or plan.get("schema_status") not in SCHEMA_STATUSES
             or not HEX64.fullmatch(str(plan.get("database_identity", "")))):
         fail("PREFLIGHT_PLAN_STATUS_INVALID")
     created = dt.datetime.fromisoformat(str(plan.get("created_at")))
@@ -1255,7 +1287,7 @@ def apply_status(plan_status: str, plan_created: dt.datetime | None, state: dict
 
 
 def make_request_id() -> str:
-    value = "m074-r08-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
+    value = "m074-r09-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
     if not SAFE_REQUEST_ID.fullmatch(value): fail("REQUEST_ID_INVALID")
     return value
 
@@ -1349,8 +1381,10 @@ def execute_apply_mutation(candidate: Candidate, snapshot: dict[str, object], id
         apply_candidate(candidate, snapshot)
         if database_identity(candidate) != identity:
             fail("DATABASE_IDENTITY_CHANGED_BEFORE_SCHEMA_APPLY")
-        save_state("PENDING_APPLY_SCHEMA", **fields); code, output = schema_command(candidate, "apply")
-        if code != 0 or output != "M074_SCHEMA_APPLY=PASS TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED": fail("SCHEMA_APPLY_FAILED")
+        save_state("PENDING_APPLY_SCHEMA", **fields); code, output, diagnostic = schema_command(candidate, "apply")
+        if code != 0 or diagnostic or output != "M074_SCHEMA_APPLY=PASS TABLES=3 RIGHTS=4 RIGHTS_DEFAULT=DISABLED":
+            fields["schema_failure_reason"] = diagnostic or "SCHEMA_RESPONSE_INVALID"
+            fail("SCHEMA_APPLY_FAILED_" + str(fields["schema_failure_reason"]))
         live_checks(candidate, snapshot)
         if database_identity(candidate) != identity:
             fail("DATABASE_IDENTITY_CHANGED_AFTER_SCHEMA_APPLY")
@@ -1399,7 +1433,7 @@ def command_apply() -> None:
                 live_checks(candidate, prior_snapshot); require_saved_database_identity(state, identity); state_database_backup(state)
                 print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return
             retain_release(candidate); request_id = make_request_id(); save_state("PENDING_APPLY_PREPARE", request_id=request_id, plan_sha256=plan_sha)
-            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r08-before-" + request_id)
+            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r09-before-" + request_id)
             database, database_sha = create_database_backup(request_id, identity)
             validation_database = make_validation_database_name()
             fields = {"request_id": request_id, "plan_sha256": plan_sha, "code_backup": str(archive), "code_backup_sha256": archive_sha,
@@ -1450,7 +1484,7 @@ def command_rollback() -> None:
         try:
             candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); live_checks(candidate, prior_snapshot); deployed = release_snapshot(candidate); rollback_id = make_request_id()
             state["status"] = "PENDING_ROLLBACK_PREPARE"; state["rollback_request_id"] = rollback_id; atomic_json(STATE_FILE, state)
-            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r08-reapply-" + rollback_id)
+            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r09-reapply-" + rollback_id)
             state.update({"status": "PENDING_ROLLBACK", "reapply_code_backup": str(reapply[0]), "reapply_code_backup_sha256": reapply[1], "reapply_prestate": str(reapply[2]), "reapply_prestate_sha256": reapply[3]}); atomic_json(STATE_FILE, state)
             try:
                 restore_snapshot(*prior, allowed_snapshot=deployed)
@@ -1475,7 +1509,7 @@ def command_status() -> None:
         print(f"M074_STAGING_STATUS=NOT_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PREFLIGHT_PLAN={plan} COMMANDS=compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE={available} APPLY_REASON={reason} DATABASE_CHANGED=NO PRODUCTION_ACCESSED=NO"); return
     state = load_state()
     available, reason = apply_status(plan, plan_created, state)
-    print(f"M074_STAGING_STATUS={state['status']} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state.get('request_id','none')} CODE_BACKUP_SHA={state.get('code_backup_sha256','none')} DB_BACKUP_SHA={state.get('database_backup_sha256','none')} PREFLIGHT_PLAN={plan} COMMANDS=compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE={available} APPLY_REASON={reason} PRODUCTION_ACCESSED=NO")
+    print(f"M074_STAGING_STATUS={state['status']} RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} REQUEST_ID={state.get('request_id','none')} CODE_BACKUP_SHA={state.get('code_backup_sha256','none')} DB_BACKUP_SHA={state.get('database_backup_sha256','none')} SCHEMA_FAILURE_REASON={state.get('schema_failure_reason','none')} PREFLIGHT_PLAN={plan} COMMANDS=compare,preflight,apply,verify,rollback,status APPLY_AVAILABLE={available} APPLY_REASON={reason} PRODUCTION_ACCESSED=NO")
 
 
 def main() -> int:
