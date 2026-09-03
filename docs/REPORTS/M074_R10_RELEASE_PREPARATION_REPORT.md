@@ -3,7 +3,7 @@
 ## Control record
 
 - **Mission/release:** M074 / M074-R10
-- **Status:** `UPLOADED / REMOTE_CHECKSUMS_PASS / NOT_INSTALLED`
+- **Status:** `INSTALLED / REMOTE_CHECKSUMS_PASS / COMPARE_NOT_RUN`
 - **Target:** canonical `backup-erp` staging only
 - **Source branch:** `codex/m074-qc-field-report-composite`
 - **Pinned Dolibarr/mobile source:** `7d223fb7983fd2668826cb33587f1a4e8644f1df`
@@ -50,4 +50,10 @@ Independent Security and Operations/QA reviewed exact frozen commit `a70bd2dd4ea
 
 After Ahmed's exact approval, the five R10 release inputs and three controller inputs were uploaded to the two private `codex-deploy` staging inboxes through temporary names and atomically published only after checksum verification. Final remote SHA-256 values match every pin above; all eight files are regular single-link `codex-deploy:codex-deploy` files with mode `0644`.
 
-R10 is uploaded but not installed. The installed server helper remains R09. Exact R10 root installation requires a new approval, and restricted `compare` remains a later separate gate. `preflight` and `apply` remain unauthorized. Production remains forbidden and was not accessed.
+After Ahmed's exact approval, the pinned R10 installer was run through the saved Termius `root` host. The installer accepted the exact uploaded helper and unchanged sudoers input. Independent verification through the restricted `codex-deploy` account confirmed:
+
+- installed helper SHA-256 `7960d6e19a64855fa3cafa617630471df91401c9f194ae34f590345422066494`;
+- installed helper metadata `root:root`, mode `0755`, one hard link;
+- exactly the reviewed six passwordless commands: `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` at the fixed M074 helper path.
+
+No restricted controller command was run. In particular, `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` remain unexecuted for R10. No deployment or database mutation occurred, and Production was not accessed. The next gate requires a separate exact approval for restricted `compare` only.
