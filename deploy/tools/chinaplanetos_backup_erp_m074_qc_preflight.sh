@@ -26,13 +26,13 @@ import urllib.error
 import urllib.request
 
 
-RELEASE = "M074-R10"
-SOURCE_COMMIT = "7d223fb7983fd2668826cb33587f1a4e8644f1df"
-ARTIFACT_SHA = "62775bcf60b3dfd65c7d641132b463abaa1fec02cd84154835f7fadce9c45c66"
-MANIFEST_SHA = "b9b49c50bcaf221024dfd9ff496c310b54e3acd672974cd7cc0c56dfed753d3c"
+RELEASE = "M074-R11"
+SOURCE_COMMIT = "ffa4983569511cf07be12be76c7637c12ac8049c"
+ARTIFACT_SHA = "f06df2c656c7897b2f7cfe2192b6f7cdb2863eb91e99404247a9055a4db61f70"
+MANIFEST_SHA = "82b80c6778cf1744e10409dfdfd2ac9ca9314bbd06be68c8cceaab3e04b62931"
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
-BUNDLE_SHA = "69d806f11a4880decc03626b2708dc03fbf75f15e30e99e40e72d585525c5346"
-PINS_SHA = "9fce0da459269563dfd9d13c7b831c4fbd41142c3dc9ba8cae2ac5754691482e"
+BUNDLE_SHA = "3c433a90ec149ffdebf847945465bcf3064cc4d336ec89da3677c9eb114a577d"
+PINS_SHA = "2175a22cddf1fe066fd83187ea00f2755e09d282d8a79dfae1db06d4a8e6eb6f"
 EXPECTED_BASELINE_SHA = "39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094"
 EXPECTED_LAYOUT_TREE_SHA = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "c0144d63da333b4eea47b3687d673d85a23d677cad4e9da0109bc06147501bcd",
@@ -42,11 +42,11 @@ DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
-    "dolibarr.tar.gz": ("m074-r10-dolibarr.tar.gz", ARTIFACT_SHA),
-    "dolibarr.manifest.tsv": ("m074-r10-dolibarr.manifest.tsv", MANIFEST_SHA),
-    "dolibarr.layout.tsv": ("m074-r10-dolibarr.layout.tsv", LAYOUT_SHA),
-    "release-bundle.json": ("m074-r10-release-bundle.json", BUNDLE_SHA),
-    "release-pins.sha256": ("m074-r10-release-pins.sha256", PINS_SHA),
+    "dolibarr.tar.gz": ("m074-r11-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r11-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r11-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r11-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r11-release-pins.sha256", PINS_SHA),
 }
 TARGET_CONTAINER = "erp-staging-dolibarr-1"
 DB_CONTAINER = "erp-staging-mariadb-1"
@@ -57,13 +57,13 @@ TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_cust
 TARGET_HTTP = "http://127.0.0.1:18088"
 BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
 DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
-ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r10")
-STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r10-staging")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r11")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r11-staging")
 STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
-DEPLOY_CONTEXT = "m074-r10-backup-erp-root-only"
+DEPLOY_CONTEXT = "m074-r11-backup-erp-root-only"
 PHP_SCHEMA_FLAGS = ("-d", "display_errors=0", "-d", "log_errors=0", "-d", "error_reporting=0")
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -312,7 +312,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("BUNDLE_COMPONENTS_INVALID")
         expected_component = {"artifact": "dolibarr.tar.gz", "artifactSha256": ARTIFACT_SHA, "commit": SOURCE_COMMIT,
                               "manifest": "dolibarr.manifest.tsv", "manifestSha256": MANIFEST_SHA,
-                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 561,
+                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 563,
                               "configPolicy": "external-retain", "dataPolicy": "retain", "schemaPolicy": "additive-retain-on-code-rollback"}
         if any(components["dolibarr"].get(key) != value for key, value in expected_component.items()):
             fail("DOLIBARR_BUNDLE_RECORD_INVALID")
@@ -323,7 +323,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("RELEASE_PINS_INVALID")
         with files["dolibarr.manifest.tsv"].open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle, delimiter="\t"))
-        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 561:
+        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 563:
             fail("MANIFEST_CONTRACT_INVALID")
         counts = {"runtime": 0, "support": 0, "evidence": 0}; seen: set[str] = set()
         for row in rows:
@@ -341,12 +341,12 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
                 fail("NONRUNTIME_TARGET_INVALID")
             if row["mode"] not in ("644", "755") or not row["size"].isdigit() or not HEX64.fullmatch(row["sha256"]):
                 fail("MANIFEST_METADATA_INVALID")
-        if counts != {"runtime": 308, "support": 218, "evidence": 35}:
+        if counts != {"runtime": 308, "support": 218, "evidence": 37}:
             fail("MANIFEST_COUNTS_INVALID")
         root = work / "candidate"; root.mkdir(mode=0o700)
         with gzip.open(files["dolibarr.tar.gz"], "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
             members = archive.getmembers()
-            if len(members) != 561 or [member.name for member in members] != sorted(seen):
+            if len(members) != 563 or [member.name for member in members] != sorted(seen):
                 fail("ARTIFACT_MEMBER_SET_INVALID")
             for member in members:
                 if not member.isfile() or member.name not in seen or member.uid != 0 or member.gid != 0 or member.mtime != 0 or stat.S_IMODE(member.mode) not in (0o644, 0o755):

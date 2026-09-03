@@ -1,0 +1,57 @@
+{
+  "bindingStatus": "UNBOUND_REQUIRES_INDEPENDENT_REVIEW_AND_STAGING_APPROVAL",
+  "components": [
+    {
+      "artifact": "dolibarr.tar.gz",
+      "artifactSha256": "f06df2c656c7897b2f7cfe2192b6f7cdb2863eb91e99404247a9055a4db61f70",
+      "commit": "ffa4983569511cf07be12be76c7637c12ac8049c",
+      "configPolicy": "external-retain",
+      "dataPolicy": "retain",
+      "id": "dolibarr",
+      "layout": "dolibarr.layout.tsv",
+      "layoutSha256": "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756",
+      "manifest": "dolibarr.manifest.tsv",
+      "manifestSha256": "82b80c6778cf1744e10409dfdfd2ac9ca9314bbd06be68c8cceaab3e04b62931",
+      "members": 563,
+      "schemaPolicy": "additive-retain-on-code-rollback"
+    },
+    {
+      "artifact": "react.tar.gz",
+      "artifactSha256": "44c3bd853e681f12dbdc2579de48f018aa2a739a962e38bceb9389742d5a9c9a",
+      "commit": "01c9d872ccdf5664cf470019194156b5503dc74b",
+      "configPolicy": "external-retain",
+      "dataPolicy": "retain",
+      "id": "react",
+      "manifest": "react.manifest.tsv",
+      "manifestSha256": "b5282adff844c86ca4af2f827853d4f5c048d5882ee9d64ba1b72c1b0fe82073",
+      "members": 229,
+      "schemaPolicy": "none"
+    },
+    {
+      "artifact": "wordpress.tar.gz",
+      "artifactSha256": "3a91e08a96562925881187ba5c3719188781e3edf74066284fec1301e1bfb332",
+      "commit": "ae273e2d15fa89111336ef74f746a86cc9ac57bd",
+      "configPolicy": "external-retain",
+      "dataPolicy": "retain",
+      "id": "wordpress",
+      "manifest": "wordpress.manifest.tsv",
+      "manifestSha256": "4a21be017bf939dd973fdff2b9a4bbb767d41a2f7471064ff194ff12d8b6d00f",
+      "members": 37,
+      "schemaPolicy": "none"
+    },
+    {
+      "artifact": "mobile.tar.gz",
+      "artifactSha256": "61440cda9ca820659a6f9e33adc0d06a6204679caec50a53712959b02986116e",
+      "commit": "ffa4983569511cf07be12be76c7637c12ac8049c",
+      "configPolicy": "external-retain",
+      "dataPolicy": "retain",
+      "id": "mobile",
+      "manifest": "mobile.manifest.tsv",
+      "manifestSha256": "b0a3a0651915411eb4e418e2f62bdfb9a36b1abd240207448d2014a23b47a51c",
+      "members": 95,
+      "schemaPolicy": "none"
+    }
+  ],
+  "releaseId": "M074-R11",
+  "schemaVersion": 1
+}
