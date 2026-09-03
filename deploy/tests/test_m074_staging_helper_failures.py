@@ -34,6 +34,21 @@ require(helper.schema_diagnostic(b"M074_SCHEMA=FAIL REASON=RIGHT_INSTALL_FAILED\
 require(helper.schema_diagnostic(b"M074_SCHEMA=FAIL REASON=UNKNOWN_STAGE\n") == "SCHEMA_DIAGNOSTIC_INVALID", "UNKNOWN_SCHEMA_REASON_ACCEPTED")
 require(helper.schema_diagnostic(b"x" * 193 + b"\n") == "SCHEMA_DIAGNOSTIC_INVALID", "OVERSIZED_SCHEMA_ERROR_ACCEPTED")
 
+schema_candidate = type("SchemaCandidate", (), {"remote": "/tmp/m074-r10-candidate-test"})()
+with unittest.mock.patch.object(helper, "run", return_value=type("Result", (), {
+        "returncode": 2,
+        "stdout": b"M074_SCHEMA_CHECK=MIGRATION_REQUIRED REASON=RIGHTS_MISSING\n",
+        "stderr": b"",
+})()) as schema_run:
+    code, output, diagnostic = helper.schema_command(schema_candidate, "check")
+require((code, output, diagnostic) == (2, "M074_SCHEMA_CHECK=MIGRATION_REQUIRED REASON=RIGHTS_MISSING", ""),
+        "SCHEMA_CHECK_RESPONSE_INVALID")
+schema_args = schema_run.call_args.args[0]
+require(schema_args[-10:] == [
+    helper.TARGET_CONTAINER, "php", "-d", "display_errors=0", "-d", "log_errors=0", "-d", "error_reporting=0",
+    schema_candidate.remote + "/" + helper.MIGRATION, "check",
+], "SCHEMA_PHP_DIAGNOSTIC_ISOLATION_MISSING")
+
 
 with tempfile.TemporaryDirectory(prefix="m074-helper-failures-") as raw:
     sandbox = pathlib.Path(raw)

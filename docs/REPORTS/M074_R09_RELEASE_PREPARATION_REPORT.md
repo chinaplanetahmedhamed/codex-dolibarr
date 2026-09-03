@@ -3,7 +3,7 @@
 ## Control record
 
 - **Mission/release:** M074 / M074-R09
-- **Status:** `CHECKSUM_PINNED_LOCAL / RENEWED_SECURITY_QA_PENDING / NOT_UPLOADED`
+- **Status:** `COMPARE_FAILED_CLOSED / R09_RETRY_FORBIDDEN / R10_PREPARATION_IN_PROGRESS`
 - **Target:** canonical `backup-erp` staging only
 - **Source branch:** `codex/m074-qc-field-report-composite`
 - **Pinned Dolibarr/mobile source:** `7af85bbb32c50833e909ba68dc73b6b6290dbc65`
@@ -44,4 +44,4 @@ The installer accepts only the currently installed R08 helper `6227ad61ca65c99c1
 
 ## Gate
 
-The immutable R09 release and controller are local only. Renewed independent Security and Operations/QA must pass the exact frozen commit. Because the release identity changed from R08 to R09, Ahmed's prior R08 apply approval does not authorize upload, installation, preflight, or apply of R09. After renewed approval, the first server action is upload plus checksum verification, followed by exact helper installation and restricted `compare`; further mutation remains gated by an expected sanitized result and the exact staging approval. Production remains forbidden.
+The immutable R09 release and controller passed renewed independent Security and Operations/QA review, were uploaded with matching remote checksums, and the exact helper and unchanged sudoers were installed after Ahmed's approval. Restricted `compare` failed closed with `SCHEMA_CHECK_FAILED_SCHEMA_DIAGNOSTIC_INVALID`; neither `preflight` nor `apply` ran. The R09 controller must not be retried. R10 preparation may suppress PHP runtime warning/log channels for the schema subprocess while retaining the single fixed allowlisted stderr failure contract. R10 requires new immutable pins and renewed independent Security and Operations/QA review before any server action. Production remains forbidden and was not accessed.

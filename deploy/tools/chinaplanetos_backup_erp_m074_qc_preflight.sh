@@ -64,6 +64,7 @@ PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
 DEPLOY_CONTEXT = "m074-r09-backup-erp-root-only"
+PHP_SCHEMA_FLAGS = ("-d", "display_errors=0", "-d", "log_errors=0", "-d", "error_reporting=0")
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
 STATIC_TESTS = (
@@ -589,7 +590,7 @@ def schema_diagnostic(raw: bytes) -> str:
 def schema_command(candidate: Candidate, action: str) -> tuple[int, str, str]:
     command = ["docker", "exec", "-u", "0:0", "-e", "M074_DOL_DOCUMENT_ROOT=/var/www/html"]
     if action == "apply": command += ["-e", "M074_DEPLOY_CONTEXT=" + DEPLOY_CONTEXT]
-    command += [TARGET_CONTAINER, "php", candidate.remote + "/" + MIGRATION, action]
+    command += [TARGET_CONTAINER, "php", *PHP_SCHEMA_FLAGS, candidate.remote + "/" + MIGRATION, action]
     result = run(command, check=False)
     try:
         output = result.stdout.decode("ascii", "strict").strip()
