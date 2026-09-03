@@ -438,4 +438,4 @@ require(source.count('database_identity(candidate) != identity') >= 2, "DATABASE
 require('GENERATION_EXPRESSION' in source and 'CHECK_CLAUSE' in source and 'PARTITION_EXPRESSION' in source, "DATABASE_FINGERPRINT_METADATA_MISSING")
 require("case \"$table\" in ''|*[!A-Za-z0-9_]*) exit 1;; esac" in source, "DATABASE_FINGERPRINT_IDENTIFIER_ALLOWLIST_MISSING")
 
-print("M074_STAGING_HELPER_FAILURES=PASS CASES=30")
+print("M074_STAGING_HELPER_FAILURES=PASS CASES=31")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checksum-pinned, staging-only M074-R09 release controller."""
+"""Checksum-pinned, staging-only M074-R10 release controller."""
 
 from __future__ import annotations
 
@@ -26,13 +26,13 @@ import urllib.error
 import urllib.request
 
 
-RELEASE = "M074-R09"
-SOURCE_COMMIT = "7af85bbb32c50833e909ba68dc73b6b6290dbc65"
-ARTIFACT_SHA = "893a72ca12f06bca0721b88dead4e36ff84353d1dbdc57400cad0c1d68cdf27c"
-MANIFEST_SHA = "483919801ee7c0803b822ae279328e57568c2e04910ea7964c323b780e095fb1"
+RELEASE = "M074-R10"
+SOURCE_COMMIT = "7d223fb7983fd2668826cb33587f1a4e8644f1df"
+ARTIFACT_SHA = "62775bcf60b3dfd65c7d641132b463abaa1fec02cd84154835f7fadce9c45c66"
+MANIFEST_SHA = "b9b49c50bcaf221024dfd9ff496c310b54e3acd672974cd7cc0c56dfed753d3c"
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
-BUNDLE_SHA = "25cf437d764327bf5d6727674f7ec6030c40d621850bcb6cdec7e8f11e6f8725"
-PINS_SHA = "287fb4d33c5e8a9464343f9fbced000771d365a52ea8027c9133f2b79d20ed65"
+BUNDLE_SHA = "69d806f11a4880decc03626b2708dc03fbf75f15e30e99e40e72d585525c5346"
+PINS_SHA = "9fce0da459269563dfd9d13c7b831c4fbd41142c3dc9ba8cae2ac5754691482e"
 EXPECTED_BASELINE_SHA = "39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094"
 EXPECTED_LAYOUT_TREE_SHA = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "c0144d63da333b4eea47b3687d673d85a23d677cad4e9da0109bc06147501bcd",
@@ -42,11 +42,11 @@ DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
-    "dolibarr.tar.gz": ("m074-r09-dolibarr.tar.gz", ARTIFACT_SHA),
-    "dolibarr.manifest.tsv": ("m074-r09-dolibarr.manifest.tsv", MANIFEST_SHA),
-    "dolibarr.layout.tsv": ("m074-r09-dolibarr.layout.tsv", LAYOUT_SHA),
-    "release-bundle.json": ("m074-r09-release-bundle.json", BUNDLE_SHA),
-    "release-pins.sha256": ("m074-r09-release-pins.sha256", PINS_SHA),
+    "dolibarr.tar.gz": ("m074-r10-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r10-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r10-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r10-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r10-release-pins.sha256", PINS_SHA),
 }
 TARGET_CONTAINER = "erp-staging-dolibarr-1"
 DB_CONTAINER = "erp-staging-mariadb-1"
@@ -57,13 +57,13 @@ TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_cust
 TARGET_HTTP = "http://127.0.0.1:18088"
 BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
 DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
-ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r09")
-STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r09-staging")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r10")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r10-staging")
 STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
-DEPLOY_CONTEXT = "m074-r09-backup-erp-root-only"
+DEPLOY_CONTEXT = "m074-r10-backup-erp-root-only"
 PHP_SCHEMA_FLAGS = ("-d", "display_errors=0", "-d", "log_errors=0", "-d", "error_reporting=0")
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -85,7 +85,7 @@ STATIC_TESTS = (
 ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ARCHIVE_PATH = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
-SAFE_REQUEST_ID = re.compile(r"^m074-r09-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+SAFE_REQUEST_ID = re.compile(r"^m074-r10-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 SCHEMA_STATUSES = ("READY", "MIGRATION_REQUIRED_TABLES_MISSING", "MIGRATION_REQUIRED_RIGHTS_MISSING")
 SCHEMA_FAILURE_REASONS = frozenset({
     "INVALID_COMMAND", "DEPLOYMENT_CONTEXT_REQUIRED", "DOL_DOCUMENT_ROOT_INVALID",
@@ -179,7 +179,7 @@ def http_status(url: str) -> int:
         def redirect_request(self, request, fp, code, message, headers, new_url):
             return None
 
-    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R09"})
+    request = urllib.request.Request(url, method="GET", headers={"User-Agent": "ChinaPlanetOS-M074-R10"})
     try:
         with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()).open(request, timeout=15) as response:
             return int(response.status)
@@ -264,7 +264,7 @@ class Candidate:
         self.work = work; self.files = files; self.root = root; self.rows = rows
         self.layout = layout
         self.runtime_rows = deployment_runtime_rows(rows, layout)
-        self.remote = f"/tmp/m074-r09-candidate-{os.getpid()}-{secrets.token_hex(4)}"
+        self.remote = f"/tmp/m074-r10-candidate-{os.getpid()}-{secrets.token_hex(4)}"
 
     def cleanup(self) -> None:
         try:
@@ -293,7 +293,7 @@ def deployment_runtime_rows(rows: list[dict[str, str]], layout: dict[str, str]) 
 
 
 def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
-    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r09-release-", dir="/root")); os.chmod(work, 0o700)
+    work = pathlib.Path(tempfile.mkdtemp(prefix="m074-r10-release-", dir="/root")); os.chmod(work, 0o700)
     files: dict[str, pathlib.Path] = {}
     try:
         for canonical, (inbox_name, expected_sha) in INPUTS.items():
@@ -312,7 +312,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("BUNDLE_COMPONENTS_INVALID")
         expected_component = {"artifact": "dolibarr.tar.gz", "artifactSha256": ARTIFACT_SHA, "commit": SOURCE_COMMIT,
                               "manifest": "dolibarr.manifest.tsv", "manifestSha256": MANIFEST_SHA,
-                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 559,
+                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 561,
                               "configPolicy": "external-retain", "dataPolicy": "retain", "schemaPolicy": "additive-retain-on-code-rollback"}
         if any(components["dolibarr"].get(key) != value for key, value in expected_component.items()):
             fail("DOLIBARR_BUNDLE_RECORD_INVALID")
@@ -323,7 +323,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("RELEASE_PINS_INVALID")
         with files["dolibarr.manifest.tsv"].open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle, delimiter="\t"))
-        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 559:
+        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 561:
             fail("MANIFEST_CONTRACT_INVALID")
         counts = {"runtime": 0, "support": 0, "evidence": 0}; seen: set[str] = set()
         for row in rows:
@@ -341,12 +341,12 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
                 fail("NONRUNTIME_TARGET_INVALID")
             if row["mode"] not in ("644", "755") or not row["size"].isdigit() or not HEX64.fullmatch(row["sha256"]):
                 fail("MANIFEST_METADATA_INVALID")
-        if counts != {"runtime": 308, "support": 218, "evidence": 33}:
+        if counts != {"runtime": 308, "support": 218, "evidence": 35}:
             fail("MANIFEST_COUNTS_INVALID")
         root = work / "candidate"; root.mkdir(mode=0o700)
         with gzip.open(files["dolibarr.tar.gz"], "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
             members = archive.getmembers()
-            if len(members) != 559 or [member.name for member in members] != sorted(seen):
+            if len(members) != 561 or [member.name for member in members] != sorted(seen):
                 fail("ARTIFACT_MEMBER_SET_INVALID")
             for member in members:
                 if not member.isfile() or member.name not in seen or member.uid != 0 or member.gid != 0 or member.mtime != 0 or stat.S_IMODE(member.mode) not in (0o644, 0o755):
@@ -710,7 +710,7 @@ def signature_matches(actual: dict[str, object], expected: dict[str, object]) ->
 
 def atomic_write_target(root_fd: int, relative: str, data: bytes, uid: int, gid: int, mode: int,
                         expected: dict[str, object] | None = None) -> None:
-    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r09-" + secrets.token_hex(12); fd = -1
+    parts = tuple(pathlib.PurePosixPath(relative).parts); parent = open_dir_chain(root_fd, parts[:-1], create=True); temporary = ".m074-r10-" + secrets.token_hex(12); fd = -1
     try:
         fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=parent)
         offset = 0
@@ -824,7 +824,7 @@ def apply_layout(candidate: Candidate, snapshot: dict[str, object]) -> None:
         if current != item:
             fail("TARGET_BASELINE_CHANGED")
         target = TARGET_ROOT / str(item["path"]); parent = target.parent
-        temporary = parent / (".m074-r09-layout-" + secrets.token_hex(12))
+        temporary = parent / (".m074-r10-layout-" + secrets.token_hex(12))
         moved = False; linked = False
         try:
             if state == "CONVERTIBLE":
@@ -871,7 +871,7 @@ def remove_managed_overlay_directories(item: dict[str, object], allowed_snapshot
                 fail("ROLLBACK_LAYOUT_MISMATCH")
             parts = tuple(pathlib.PurePosixPath(str(item["path"]), relative).parts)
             parent = open_dir_chain(target_fd, parts[:-1])
-            quarantine = ".m074-r09-rmdir-" + secrets.token_hex(12)
+            quarantine = ".m074-r10-rmdir-" + secrets.token_hex(12)
             moved = False
             try:
                 renameat2(parent, parts[-1], parent, quarantine, RENAME_NOREPLACE); moved = True
@@ -973,7 +973,7 @@ def remove_target_if_expected(root_fd: int, relative: str, expected: dict[str, o
         if expected.get("state") == "ABSENT":
             return
         fail("ROLLBACK_BASELINE_CHANGED")
-    temporary = ".m074-r09-remove-" + secrets.token_hex(12)
+    temporary = ".m074-r10-remove-" + secrets.token_hex(12)
     try:
         try:
             renameat2(parent, parts[-1], parent, temporary, RENAME_NOREPLACE)
@@ -1288,7 +1288,7 @@ def apply_status(plan_status: str, plan_created: dt.datetime | None, state: dict
 
 
 def make_request_id() -> str:
-    value = "m074-r09-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
+    value = "m074-r10-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
     if not SAFE_REQUEST_ID.fullmatch(value): fail("REQUEST_ID_INVALID")
     return value
 
@@ -1434,7 +1434,7 @@ def command_apply() -> None:
                 live_checks(candidate, prior_snapshot); require_saved_database_identity(state, identity); state_database_backup(state)
                 print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return
             retain_release(candidate); request_id = make_request_id(); save_state("PENDING_APPLY_PREPARE", request_id=request_id, plan_sha256=plan_sha)
-            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r09-before-" + request_id)
+            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r10-before-" + request_id)
             database, database_sha = create_database_backup(request_id, identity)
             validation_database = make_validation_database_name()
             fields = {"request_id": request_id, "plan_sha256": plan_sha, "code_backup": str(archive), "code_backup_sha256": archive_sha,
@@ -1485,7 +1485,7 @@ def command_rollback() -> None:
         try:
             candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); live_checks(candidate, prior_snapshot); deployed = release_snapshot(candidate); rollback_id = make_request_id()
             state["status"] = "PENDING_ROLLBACK_PREPARE"; state["rollback_request_id"] = rollback_id; atomic_json(STATE_FILE, state)
-            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r09-reapply-" + rollback_id)
+            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r10-reapply-" + rollback_id)
             state.update({"status": "PENDING_ROLLBACK", "reapply_code_backup": str(reapply[0]), "reapply_code_backup_sha256": reapply[1], "reapply_prestate": str(reapply[2]), "reapply_prestate_sha256": reapply[3]}); atomic_json(STATE_FILE, state)
             try:
                 restore_snapshot(*prior, allowed_snapshot=deployed)
