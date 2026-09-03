@@ -332,7 +332,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
                 fail("NONRUNTIME_TARGET_INVALID")
             if row["mode"] not in ("644", "755") or not row["size"].isdigit() or not HEX64.fullmatch(row["sha256"]):
                 fail("MANIFEST_METADATA_INVALID")
-        if counts != {"runtime": 308, "support": 216, "evidence": 29}:
+        if counts != {"runtime": 308, "support": 218, "evidence": 33}:
             fail("MANIFEST_COUNTS_INVALID")
         root = work / "candidate"; root.mkdir(mode=0o700)
         with gzip.open(files["dolibarr.tar.gz"], "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:

@@ -28,11 +28,11 @@ R08 replaces failed-closed R07 after live staging established that the three add
 
 | Local file | Intended server path/use | SHA-256 |
 |---|---|---|
-| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `f8f71b4d2b0bbceb060f81690845a56866a89f332e24e7c030c5dce543e40c5f` |
+| `deploy/tools/chinaplanetos_backup_erp_m074_qc_preflight.sh` | `/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight` | `6227ad61ca65c99c135e56be7c22a0ea92f218f6fc08b935438184887c61be94` |
 | `deploy/config/codex-deploy-backup-erp-m074-qc-preflight.sudoers` | `/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight` | `3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99` |
-| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `24ca87347e7ec0202371d38a67cf3aa765a96565c40d2c402b25439c2d6c3097` |
+| `deploy/tools/install_backup_erp_m074_qc_preflight_helper.sh` | one-time root installer input | `261f3798bc0522415fd9ad065c40d5eec8c6bb2fe986d205e5142ffe38b7b89f` |
 
-The controller remains baseline-bound to `39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094`, uses a separate R08 state/artifact namespace, and exposes only fixed `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` commands. The rights transaction now checks failure returns from `begin`, `commit`, and `rollback`; its behavioral test injects each failure. After the first restricted R08 `compare` safely rejected an obsolete manifest-member count of 553, the controller was corrected to require the immutable bundle's exact 559 members. The installer accepts only the currently installed fail-closed R08 helper `10192397c88db2d4f8ab0dbc61623a40af62c3bce6ad9a21c21d1790570754f3` with unchanged reviewed sudoers as its predecessor.
+The controller remains baseline-bound to `39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094`, uses a separate R08 state/artifact namespace, and exposes only fixed `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` commands. The rights transaction now checks failure returns from `begin`, `commit`, and `rollback`; its behavioral test injects each failure. After the first restricted R08 `compare` safely rejected an obsolete 553-member contract, the controller was corrected to require the immutable bundle's exact 559 members and exact classification totals of 308 runtime, 218 support, and 33 evidence files. The installer accepts only the currently installed fail-closed R08 helper `10192397c88db2d4f8ab0dbc61623a40af62c3bce6ad9a21c21d1790570754f3` with unchanged reviewed sudoers as its predecessor.
 
 ## Gate
 
