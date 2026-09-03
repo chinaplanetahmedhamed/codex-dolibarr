@@ -3,7 +3,7 @@
 ## Control record
 
 - **Mission/release:** M074 / M074-R10
-- **Status:** `INSTALLED / REMOTE_CHECKSUMS_PASS / COMPARE_NOT_RUN`
+- **Status:** `INSTALLED / REMOTE_CHECKSUMS_PASS / COMPARE_FAILED_TABLE_CONTRACT_INVALID`
 - **Target:** canonical `backup-erp` staging only
 - **Source branch:** `codex/m074-qc-field-report-composite`
 - **Pinned Dolibarr/mobile source:** `7d223fb7983fd2668826cb33587f1a4e8644f1df`
@@ -56,4 +56,6 @@ After Ahmed's exact approval, the pinned R10 installer was run through the saved
 - installed helper metadata `root:root`, mode `0755`, one hard link;
 - exactly the reviewed six passwordless commands: `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` at the fixed M074 helper path.
 
-No restricted controller command was run. In particular, `compare`, `preflight`, `apply`, `verify`, `rollback`, and `status` remain unexecuted for R10. No deployment or database mutation occurred, and Production was not accessed. The next gate requires a separate exact approval for restricted `compare` only.
+After Ahmed's separate exact approval, all five release pins and the installed helper pin were reverified and restricted `compare` was run once. It stopped fail closed at the schema gate with `M074_STAGING_FAIL=SCHEMA_CHECK_FAILED_TABLE_CONTRACT_INVALID`. This means at least one existing M074 QC table is present but does not exactly match the frozen R10 column/index/engine contract; the bounded compare output does not identify which table or difference.
+
+`preflight`, `apply`, `verify`, `rollback`, and `status` remain unexecuted for R10. No deployment or database mutation occurred, and Production was not accessed. The next safe gate is a separately approved, bounded read-only diagnosis of the three M074 QC table contracts; R10 must not proceed to preflight or apply while this collision remains.
