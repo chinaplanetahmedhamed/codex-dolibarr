@@ -303,7 +303,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("BUNDLE_COMPONENTS_INVALID")
         expected_component = {"artifact": "dolibarr.tar.gz", "artifactSha256": ARTIFACT_SHA, "commit": SOURCE_COMMIT,
                               "manifest": "dolibarr.manifest.tsv", "manifestSha256": MANIFEST_SHA,
-                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 553,
+                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 559,
                               "configPolicy": "external-retain", "dataPolicy": "retain", "schemaPolicy": "additive-retain-on-code-rollback"}
         if any(components["dolibarr"].get(key) != value for key, value in expected_component.items()):
             fail("DOLIBARR_BUNDLE_RECORD_INVALID")
@@ -314,7 +314,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("RELEASE_PINS_INVALID")
         with files["dolibarr.manifest.tsv"].open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle, delimiter="\t"))
-        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 553:
+        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 559:
             fail("MANIFEST_CONTRACT_INVALID")
         counts = {"runtime": 0, "support": 0, "evidence": 0}; seen: set[str] = set()
         for row in rows:
@@ -337,7 +337,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
         root = work / "candidate"; root.mkdir(mode=0o700)
         with gzip.open(files["dolibarr.tar.gz"], "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
             members = archive.getmembers()
-            if len(members) != 553 or [member.name for member in members] != sorted(seen):
+            if len(members) != 559 or [member.name for member in members] != sorted(seen):
                 fail("ARTIFACT_MEMBER_SET_INVALID")
             for member in members:
                 if not member.isfile() or member.name not in seen or member.uid != 0 or member.gid != 0 or member.mtime != 0 or stat.S_IMODE(member.mode) not in (0o644, 0o755):

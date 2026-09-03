@@ -5,7 +5,7 @@
 - **Target:** canonical `backup-erp` staging only
 - **Approved actions:** exact input upload, checksum verification, restricted helper update, `compare`, conditional `preflight`, conditional `apply`, and `verify`
 - **Production:** forbidden
-- **Current status:** `R08_LOCAL / RENEWED_REVIEW_PENDING / NOT_UPLOADED`
+- **Current status:** `R08_INPUTS_UPLOADED / INITIAL_HELPER_INSTALLED / COMPARE_FAILED_CLOSED / CONTROL_CORRECTION_REVIEW_PENDING`
 
 ## Expected release inputs
 
@@ -25,4 +25,6 @@ R07 `apply` failed closed at permission registration after the three additive QC
 
 Read-only diagnostics established that the three exact QC tables exist, rights `500528` through `500531` remain absent, the Operations module and an active internal administrator are present for entity 1, and a representative exact permission insert succeeds inside a transaction then disappears after rollback (`1`, then `0`). R08 therefore replaces the runtime-dependent Dolibarr `insert_permissions` path with a bounded database transaction that collision-checks and inserts only the four reviewed `chinaplanetoperations` QC definitions with `bydefault=0`.
 
-No R08 input or control file has been uploaded or installed. Renewed independent Security and Operations/QA review of the exact frozen R08 commit is required before any further server mutation. A failed review, checksum, `compare`, or `preflight` prevents retrying `apply`.
+The five exact R08 release inputs were uploaded to the private staging inbox and their remote SHA-256 values matched the table above. The initial R08 helper `10192397c88db2d4f8ab0dbc61623a40af62c3bce6ad9a21c21d1790570754f3`, installer `57cca8416da2dd1f50aa33403d1c9067a84c0695274b65b81a3241a91e5178ce`, and unchanged sudoers were also uploaded, checksum-verified, and installed through the approved root session.
+
+Restricted `status` returned `NOT_DEPLOYED`, then `compare` failed closed with `DOLIBARR_BUNDLE_RECORD_INVALID` before preflight or apply. Read-only diagnosis found that the immutable bundle and manifest contain 559 exact members while the initial helper still required the prior 553-member count. The local correction changes only those three member-count gates to 559, pins the installed initial R08 helper as the installer predecessor, and adds a regression assertion. Renewed independent Security and Operations/QA review of the corrected exact commit is required before installing it. A failed review, checksum, `compare`, or `preflight` prevents `apply`.
