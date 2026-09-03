@@ -231,7 +231,8 @@ class QcMigration
         $contract = $contracts[$table];
         $status = $this->db->query("SELECT ENGINE FROM information_schema.tables WHERE BINARY table_schema=BINARY DATABASE() AND BINARY table_name=BINARY '".$this->db->escape($physical)."'");
         $statusRow = $status ? $this->db->fetch_object($status) : null;
-        if (!$statusRow || strtoupper((string) $statusRow->Engine) !== 'INNODB') return 'collision';
+        $engine = $statusRow ? ($statusRow->ENGINE ?? $statusRow->Engine ?? '') : '';
+        if (!$statusRow || strtoupper((string) $engine) !== 'INNODB') return 'collision';
         try {
             $res = $this->db->query('SHOW COLUMNS FROM '.$physical);
             if (!$res) return 'collision';
