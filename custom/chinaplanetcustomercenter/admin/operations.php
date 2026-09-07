@@ -42,17 +42,17 @@ cpcc_admin_shell_open('operations', 'Operations Center / مركز العمليا
 
   <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
     <!-- QC Buttons -->
-    <a class="button button-action" style="background: linear-gradient(135deg, #087451, #0c9b6c); color: #fff; border: 0; font-weight: 800; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php', 1).'?action=create'.(!empty($socid)?'&fk_soc='.$socid:'').(!empty($projectid)?'&fk_project='.$projectid:''); ?>">
+    <a class="button button-action" style="background: linear-gradient(135deg, #087451, #0c9b6c); color: #fff; border: 0; font-weight: 800; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php', 1).'?service_type=quality_control'.(!empty($socid)?'&fk_soc='.$socid:'').(!empty($projectid)?'&fk_project='.$projectid:''); ?>">
       <span class="fas fa-plus-circle"></span>
       <span>+ فحص جودة جديد / New QC</span>
     </a>
 
-    <a class="button button-action" style="background: linear-gradient(135deg, #176baf, #0d4968); color: #fff; border: 0; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/list.php', 1).(!empty($socid)?'?fk_soc='.$socid:''); ?>">
+    <a class="button button-action" style="background: linear-gradient(135deg, #176baf, #0d4968); color: #fff; border: 0; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/index.php', 1).'?service_type=quality_control'.(!empty($socid)?'&fk_soc='.$socid:''); ?>">
       <span class="fas fa-tasks"></span>
       <span>سجل الفحوصات / All QC List</span>
     </a>
 
-    <a class="button" style="background: #1e3a52; color: #7ad1f5; border: 1px solid #356286; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/pwa/index.php', 1); ?>" target="_blank">
+    <a class="button" style="background: #1e3a52; color: #7ad1f5; border: 1px solid #356286; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/qc/app.php', 1); ?>" target="_blank">
       <span class="fas fa-mobile-alt"></span>
       <span>تطبيق الفاحص الميداني / PWA App ↗</span>
     </a>
@@ -79,8 +79,8 @@ cpcc_admin_shell_open('operations', 'Operations Center / مركز العمليا
 <div class="cpcc-lifecycle-note"><span class="fas fa-sync-alt"></span> الحالة محسوبة تلقائيًا من السجلات المرتبطة / Status is calculated automatically from linked records</div>
 <section class="cpcc-lifecycle"><?php foreach($lifecycle as $stage){ ?><div class="cpcc-stage <?php echo $stage['done']?'done':''; ?>" title="<?php echo dol_escape_htmltag($stage['rule']); ?>" tabindex="0"><b><?php echo dol_escape_htmltag($stage['label']); ?></b><small><?php echo dol_escape_htmltag($stage['en']); ?></small></div><?php } ?></section>
 <div class="cpcc-quick-actions">
-<a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php',1).'?action=create&fk_soc='.$socid.'&fk_project='.$projectid; ?>" style="background:#087451!important;">+ فحص جودة للمشروع / New QC</a>
-<a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/list.php',1).'?fk_soc='.$socid.'&fk_project='.$projectid; ?>" style="background:#176baf!important;">سجل فحوصات المشروع / Project QC</a>
+<a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php',1).'?service_type=quality_control&fk_soc='.$socid.'&fk_project='.$projectid; ?>" style="background:#087451!important;">+ فحص جودة للمشروع / New QC</a>
+<a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/index.php',1).'?service_type=quality_control&fk_soc='.$socid.'&fk_project='.$projectid; ?>" style="background:#176baf!important;">سجل فحوصات المشروع / Project QC</a>
 <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1).'?socid='.$socid.'&projectid='.$projectid; ?>">تسجيل تمويل/دفعة / Record payment</a>
 <a target="_blank" rel="noopener" href="<?php echo dol_buildpath('/compta/facture/card.php',1).'?action=create&socid='.$socid.'&projectid='.$projectid; ?>">إنشاء فاتورة في Vision System ↗ / Create invoice</a>
 <a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php',1).'?action=create&socid='.$socid.'&projectid='.$projectid; ?>">إنشاء شحنة / New shipment</a>
