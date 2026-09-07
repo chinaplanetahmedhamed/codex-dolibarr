@@ -63,7 +63,7 @@ STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
-DEPLOY_CONTEXT = "m074-r12-backup-erp-root-only"
+DEPLOY_CONTEXT = "m074-r11-backup-erp-root-only"
 PHP_SCHEMA_FLAGS = ("-d", "display_errors=0", "-d", "log_errors=0", "-d", "error_reporting=0")
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -312,7 +312,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("BUNDLE_COMPONENTS_INVALID")
         expected_component = {"artifact": "dolibarr.tar.gz", "artifactSha256": ARTIFACT_SHA, "commit": SOURCE_COMMIT,
                               "manifest": "dolibarr.manifest.tsv", "manifestSha256": MANIFEST_SHA,
-                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 563,
+                              "layout": "dolibarr.layout.tsv", "layoutSha256": LAYOUT_SHA, "members": 568,
                               "configPolicy": "external-retain", "dataPolicy": "retain", "schemaPolicy": "additive-retain-on-code-rollback"}
         if any(components["dolibarr"].get(key) != value for key, value in expected_component.items()):
             fail("DOLIBARR_BUNDLE_RECORD_INVALID")
@@ -323,7 +323,7 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
             fail("RELEASE_PINS_INVALID")
         with files["dolibarr.manifest.tsv"].open(newline="", encoding="utf-8") as handle:
             rows = list(csv.DictReader(handle, delimiter="\t"))
-        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 563:
+        if not rows or list(rows[0]) != ["source_path", "runtime_target", "classification", "mode", "size", "sha256"] or len(rows) != 568:
             fail("MANIFEST_CONTRACT_INVALID")
         counts = {"runtime": 0, "support": 0, "evidence": 0}; seen: set[str] = set()
         for row in rows:
@@ -341,12 +341,12 @@ def validate_release(source_root: pathlib.Path = INBOX) -> Candidate:
                 fail("NONRUNTIME_TARGET_INVALID")
             if row["mode"] not in ("644", "755") or not row["size"].isdigit() or not HEX64.fullmatch(row["sha256"]):
                 fail("MANIFEST_METADATA_INVALID")
-        if counts != {"runtime": 308, "support": 218, "evidence": 37}:
+        if counts != {"runtime": 308, "support": 218, "evidence": 42}:
             fail("MANIFEST_COUNTS_INVALID")
         root = work / "candidate"; root.mkdir(mode=0o700)
         with gzip.open(files["dolibarr.tar.gz"], "rb") as compressed, tarfile.open(fileobj=compressed, mode="r:") as archive:
             members = archive.getmembers()
-            if len(members) != 563 or [member.name for member in members] != sorted(seen):
+            if len(members) != 568 or [member.name for member in members] != sorted(seen):
                 fail("ARTIFACT_MEMBER_SET_INVALID")
             for member in members:
                 if not member.isfile() or member.name not in seen or member.uid != 0 or member.gid != 0 or member.mtime != 0 or stat.S_IMODE(member.mode) not in (0o644, 0o755):
@@ -1288,7 +1288,7 @@ def apply_status(plan_status: str, plan_created: dt.datetime | None, state: dict
 
 
 def make_request_id() -> str:
-    value = "m074-r10-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
+    value = "m074-r12-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
     if not SAFE_REQUEST_ID.fullmatch(value): fail("REQUEST_ID_INVALID")
     return value
 
@@ -1434,7 +1434,7 @@ def command_apply() -> None:
                 live_checks(candidate, prior_snapshot); require_saved_database_identity(state, identity); state_database_backup(state)
                 print(f"M074_STAGING_APPLY=NOOP_ALREADY_DEPLOYED RELEASE={RELEASE} SOURCE_COMMIT={SOURCE_COMMIT} ARTIFACT_SHA={ARTIFACT_SHA} PLAN_SHA={plan_sha} PRODUCTION_ACCESSED=NO"); return
             retain_release(candidate); request_id = make_request_id(); save_state("PENDING_APPLY_PREPARE", request_id=request_id, plan_sha256=plan_sha)
-            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, "m074-r10-before-" + request_id)
+            archive, archive_sha, prestate, prestate_sha = write_backup(candidate, snapshot, f"{RELEASE.lower()}-before-" + request_id)
             database, database_sha = create_database_backup(request_id, identity)
             validation_database = make_validation_database_name()
             fields = {"request_id": request_id, "plan_sha256": plan_sha, "code_backup": str(archive), "code_backup_sha256": archive_sha,
@@ -1485,7 +1485,7 @@ def command_rollback() -> None:
         try:
             candidate_checks(candidate); identity = database_identity(candidate); require_saved_database_identity(state, identity); state_database_backup(state); prior = state_backup(state); prior_snapshot = validate_code_backup(*prior); live_checks(candidate, prior_snapshot); deployed = release_snapshot(candidate); rollback_id = make_request_id()
             state["status"] = "PENDING_ROLLBACK_PREPARE"; state["rollback_request_id"] = rollback_id; atomic_json(STATE_FILE, state)
-            reapply = write_backup(candidate, runtime_snapshot(candidate), "m074-r10-reapply-" + rollback_id)
+            reapply = write_backup(candidate, runtime_snapshot(candidate), f"{RELEASE.lower()}-reapply-" + rollback_id)
             state.update({"status": "PENDING_ROLLBACK", "reapply_code_backup": str(reapply[0]), "reapply_code_backup_sha256": reapply[1], "reapply_prestate": str(reapply[2]), "reapply_prestate_sha256": reapply[3]}); atomic_json(STATE_FILE, state)
             try:
                 restore_snapshot(*prior, allowed_snapshot=deployed)

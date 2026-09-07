@@ -6,9 +6,9 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/m074-qc-preflight-install'
 readonly SOURCE_HELPER="${SOURCE_ROOT}/chinaplanetos_backup_erp_m074_qc_preflight.sh"
 readonly SOURCE_SUDOERS="${SOURCE_ROOT}/codex-deploy-backup-erp-m074-qc-preflight.sudoers"
-readonly HELPER_SHA='cf777f4716fbf333b7ea04eef8ad44255386a4afb7a93c5270288243aff3101c'
+readonly HELPER_SHA='0c2a901f7ccbe1164f705f1964f0f82e3628da64c71e50649af28f6d1f28749b'
 readonly SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'
-readonly PREVIOUS_HELPER_SHA='4a3c70977669db6a65a1d6bbd4a418c9087afb993ded041f18727abc3de19bc3'
+readonly PREVIOUS_HELPER_SHA='2189f72323392738c5ea2b271092429609f248563f1aebcdc471227f774f731a'
 readonly PREVIOUS_SUDOERS_SHA='3588366c71dfe7546c7ae58ff066a5b26e47d55645098d82034d628f149d4d99'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-backup-erp-m074-qc-preflight'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-backup-erp-m074-qc-preflight'
