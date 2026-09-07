@@ -695,3 +695,16 @@ portal_invitation_rate_limited=No more than three invitations may be issued or r
 portal_activation_rate_limited=Too many activation attempts. Wait 15 minutes before trying again from this network address.
 publication_upload_type=Only PDF, JPEG, PNG, and WebP files are allowed.
 publication_upload_size=The published file must be no larger than 10 MB.
+
+QualityControlMenu=Quality Control
+NewQcInspection=New QC Inspection
+QcLifecycleStepper=QC Lifecycle Stepper
+QcStageDraft=Draft Plan
+QcStageLocked=Plan Locked
+QcStageField=In Field
+QcStageSubmitted=Submitted
+QcStageReviewed=Supervisor Review
+QcStagePublished=Published
+QcStepDone=Done
+QcStepCurrent=In Progress
+QcStepPending=Pending

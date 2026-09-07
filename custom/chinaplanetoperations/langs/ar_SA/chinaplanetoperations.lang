@@ -688,3 +688,16 @@ portal_invitation_email_conflict=البريد مرتبط بطرف ثالث آخ�
 portal_invitation_login_conflict=البريد مستخدم كاسم دخول لمستخدم آخر. توقف وراجعه يدوياً.
 portal_invitation_rate_limited=الحد الأقصى ثلاث دعوات أو إعادة إرسال لكل طلب أو بريد في الساعة.
 portal_activation_rate_limited=محاولات تفعيل كثيرة. انتظر 15 دقيقة قبل المحاولة من نفس عنوان الشبكة.
+
+QualityControlMenu=فحص الجودة
+NewQcInspection=فحص جودة جديد
+QcLifecycleStepper=مراحل دورة الفحص
+QcStageDraft=مسودة الخطة
+QcStageLocked=الخطة مقفلة
+QcStageField=في الميدان
+QcStageSubmitted=تم الإرسال
+QcStageReviewed=مراجعة المشرف
+QcStagePublished=تم النشر
+QcStepDone=مكتمل
+QcStepCurrent=قيد التنفيذ
+QcStepPending=قيد الانتظار

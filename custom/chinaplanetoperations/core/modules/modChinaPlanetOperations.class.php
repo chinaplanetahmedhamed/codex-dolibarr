@@ -103,6 +103,22 @@ class modChinaPlanetOperations extends DolibarrModules
             'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")', 'user'=>0,
         );
         $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
+            'titre'=>'QualityControlMenu', 'mainmenu'=>'chinaplanetoperations', 'leftmenu'=>'operations_qc_list',
+            'url'=>'/custom/chinaplanetoperations/operations/index.php?service_type=quality_control',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>106, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
+            'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","read")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
+            'fk_menu'=>'fk_mainmenu=chinaplanetoperations', 'type'=>'left',
+            'titre'=>'NewQcInspection', 'mainmenu'=>'chinaplanetoperations', 'leftmenu'=>'operations_qc_new',
+            'url'=>'/custom/chinaplanetoperations/operations/edit.php?service_type=quality_control',
+            'langs'=>'chinaplanetoperations@chinaplanetoperations',
+            'position'=>107, 'enabled'=>'$conf->chinaplanetoperations->enabled && empty($user->socid)',
+            'perms'=>'!empty($user->admin) || $user->hasRight("chinaplanetoperations","operation_write") || $user->hasRight("chinaplanetoperations","qc_plan")', 'user'=>0,
+        );
+        $this->menu[$r++] = array(
             'fk_menu'=>'0', 'type'=>'top',
             'titre'=>'TeamTasks', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'0',
             'url'=>'/custom/chinaplanetoperations/tasks/board.php',

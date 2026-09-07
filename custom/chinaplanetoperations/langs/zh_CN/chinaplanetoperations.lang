@@ -637,3 +637,16 @@ QcCheckpointMoveInvalid=该检验点不能继续移动。
 QcLockWarning=开始现场工作将永久锁定批准的要求和检验员。
 QcLockHelp=后续要求或检验员变更将创建新的 QC 计划修订。
 QcLockPlan=锁定并开始现场检验
+
+QualityControlMenu=品控质检
+NewQcInspection=新建质检
+QcLifecycleStepper=质检生命周期
+QcStageDraft=草稿计划
+QcStageLocked=计划已锁定
+QcStageField=现场执行中
+QcStageSubmitted=已提交
+QcStageReviewed=主管已审核
+QcStagePublished=已发布
+QcStepDone=已完成
+QcStepCurrent=进行中
+QcStepPending=等待中

@@ -205,3 +205,96 @@
 /* M074 — QC plan */
 .cpo-qc-checkpoints{display:grid;gap:14px}.cpo-qc-checkpoint{display:flex;justify-content:space-between;gap:18px;padding:16px;border:1px solid #d8e1ea;border-radius:14px;background:#fff}.cpo-qc-checkpoint h3{margin:10px 0 8px;font-size:1rem;overflow-wrap:anywhere}.cpo-qc-checkpoint p{margin:5px 0;color:#53697e;overflow-wrap:anywhere}.cpo-qc-checkpoint>.cpo-actions{align-content:flex-start;flex:0 0 auto}
 @media(max-width:700px){.cpo-qc-checkpoint{display:block}.cpo-qc-checkpoint>.cpo-actions{margin-top:12px}.cpo-qc-checkpoint>.cpo-actions form{display:inline-flex}}
+
+/* M074 — QC Lifecycle Stepper Styles */
+.cpo-qc-stepper-panel {
+  margin: 14px 0;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.cpo-qc-stepper {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+.cpo-qc-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  transition: all 0.2s ease;
+}
+.cpo-qc-step.is-complete {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+.cpo-qc-step.is-active {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+  transform: translateY(-2px);
+}
+.cpo-qc-step.is-upcoming {
+  opacity: 0.65;
+}
+.cpo-qc-step-icon {
+  font-size: 20px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+.cpo-qc-step.is-complete .cpo-qc-step-icon {
+  border-color: #10b981;
+  color: #10b981;
+}
+.cpo-qc-step.is-active .cpo-qc-step-icon {
+  border-color: #0284c7;
+  background: #0284c7;
+  color: #fff;
+}
+.cpo-qc-step-info {
+  margin-bottom: 8px;
+}
+.cpo-qc-step-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.3;
+}
+.cpo-qc-step-state {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.cpo-qc-step-btn {
+  margin-top: auto!important;
+  width: 100%;
+  font-size: 10px!important;
+  padding: 4px 6px!important;
+  text-align: center;
+}
+@media (max-width: 900px) {
+  .cpo-qc-stepper {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 500px) {
+  .cpo-qc-stepper {
+    grid-template-columns: 1fr 1fr;
+  }
+}
