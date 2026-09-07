@@ -29,6 +29,46 @@ llxHeader('', 'Operations Center / مركز العمليات', '', '', 0, 0, arr
 cpcc_admin_shell_open('operations', 'Operations Center / مركز العمليات', 'متابعة دورة الطلب من التمويل ودفع المورد حتى الشحن والإغلاق', 'fa-route', array('socid'=>$socid,'projectid'=>$projectid));
 ?>
 <main class="cpcc-dashboard" dir="rtl">
+
+<!-- Quick Access Launch Bar / وصول سريع -->
+<div class="cpcc-quick-launch-card" style="margin: 0.5rem 0 1.2rem; padding: 1rem 1.2rem; border: 1px solid #2a4c6a; border-radius: 14px; background: rgba(11, 53, 88, 0.4); box-shadow: 0 4px 15px rgba(0,0,0,0.15);">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 0.8rem;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="fas fa-bolt" style="color: #ffd467; font-size: 1.1rem;"></span>
+      <strong style="color: #e6f3fa; font-size: 0.95rem;">الوصول السريع للعمليات / Operations Quick Access</strong>
+    </div>
+    <span style="font-size: 0.78rem; color: #8cb6d2; font-family: monospace;">Quality Control & Logistics Hub</span>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
+    <!-- QC Buttons -->
+    <a class="button button-action" style="background: linear-gradient(135deg, #087451, #0c9b6c); color: #fff; border: 0; font-weight: 800; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php', 1).'?action=create'.(!empty($socid)?'&fk_soc='.$socid:'').(!empty($projectid)?'&fk_project='.$projectid:''); ?>">
+      <span class="fas fa-plus-circle"></span>
+      <span>+ فحص جودة جديد / New QC</span>
+    </a>
+
+    <a class="button button-action" style="background: linear-gradient(135deg, #176baf, #0d4968); color: #fff; border: 0; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/list.php', 1).(!empty($socid)?'?fk_soc='.$socid:''); ?>">
+      <span class="fas fa-tasks"></span>
+      <span>سجل الفحوصات / All QC List</span>
+    </a>
+
+    <a class="button" style="background: #1e3a52; color: #7ad1f5; border: 1px solid #356286; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetoperations/pwa/index.php', 1); ?>" target="_blank">
+      <span class="fas fa-mobile-alt"></span>
+      <span>تطبيق الفاحص الميداني / PWA App ↗</span>
+    </a>
+
+    <a class="button" style="background: #1e3a52; color: #e5f4fa; border: 1px solid #356286; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php', 1); ?>">
+      <span class="fas fa-ship"></span>
+      <span>الشحنات / Logistics</span>
+    </a>
+
+    <a class="button" style="background: #1e3a52; color: #ffd467; border: 1px solid #356286; font-weight: 700; border-radius: 9px; padding: 0.55rem 1rem; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php', 1).(!empty($socid)?'?socid='.$socid:'').(!empty($projectid)?'&projectid='.$projectid:''); ?>">
+      <span class="fas fa-coins"></span>
+      <span>المركز المالي / Financial</span>
+    </a>
+  </div>
+</div>
+
 <form method="get" class="cpad-context-form"><div class="cpad-context-fields">
 <label><span>العميل / Customer</span><?php echo Form::selectarray('socid',$customerOptions,$socid,'ابحث باسم العميل',0,0,'',0,0,0,'','minwidth300',1); ?></label>
 <label><span>المشروع / Project</span><?php echo Form::selectarray('projectid',$projectOptions,$projectid,'اختر المشروع / Select project',0,0,'',0,0,0,'','minwidth300',1); ?></label>
@@ -38,7 +78,14 @@ cpcc_admin_shell_open('operations', 'Operations Center / مركز العمليا
 <header class="cpcc-page-head"><div><span class="cpcc-eyebrow"><?php echo dol_escape_htmltag($project->ref); ?></span><h1><?php echo dol_escape_htmltag($project->title); ?></h1><p><?php echo dol_escape_htmltag($project->description); ?></p></div></header>
 <div class="cpcc-lifecycle-note"><span class="fas fa-sync-alt"></span> الحالة محسوبة تلقائيًا من السجلات المرتبطة / Status is calculated automatically from linked records</div>
 <section class="cpcc-lifecycle"><?php foreach($lifecycle as $stage){ ?><div class="cpcc-stage <?php echo $stage['done']?'done':''; ?>" title="<?php echo dol_escape_htmltag($stage['rule']); ?>" tabindex="0"><b><?php echo dol_escape_htmltag($stage['label']); ?></b><small><?php echo dol_escape_htmltag($stage['en']); ?></small></div><?php } ?></section>
-<div class="cpcc-quick-actions"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1).'?socid='.$socid.'&projectid='.$projectid; ?>">تسجيل تمويل/دفعة / Record payment</a><a target="_blank" rel="noopener" href="<?php echo dol_buildpath('/compta/facture/card.php',1).'?action=create&socid='.$socid.'&projectid='.$projectid; ?>">إنشاء فاتورة في Vision System ↗ / Create invoice</a><a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php',1).'?action=create&socid='.$socid.'&projectid='.$projectid; ?>">إنشاء شحنة / New shipment</a><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/project.php',1).'?id='.$projectid.'&socid='.$socid; ?>">معاينة بوابة العميل / Portal preview</a></div>
+<div class="cpcc-quick-actions">
+<a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php',1).'?action=create&fk_soc='.$socid.'&fk_project='.$projectid; ?>" style="background:#087451!important;">+ فحص جودة للمشروع / New QC</a>
+<a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/list.php',1).'?fk_soc='.$socid.'&fk_project='.$projectid; ?>" style="background:#176baf!important;">سجل فحوصات المشروع / Project QC</a>
+<a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1).'?socid='.$socid.'&projectid='.$projectid; ?>">تسجيل تمويل/دفعة / Record payment</a>
+<a target="_blank" rel="noopener" href="<?php echo dol_buildpath('/compta/facture/card.php',1).'?action=create&socid='.$socid.'&projectid='.$projectid; ?>">إنشاء فاتورة في Vision System ↗ / Create invoice</a>
+<a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php',1).'?action=create&socid='.$socid.'&projectid='.$projectid; ?>">إنشاء شحنة / New shipment</a>
+<a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/project.php',1).'?id='.$projectid.'&socid='.$socid; ?>">معاينة بوابة العميل / Portal preview</a>
+</div>
 <section class="cpcc-order-status"><h3>حالة طلب العميل / Customer Order Status</h3><p><a class="button" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php',1).'?socid='.$socid; ?>">عرض كل طلبات العميل وتغيير الحالة / View all customer orders</a></p>
 <?php if(empty($customerOrders)){ ?><p>لا يوجد طلب عميل مرتبط بهذا المشروع / No customer order is linked to this project.</p><?php } ?>
 <?php $orderStatus=array(-1=>'ملغي / Canceled',0=>'مسودة / Draft',1=>'معتمد / Validated',2=>'قيد التنفيذ / In progress',3=>'مغلق / Closed'); foreach($customerOrders as $o){ ?>
