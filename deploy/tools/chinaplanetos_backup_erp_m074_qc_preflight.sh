@@ -26,27 +26,27 @@ import urllib.error
 import urllib.request
 
 
-RELEASE = "M074-R11"
-SOURCE_COMMIT = "ffa4983569511cf07be12be76c7637c12ac8049c"
-ARTIFACT_SHA = "f06df2c656c7897b2f7cfe2192b6f7cdb2863eb91e99404247a9055a4db61f70"
-MANIFEST_SHA = "82b80c6778cf1744e10409dfdfd2ac9ca9314bbd06be68c8cceaab3e04b62931"
+RELEASE = "M074-R12"
+SOURCE_COMMIT = "b143868ccc45a9f045ffc0bdaacfcf091e519abd"
+ARTIFACT_SHA = "5b817308c3ba293249d4072bab57c33db3ff89ff3535a723e39ee4d5ee3bb7b6"
+MANIFEST_SHA = "2a8098e4ab3f28922bb7281689d8b5acdb995d4f993a6beffa4e03c26c5dbdfb"
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
-BUNDLE_SHA = "3c433a90ec149ffdebf847945465bcf3064cc4d336ec89da3677c9eb114a577d"
-PINS_SHA = "2175a22cddf1fe066fd83187ea00f2755e09d282d8a79dfae1db06d4a8e6eb6f"
-EXPECTED_BASELINE_SHA = "39693423340f0e954a789a06cf65c229dab41beb72a7dde27d952449c8529094"
+BUNDLE_SHA = "48be9e6b0bfaba916aae4b2b8ed8f669473b0ec8ffd95fbdb0a29842b4f0f6d8"
+PINS_SHA = "2092a7ddebab2d57f6941513c7f1f6cc32b91aad0a183e55823e21bbf69fe0dc"
+EXPECTED_BASELINE_SHA = "e147cde48e1e33681f9f8c9185139dddbabff1af0b629fc4585ee9496e61558b"
 EXPECTED_LAYOUT_TREE_SHA = {
-    "custom/chinaplanetcustomercenter/chinaplanetlogistics": "c0144d63da333b4eea47b3687d673d85a23d677cad4e9da0109bc06147501bcd",
-    "custom/chinaplanetcustomercenter/cpkanban": "346f68609f447214cd241f4ec11474bb8a19502ba075e25846ac77c415d7374c",
+    "custom/chinaplanetcustomercenter/chinaplanetlogistics": "010c3abc03c609424fc21f6247427c8479ab22f6d23ddc5c796a4590eb92fff1",
+    "custom/chinaplanetcustomercenter/cpkanban": "4755e479a327bf7222ecde4ef5a38fceeb7cd8c2c1be80f2c5dfa205cc091133",
 }
 DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
-    "dolibarr.tar.gz": ("m074-r11-dolibarr.tar.gz", ARTIFACT_SHA),
-    "dolibarr.manifest.tsv": ("m074-r11-dolibarr.manifest.tsv", MANIFEST_SHA),
-    "dolibarr.layout.tsv": ("m074-r11-dolibarr.layout.tsv", LAYOUT_SHA),
-    "release-bundle.json": ("m074-r11-release-bundle.json", BUNDLE_SHA),
-    "release-pins.sha256": ("m074-r11-release-pins.sha256", PINS_SHA),
+    "dolibarr.tar.gz": ("m074-r12-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r12-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r12-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r12-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r12-release-pins.sha256", PINS_SHA),
 }
 TARGET_CONTAINER = "erp-staging-dolibarr-1"
 DB_CONTAINER = "erp-staging-mariadb-1"
@@ -57,13 +57,13 @@ TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_cust
 TARGET_HTTP = "http://127.0.0.1:18088"
 BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
 DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
-ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r11")
-STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r11-staging")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r12")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r12-staging")
 STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
 MIGRATION = "deploy/migrations/m074_qc_schema.php"
-DEPLOY_CONTEXT = "m074-r11-backup-erp-root-only"
+DEPLOY_CONTEXT = "m074-r12-backup-erp-root-only"
 PHP_SCHEMA_FLAGS = ("-d", "display_errors=0", "-d", "log_errors=0", "-d", "error_reporting=0")
 MIN_FREE_KB = 2 * 1024 * 1024
 PLAN_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -85,7 +85,7 @@ STATIC_TESTS = (
 ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ARCHIVE_PATH = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
-SAFE_REQUEST_ID = re.compile(r"^m074-r10-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+SAFE_REQUEST_ID = re.compile(r"^m074-r12-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 SCHEMA_STATUSES = ("READY", "MIGRATION_REQUIRED_TABLES_MISSING", "MIGRATION_REQUIRED_RIGHTS_MISSING")
 SCHEMA_FAILURE_REASONS = frozenset({
     "INVALID_COMMAND", "DEPLOYMENT_CONTEXT_REQUIRED", "DOL_DOCUMENT_ROOT_INVALID",
