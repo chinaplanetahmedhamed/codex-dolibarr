@@ -26,14 +26,14 @@ import urllib.error
 import urllib.request
 
 
-RELEASE = "M074-R12"
-SOURCE_COMMIT = "b143868ccc45a9f045ffc0bdaacfcf091e519abd"
-ARTIFACT_SHA = "5b817308c3ba293249d4072bab57c33db3ff89ff3535a723e39ee4d5ee3bb7b6"
-MANIFEST_SHA = "2a8098e4ab3f28922bb7281689d8b5acdb995d4f993a6beffa4e03c26c5dbdfb"
+RELEASE = "M074-R13"
+SOURCE_COMMIT = "ccbe15e75d2adbf2164e113179e15d68becca4bc"
+ARTIFACT_SHA = "4b5913bcf28f804271254f04f992e17f3515b59437deabcc058f8298857929be"
+MANIFEST_SHA = "57a7982eae6e4e9a9956805c872c5337f646f892a31047f16380f86440babf7b"
 LAYOUT_SHA = "a6a4e8f7828c4f9d5d91c0b2154b1c3ecc6b6ee152eefc4bcdbb3cbaade62756"
-BUNDLE_SHA = "48be9e6b0bfaba916aae4b2b8ed8f669473b0ec8ffd95fbdb0a29842b4f0f6d8"
-PINS_SHA = "2092a7ddebab2d57f6941513c7f1f6cc32b91aad0a183e55823e21bbf69fe0dc"
-EXPECTED_BASELINE_SHA = "e147cde48e1e33681f9f8c9185139dddbabff1af0b629fc4585ee9496e61558b"
+BUNDLE_SHA = "2222f8338e89766454273e3149f24cee6000ddf845b8220a2535938f376f3134"
+PINS_SHA = "b6ea1bf9eb9700519022203b949d2124b817abb6eba8118dc4849556e74764ed"
+EXPECTED_BASELINE_SHA = "cd48fafb1cb9c3f2bb8b87d95c4edad0d686d120d38375b78999d54702348236"
 EXPECTED_LAYOUT_TREE_SHA = {
     "custom/chinaplanetcustomercenter/chinaplanetlogistics": "010c3abc03c609424fc21f6247427c8479ab22f6d23ddc5c796a4590eb92fff1",
     "custom/chinaplanetcustomercenter/cpkanban": "4755e479a327bf7222ecde4ef5a38fceeb7cd8c2c1be80f2c5dfa205cc091133",
@@ -42,11 +42,11 @@ DEPLOY_RUNTIME_FILES = 378
 
 INBOX = pathlib.Path("/home/codex-deploy/staging-inbox")
 INPUTS = {
-    "dolibarr.tar.gz": ("m074-r12-dolibarr.tar.gz", ARTIFACT_SHA),
-    "dolibarr.manifest.tsv": ("m074-r12-dolibarr.manifest.tsv", MANIFEST_SHA),
-    "dolibarr.layout.tsv": ("m074-r12-dolibarr.layout.tsv", LAYOUT_SHA),
-    "release-bundle.json": ("m074-r12-release-bundle.json", BUNDLE_SHA),
-    "release-pins.sha256": ("m074-r12-release-pins.sha256", PINS_SHA),
+    "dolibarr.tar.gz": ("m074-r13-dolibarr.tar.gz", ARTIFACT_SHA),
+    "dolibarr.manifest.tsv": ("m074-r13-dolibarr.manifest.tsv", MANIFEST_SHA),
+    "dolibarr.layout.tsv": ("m074-r13-dolibarr.layout.tsv", LAYOUT_SHA),
+    "release-bundle.json": ("m074-r13-release-bundle.json", BUNDLE_SHA),
+    "release-pins.sha256": ("m074-r13-release-pins.sha256", PINS_SHA),
 }
 TARGET_CONTAINER = "erp-staging-dolibarr-1"
 DB_CONTAINER = "erp-staging-mariadb-1"
@@ -57,8 +57,8 @@ TARGET_ROOT = pathlib.Path("/var/lib/docker/volumes/erp-staging_erp-staging_cust
 TARGET_HTTP = "http://127.0.0.1:18088"
 BACKUP_ROOT = pathlib.Path("/root/backup-erp-code-backups")
 DB_BACKUP_ROOT = pathlib.Path("/root/backup-erp-db-backups")
-ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r12")
-STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r12-staging")
+ARTIFACT_ROOT = pathlib.Path("/root/backup-erp-release-artifacts/m074-r13")
+STATE_ROOT = pathlib.Path("/var/lib/chinaplanetos-m074-r13-staging")
 STATE_FILE = STATE_ROOT / "state.json"
 PLAN_FILE = STATE_ROOT / "preflight-plan.json"
 LOCK_FILE = pathlib.Path("/var/lock/chinaplanetos-backup-erp-staging-deploy.lock")
@@ -85,7 +85,7 @@ STATIC_TESTS = (
 ALLOWED_COMMANDS = ("compare", "preflight", "apply", "verify", "rollback", "status")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_ARCHIVE_PATH = re.compile(r"^[A-Za-z0-9_.()@+\-/]+$")
-SAFE_REQUEST_ID = re.compile(r"^m074-r12-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+SAFE_REQUEST_ID = re.compile(r"^m074-r13-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
 SCHEMA_STATUSES = ("READY", "MIGRATION_REQUIRED_TABLES_MISSING", "MIGRATION_REQUIRED_RIGHTS_MISSING")
 SCHEMA_FAILURE_REASONS = frozenset({
     "INVALID_COMMAND", "DEPLOYMENT_CONTEXT_REQUIRED", "DOL_DOCUMENT_ROOT_INVALID",
@@ -1288,7 +1288,7 @@ def apply_status(plan_status: str, plan_created: dt.datetime | None, state: dict
 
 
 def make_request_id() -> str:
-    value = "m074-r12-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
+    value = "m074-r13-" + dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(6)
     if not SAFE_REQUEST_ID.fullmatch(value): fail("REQUEST_ID_INVALID")
     return value
 
