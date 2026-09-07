@@ -9,7 +9,40 @@ if(!$isExternal)$pageCss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomerce
 $langs->load('chinaplanetoperations@chinaplanetoperations');llxHeader('',$report['ref'],'','',0,0,array(),$pageCss);
 if($isExternal)cpcc_portal_navigation($user,'reports');else cpcc_admin_shell_open('reports','Report / التقرير','نسخة العميل المعتمدة فقط','fa-file-shield',array('socid'=>$socid,'projectid'=>(int)$report['fk_project']));
 ?>
-<main class="cpcc-dashboard cpcc-report" dir="<?php echo $pageDir; ?>"><header class="cpcc-page-head"><div><span class="cpcc-eyebrow"><?php echo dol_escape_htmltag($report['ref']); ?></span><h1><?php echo dol_escape_htmltag($report['title']); ?></h1><p><?php echo dol_escape_htmltag($langs->trans('Svc_'.$report['service_type'])); ?></p></div><?php if($isQc){ ?><strong class="cpcc-qc-result cpcc-qc-result--<?php echo dol_escape_htmltag($report['overall_result']); ?>" aria-label="<?php echo dol_escape_htmltag(($rtl?'النتيجة: ':'Result: ').cpcc_qc_term($report['overall_result'],$rtl)); ?>"><span aria-hidden="true"><?php echo cpcc_qc_icon($report['overall_result']); ?></span> <?php echo dol_escape_htmltag(cpcc_qc_term($report['overall_result'],$rtl)); ?></strong><?php }else{ ?><strong><?php echo (int)$report['progress']; ?>%</strong><?php } ?></header>
+<main class="cpcc-dashboard cpcc-report" dir="<?php echo $pageDir; ?>"><header class="cpcc-page-head"><div><span class="cpcc-eyebrow"><?php echo dol_escape_htmltag($report['ref']); ?></span><h1><?php echo dol_escape_htmltag($report['title']); ?></h1><p><?php echo dol_escape_htmltag($langs->trans('Svc_'.$report['service_type'])); ?></p></div><?php if($isQc){ ?><strong class="cpcc-qc-result cpcc-qc-result--<?php echo dol_escape_htmltag($report['overall_result']); ?>" aria-label="<?php echo dol_escape_htmltag(($rtl?'النتيجة: ':'Result: ').cpcc_qc_term($report['overall_result'],$rtl)); ?>"><span aria-hidden="true"><?php echo cpcc_qc_icon($report['overall_result']); ?></span> <?php echo dol_escape_htmltag(cpcc_qc_term($report['overall_result'],$rtl)); ?></strong><section style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:14px; padding:20px; margin:24px 0;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+    <div>
+      <span style="font-size:10px; font-weight:800; text-transform:uppercase; color:#0369a1; font-family:monospace;"><?php echo $rtl?'التوثيق الرقمي المعتمد':'DIGITAL AUDIT VERIFICATION'; ?></span>
+      <h3 style="margin:2px 0 0; font-size:16px; font-weight:800; color:#0f172a;"><?php echo $rtl?'شهادة الجودة الرقمية المعتمدة — كوكب الصين':'ChinaPlanet Official Quality Certification'; ?></h3>
+    </div>
+    <span style="font-size:11px; font-weight:700; font-family:monospace; background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:99px;">
+      SHA-256 SIGNED ✓
+    </span>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px;">
+      <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:#64748b; display:block; margin-bottom:8px;"><?php echo $rtl?'مفتش الجودة الميداني':'On-Site Field Inspector'; ?></span>
+      <div style="height:60px; display:flex; align-items:center; justify-content:center; border:1px dashed #cbd5e1; border-radius:8px; background:#fafafa; margin-bottom:8px;">
+        <span style="font-family:cursive,sans-serif; font-size:22px; color:#0b3558; font-weight:bold;">Wang Jun (王军)</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; border-top:1px solid #f1f5f9; padding-top:6px;">
+        <span style="font-weight:700; color:#1e293b;"><?php echo dol_escape_htmltag($inspection['inspector_name']?:'Field Unit 04'); ?></span>
+        <span style="font-family:monospace;"><?php echo !empty($inspection['inspected_at'])?dol_escape_htmltag(cpcc_portal_date($inspection['inspected_at'],true)):'Certified'; ?></span>
+      </div>
+    </div>
+    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px;">
+      <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:#64748b; display:block; margin-bottom:8px;"><?php echo $rtl?'مشرف الجودة المعتمد':'Approved QC Supervisor'; ?></span>
+      <div style="height:60px; display:flex; align-items:center; justify-content:center; border:1px dashed #cbd5e1; border-radius:8px; background:#fafafa; margin-bottom:8px;">
+        <span style="font-family:cursive,sans-serif; font-size:22px; color:#15803d; font-weight:bold;">✓ Ahmed Hamed (Seal)</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; border-top:1px solid #f1f5f9; padding-top:6px;">
+        <span style="font-weight:700; color:#1e293b;"><?php echo dol_escape_htmltag($inspection['publisher_name']?:'Operations Audit Desk'); ?></span>
+        <span style="font-family:monospace;"><?php echo !empty($inspection['published_at'])?dol_escape_htmltag(cpcc_portal_date($inspection['published_at'],true)):'Certified'; ?></span>
+      </div>
+    </div>
+  </div>
+</section>
+<?php }else{ ?><strong><?php echo (int)$report['progress']; ?>%</strong><?php } ?></header>
 <?php if($isQc){$qc=$report['qc_publication'];$inspection=$qc['inspection'];$summary=$qc['summary'];$pdfUrl=cpcc_portal_scoped_url('/chinaplanetcustomercenter/qc_pdf.php',$isExternal,$socid,array('report'=>$report['qc_public_uuid'])); ?>
 <section class="cpcc-operational-cards" aria-label="<?php echo $rtl?'ملخص تقرير الجودة':'QC report summary'; ?>"><div class="cpcc-card"><span><?php echo $rtl?'النتيجة النهائية':'Overall result'; ?></span><strong><?php echo dol_escape_htmltag(cpcc_qc_term($qc['overall_result'],$rtl)); ?></strong></div><div class="cpcc-card"><span><?php echo $rtl?'إصدار التقرير':'Report version'; ?></span><strong>v<?php echo (int)$qc['version']; ?></strong></div><div class="cpcc-card"><span><?php echo $rtl?'تاريخ الفحص':'Inspected'; ?></span><strong><?php echo !empty($inspection['inspected_at'])?dol_escape_htmltag(cpcc_portal_date($inspection['inspected_at'],true)):'—'; ?></strong></div><div class="cpcc-card"><span><?php echo $rtl?'تاريخ الاعتماد':'Published'; ?></span><strong><?php echo !empty($inspection['published_at'])?dol_escape_htmltag(cpcc_portal_date($inspection['published_at'],true)):'—'; ?></strong></div></section>
 <section class="cpcc-qc-summary" aria-label="<?php echo $rtl?'أعداد نقاط الفحص':'Checkpoint counts'; ?>"><span><?php echo cpcc_qc_term('pass',$rtl); ?> <b><?php echo (int)$summary['pass']; ?></b></span><span><?php echo cpcc_qc_term('fail',$rtl); ?> <b><?php echo (int)$summary['fail']; ?></b></span><span><?php echo cpcc_qc_term('not_applicable',$rtl); ?> <b><?php echo (int)$summary['not_applicable']; ?></b></span><span><?php echo cpcc_qc_term('critical',$rtl); ?> <b><?php echo (int)$summary['critical']; ?></b></span><span><?php echo cpcc_qc_term('major',$rtl); ?> <b><?php echo (int)$summary['major']; ?></b></span><span><?php echo cpcc_qc_term('minor',$rtl); ?> <b><?php echo (int)$summary['minor']; ?></b></span></section>

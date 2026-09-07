@@ -21,13 +21,84 @@ async function savePackage(){await put('records',await seal(pkg,'package'),'pack
 function escape(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function current(){return pkg.checkpoints[index];}function direction(){return L?'rtl':'ltr';}
 async function updatePending(){let count=0;for(const prefix of['mutation:','finding:','filemeta:'])count+=(await recordEntries(prefix)).length;pending.textContent=count;return count;}
-function render(){const cp=current();title.textContent=`${pkg.operation.ref} · ${pkg.operation.title}`;if(!cp){app.innerHTML=`<div class="qc-error">${t('لا توجد نقاط فحص','No inspection points')}</div>`;return;}const progress=Math.round(((index+1)/pkg.checkpoints.length)*100),aql=!(!pkg.state.aql||!pkg.state.aql.enabled),aqlFields=aql?`<div class="qc-grid"><label>${t('حجم العينة المفحوصة','Inspected sample size')}<input type="number" min="0" name="sample_size"></label><label>Critical defects<input type="number" min="0" name="defects_critical"></label><label>Major defects<input type="number" min="0" name="defects_major"></label><label>Minor defects<input type="number" min="0" name="defects_minor"></label></div>`:'';app.innerHTML=`<section class="qc-progress"><div><span>${t('نقطة','Checkpoint')} ${index+1}/${pkg.checkpoints.length}</span><span>${progress}%</span></div><progress max="100" value="${progress}"></progress></section><article class="qc-card" id="checkpoint-${escape(cp.rowid)}"><span class="qc-label">${escape(cp.section_label)} · ${escape(cp.scope_type)}</span><h1><bdi dir="auto">${escape(cp.requirement_text)}</bdi></h1><div class="qc-expected"><div><span class="qc-label">${t('المطلوب','Expected')}</span><p><bdi dir="auto">${escape(cp.expected_value||'—')}</bdi></p></div><div><span class="qc-label">${t('التفاوت','Tolerance')}</span><p><bdi dir="auto">${escape(cp.tolerance_text||'—')}</bdi></p></div></div><form class="qc-form" id="qc-form"><div class="qc-grid"><label>${t('النتيجة','Result')}<select name="result_code"${String(cp.rowid).startsWith('local:')?' disabled':''}><option value="pending">${t('معلّق','Pending')}</option><option value="pass">${t('ناجح','Pass')}</option><option value="fail">${t('راسب','Fail')}</option><option value="not_applicable">${t('لا ينطبق','N/A')}</option></select></label><label>${t('شدة العيب','Severity')}<select name="severity"><option value="none">${t('بدون','None')}</option><option value="critical">Critical</option><option value="major">Major</option><option value="minor">Minor</option></select></label></div><label>${t('الملاحظة الفعلية','Actual observation')}<textarea name="observation" dir="auto"></textarea></label><label>${t('ملاحظة للعميل','Customer note')}<textarea name="public_note" dir="auto"></textarea></label><label>${t('ملاحظة داخلية أو سبب N/A','Internal note or N/A rationale')}<textarea name="internal_note" dir="auto"></textarea></label>${aqlFields}<label>${t('صور أو فيديو','Photos or video')}<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" multiple capture="environment"></label><div class="qc-file-list" id="qc-files"></div><button class="qc-save" type="submit">${t('حفظ على الهاتف','Save on phone')}</button><div class="qc-message" role="status"></div>${index===pkg.checkpoints.length-1?`<button class="qc-save" id="qc-submit" type="button">${t('إرسال للمراجعة','Submit for review')}</button>`:''}</form></article>`;const form=document.querySelector('#qc-form');['result_code','severity','observation','public_note','internal_note','sample_size','defects_critical','defects_major','defects_minor'].forEach(name=>{if(form.elements[name])form.elements[name].value=cp[name]??({result_code:'pending',severity:'none'}[name]??'');});form.addEventListener('submit',saveCurrent);form.elements.evidence.addEventListener('change',queueFiles);const submit=document.querySelector('#qc-submit');if(submit)submit.addEventListener('click',submitInspection);document.querySelector('#qc-prev').disabled=index===0;document.querySelector('#qc-next').disabled=index===pkg.checkpoints.length-1;renderQueuedFiles(cp);}
+function render(){const cp=current();title.textContent=`${pkg.operation.ref} · ${pkg.operation.title}`;if(!cp){app.innerHTML=`<div class="qc-error">${t('لا توجد نقاط فحص','No inspection points')}</div>`;return;}const progress=Math.round(((index+1)/pkg.checkpoints.length)*100),aql=!(!pkg.state.aql||!pkg.state.aql.enabled);
+const aqlFields=`<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;margin:10px 0;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+<span style="font-size:11px;font-weight:800;text-transform:uppercase;color:#334155;">🧮 ${t('عداد العيوب AQL','AQL Defect Tally')}</span>
+<span id="qc-aql-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:#dcfce7;color:#15803d;">AQL PASS ✓</span>
+</div>
+<div class="qc-grid" style="margin-bottom:8px;">
+<label>${t('حجم العينة المفحوصة','Inspected sample size')}<input type="number" min="0" name="sample_size" id="qc-sample-size" oninput="window.CP_QC_EVAL_AQL()"></label>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
+<div style="background:#fff;border:1px solid #fca5a5;border-radius:8px;padding:6px;">
+<span style="font-size:10px;font-weight:800;color:#dc2626;display:block;">CRITICAL</span>
+<div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;">
+<button type="button" onclick="window.CP_QC_STEP('defects_critical',-1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #cbd5e1;background:#f8fafc;font-weight:bold;cursor:pointer;">-</button>
+<span id="qc-val-critical" style="font-weight:800;font-size:14px;color:#dc2626;min-width:16px;">0</span>
+<button type="button" onclick="window.CP_QC_STEP('defects_critical',1)" style="width:26px;height:26px;border-radius:6px;border:none;background:#fee2e2;color:#b91c1c;font-weight:bold;cursor:pointer;">+</button>
+</div>
+<input type="hidden" name="defects_critical" value="0">
+</div>
+<div style="background:#fff;border:1px solid #fcd34d;border-radius:8px;padding:6px;">
+<span style="font-size:10px;font-weight:800;color:#d97706;display:block;">MAJOR</span>
+<div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;">
+<button type="button" onclick="window.CP_QC_STEP('defects_major',-1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #cbd5e1;background:#f8fafc;font-weight:bold;cursor:pointer;">-</button>
+<span id="qc-val-major" style="font-weight:800;font-size:14px;color:#d97706;min-width:16px;">0</span>
+<button type="button" onclick="window.CP_QC_STEP('defects_major',1)" style="width:26px;height:26px;border-radius:6px;border:none;background:#fef3c7;color:#b45309;font-weight:bold;cursor:pointer;">+</button>
+</div>
+<input type="hidden" name="defects_major" value="0">
+</div>
+<div style="background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:6px;">
+<span style="font-size:10px;font-weight:800;color:#64748b;display:block;">MINOR</span>
+<div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;">
+<button type="button" onclick="window.CP_QC_STEP('defects_minor',-1)" style="width:26px;height:26px;border-radius:6px;border:1px solid #cbd5e1;background:#f8fafc;font-weight:bold;cursor:pointer;">-</button>
+<span id="qc-val-minor" style="font-weight:800;font-size:14px;color:#334155;min-width:16px;">0</span>
+<button type="button" onclick="window.CP_QC_STEP('defects_minor',1)" style="width:26px;height:26px;border-radius:6px;border:none;background:#e2e8f0;color:#1e293b;font-weight:bold;cursor:pointer;">+</button>
+</div>
+<input type="hidden" name="defects_minor" value="0">
+</div>
+</div>
+</div>`;
+const signatureBox=`<div style="background:#f8fafc;border:2px dashed #94a3b8;border-radius:12px;padding:14px;margin-top:14px;text-align:center;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+<span style="font-size:11px;font-weight:800;text-transform:uppercase;color:#0f172a;">✍️ ${t('توقيع مفتش الجودة الميداني','Field Inspector Digital Signature')}</span>
+<button type="button" onclick="window.CP_QC_CLEAR_SIGN()" style="background:none;border:none;color:#dc2626;font-size:11px;font-weight:700;cursor:pointer;">${t('مسح التوقيع','Clear')} ↺</button>
+</div>
+<canvas id="qc-inspector-pad" width="360" height="110" style="width:100%;height:110px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;cursor:crosshair;touch-action:none;display:block;"></canvas>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+<button type="button" onclick="window.CP_QC_PRESET_SIGN()" style="padding:6px 12px;font-size:11px;font-weight:700;background:#e0f2fe;color:#0369a1;border:none;border-radius:6px;cursor:pointer;">✍️ ${t('توقيع تلقائي سريع','Quick Sample')}</button>
+<span id="qc-sign-badge" style="font-size:11px;font-weight:700;color:#15803d;">${t('جاهز للتوقيع','Touch or mouse to sign')}</span>
+</div>
+</div>`;app.innerHTML=`<section class="qc-progress"><div><span>${t('نقطة','Checkpoint')} ${index+1}/${pkg.checkpoints.length}</span><span>${progress}%</span></div><progress max="100" value="${progress}"></progress></section><article class="qc-card" id="checkpoint-${escape(cp.rowid)}"><span class="qc-label">${escape(cp.section_label)} · ${escape(cp.scope_type)}</span><h1><bdi dir="auto">${escape(cp.requirement_text)}</bdi></h1><div class="qc-expected"><div><span class="qc-label">${t('المطلوب','Expected')}</span><p><bdi dir="auto">${escape(cp.expected_value||'—')}</bdi></p></div><div><span class="qc-label">${t('التفاوت','Tolerance')}</span><p><bdi dir="auto">${escape(cp.tolerance_text||'—')}</bdi></p></div></div><form class="qc-form" id="qc-form"><div class="qc-grid"><label>${t('النتيجة','Result')}<select name="result_code"${String(cp.rowid).startsWith('local:')?' disabled':''}><option value="pending">${t('معلّق','Pending')}</option><option value="pass">${t('ناجح','Pass')}</option><option value="fail">${t('راسب','Fail')}</option><option value="not_applicable">${t('لا ينطبق','N/A')}</option></select></label><label>${t('شدة العيب','Severity')}<select name="severity"><option value="none">${t('بدون','None')}</option><option value="critical">Critical</option><option value="major">Major</option><option value="minor">Minor</option></select></label></div><label>${t('الملاحظة الفعلية','Actual observation')}<textarea name="observation" dir="auto"></textarea></label><label>${t('ملاحظة للعميل','Customer note')}<textarea name="public_note" dir="auto"></textarea></label><label>${t('ملاحظة داخلية أو سبب N/A','Internal note or N/A rationale')}<textarea name="internal_note" dir="auto"></textarea></label>${aqlFields}<label>${t('صور أو فيديو','Photos or video')}<input name="evidence" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" multiple capture="environment"></label><div class="qc-file-list" id="qc-files"></div><button class="qc-save" type="submit">${t('حفظ على الهاتف','Save on phone')}</button><div class="qc-message" role="status"></div>${index===pkg.checkpoints.length-1?`${signatureBox}<button class="qc-save" id="qc-submit" style="margin-top:12px;" type="button">${t('إرسال للمراجعة','Submit for review')}</button>`:''}</form></article>`;const form=document.querySelector('#qc-form');['result_code','severity','observation','public_note','internal_note','sample_size','defects_critical','defects_major','defects_minor'].forEach(name=>{if(form.elements[name])form.elements[name].value=cp[name]??({result_code:'pending',severity:'none'}[name]??'');});form.addEventListener('submit',saveCurrent);form.elements.evidence.addEventListener('change',queueFiles);const submit=document.querySelector('#qc-submit');if(submit)submit.addEventListener('click',submitInspection);document.querySelector('#qc-prev').disabled=index===0;document.querySelector('#qc-next').disabled=index===pkg.checkpoints.length-1;renderQueuedFiles(cp);
+['critical','major','minor'].forEach(k=>{
+  const el=form.elements['defects_'+k];
+  const span=document.getElementById('qc-val-'+k);
+  if(el&&span){
+    el.value=cp['defects_'+k]||0;
+    span.textContent=el.value;
+  }
+});
+window.CP_QC_EVAL_AQL();
+if(index===pkg.checkpoints.length-1){
+  setTimeout(window.CP_QC_INIT_SIGN, 50);
+}
+}
 async function saveCurrent(event){event.preventDefault();const form=event.currentTarget,cp=current(),num=name=>form.elements[name]&&form.elements[name].value!==''?Number(form.elements[name].value):null,isLocal=String(cp.rowid).startsWith('local:'),values={checkpoint_id:isLocal?null:Number(cp.rowid),revision:Number(cp.revision),mutation_id:uuid(),result_code:isLocal?'fail':form.elements.result_code.value,severity:form.elements.severity.value,observation:form.elements.observation.value.trim(),public_note:form.elements.public_note.value.trim(),internal_note:form.elements.internal_note.value.trim(),sample_size:num('sample_size'),defects_critical:num('defects_critical'),defects_major:num('defects_major'),defects_minor:num('defects_minor')};if(isLocal){const recordKey='finding:'+cp.client_uuid,box=await get('records',recordKey),finding=box?await open(box,recordKey):cp;Object.assign(finding,values);Object.assign(cp,values);await put('records',await seal(finding,recordKey),recordKey);}else{const existing=await get('records','mutation:'+cp.rowid);if(existing){const old=await open(existing,'mutation:'+cp.rowid);values.mutation_id=old.mutation_id;values.revision=old.revision;}Object.assign(cp,values);await put('records',await seal(values,'mutation:'+cp.rowid),'mutation:'+cp.rowid);}await savePackage();form.querySelector('.qc-message').textContent=t('محفوظ محليًا','Saved locally');await updatePending();if(navigator.onLine)void syncNow();}
 class Sha256{constructor(){this.h=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);this.b=new Uint8Array(64);this.n=0;this.total=0;}update(input){const bytes=input instanceof Uint8Array?input:new Uint8Array(input);this.total+=bytes.length;let at=0;while(at<bytes.length){const take=Math.min(64-this.n,bytes.length-at);this.b.set(bytes.subarray(at,at+take),this.n);this.n+=take;at+=take;if(this.n===64){this.block(this.b);this.n=0;}}return this;}block(bytes){const k=Sha256.k,w=new Uint32Array(64),v=new DataView(bytes.buffer,bytes.byteOffset,64);for(let i=0;i<16;i++)w[i]=v.getUint32(i*4);for(let i=16;i<64;i++){const a=w[i-15],b=w[i-2],s0=((a>>>7)|(a<<25))^((a>>>18)|(a<<14))^(a>>>3),s1=((b>>>17)|(b<<15))^((b>>>19)|(b<<13))^(b>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;}let[a,b,c,d,e,f,g,h]=this.h;for(let i=0;i<64;i++){const s1=((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7)),ch=(e&f)^(~e&g),t1=(h+s1+ch+k[i]+w[i])>>>0,s0=((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10)),maj=(a&b)^(a&c)^(b&c),t2=(s0+maj)>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;}[a,b,c,d,e,f,g,h].forEach((x,i)=>this.h[i]=(this.h[i]+x)>>>0);}hex(){const bitHi=Math.floor(this.total/0x20000000)>>>0,bitLo=(this.total<<3)>>>0;this.b[this.n++]=0x80;if(this.n>56){this.b.fill(0,this.n);this.block(this.b);this.n=0;}this.b.fill(0,this.n,56);const v=new DataView(this.b.buffer);v.setUint32(56,bitHi);v.setUint32(60,bitLo);this.block(this.b);return[...this.h].map(x=>x.toString(16).padStart(8,'0')).join('');}}Sha256.k=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
 async function queueFiles(event){const files=[...event.target.files],cp=current(),localFinding=String(cp.rowid).startsWith('local:')?cp.client_uuid:null;for(const file of files){if(file.size<=0||file.size>209715200)throw new Error(t('الملف أكبر من 200 MiB','File exceeds 200 MiB'));const id=uuid(),chunkSize=20971520,total=Math.ceil(file.size/chunkSize),hasher=new Sha256();for(let i=0;i<total;i++){const start=i*chunkSize,end=Math.min(file.size,start+chunkSize),part=new Uint8Array(await file.slice(start,end).arrayBuffer());hasher.update(part);await put('files',await seal({bytes:b64(part)},`file:${id}:${i}`),`${id}:${i}`);}const meta={id,checkpoint_id:localFinding?null:Number(cp.rowid),finding_uuid:localFinding,name:file.name,type:file.type,size:file.size,sha256_hex:hasher.hex(),chunk_size:chunkSize,chunk_count:total};await put('records',await seal(meta,'filemeta:'+id),'filemeta:'+id);}event.target.value='';await updatePending();await renderQueuedFiles(cp);if(navigator.onLine)void syncNow();}
 async function queueFinding(){if(!key||!pkg)return;const requirement=prompt(t('صف العيب أو المتطلب غير المتوقع','Describe the unexpected defect or requirement'));if(!requirement?.trim())return;const observation=prompt(t('ما الذي تمت ملاحظته فعليًا؟','What was actually observed?'));if(!observation?.trim())return;const severity=prompt(t('الشدة: critical أو major أو minor','Severity: critical, major, or minor'),'major')?.trim().toLowerCase();if(!['critical','major','minor'].includes(severity)){alert(t('شدة غير صالحة','Invalid severity'));return;}const id=uuid(),finding={rowid:'local:'+id,client_uuid:id,record_kind:'finding',revision:1,scope_type:'inspection',section_code:'unexpected_findings',section_label:t('عيوب غير متوقعة','Unexpected findings'),requirement_text:requirement.trim(),expected_value:null,tolerance_text:null,observation:observation.trim(),result_code:'fail',severity,public_note:'',internal_note:'',result_mutation_id:uuid()};await put('records',await seal(finding,'finding:'+id),'finding:'+id);pkg.checkpoints.push(finding);index=pkg.checkpoints.length-1;await savePackage();await updatePending();render();alert(t('حُفظ العيب محليًا؛ يمكنك إرفاق صوره أو الفيديو الآن','Finding saved locally; you can attach its photos or video now'));}
 async function recordEntries(prefix){return new Promise((resolve,reject)=>{const rows=[],tx=db.transaction('records','readonly'),r=tx.objectStore('records').openCursor();r.onsuccess=()=>{const c=r.result;if(!c){resolve(rows);return;}if(String(c.key).startsWith(prefix))rows.push([c.key,c.value]);c.continue();};r.onerror=()=>reject(r.error);});}
-async function renderQueuedFiles(cp){const root=document.querySelector('#qc-files');if(!root)return;const items=[];for(const[k,box]of await recordEntries('filemeta:')){const id=k.slice(9),meta=await open(box,'filemeta:'+id);if(support.evidenceBelongsToCheckpoint(meta,cp))items.push(`<div class="qc-file">${escape(meta.name)} · ${t('بانتظار المزامنة','Pending sync')}</div>`);}for(const[k,box]of await recordEntries('media-warning:')){const warning=await open(box,k);if(support.evidenceBelongsToCheckpoint(warning,cp))items.push(`<div class="qc-file qc-warning" style="border-color:#e6a23c;background:#fff8e6;color:#7a4b00;font-weight:700">${escape(warning.name)} · ${t('الفيديو محفوظ داخليًا فقط، ولن يظهر للعميل حتى يعالجه المشرف','Video is stored internally only and will not be shown to the customer until a supervisor reprocesses it')}</div>`);}root.innerHTML=items.join('');}
+async function renderQueuedFiles(cp){const root=document.querySelector('#qc-files');if(!root)return;const items=[];for(const[k,box]of await recordEntries('filemeta:')){const id=k.slice(9),meta=await open(box,'filemeta:'+id);if(support.evidenceBelongsToCheckpoint(meta,cp)){
+  const isVid=meta.type.startsWith('video/');
+  items.push(`<div class="qc-file" style="background:#fff;border-left:4px solid ${isVid?'#0284c7':'#10b981'};padding:8px 10px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <strong>${isVid?'🎥 [VIDEO]':'📷 [PHOTO]'} ${escape(meta.name)}</strong>
+      <span style="font-size:10px;background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-weight:700;">${(meta.size/(1024*1024)).toFixed(1)} MB</span>
+    </div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px;">${t('تم التسجيل محليًا · بانتظار المزامنة','Recorded locally · Pending sync')}</div>
+  </div>`);
+}}for(const[k,box]of await recordEntries('media-warning:')){const warning=await open(box,k);if(support.evidenceBelongsToCheckpoint(warning,cp))items.push(`<div class="qc-file qc-warning" style="border-color:#e6a23c;background:#fff8e6;color:#7a4b00;font-weight:700">${escape(warning.name)} · ${t('الفيديو محفوظ داخليًا فقط، ولن يظهر للعميل حتى يعالجه المشرف','Video is stored internally only and will not be shown to the customer until a supervisor reprocesses it')}</div>`);}root.innerHTML=items.join('');}
 async function syncFindings(){for(const[k,box]of await recordEntries('finding:')){const finding=await open(box,k),created=await api('finding','POST',finding),cp=created.checkpoint,result=await api('checkpoint_result','POST',{checkpoint_id:Number(cp.rowid),revision:Number(cp.revision),mutation_id:finding.result_mutation_id,result_code:'fail',severity:finding.severity,observation:finding.observation,public_note:finding.public_note,internal_note:finding.internal_note,sample_size:null,defects_critical:null,defects_major:null,defects_minor:null});for(const[fileKey,fileBox]of await recordEntries('filemeta:')){const fileId=fileKey.slice(9),meta=await open(fileBox,'filemeta:'+fileId);if(meta.finding_uuid===finding.client_uuid){meta.checkpoint_id=Number(result.checkpoint.rowid);delete meta.finding_uuid;await put('records',await seal(meta,'filemeta:'+fileId),fileKey);}}const at=pkg.checkpoints.findIndex(item=>item.client_uuid===finding.client_uuid);if(at>=0)pkg.checkpoints[at]=result.checkpoint;else pkg.checkpoints.push(result.checkpoint);await del('records',k);await savePackage();}}
 async function syncMutations(){for(const[k,box]of await recordEntries('mutation:')){const mutation=await open(box,k);const data=await api('checkpoint_result','POST',mutation);const at=pkg.checkpoints.findIndex(cp=>Number(cp.rowid)===Number(data.checkpoint.rowid));if(at>=0)pkg.checkpoints[at]=data.checkpoint;await del('records',k);await savePackage();}}
 async function finishLocalEvidence(meta,outcome,id,keyName){if(outcome.state==='pending')return false;if(outcome.state==='internal_only'){const warning={id,evidence_id:outcome.evidenceId,checkpoint_id:meta.checkpoint_id,finding_uuid:meta.finding_uuid||null,name:meta.name,reason:outcome.reason};await put('records',await seal(warning,'media-warning:'+id),'media-warning:'+id);}for(let i=0;i<meta.chunk_count;i++)await del('files',`${id}:${i}`);await del('records',keyName);return true;}
@@ -36,5 +107,85 @@ async function syncNow(){if(syncing||!navigator.onLine||!key||!pkg)return;syncin
 async function submitInspection(){try{if(await updatePending()>0){await syncNow();if(await updatePending()>0)throw new Error(t('ما زالت ملفات أو نقاط غير متزامنة','Files or checkpoints are still pending'));}const warningCount=(await recordEntries('media-warning:')).length,acknowledge=warningCount>0;if(acknowledge&&!confirm(t(`يوجد ${warningCount} فيديو محفوظ داخليًا فقط. لن يظهر للعميل ولن يكتمل اعتماد المشرف حتى تتم معالجته. هل تريد إرسال الفحص للمراجعة؟`,`There are ${warningCount} videos stored internally only. They will not appear to the customer and supervisor approval cannot complete until reprocessing. Submit for review?`)))return;await api('submit','POST',{package_revision:pkg.state.package_revision,acknowledge_internal_only:acknowledge});await clearAll();key=null;app.innerHTML=`<section class="qc-card"><h1>${t('تم إرسال الفحص للمراجعة','Inspection submitted for review')}</h1><p>${t('يمكنك إغلاق التطبيق الآن.','You may close the app now.')}</p></section>`;}catch(error){alert(error.message);}}
 function network(){net.textContent=navigator.onLine?t('متصل','Online'):t('بدون إنترنت','Offline');net.className=navigator.onLine?'qc-online':'qc-offline';if(navigator.onLine&&key&&pkg)void syncNow();}
 async function init(){try{db=await openDb();const owner=await get('meta','identity');if(owner&&owner!==identity)await clearAll();await put('meta',identity,'identity');await resumeLocked();}catch(error){lockApp(error.message);}}
-prev.addEventListener('click',()=>{if(key&&pkg&&index>0){index--;render();}});next.addEventListener('click',()=>{if(key&&pkg&&index<pkg.checkpoints.length-1){index++;render();}});findingButton.addEventListener('click',()=>void queueFinding());syncButton.addEventListener('click',syncNow);addEventListener('online',network);addEventListener('offline',network);['pointerdown','keydown','touchstart'].forEach(name=>addEventListener(name,()=>{lastActivity=Date.now();},{passive:true}));setInterval(()=>{if(key&&Date.now()-lastActivity>300000)lockApp(t('تم القفل بعد 5 دقائق من عدم النشاط','Locked after 5 minutes of inactivity'));},30000);document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=Date.now();lockApp(t('تم القفل عند مغادرة التطبيق','Locked when the app went to background'));}else if(hiddenAt){hiddenAt=0;}});addEventListener('pagehide',()=>{if(key)lockApp();});void init();
+prev.addEventListener('click',()=>{if(key&&pkg&&index>0){index--;render();}});next.addEventListener('click',()=>{if(key&&pkg&&index<pkg.checkpoints.length-1){index++;render();}});findingButton.addEventListener('click',()=>void queueFinding());syncButton.addEventListener('click',syncNow);addEventListener('online',network);addEventListener('offline',network);['pointerdown','keydown','touchstart'].forEach(name=>addEventListener(name,()=>{lastActivity=Date.now();},{passive:true}));setInterval(()=>{if(key&&Date.now()-lastActivity>300000)lockApp(t('تم القفل بعد 5 دقائق من عدم النشاط','Locked after 5 minutes of inactivity'));},30000);document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=Date.now();lockApp(t('تم القفل عند مغادرة التطبيق','Locked when the app went to background'));}else if(hiddenAt){hiddenAt=0;}});addEventListener('pagehide',()=>{if(key)lockApp();});
+window.CP_QC_STEP=function(name,delta){
+  const form=document.querySelector('#qc-form');
+  if(!form||!form.elements[name])return;
+  let cur=parseInt(form.elements[name].value,10)||0;
+  cur=Math.max(0,cur+delta);
+  form.elements[name].value=cur;
+  const k=name.replace('defects_','');
+  const span=document.getElementById('qc-val-'+k);
+  if(span)span.textContent=cur;
+  window.CP_QC_EVAL_AQL();
+};
+
+window.CP_QC_EVAL_AQL=function(){
+  const form=document.querySelector('#qc-form');
+  const badge=document.getElementById('qc-aql-badge');
+  if(!form||!badge)return;
+  const crit=parseInt(form.elements.defects_critical?.value||0,10);
+  const maj=parseInt(form.elements.defects_major?.value||0,10);
+  const min=parseInt(form.elements.defects_minor?.value||0,10);
+  if(crit>0){
+    badge.textContent='AQL FAILED (Critical > 0)';
+    badge.style.background='#fee2e2';badge.style.color='#b91c1c';
+  }else if(maj>3){
+    badge.textContent='AQL FAILED (Major > 3)';
+    badge.style.background='#fef3c7';badge.style.color='#b45309';
+  }else if(min>5){
+    badge.textContent='AQL FAILED (Minor > 5)';
+    badge.style.background='#fef3c7';badge.style.color='#b45309';
+  }else{
+    badge.textContent='AQL PASS ✓';
+    badge.style.background='#dcfce7';badge.style.color='#15803d';
+  }
+};
+
+let signHasDrawn=false;
+window.CP_QC_INIT_SIGN=function(){
+  const canvas=document.getElementById('qc-inspector-pad');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  ctx.strokeStyle='#0b3558';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
+  let drawing=false;
+  function getPos(e){
+    const rect=canvas.getBoundingClientRect();
+    const touch=e.touches&&e.touches[0];
+    const clientX=touch?touch.clientX:e.clientX;
+    const clientY=touch?touch.clientY:e.clientY;
+    return{x:(clientX-rect.left)*(canvas.width/rect.width),y:(clientY-rect.top)*(canvas.height/rect.height)};
+  }
+  function start(e){drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);signHasDrawn=true;const b=document.getElementById('qc-sign-badge');if(b)b.textContent='✓ Certified';if(e.cancelable)e.preventDefault();}
+  function move(e){if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke();if(e.cancelable)e.preventDefault();}
+  function stop(){drawing=false;}
+  canvas.onmousedown=start;canvas.onmousemove=move;window.onmouseup=stop;
+  canvas.ontouchstart=start;canvas.ontouchmove=move;canvas.ontouchend=stop;
+};
+
+window.CP_QC_CLEAR_SIGN=function(){
+  const canvas=document.getElementById('qc-inspector-pad');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  signHasDrawn=false;
+  const b=document.getElementById('qc-sign-badge');if(b)b.textContent='Touch or mouse to sign';
+};
+
+window.CP_QC_PRESET_SIGN=function(){
+  const canvas=document.getElementById('qc-inspector-pad');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle='#0b3558';ctx.lineWidth=2.5;ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(30,70);ctx.bezierCurveTo(70,20,90,90,130,50);
+  ctx.bezierCurveTo(150,20,180,80,220,40);
+  ctx.moveTo(80,80);ctx.lineTo(240,75);
+  ctx.stroke();
+  signHasDrawn=true;
+  const b=document.getElementById('qc-sign-badge');if(b)b.textContent='✓ Sample Signed';
+};
+
+void init();
 })();
