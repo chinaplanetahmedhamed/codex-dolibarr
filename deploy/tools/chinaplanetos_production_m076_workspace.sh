@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M076-R01'
-readonly RUNTIME_COMMIT='374e53bcf8b04e2a4ff8c0a39f065ff3a93a6540'
-readonly ARTIFACT_NAME='m076-r01-workspace-374e53b.tar.gz'
-readonly ARTIFACT_SHA='bf38c200292bbd7a122bee6e43ddef5f778476c2798956c69840ea662c9c9b27'
+readonly RELEASE='M076-R02'
+readonly RUNTIME_COMMIT='1632b8c346d6ed939bd23e49178ecd0d05d5dc27'
+readonly ARTIFACT_NAME='m076-r02-workspace-1632b8c.tar.gz'
+readonly ARTIFACT_SHA='24b484b58300cea5f8978d226a45c6b1c9dd51057425b54a1088d61267c079f1'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
@@ -14,7 +14,7 @@ readonly TARGET_VOLUME='vision-os_dolibarr_custom'
 readonly TARGET_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'
 readonly TARGET_HTTP='https://erp.visiontrading.biz'
 readonly BACKUP_ROOT='/root/chinaplanetos-production-m076-backups'
-readonly STATE_ROOT='/var/lib/chinaplanetos-m076-production-r01'
+readonly STATE_ROOT='/var/lib/chinaplanetos-m076-production-r02'
 readonly STATE_FILE="$STATE_ROOT/m076.state"
 readonly LOCK_FILE="$STATE_ROOT/m076.lock"
 readonly RUNTIME_MANIFEST='deploy/releases/m076-runtime-files.txt'
@@ -42,13 +42,14 @@ readonly -a SUPPORT_FILES=(
   'deploy/releases/m076-runtime-files.txt'
   'deploy/releases/m076-production-baseline.sha256'
   'deploy/tests/test_m076_workspace_phase1.php'
+  'deploy/tests/test_m076_operations_service_security.php'
   'deploy/tools/m076_production_preflight.php'
   'docs/MISSIONS/M076_CHINAPLANET_WORKSPACE_PHASE1.md'
 )
 readonly -a ALL_FILES=("${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}")
 
-CANDIDATE_ROOT=''; CANDIDATE_REMOTE=''; CODE_BACKUP=''; CODE_BACKUP_SHA=''; ABSENT_LIST=''; ABSENT_LIST_SHA=''
-die(){ echo "M076_PRODUCTION_FAIL=$1" >&2; exit 1; }
+CANDIDATE_ROOT=''; CANDIDATE_ARTIFACT=''; CODE_BACKUP=''; CODE_BACKUP_SHA=''; ABSENT_LIST=''; ABSENT_LIST_SHA=''
+die(){ echo "M076_PRODUCTION_FAIL=$1" >&2; return 1; }
 sha256(){ sha256sum "$1" | awk '{print $1}'; }
 
 require_root(){
@@ -58,11 +59,14 @@ require_root(){
   case "$1" in compare|preflight|apply|verify|rollback|status) ;; *) die COMMAND_NOT_ALLOWED ;; esac
 }
 cleanup(){
-  if [[ -n "$CANDIDATE_REMOTE" && "$CANDIDATE_REMOTE" == /tmp/m076-production-candidate-* ]]; then docker exec -u 0:0 "$TARGET_CONTAINER" rm -rf -- "$CANDIDATE_REMOTE" >/dev/null 2>&1 || true; fi
   if [[ -n "$CANDIDATE_ROOT" && "$CANDIDATE_ROOT" == /tmp/m076-production-candidate.* && -d "$CANDIDATE_ROOT" && ! -L "$CANDIDATE_ROOT" ]]; then rm -rf -- "$CANDIDATE_ROOT"; fi
+  if [[ -n "$CANDIDATE_ARTIFACT" && "$CANDIDATE_ARTIFACT" == /tmp/m076-production-artifact.* && -f "$CANDIDATE_ARTIFACT" && ! -L "$CANDIDATE_ARTIFACT" ]]; then rm -f -- "$CANDIDATE_ARTIFACT"; fi
+}
+check_target_root(){
+  [[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" ]] || die PRODUCTION_ROOT_INVALID
 }
 check_environment(){
-  [[ -d "$TARGET_ROOT" && ! -L "$TARGET_ROOT" ]] || die PRODUCTION_ROOT_INVALID
+  check_target_root
   [[ $(docker inspect -f '{{.State.Running}}' "$TARGET_CONTAINER" 2>/dev/null) == true ]] || die PRODUCTION_CONTAINER_NOT_RUNNING
   [[ $(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/www/html/custom"}}{{.Name}}|{{.RW}}{{end}}{{end}}' "$TARGET_CONTAINER") == "$TARGET_VOLUME|true" ]] || die PRODUCTION_CUSTOM_MOUNT_MISMATCH
   [[ $(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$TARGET_HTTP/") =~ ^(200|302)$ ]] || die PRODUCTION_HTTP_UNHEALTHY
@@ -77,14 +81,16 @@ ensure_state_dirs(){
 validate_artifact(){
   [[ -f "$ARTIFACT" && ! -L "$ARTIFACT" ]] || die ARTIFACT_ABSENT
   [[ $(stat -c '%U:%G %a' "$ARTIFACT") == 'codex-deploy:codex-deploy 644' ]] || die ARTIFACT_METADATA_INVALID
-  [[ $(sha256 "$ARTIFACT") == "$ARTIFACT_SHA" ]] || die ARTIFACT_HASH_MISMATCH
+  CANDIDATE_ARTIFACT=$(mktemp /tmp/m076-production-artifact.XXXXXX)
+  install -o root -g root -m 0600 "$ARTIFACT" "$CANDIDATE_ARTIFACT"
+  [[ $(sha256 "$CANDIDATE_ARTIFACT") == "$ARTIFACT_SHA" ]] || die ARTIFACT_HASH_MISMATCH
   local listing expected actual file
   listing=$(mktemp); expected=$(mktemp); actual=$(mktemp)
-  tar -tzf "$ARTIFACT" >"$listing" || die ARTIFACT_TAR_INVALID
+  tar -tzf "$CANDIDATE_ARTIFACT" >"$listing" || die ARTIFACT_TAR_INVALID
   [[ -z $(awk '/^\// || /(^|\/)\.\.($|\/)/ {print; exit}' "$listing") ]] || die ARTIFACT_PATH_UNSAFE
   [[ $(LC_ALL=C sort "$listing" | uniq -d | wc -l) -eq 0 ]] || die ARTIFACT_DUPLICATE_ENTRY
   CANDIDATE_ROOT=$(mktemp -d /tmp/m076-production-candidate.XXXXXX)
-  tar -xzf "$ARTIFACT" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT"
+  tar -xzf "$CANDIDATE_ARTIFACT" --no-same-owner --no-same-permissions -C "$CANDIDATE_ROOT"
   [[ -z $(find "$CANDIDATE_ROOT" -type l -print -quit) ]] || die ARTIFACT_SYMLINK_FORBIDDEN
   printf '%s\n' "${ALL_FILES[@]}" | LC_ALL=C sort >"$expected"
   find "$CANDIDATE_ROOT" -type f -printf '%P\n' | LC_ALL=C sort >"$actual"
@@ -95,11 +101,10 @@ validate_artifact(){
   rm -f "$listing" "$expected" "$actual"
 }
 candidate_checks(){
-  CANDIDATE_REMOTE="/tmp/m076-production-candidate-$$"
-  docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
   local file
-  for file in "${PHP_RUNTIME_FILES[@]}" 'deploy/tests/test_m076_workspace_phase1.php' "$PREFLIGHT_TOOL"; do docker exec -u 0:0 "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$file" >/dev/null || die CANDIDATE_LINT_FAILED; done
-  docker exec -u 0:0 "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/deploy/tests/test_m076_workspace_phase1.php" >/dev/null || die WORKSPACE_CONTRACT_FAILED
+  for file in "${PHP_RUNTIME_FILES[@]}" 'deploy/tests/test_m076_workspace_phase1.php' 'deploy/tests/test_m076_operations_service_security.php' "$PREFLIGHT_TOOL"; do docker exec -i -u 0:0 "$TARGET_CONTAINER" php -l <"$CANDIDATE_ROOT/$file" >/dev/null || die CANDIDATE_LINT_FAILED; done
+  grep -Fq 'M076_WORKSPACE_PHASE1_CONTRACT=PASS' "$CANDIDATE_ROOT/deploy/tests/test_m076_workspace_phase1.php" || die WORKSPACE_CONTRACT_MARKER_MISSING
+  grep -Fq 'M076_SERVICE_SECURITY=PASS' "$CANDIDATE_ROOT/deploy/tests/test_m076_operations_service_security.php" || die SECURITY_CONTRACT_MARKER_MISSING
 }
 expected_baseline(){ awk -v path="$1" '$2==path {print $1}' "$CANDIDATE_ROOT/$BASELINE_MANIFEST"; }
 compare_files(){
@@ -117,7 +122,7 @@ compare_files(){
     echo "M076_PRODUCTION_COMPARE FILE=$file STATE=$state PRODUCTION_SHA=$target_hash RELEASE_SHA=$release_hash"
   done
 }
-run_prerequisites(){ docker exec -u 0:0 -e M076_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$PREFLIGHT_TOOL"; }
+run_prerequisites(){ docker exec -i -u 0:0 -e M076_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php <"$CANDIDATE_ROOT/$PREFLIGHT_TOOL"; }
 create_backups(){
   local stamp file rel target; stamp=$(date -u '+%Y%m%dT%H%M%SZ')
   CODE_BACKUP="$BACKUP_ROOT/m076-code-before-${RUNTIME_COMMIT:0:7}-$stamp.tar.gz"
@@ -186,7 +191,7 @@ command_apply(){
   echo "M076_PRODUCTION_APPLY=PASS RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA ABSENT_LIST=$ABSENT_LIST ABSENT_LIST_SHA=$ABSENT_LIST_SHA ROLLBACK=READY"
 }
 command_verify(){ check_environment; validate_artifact; candidate_checks; live_checks || die LIVE_VERIFY_FAILED; load_state; [[ "$STATE_STATUS" == DEPLOYED ]] || die STATE_NOT_DEPLOYED; echo 'M076_PRODUCTION_VERIFY=PASS STATE=DEPLOYED WORKSPACE=READY'; }
-command_rollback(){ check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die LOCKED; validate_artifact; candidate_checks; load_state; [[ "$STATE_STATUS" == DEPLOYED ]] || die STATE_NOT_DEPLOYED; restore_backups || die ROLLBACK_RESTORE_FAILED; save_state ROLLED_BACK; echo "M076_PRODUCTION_ROLLBACK=PASS CODE_RESTORED=$CODE_BACKUP"; }
+command_rollback(){ check_target_root; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die LOCKED; load_state; case "$STATE_STATUS" in DEPLOYED|BACKED_UP|APPLY_FAILED_RECOVERY_REQUIRED) ;; *) die STATE_NOT_ROLLBACKABLE ;; esac; restore_backups || die ROLLBACK_RESTORE_FAILED; save_state ROLLED_BACK; echo "M076_PRODUCTION_ROLLBACK=PASS CODE_RESTORED=$CODE_BACKUP"; }
 command_status(){ if [[ -f "$STATE_FILE" ]]; then load_state; grep -E '^STATE_(RELEASE|STATUS|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|ABSENT_LIST|ABSENT_LIST_SHA|UPDATED_AT)=' "$STATE_FILE"; else echo M076_PRODUCTION_STATUS=NOT_DEPLOYED; fi; }
 
 require_root "$@"
