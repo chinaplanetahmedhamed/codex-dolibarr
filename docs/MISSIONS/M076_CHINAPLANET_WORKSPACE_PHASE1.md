@@ -3,7 +3,7 @@
 - Owner: Ahmed Hamed
 - Coordinator and writer: Agent 007
 - Date: 2026-09-12
-- Status: READY_FOR_INDEPENDENT_REVIEW
+- Status: RELEASE_PREPARATION
 - Approval: Ahmed explicitly approved execution after the M075 scope gap was explained: `ok, do it`.
 - Current environment: local Dolibarr only. Staging and Production require later, separate approvals.
 
@@ -57,6 +57,10 @@ Excluded functions must be absent or visibly marked unavailable; a simulation co
 ## Release boundary
 
 This approval covers the bounded local implementation and local synthetic acceptance only. It does not authorize GitHub push, staging, Production, DNS, proxy, or business-data changes. Any later release must use an immutable reviewed artifact, backups, verification, rollback, and Ahmed's exact environment approval.
+
+## Production authorization — 2026-09-12
+
+Ahmed subsequently authorized publishing the exact reviewed M076 Phase 1 scope to canonical Production at `erp.visiontrading.biz`, including immutable artifact upload, restricted compare/preflight, scoped backups, apply, verify, status, and runtime acceptance. This does not authorize DNS/proxy changes, staging changes, schema migration, configuration repair, team-membership changes, synthetic records, or any deployment to `erp.chinaplanet.org`.
 
 ## Local acceptance evidence — 2026-09-12
 
