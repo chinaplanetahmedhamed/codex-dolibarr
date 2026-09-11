@@ -8,8 +8,8 @@ fail(){ echo "M076_PRODUCTION_HELPER_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-grep -Fq "readonly RUNTIME_COMMIT='1632b8c346d6ed939bd23e49178ecd0d05d5dc27'" "$helper" || fail COMMIT_PIN
-grep -Fq "readonly ARTIFACT_SHA='24b484b58300cea5f8978d226a45c6b1c9dd51057425b54a1088d61267c079f1'" "$helper" || fail ARTIFACT_PIN
+grep -Fq "readonly RUNTIME_COMMIT='48b0dd1262f12ae34f72d63c25580b09f13416f3'" "$helper" || fail COMMIT_PIN
+grep -Fq "readonly ARTIFACT_SHA='97d56c8a2e15e3b0dd8bd88cc1b53b3aed114e37b4647bdfc2e4f8b3bf5a2c3d'" "$helper" || fail ARTIFACT_PIN
 grep -Fq "readonly TARGET_CONTAINER='vision_erp'" "$helper" || fail CONTAINER_PIN
 grep -Fq "readonly TARGET_VOLUME='vision-os_dolibarr_custom'" "$helper" || fail VOLUME_PIN
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz'" "$helper" || fail HTTP_PIN
@@ -23,9 +23,12 @@ if grep -Fq 'docker cp' "$helper"; then fail READ_ONLY_COMMAND_CONTAINER_COPY; f
 grep -Fq "DEPLOYED|BACKED_UP|APPLY_FAILED_RECOVERY_REQUIRED" "$helper" || fail EMERGENCY_ROLLBACK_STATES
 grep -Fq 'command_rollback(){ check_target_root;' "$helper" || fail ROLLBACK_HTTP_INDEPENDENCE
 grep -Fq 'die(){ echo "M076_PRODUCTION_FAIL=$1" >&2; return 1; }' "$helper" || fail ERR_TRAP_COMPATIBLE_DIE
+grep -Fq 'ROLLBACK_REQUIRED_BEFORE_RETRY' "$helper" || fail ORIGINAL_BACKUP_PRESERVATION
+grep -Fq 'rm -f -- "$target" || return 1' "$helper" || fail RESTORE_REMOVE_CHECK
+grep -Fq 'grep -Fxq "$rel" "$ABSENT_LIST"' "$helper" || fail ABSENT_RESTORE_VERIFICATION
 grep -Fq "ACTIVE_INTERNAL_TEAM_MEMBERSHIP_REQUIRED" "$root/deploy/tools/m076_production_preflight.php" || fail REAL_TEAM_GATE
 [[ $(grep -c '^codex-deploy ALL=(root) NOPASSWD:' "$sudoers") -eq 6 ]] || fail SUDOERS_COMMAND_COUNT
-grep -Fq "readonly HELPER_SHA='192e903702edae126adc3744c83d7153be88c3b4cfecdc8706836be14e4cfa63'" "$installer" || fail HELPER_INSTALL_PIN
+grep -Fq "readonly HELPER_SHA='b3f9a6eb45c4f128c7896861a170abd882276f7f5068e1d7a8d83b1e63290f4d'" "$installer" || fail HELPER_INSTALL_PIN
 grep -Fq "readonly SUDOERS_SHA='311468a7e1ff85dff9324f35e5961d478c8b6d6bf79abfae1d301400ad2d8e03'" "$installer" || fail SUDOERS_INSTALL_PIN
 grep -Fq 'PRODUCTION_DATABASE_CHANGED=NO' "$installer" || fail DATABASE_BOUNDARY
 echo 'M076_PRODUCTION_HELPER_CONTRACT=PASS TARGET=erp.visiontrading.biz RUNTIME_FILES=7 COMMANDS=6 BASELINE=PINNED BACKUP=SCOPED AUTO_ROLLBACK=YES DATABASE_MUTATED=NO'

@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M076-R02'
-readonly RUNTIME_COMMIT='1632b8c346d6ed939bd23e49178ecd0d05d5dc27'
-readonly ARTIFACT_NAME='m076-r02-workspace-1632b8c.tar.gz'
-readonly ARTIFACT_SHA='24b484b58300cea5f8978d226a45c6b1c9dd51057425b54a1088d61267c079f1'
+readonly RELEASE='M076-R03'
+readonly RUNTIME_COMMIT='48b0dd1262f12ae34f72d63c25580b09f13416f3'
+readonly ARTIFACT_NAME='m076-r03-workspace-48b0dd1.tar.gz'
+readonly ARTIFACT_SHA='97d56c8a2e15e3b0dd8bd88cc1b53b3aed114e37b4647bdfc2e4f8b3bf5a2c3d'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
@@ -14,7 +14,7 @@ readonly TARGET_VOLUME='vision-os_dolibarr_custom'
 readonly TARGET_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'
 readonly TARGET_HTTP='https://erp.visiontrading.biz'
 readonly BACKUP_ROOT='/root/chinaplanetos-production-m076-backups'
-readonly STATE_ROOT='/var/lib/chinaplanetos-m076-production-r02'
+readonly STATE_ROOT='/var/lib/chinaplanetos-m076-production-r03'
 readonly STATE_FILE="$STATE_ROOT/m076.state"
 readonly LOCK_FILE="$STATE_ROOT/m076.lock"
 readonly RUNTIME_MANIFEST='deploy/releases/m076-runtime-files.txt'
@@ -136,9 +136,17 @@ create_backups(){
 restore_backups(){
   [[ -f "$CODE_BACKUP" && ! -L "$CODE_BACKUP" && $(sha256 "$CODE_BACKUP") == "$CODE_BACKUP_SHA" ]] || return 1
   [[ -f "$ABSENT_LIST" && ! -L "$ABSENT_LIST" && $(sha256 "$ABSENT_LIST") == "$ABSENT_LIST_SHA" ]] || return 1
-  local file rel target
-  for file in "${RUNTIME_FILES[@]}"; do rel=${file#custom/}; target="$TARGET_ROOT/$rel"; [[ ! -L "$target" ]] || return 1; rm -f -- "$target"; done
-  [[ $(tar -tzf "$CODE_BACKUP" | wc -l) -eq 0 ]] || tar -xzf "$CODE_BACKUP" --same-owner --same-permissions -C "$TARGET_ROOT"
+  local file rel target expected actual
+  for file in "${RUNTIME_FILES[@]}"; do rel=${file#custom/}; target="$TARGET_ROOT/$rel"; [[ ! -L "$target" ]] || return 1; rm -f -- "$target" || return 1; done
+  if [[ $(tar -tzf "$CODE_BACKUP" | wc -l) -gt 0 ]]; then tar -xzf "$CODE_BACKUP" --same-owner --same-permissions -C "$TARGET_ROOT" || return 1; fi
+  for file in "${RUNTIME_FILES[@]}"; do
+    rel=${file#custom/}; target="$TARGET_ROOT/$rel"
+    if grep -Fxq "$rel" "$ABSENT_LIST"; then [[ ! -e "$target" && ! -L "$target" ]] || return 1; continue; fi
+    [[ -f "$target" && ! -L "$target" ]] || return 1
+    expected=$(tar -xOf "$CODE_BACKUP" "$rel" | sha256sum | awk '{print $1}') || return 1
+    actual=$(sha256 "$target") || return 1
+    [[ "$actual" == "$expected" ]] || return 1
+  done
 }
 apply_files(){
   local file rel src target parent uid gid mode stage
@@ -184,7 +192,14 @@ command_compare(){ check_environment; validate_artifact; candidate_checks; compa
 command_preflight(){ check_environment; validate_artifact; candidate_checks; compare_files >/dev/null; run_prerequisites; echo "M076_PRODUCTION_PREFLIGHT=PASS RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=${#RUNTIME_FILES[@]} BACKUP_REQUIRED=YES PRODUCTION_MUTATED=NO"; }
 command_apply(){
   check_environment; ensure_state_dirs; exec 9>"$LOCK_FILE"; flock -n 9 || die LOCKED; validate_artifact; candidate_checks; compare_files >/dev/null; run_prerequisites >/dev/null
-  if [[ -f "$STATE_FILE" ]]; then load_state; [[ "$STATE_STATUS" != DEPLOYED ]] || die ALREADY_DEPLOYED; fi
+  if [[ -f "$STATE_FILE" ]]; then
+    load_state
+    case "$STATE_STATUS" in
+      DEPLOYED) die ALREADY_DEPLOYED ;;
+      BACKED_UP|APPLY_FAILED_RECOVERY_REQUIRED) die ROLLBACK_REQUIRED_BEFORE_RETRY ;;
+      ROLLED_BACK|APPLY_FAILED_AUTO_ROLLED_BACK) ;;
+    esac
+  fi
   create_backups; save_state BACKED_UP; local mutated=0
   trap 'rc=$?; if [[ $mutated -eq 1 ]]; then if restore_backups; then save_state APPLY_FAILED_AUTO_ROLLED_BACK; echo M076_PRODUCTION_AUTO_ROLLBACK=PASS >&2; else save_state APPLY_FAILED_RECOVERY_REQUIRED; echo M076_PRODUCTION_AUTO_ROLLBACK=FAIL_RECOVERY_REQUIRED >&2; fi; fi; exit $rc' ERR
   mutated=1; apply_files; live_checks; mutated=0; trap - ERR; save_state DEPLOYED
