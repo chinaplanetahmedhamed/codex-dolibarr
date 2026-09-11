@@ -51,8 +51,49 @@
 .cpad-section-content .cpo-card-meta .cpo-badge{color:#112547}
 
 .cpad-section-content .cpo-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-.cpad-section-content .cpo-dashboard-links a{background:#0c2147}
+.cpad-section-content .cpo-stat{
+  background:#fff;
+  color:#172033;
+  border-color:#d8e1eb;
+}
+.cpad-section-content .cpo-stat span,
+.cpad-section-content .cpo-stat small{color:#526173!important}
+.cpad-section-content .cpo-stat strong{color:#0d1b3e!important}
+.cpad-section-content .cpo-stat.good strong{color:#15724a!important}
+.cpad-section-content .cpo-stat.warn strong{color:#8a5a00!important}
+
+.cpad-section-content .cpo-panel .cpo-field>span{color:#dbe8f7!important}
+.cpad-section-content .cpo-form-section{
+  background:#fff;
+  color:#172033;
+  border-color:#d8e1eb;
+}
+.cpad-section-content .cpo-form-section h2,
+.cpad-section-content .cpo-form-section .cpo-field>span{color:#172033!important}
+
+.cpad-section-content .cpo-dashboard-links a{background:#0c2147;color:#ecf3ff}
+.cpad-section-content .cpo-dashboard-links small{color:#b8cbe5!important}
 .cpad-section-content .cpo-dashboard-links a:hover{border-color:#14d9ff;box-shadow:inset 4px 0 #14d9ff}
+
+.cpad-section-content .cpo-card-side,
+.cpad-section-content .cpo-detail dl,
+.cpad-section-content .cpo-scope div,
+.cpad-section-content .cpo-kanban-column,
+.cpad-section-content .cpo-kanban-column article{
+  color:#172033;
+}
+.cpad-section-content .cpo-card-side small,
+.cpad-section-content .cpo-detail dt,
+.cpad-section-content .cpo-scope span,
+.cpad-section-content .cpo-kanban-column p,
+.cpad-section-content .cpo-kanban-column time,
+.cpad-section-content .cpo-kanban-column small{color:#526173!important}
+.cpad-section-content .cpo-panel-head a:not(.button),
+.cpad-section-content .cpo-card-main h3 a{color:#7dd8ff!important}
+.cpad-section-content .cpo-card-side h3,
+.cpad-section-content .cpo-card-side h3 a{color:#172033!important}
+.cpad-section-content .cpo-table th{color:#172033}
+.cpad-section-content .cpo-notice{color:#6b4d00!important}
 
 /* M043-C02 — staff-facing public request review */
 .cpo-public-requests{--cpo-pr-navy:#102a43;--cpo-pr-blue:#2563eb;--cpo-pr-cyan:#0e7490;--cpo-pr-green:#087f5b;--cpo-pr-gold:#b7791f;--cpo-pr-red:#b42318;--cpo-pr-ink:#17324a;--cpo-pr-muted:#62748a;--cpo-pr-border:#dce5ee;--cpo-pr-surface:#fff;--cpo-pr-soft:#f5f8fb;display:grid;gap:14px;min-width:0;color:var(--cpo-pr-ink)}

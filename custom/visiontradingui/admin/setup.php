@@ -13,7 +13,7 @@ if ($action === 'save') {
     $enabled = GETPOSTINT('VISIONTRADINGUI_ENABLE_DASHBOARD') ? 1 : 0;
 	$whiteLabelEnabled = GETPOSTINT('VISIONTRADINGUI_ENABLE_WHITE_LABEL') ? 1 : 0;
 	$brandName = trim(GETPOST('VISIONTRADINGUI_BRAND_NAME', 'alphanohtml'));
-	if ($brandName === '') $brandName = 'Vision System';
+	if ($brandName === '') $brandName = 'Vision-China Planet OS';
 	$results = array(
 		dolibarr_set_const($db, 'VISIONTRADINGUI_ENABLE_DASHBOARD', $enabled, 'chaine', 0, '', $conf->entity),
 		dolibarr_set_const($db, 'VISIONTRADINGUI_ENABLE_WHITE_LABEL', $whiteLabelEnabled, 'chaine', 0, '', $conf->entity),
@@ -53,7 +53,7 @@ print '<tr><td>'.$langs->trans('VisionTradingUIEnableWhiteLabel').'</td><td>';
 print '<label><input type="checkbox" name="VISIONTRADINGUI_ENABLE_WHITE_LABEL" value="1"'.(getDolGlobalInt('VISIONTRADINGUI_ENABLE_WHITE_LABEL') ? ' checked' : '').'> ';
 print $langs->trans('Enabled').'</label></td></tr>';
 print '<tr><td>'.$langs->trans('VisionTradingUIBrandName').'</td><td>';
-print '<input class="minwidth300" name="VISIONTRADINGUI_BRAND_NAME" value="'.dol_escape_htmltag(getDolGlobalString('VISIONTRADINGUI_BRAND_NAME', 'Vision System')).'">';
+print '<input class="minwidth300" name="VISIONTRADINGUI_BRAND_NAME" value="'.dol_escape_htmltag(getDolGlobalString('VISIONTRADINGUI_BRAND_NAME', 'Vision-China Planet OS')).'">';
 print '</td></tr>';
 print '<tr><td>'.$langs->trans('VisionTradingUIEnvironment').'</td><td>';
 print $isStaging ? img_picto('', 'info').' '.$langs->trans('VisionTradingUIEnvironmentStaging') : img_picto('', 'warning').' '.$langs->trans('VisionTradingUIEnvironmentNotStaging');

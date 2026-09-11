@@ -3,6 +3,7 @@ require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/class/OperationsSopService.class.php';
 require_once __DIR__.'/class/OperationsService.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 cpo_require($user, 'read');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $contentLang = cpo_content_language();
@@ -10,8 +11,9 @@ $service = new OperationsSopService($db);
 $stats = $service->getStats();
 $operations = new OperationsService($db);
 $operationStats = $operations->stats($user);
-$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'));
+$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
 llxHeader('', $langs->trans('OperationsCenter'), '', '', 0, 0, array(), $morecss);
+cpcc_admin_shell_open('operations', $langs->trans('OperationsCenter'), $langs->trans('OperationsFoundation'), 'fa-route');
 ?>
 <main class="cpo-page">
   <section class="cpo-hero"><div><span class="cpo-eyebrow">CHINA PLANET OPERATIONS OS</span><h1><?php echo dol_escape_htmltag($langs->trans('OperationsCenter')); ?></h1><p><?php echo dol_escape_htmltag($langs->trans('OperationsFoundation')); ?></p></div><?php echo cpo_language_switcher($contentLang); ?></section>
@@ -30,4 +32,4 @@ llxHeader('', $langs->trans('OperationsCenter'), '', '', 0, 0, array(), $morecss
   </div></section>
   <div class="cpo-notice"><?php echo dol_escape_htmltag($langs->trans('LegacySopNotice')); ?></div>
 </main>
-<?php llxFooter(); $db->close(); ?>
+<?php cpcc_admin_shell_close(); llxFooter(); $db->close(); ?>

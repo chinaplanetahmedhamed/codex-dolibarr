@@ -1,4 +1,4 @@
-/* Vision System white-label assets. Selectors are deliberately scoped so that
+/* Vision-China Planet OS white-label assets. Selectors are deliberately scoped so that
  * customer and supplier logos inside normal white content are never changed. */
 #img_logo {
 	content: url('../img/vision-system-logo.svg') !important;

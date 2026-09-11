@@ -206,7 +206,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
 
   <section class="cpad-panel cpad-shipping-orders" data-cpad-widget="shipping_orders" data-default-size="full">
     <div class="cpad-title"><span>Shipping Orders / طلبات الشحن</span><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1); ?>">Open register / فتح السجل →</a></div>
-    <p class="cpad-shipping-orders-note">Customer booking operations — separate from Dolibarr Sales Orders and linked shipments. / عمليات حجز العميل منفصلة عن طلبات البيع والشحنات المرتبطة.</p>
+    <p class="cpad-shipping-orders-note">Customer booking operations — separate from ERP Sales Orders and linked shipments. / عمليات حجز العميل منفصلة عن طلبات البيع والشحنات المرتبطة.</p>
     <div class="cpad-shipping-order-metrics">
       <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=all',1); ?>"><b><?php echo (int)$shippingOrderStats['total_current']; ?></b><span>Total Current / الإجمالي الحالي</span></a>
       <a class="active" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=active',1); ?>"><b><?php echo (int)$shippingOrderStats['active']; ?></b><span>Active / نشط</span></a>

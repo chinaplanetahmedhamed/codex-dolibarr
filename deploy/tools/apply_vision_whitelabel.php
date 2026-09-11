@@ -1,6 +1,6 @@
 <?php
 /**
- * Enable the upgrade-safe Vision System white-label layer on the local instance.
+ * Enable the upgrade-safe Vision-China Planet OS white-label layer on the local instance.
  * This intentionally changes configuration only; it never edits ERP core files.
  */
 define('NOLOGIN', 1);
@@ -31,8 +31,8 @@ if (!empty($activation['errors'])) {
 
 $settings = array(
 	'VISIONTRADINGUI_ENABLE_WHITE_LABEL' => array('1', 'chaine'),
-	'VISIONTRADINGUI_BRAND_NAME' => array('Vision System', 'chaine'),
-	'MAIN_APPLICATION_TITLE' => array('Vision System', 'chaine'),
+	'VISIONTRADINGUI_BRAND_NAME' => array('Vision-China Planet OS', 'chaine'),
+	'MAIN_APPLICATION_TITLE' => array('Vision-China Planet OS', 'chaine'),
 	'MAIN_SHOW_VERSION' => array('0', 'chaine'),
 	'MAIN_SHOW_LOGO' => array('1', 'chaine'),
 	'MAIN_FAVICON_URL' => array('/custom/visiontradingui/img/vision-system-mark.svg', 'chaine'),
@@ -51,5 +51,5 @@ $checkRes = $db->query($checkSql);
 $verified = array();
 if ($checkRes) while ($checkObj = $db->fetch_object($checkRes)) $verified[$checkObj->name] = $checkObj->value;
 
-print "Vision System white-label branding enabled\n";
+print "Vision-China Planet OS white-label branding enabled\n";
 foreach ($verified as $name=>$value) print $name.'='.$value."\n";

@@ -23,8 +23,8 @@ brandAssert(strpos($hookEntrypoint, "core/hooks/actions_visiontradingui.class.ph
 brandAssert(strpos($hook, 'vision-system-brand') !== false, 'brand name reaches the browser safely through metadata');
 brandAssert(strpos($module, "'mainloginpage'") !== false, 'white-label hook is registered for unauthenticated login pages');
 brandAssert(strpos($hook, 'vision-system-logo') !== false && strpos($hook, 'branding.css') !== false, 'logo and immediate branding styles reach the browser');
-brandAssert(is_file($root.'/custom/visiontradingui/img/vision-system-logo.svg'), 'full Vision System login logo exists');
-brandAssert(is_file($root.'/custom/visiontradingui/img/vision-system-mark.svg'), 'compact Vision System navigation mark exists');
+brandAssert(is_file($root.'/custom/visiontradingui/img/vision-system-logo.svg'), 'full Vision-China Planet OS login logo exists');
+brandAssert(is_file($root.'/custom/visiontradingui/img/vision-system-mark.svg'), 'compact Vision-China Planet OS navigation mark exists');
 brandAssert(strpos($brandingCss, '#img_logo') !== false && strpos($brandingCss, '.menulogocontainer img.mycompany') !== false, 'logo CSS is scoped to login and top navigation only');
 brandAssert(strpos($setup, "'MAIN_APPLICATION_TITLE'") !== false, 'setup uses the native application-title setting');
 brandAssert(strpos($setup, "'MAIN_SHOW_VERSION'") !== false, 'setup hides the engine version from normal UI');
@@ -32,7 +32,7 @@ brandAssert(strpos($branding, "['title', 'aria-label', 'alt', 'placeholder']") !
 brandAssert(strpos($branding, "setAttribute('name'") === false && strpos($branding, "querySelectorAll('a") === false, 'branding never rewrites technical form names or navigation links');
 brandAssert(strpos($branding, "getElementById('img_logo')") !== false, 'login logo is replaced after page load as a runtime fallback');
 brandAssert(strpos($branding, ".menulogocontainer img.mycompany") !== false, 'internal navigation logo is replaced after page load as a runtime fallback');
-brandAssert(strpos($apply, "'Vision System'") !== false && strpos($apply, 'dolibarr_set_const') !== false, 'local apply tool is idempotent and configuration based');
+brandAssert(strpos($apply, "'Vision-China Planet OS'") !== false && strpos($apply, 'dolibarr_set_const') !== false, 'local apply tool is idempotent and configuration based');
 brandAssert(strpos($apply, "activateModule('modVisionTradingUI'") !== false, 'local apply tool refreshes the standard hook registration');
 brandAssert(strpos($apply, "'MAIN_FAVICON_URL'") !== false && strpos($apply, "'MAIN_MANIFEST_APPLI_LOGO_URL'") !== false, 'native favicon and application manifest use the Vision mark');
 
