@@ -1,0 +1,7 @@
+custom/chinaplanetcustomercenter/lib/admin_shell.lib.php
+custom/chinaplanetoperations/class/OperationsService.class.php
+custom/chinaplanetoperations/css/operations.css
+custom/chinaplanetoperations/operations/edit.php
+custom/chinaplanetoperations/operations/index.php
+custom/chinaplanetoperations/operations/view.php
+custom/chinaplanetoperations/workspace.php
