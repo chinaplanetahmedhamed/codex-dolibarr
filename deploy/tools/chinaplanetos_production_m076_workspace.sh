@@ -6,7 +6,7 @@ umask 077
 readonly RELEASE='M076-R06'
 readonly RUNTIME_COMMIT='b233b525a94e610fad97045db214e9bbb043ebea'
 readonly ARTIFACT_NAME='m076-r06-workspace-b233b52.tar.gz'
-readonly ARTIFACT_SHA='2c875ad5fecbc2a07eae219f60d8a303d20bd37092b9fce1d417d6b03162c135'
+readonly ARTIFACT_SHA='bd43c2192e3e74300bd701e5da5a4fc1fa257a471e10a144e9c30a490e526e61'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'

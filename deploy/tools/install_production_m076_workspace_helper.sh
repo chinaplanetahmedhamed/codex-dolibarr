@@ -6,7 +6,7 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="$SOURCE_ROOT/chinaplanetos_production_m076_workspace.sh"
 readonly SOURCE_SUDOERS="$SOURCE_ROOT/codex-deploy-production-m076-workspace.sudoers"
-readonly HELPER_SHA='2f4cd72673f5b30040ffb7111c805156aacebee9dbcc37785b88d9e8cdcd33b2'
+readonly HELPER_SHA='8a60a545dad11476d2c7cdeb65f58a08689d836705911b53dcb4213c819cd868'
 readonly PRIOR_HELPER_SHA='6f3ddb8ca466ebc1d8a7903af57b892f8c64180c92f8d16fb7c8e74bd8063f22'
 readonly SUDOERS_SHA='311468a7e1ff85dff9324f35e5961d478c8b6d6bf79abfae1d301400ad2d8e03'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m076-workspace'
@@ -45,7 +45,8 @@ if [[ -e "$TARGET_HELPER" || -L "$TARGET_HELPER" ]]; then
   if [[ "$current_helper_sha" == "$PRIOR_HELPER_SHA" ]]; then
     helper_stage="$TARGET_HELPER.stage.$$"; helper_backup="$TARGET_HELPER.previous.$$"
     install -o root -g root -m 0755 "$SOURCE_HELPER" "$helper_stage"; [[ $(sha256 "$helper_stage") == "$HELPER_SHA" ]] || die STAGED_HELPER_HASH_MISMATCH
-    mv "$TARGET_HELPER" "$helper_backup"; mv "$helper_stage" "$TARGET_HELPER"; helper_stage=''; installed_helper=1
+    mv "$TARGET_HELPER" "$helper_backup"; installed_helper=1
+    mv "$helper_stage" "$TARGET_HELPER"; helper_stage=''
   elif [[ "$current_helper_sha" != "$HELPER_SHA" ]]; then
     die EXISTING_HELPER_UNEXPECTED
   fi
@@ -61,6 +62,6 @@ fi
 visudo -cf /etc/sudoers >/dev/null || die GLOBAL_SUDOERS_POSTCHECK_FAILED
 [[ -f "$TARGET_HELPER" && ! -L "$TARGET_HELPER" && $(stat -c '%U:%G %a' "$TARGET_HELPER") == 'root:root 755' && $(sha256 "$TARGET_HELPER") == "$HELPER_SHA" ]] || die POST_INSTALL_HELPER_INVALID
 [[ -f "$TARGET_SUDOERS" && ! -L "$TARGET_SUDOERS" && $(stat -c '%U:%G %a' "$TARGET_SUDOERS") == 'root:root 440' && $(sha256 "$TARGET_SUDOERS") == "$SUDOERS_SHA" ]] || die POST_INSTALL_SUDOERS_INVALID
-complete=1
 [[ -z "$helper_backup" || ! -e "$helper_backup" ]] || rm -f -- "$helper_backup"
+helper_backup=''; complete=1
 echo "M076_PRODUCTION_HELPER_INSTALL=PASS HELPER_SHA=$HELPER_SHA SUDOERS_SHA=$SUDOERS_SHA COMMANDS=compare,preflight,apply,verify,rollback,status DEPLOY_EXECUTED=NO PRODUCTION_FILES_CHANGED=NO PRODUCTION_DATABASE_CHANGED=NO"
