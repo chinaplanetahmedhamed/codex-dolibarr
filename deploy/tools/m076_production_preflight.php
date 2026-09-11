@@ -12,6 +12,13 @@ if (!is_file($documentRoot.'/master.inc.php')) {
 $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
 $_SERVER['SERVER_NAME'] = 'erp.visiontrading.biz';
 $_SERVER['SERVER_PORT'] = '443';
+$_SERVER['HTTP_HOST'] = 'erp.visiontrading.biz';
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REQUEST_URI'] = '/custom/chinaplanetoperations/workspace.php';
+$_SERVER['SCRIPT_NAME'] = '/custom/chinaplanetoperations/workspace.php';
+$_SERVER['PHP_SELF'] = '/custom/chinaplanetoperations/workspace.php';
+$_SERVER['SCRIPT_FILENAME'] = $documentRoot.'/custom/chinaplanetoperations/workspace.php';
+$_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
 require $documentRoot.'/master.inc.php';
 require_once $documentRoot.'/custom/chinaplanetoperations/class/InternalTaskMigration.class.php';
 
