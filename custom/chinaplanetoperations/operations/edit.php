@@ -7,6 +7,8 @@ require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shel
 cpo_require($user, 'operation_write');
 $canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
 if (!$canReadCustomers) accessforbidden();
+$canReadOrders = !empty($user->admin) || $user->hasRight('commande', 'lire');
+$canReadProjects = !empty($user->admin) || $user->hasRight('projet', 'all', 'lire');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $service = new OperationsService($db);
 $id = GETPOSTINT('id');
@@ -21,6 +23,7 @@ $customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client'
 $companies = array(0=>'— اختر العميل أولاً —');
 $res = $db->query("SELECT s.rowid,s.nom FROM ".MAIN_DB_PREFIX."societe s WHERE s.entity=".(int) $conf->entity." AND s.status=1 AND s.client>0".$customerAccessSql." ORDER BY s.nom LIMIT 1000");
 while ($res && ($o = $db->fetch_object($res))) $companies[(int) $o->rowid] = $o->nom;
+if ($operation && (!isset($companies[(int) $operation['fk_soc']]) || (int) $operation['fk_soc'] <= 0)) accessforbidden();
 $users = array(0=>'— غير مسند —');
 $res = $db->query("SELECT rowid,login,firstname,lastname FROM ".MAIN_DB_PREFIX."user WHERE entity=".(int) $conf->entity." AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login");
 while ($res && ($o = $db->fetch_object($res))) $users[(int) $o->rowid] = trim($o->firstname.' '.$o->lastname) ?: $o->login;
@@ -43,12 +46,12 @@ if ($id > 0) {
     $selectedTeamId = $existingTeam ? (int) $existingTeam->fk_usergroup : 0;
 }
 $projects = array();
-if (!empty($user->admin) || $user->hasRight('projet', 'all', 'lire')) {
+if ($canReadProjects) {
     $res = $db->query("SELECT p.rowid,p.ref,p.title,p.fk_soc FROM ".MAIN_DB_PREFIX."projet p INNER JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=p.fk_soc AND s.entity=p.entity WHERE p.entity=".(int) $conf->entity.$customerAccessSql." ORDER BY p.rowid DESC LIMIT 1000");
     while ($res && ($o = $db->fetch_object($res))) $projects[] = array('id'=>(int) $o->rowid,'socid'=>(int) $o->fk_soc,'label'=>$o->ref.' · '.$o->title);
 }
 $orders = array();
-if (!empty($user->admin) || $user->hasRight('commande', 'lire')) {
+if ($canReadOrders) {
     $res = $db->query("SELECT o.rowid,o.ref,o.fk_soc FROM ".MAIN_DB_PREFIX."commande o INNER JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity WHERE o.entity=".(int) $conf->entity.$customerAccessSql." ORDER BY o.rowid DESC LIMIT 1000");
     while ($res && ($o = $db->fetch_object($res))) $orders[] = array('id'=>(int) $o->rowid,'socid'=>(int) $o->fk_soc,'label'=>$o->ref);
 }
@@ -63,13 +66,22 @@ if ($action === 'save') try {
     $serviceData = array();
     $postedServiceData = GETPOST('service_data', 'array');
     foreach (OperationsService::serviceFields($type) as $field) $serviceData[$field] = trim((string) ($postedServiceData[$field] ?? ''));
+    $postedProjectId = $id > 0 && !$canReadProjects ? (int) $operation['fk_project'] : GETPOSTINT('fk_project');
+    $postedOrderId = $id > 0 && !$canReadOrders ? (int) $operation['fk_commande'] : GETPOSTINT('fk_commande');
     $data = array(
         'request_hash'=>$requestHash,'service_type'=>$type,'title'=>GETPOST('title','alphanohtml'),'fk_soc'=>GETPOSTINT('fk_soc'),'fk_usergroup'=>GETPOSTINT('fk_usergroup'),
-        'fk_project'=>GETPOSTINT('fk_project'),'fk_commande'=>GETPOSTINT('fk_commande'),'fk_shipment'=>GETPOSTINT('fk_shipment'),'require_assignment'=>1,
+        'fk_project'=>$postedProjectId,'fk_commande'=>$postedOrderId,'fk_shipment'=>GETPOSTINT('fk_shipment'),'require_assignment'=>1,
         'fk_user_assign'=>GETPOSTINT('fk_user_assign'),'priority'=>GETPOST('priority','alpha'),'stage'=>GETPOST('stage','alphanohtml') ?: 'new',
         'waiting_on'=>GETPOST('waiting_on','alphanohtml'),'next_action'=>GETPOST('next_action','alphanohtml'),'date_deadline'=>GETPOST('date_deadline','alphanohtml'),
         'note_private'=>GETPOST('note_private','restricthtml'),'note_public'=>GETPOST('note_public','restricthtml'),'customer_visible'=>GETPOSTINT('customer_visible'),'service_data'=>$serviceData,
     );
+    $allowedProjectIds = array_map('intval', array_column($projects, 'id'));
+    $allowedOrderIds = array_map('intval', array_column($orders, 'id'));
+    $allowedShipmentIds = array_map('intval', array_column($shipments, 'id'));
+    if ($data['fk_soc'] <= 0 || !isset($companies[$data['fk_soc']])) throw new RuntimeException('Customer is outside your authorized customer scope.');
+    if ($canReadProjects && $data['fk_project'] > 0 && !in_array($data['fk_project'], $allowedProjectIds, true)) throw new RuntimeException('Project is outside your authorized project scope.');
+    if ($canReadOrders && $data['fk_commande'] > 0 && !in_array($data['fk_commande'], $allowedOrderIds, true)) throw new RuntimeException('Order is outside your authorized order scope.');
+    if ($data['fk_shipment'] > 0 && !in_array($data['fk_shipment'], $allowedShipmentIds, true)) throw new RuntimeException('Shipment is outside your authorized customer scope.');
     if (!$createReady) throw new RuntimeException('Operation creation is unavailable until the internal task board and an active team are ready.');
     if (!$data['title']) throw new RuntimeException($langs->trans('TitleRequired'));
     if (!$data['fk_soc']) throw new RuntimeException('Customer is required.');
@@ -120,8 +132,8 @@ cpcc_admin_shell_open('workspace', $langs->trans($id ? 'EditOperation' : 'NewOpe
 <section class="cpo-form-section">
   <h2>٣. الربط والملاحظات</h2>
   <div class="cpo-context-grid">
-    <label class="cpo-field"><span><?php echo $langs->trans('DolibarrProjectId'); ?></span><select id="cpo-project" name="fk_project"><option value="0">— اختياري —</option><?php foreach ($projects as $project) { ?><option value="<?php echo $project['id']; ?>" data-socid="<?php echo $project['socid']; ?>"<?php echo (int) $v('fk_project') === $project['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($project['label']); ?></option><?php } ?></select></label>
-    <label class="cpo-field"><span><?php echo $langs->trans('DolibarrOrderId'); ?></span><select id="cpo-order" name="fk_commande"><option value="0">— اختياري —</option><?php foreach ($orders as $order) { ?><option value="<?php echo $order['id']; ?>" data-socid="<?php echo $order['socid']; ?>"<?php echo (int) $v('fk_commande') === $order['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($order['label']); ?></option><?php } ?></select></label>
+    <?php if ($canReadProjects) { ?><label class="cpo-field"><span><?php echo $langs->trans('DolibarrProjectId'); ?></span><select id="cpo-project" name="fk_project"><option value="0">— اختياري —</option><?php foreach ($projects as $project) { ?><option value="<?php echo $project['id']; ?>" data-socid="<?php echo $project['socid']; ?>"<?php echo (int) $v('fk_project') === $project['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($project['label']); ?></option><?php } ?></select></label><?php } ?>
+    <?php if ($canReadOrders) { ?><label class="cpo-field"><span><?php echo $langs->trans('DolibarrOrderId'); ?></span><select id="cpo-order" name="fk_commande"><option value="0">— اختياري —</option><?php foreach ($orders as $order) { ?><option value="<?php echo $order['id']; ?>" data-socid="<?php echo $order['socid']; ?>"<?php echo (int) $v('fk_commande') === $order['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($order['label']); ?></option><?php } ?></select></label><?php } ?>
     <label class="cpo-field"><span><?php echo $langs->trans('Shipment'); ?></span><select id="cpo-shipment" name="fk_shipment"><option value="0">— لا تنشئ حالة شحن وهمية —</option><?php foreach ($shipments as $shipment) { ?><option value="<?php echo $shipment['id']; ?>" data-socid="<?php echo $shipment['socid']; ?>" data-projectid="<?php echo $shipment['projectid']; ?>"<?php echo (int) $v('fk_shipment') === $shipment['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($shipment['label']); ?></option><?php } ?></select><small>تظهر فقط الشحنات التابعة للعميل، ويجب أن يتطابق المشروع عند اختياره.</small></label>
     <label class="cpo-field"><span><?php echo $langs->trans('InternalNotes'); ?></span><textarea name="note_private"><?php echo dol_escape_htmltag($v('note_private')); ?></textarea></label>
     <label class="cpo-field"><span><?php echo $langs->trans('CustomerVisibleNotes'); ?></span><textarea name="note_public"><?php echo dol_escape_htmltag($v('note_public')); ?></textarea></label>

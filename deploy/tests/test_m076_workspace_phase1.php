@@ -35,6 +35,12 @@ $editChecks = array(
     'team selector remains on edit'=>'$selectedTeamId === (int) $team[\'id\']',
     'customer sales representative scope'=>"hasRight('societe', 'client', 'voir')",
     'private projects require global project read'=>"hasRight('projet', 'all', 'lire')",
+    'restricted project link is preserved'=>"\$id > 0 && !\$canReadProjects ? (int) \$operation['fk_project']",
+    'restricted order link is preserved'=>"\$id > 0 && !\$canReadOrders ? (int) \$operation['fk_commande']",
+    'posted customer is authorization checked'=>'Customer is outside your authorized customer scope.',
+    'posted project is authorization checked'=>'Project is outside your authorized project scope.',
+    'posted order is authorization checked'=>'Order is outside your authorized order scope.',
+    'posted shipment is authorization checked'=>'Shipment is outside your authorized customer scope.',
 );
 foreach ($editChecks as $label=>$needle) {
     if (strpos($edit, $needle) === false) {fwrite(STDERR, "FAIL $label\n"); exit(1);}

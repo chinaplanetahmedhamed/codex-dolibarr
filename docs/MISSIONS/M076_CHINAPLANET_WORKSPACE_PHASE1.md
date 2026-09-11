@@ -3,7 +3,7 @@
 - Owner: Ahmed Hamed
 - Coordinator and writer: Agent 007
 - Date: 2026-09-12
-- Status: R03_SECURITY_REMEDIATION
+- Status: R04_SECURITY_REMEDIATION
 - Approval: Ahmed explicitly approved execution after the M075 scope gap was explained: `ok, do it`.
 - Current environment: local Dolibarr only. Staging and Production require later, separate approvals.
 
@@ -65,6 +65,8 @@ Ahmed subsequently authorized publishing the exact reviewed M076 Phase 1 scope t
 The first independent production review rejected R01 before upload. R02 remedies the reported blockers by preserving unassigned legacy booking/intake creation while requiring assignment in the guided UI; validating the customer and assignment on create/update; failing closed on idempotency lookup errors; entity-scoping customer/user joins; gating native customer/order/project projections by their native rights; verifying a root-private artifact copy; keeping compare/preflight free of persistent candidate copies; and making rollback available for interrupted apply states without depending on HTTP or the candidate artifact. R01 is retired and must never be installed or applied.
 
 The second independent review rejected R02 before upload. R03 additionally retains and renders the primary team when editing an existing operation; applies Dolibarr sales-representative customer scope; prevents restricted native project/order records from being embedded in selector HTML; refuses a retry while an original backup needs recovery; checks every restore removal/extraction; and verifies both restored and originally absent files. R02 is also retired and must never be installed or applied.
+
+The third independent review rejected R03 before upload. R04 preserves existing project/order links when the editor cannot read those native modules, enforces the server-derived customer/project/order/shipment option allowlists on submission, refuses access when an existing operation's customer falls outside the editor's representative scope, and writes deployment state through a synced atomic replacement while the automatic rollback trap remains active. R03 is retired and must never be installed or applied.
 
 ## Local acceptance evidence — 2026-09-12
 
