@@ -1,0 +1,6 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m075-vision-ui compare
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m075-vision-ui preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m075-vision-ui apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m075-vision-ui verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m075-vision-ui rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m075-vision-ui status
