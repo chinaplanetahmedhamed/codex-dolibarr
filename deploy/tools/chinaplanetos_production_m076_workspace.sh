@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M076-R03'
-readonly RUNTIME_COMMIT='48b0dd1262f12ae34f72d63c25580b09f13416f3'
-readonly ARTIFACT_NAME='m076-r03-workspace-48b0dd1.tar.gz'
-readonly ARTIFACT_SHA='97d56c8a2e15e3b0dd8bd88cc1b53b3aed114e37b4647bdfc2e4f8b3bf5a2c3d'
+readonly RELEASE='M076-R04'
+readonly RUNTIME_COMMIT='f37e24ba6ff9e671a02c7fb143d8aa49e095c074'
+readonly ARTIFACT_NAME='m076-r04-workspace-f37e24b.tar.gz'
+readonly ARTIFACT_SHA='6ca22405b3acdba1f664ac7b384d324faf5484f7dfe2374dc0b6c0603e15187a'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
@@ -14,7 +14,7 @@ readonly TARGET_VOLUME='vision-os_dolibarr_custom'
 readonly TARGET_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'
 readonly TARGET_HTTP='https://erp.visiontrading.biz'
 readonly BACKUP_ROOT='/root/chinaplanetos-production-m076-backups'
-readonly STATE_ROOT='/var/lib/chinaplanetos-m076-production-r03'
+readonly STATE_ROOT='/var/lib/chinaplanetos-m076-production-r04'
 readonly STATE_FILE="$STATE_ROOT/m076.state"
 readonly LOCK_FILE="$STATE_ROOT/m076.lock"
 readonly RUNTIME_MANIFEST='deploy/releases/m076-runtime-files.txt'
@@ -166,8 +166,8 @@ live_checks(){
   [[ "$code" =~ ^(200|302)$ ]]
 }
 save_state(){
-  local status=$1
-  cat >"$STATE_FILE" <<EOF
+  local status=$1 state_stage="$STATE_FILE.stage.$$"
+  cat >"$state_stage" <<EOF
 STATE_RELEASE=$RELEASE
 STATE_STATUS=$status
 STATE_RUNTIME_COMMIT=$RUNTIME_COMMIT
@@ -178,7 +178,10 @@ STATE_ABSENT_LIST=$ABSENT_LIST
 STATE_ABSENT_LIST_SHA=$ABSENT_LIST_SHA
 STATE_UPDATED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 EOF
-  chmod 0600 "$STATE_FILE"
+  chmod 0600 "$state_stage"
+  sync -f "$state_stage"
+  mv -f "$state_stage" "$STATE_FILE"
+  sync -f "$STATE_ROOT"
 }
 load_state(){
   [[ -f "$STATE_FILE" && ! -L "$STATE_FILE" && $(stat -c '%U:%G %a' "$STATE_FILE") == 'root:root 600' ]] || die STATE_INVALID
@@ -202,7 +205,7 @@ command_apply(){
   fi
   create_backups; save_state BACKED_UP; local mutated=0
   trap 'rc=$?; if [[ $mutated -eq 1 ]]; then if restore_backups; then save_state APPLY_FAILED_AUTO_ROLLED_BACK; echo M076_PRODUCTION_AUTO_ROLLBACK=PASS >&2; else save_state APPLY_FAILED_RECOVERY_REQUIRED; echo M076_PRODUCTION_AUTO_ROLLBACK=FAIL_RECOVERY_REQUIRED >&2; fi; fi; exit $rc' ERR
-  mutated=1; apply_files; live_checks; mutated=0; trap - ERR; save_state DEPLOYED
+  mutated=1; apply_files; live_checks; save_state DEPLOYED; mutated=0; trap - ERR
   echo "M076_PRODUCTION_APPLY=PASS RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA ABSENT_LIST=$ABSENT_LIST ABSENT_LIST_SHA=$ABSENT_LIST_SHA ROLLBACK=READY"
 }
 command_verify(){ check_environment; validate_artifact; candidate_checks; live_checks || die LIVE_VERIFY_FAILED; load_state; [[ "$STATE_STATUS" == DEPLOYED ]] || die STATE_NOT_DEPLOYED; echo 'M076_PRODUCTION_VERIFY=PASS STATE=DEPLOYED WORKSPACE=READY'; }
