@@ -8,8 +8,8 @@ fail(){ echo "M076_PRODUCTION_HELPER_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-grep -Fq "readonly RUNTIME_COMMIT='f37e24ba6ff9e671a02c7fb143d8aa49e095c074'" "$helper" || fail COMMIT_PIN
-grep -Fq "readonly ARTIFACT_SHA='6ca22405b3acdba1f664ac7b384d324faf5484f7dfe2374dc0b6c0603e15187a'" "$helper" || fail ARTIFACT_PIN
+grep -Fq "readonly RUNTIME_COMMIT='b233b525a94e610fad97045db214e9bbb043ebea'" "$helper" || fail COMMIT_PIN
+grep -Fq "readonly ARTIFACT_SHA='cae375e40d73b8afaea806eea6a97992cef736de379ee059c05dd4efbfa732e1'" "$helper" || fail ARTIFACT_PIN
 grep -Fq "readonly TARGET_CONTAINER='vision_erp'" "$helper" || fail CONTAINER_PIN
 grep -Fq "readonly TARGET_VOLUME='vision-os_dolibarr_custom'" "$helper" || fail VOLUME_PIN
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz'" "$helper" || fail HTTP_PIN
@@ -31,7 +31,7 @@ grep -Fq 'mv -f "$state_stage" "$STATE_FILE"' "$helper" || fail ATOMIC_STATE_REP
 grep -Fq 'apply_files; live_checks; save_state DEPLOYED; mutated=0; trap - ERR' "$helper" || fail DEPLOYED_STATE_UNDER_ROLLBACK_TRAP
 grep -Fq "ACTIVE_INTERNAL_TEAM_MEMBERSHIP_REQUIRED" "$root/deploy/tools/m076_production_preflight.php" || fail REAL_TEAM_GATE
 [[ $(grep -c '^codex-deploy ALL=(root) NOPASSWD:' "$sudoers") -eq 6 ]] || fail SUDOERS_COMMAND_COUNT
-grep -Fq "readonly HELPER_SHA='18c9413864384ffd8700f13441056de58ff7edc03005146411c4ca2a69f01814'" "$installer" || fail HELPER_INSTALL_PIN
+grep -Fq "readonly HELPER_SHA='6f3ddb8ca466ebc1d8a7903af57b892f8c64180c92f8d16fb7c8e74bd8063f22'" "$installer" || fail HELPER_INSTALL_PIN
 grep -Fq "readonly SUDOERS_SHA='311468a7e1ff85dff9324f35e5961d478c8b6d6bf79abfae1d301400ad2d8e03'" "$installer" || fail SUDOERS_INSTALL_PIN
 grep -Fq 'PRODUCTION_DATABASE_CHANGED=NO' "$installer" || fail DATABASE_BOUNDARY
 echo 'M076_PRODUCTION_HELPER_CONTRACT=PASS TARGET=erp.visiontrading.biz RUNTIME_FILES=7 COMMANDS=6 BASELINE=PINNED BACKUP=SCOPED AUTO_ROLLBACK=YES DATABASE_MUTATED=NO'
