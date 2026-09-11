@@ -2,8 +2,8 @@
 	'use strict';
 
 	var meta = document.querySelector('meta[name="vision-system-brand"]');
-	var brand = meta && meta.content ? meta.content.trim() : 'Vision System';
-	if (!brand) brand = 'Vision System';
+	var brand = meta && meta.content ? meta.content.trim() : 'Vision-China Planet OS';
+	if (!brand) brand = 'Vision-China Planet OS';
 	var logoMeta = document.querySelector('meta[name="vision-system-logo"]');
 	var markMeta = document.querySelector('meta[name="vision-system-mark"]');
 	var logoUrl = logoMeta && logoMeta.content ? logoMeta.content : '';

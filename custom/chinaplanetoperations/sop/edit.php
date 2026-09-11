@@ -3,6 +3,7 @@ define('CSRFCHECK_WITH_TOKEN', 1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/../lib/main.lib.php';
 require_once __DIR__.'/../class/OperationsSopService.class.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 cpo_require($user, 'write');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $contentLang = cpo_content_language();
@@ -41,8 +42,9 @@ if ($sop && $action !== 'save') {
 }
 $categories = $service->getCategories($contentLang, true);
 $value = function($field,$default='')use($data){return dol_escape_htmltag(isset($data[$field])&&$data[$field]!==''?$data[$field]:$default);};
-$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'));
+$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
 llxHeader('', $id ? $langs->trans('EditNewRevision') : $langs->trans('NewSop'), '', '', 0, 0, array(), $morecss);
+cpcc_admin_shell_open('sop',$id ? $langs->trans('EditNewRevision') : $langs->trans('NewSop'),$langs->trans('TranslationPublishNotice'),'fa-book-open');
 ?>
 <main class="cpo-page"><section class="cpo-hero"><div><span class="cpo-eyebrow">CONTROLLED SOP AUTHORING</span><h1><?php echo $id?$langs->trans('EditNewRevision'):$langs->trans('NewSop'); ?></h1><p><?php echo $langs->trans('TranslationPublishNotice'); ?></p></div><div class="cpo-actions"><a class="button" href="<?php echo $id?'view.php?id='.$id.'&content_lang='.urlencode($contentLang):'index.php?content_lang='.urlencode($contentLang); ?>"><?php echo $langs->trans('BackToLibrary'); ?></a></div></section>
 <form method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?php echo (int)$id; ?>"><input type="hidden" name="content_lang" value="<?php echo dol_escape_htmltag($contentLang); ?>">
@@ -66,4 +68,4 @@ llxHeader('', $id ? $langs->trans('EditNewRevision') : $langs->trans('NewSop'), 
 <label class="cpo-field"><span><?php echo $langs->trans('ChangeSummary'); ?></span><input name="tr[<?php echo $language; ?>][change_summary]" maxlength="512" value="<?php echo $tval('change_summary'); ?>"></label>
 </section><?php } ?>
 </div><div class="cpo-form-actions"><button class="button button-save"><?php echo $langs->trans('SaveDraft'); ?></button><a class="button" href="<?php echo $id?'view.php?id='.$id:'index.php'; ?>"><?php echo $langs->trans('BackToLibrary'); ?></a></div></section></form></main>
-<?php llxFooter(); $db->close(); ?>
+<?php cpcc_admin_shell_close();llxFooter(); $db->close(); ?>

@@ -40,7 +40,7 @@ class ActionsVisionTradingUI
 				.'<script'.$nonceAttr.' defer src="'.$base.'/js/dashboard.js"></script>' . "\n";
 		}
 		if ($loadWhiteLabel) {
-			$brandName = getDolGlobalString('VISIONTRADINGUI_BRAND_NAME', 'Vision System');
+			$brandName = getDolGlobalString('VISIONTRADINGUI_BRAND_NAME', 'Vision-China Planet OS');
 			$brandingVersion = @filemtime(DOL_DOCUMENT_ROOT.'/custom/visiontradingui/js/branding.js');
 			$brandingCssVersion = @filemtime(DOL_DOCUMENT_ROOT.'/custom/visiontradingui/css/branding.css');
 			$brandLogo = $base.'/img/vision-system-logo.svg';
