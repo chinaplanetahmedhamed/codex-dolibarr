@@ -84,18 +84,56 @@ class OperationsService
     public function create(array $data, $userId, $manageTransaction = true)
     {
         $type = in_array($data['service_type'], self::serviceTypes(), true) ? $data['service_type'] : 'general';
-        if ($manageTransaction) $this->db->begin();
-        $this->validateShipmentLink($data);
-        $ref = $this->nextRef($type);
-        $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpo_operation(entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_shipment,fk_user_assign,priority,stage,progress,waiting_on,next_action,date_deadline,note_private,note_public,customer_visible,status,fk_user_creat,date_creation) VALUES(".
-            $this->entity.",".$this->q($ref).",".$this->q($type).",".$this->q($data['title']).",".$this->n($data,'fk_soc').",".$this->n($data,'fk_project').",".$this->n($data,'fk_commande').",".$this->n($data,'fk_shipment').",".$this->n($data,'fk_user_assign').",".$this->q($data['priority'] ?: 'normal').",'new',0,".$this->q($data['waiting_on'] ?: 'internal').",".$this->q($data['next_action']).",".$this->dateOrNull($data['date_deadline']).",".$this->q($data['note_private']).",".$this->q($data['note_public']).",".(!empty($data['customer_visible'])?1:0).",1,".(int)$userId.",".$this->q($this->now()).")";
-        if (!$this->db->query($sql)) $this->fail();
-        $id = (int) $this->db->last_insert_id(MAIN_DB_PREFIX.'cpo_operation');
-        $this->saveSection($id, 'service', isset($data['service_data']) ? $data['service_data'] : array(), $userId, false);
-        $this->log($id, 0, 'created', 'Operation created', 'internal', $userId, false);
-        $this->createDefaultTasks($id, $type, $data, $userId);
-        if ($manageTransaction) $this->db->commit();
-        return $id;
+        $requestHash = strtolower(trim((string) (isset($data['request_hash']) ? $data['request_hash'] : '')));
+        if ($requestHash !== '' && !preg_match('/^[a-f0-9]{64}$/', $requestHash)) throw new RuntimeException('Invalid operation request identity.');
+        $requestMessage = $requestHash === '' ? '' : $requestHash.':'.hash('sha256', json_encode(array(
+            $type, (string) $data['title'], (int) $this->n($data, 'fk_soc'), (int) $this->n($data, 'fk_project'),
+            (int) $this->n($data, 'fk_commande'), (int) $this->n($data, 'fk_shipment'), (int) $this->n($data, 'fk_user_assign'),
+            !empty($data['fk_usergroup']) ? (int) $data['fk_usergroup'] : 0,
+            (string) $data['priority'], (string) $data['waiting_on'], (string) $data['next_action'], (string) $data['date_deadline'],
+            (string) $data['note_private'], (string) $data['note_public'], !empty($data['customer_visible']),
+            isset($data['service_data']) && is_array($data['service_data']) ? $data['service_data'] : array(),
+        ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $lockName = '';
+        $transactionStarted = false;
+        if ($manageTransaction && $requestHash !== '') {
+            $lockName = 'm076o'.$this->entity.substr($requestHash, 0, 40);
+            $lockResult = $this->db->query('SELECT GET_LOCK('.$this->q($lockName).',5) acquired');
+            $lockRow = $lockResult ? $this->db->fetch_object($lockResult) : null;
+            if (!$lockRow || (int) $lockRow->acquired !== 1) throw new RuntimeException('Unable to reserve operation request.');
+        }
+        try {
+            if ($manageTransaction) {$this->db->begin();$transactionStarted=true;}
+            $this->validateAssignment($data);
+            $this->validateContextLinks($data);
+            $this->validateShipmentLink($data);
+            if ($requestHash !== '') {
+                $existingResult = $this->db->query("SELECT fk_operation,message FROM ".MAIN_DB_PREFIX."cpo_activity WHERE entity=".$this->entity." AND fk_user=".(int) $userId." AND action_code='operation_create_request' AND message LIKE ".$this->q($requestHash.':%')." AND fk_operation IS NOT NULL ORDER BY rowid DESC LIMIT 1 FOR UPDATE");
+                $existing = $existingResult ? $this->db->fetch_object($existingResult) : null;
+                if ($existing) {
+                    if (!hash_equals((string) $existing->message, $requestMessage)) throw new RuntimeException('Operation request payload changed.');
+                    if ($manageTransaction) {$this->db->commit();$transactionStarted=false;}
+                    if ($lockName !== '') {$release=$lockName;$lockName='';$this->releaseNamedLock($release);}
+                    return (int) $existing->fk_operation;
+                }
+            }
+            $ref = $this->nextRef($type);
+            $sql = "INSERT INTO ".MAIN_DB_PREFIX."cpo_operation(entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_shipment,fk_user_assign,priority,stage,progress,waiting_on,next_action,date_deadline,note_private,note_public,customer_visible,status,fk_user_creat,date_creation) VALUES(".
+                $this->entity.",".$this->q($ref).",".$this->q($type).",".$this->q($data['title']).",".$this->n($data,'fk_soc').",".$this->n($data,'fk_project').",".$this->n($data,'fk_commande').",".$this->n($data,'fk_shipment').",".$this->n($data,'fk_user_assign').",".$this->q($data['priority'] ?: 'normal').",'new',0,".$this->q($data['waiting_on'] ?: 'internal').",".$this->q($data['next_action']).",".$this->dateOrNull($data['date_deadline']).",".$this->q($data['note_private']).",".$this->q($data['note_public']).",".(!empty($data['customer_visible'])?1:0).",1,".(int)$userId.",".$this->q($this->now()).")";
+            if (!$this->db->query($sql)) $this->fail();
+            $id = (int) $this->db->last_insert_id(MAIN_DB_PREFIX.'cpo_operation');
+            $this->saveSection($id, 'service', isset($data['service_data']) ? $data['service_data'] : array(), $userId, false);
+            $this->log($id, 0, 'created', 'Operation created', 'internal', $userId, false);
+            if ($requestMessage !== '') $this->log($id, 0, 'operation_create_request', $requestMessage, 'internal', $userId, false);
+            $this->createDefaultTasks($id, $type, $data, $userId);
+            if ($manageTransaction) {$this->db->commit();$transactionStarted=false;}
+            if ($lockName !== '') {$release=$lockName;$lockName='';$this->releaseNamedLock($release);}
+            return $id;
+        } catch (Throwable $e) {
+            if ($transactionStarted) $this->db->rollback();
+            if ($lockName !== '') $this->releaseNamedLock($lockName);
+            throw $e;
+        }
     }
 
     /** Store a section exactly once. Used for immutable accepted commercial evidence. */
@@ -124,6 +162,7 @@ class OperationsService
             $this->db->rollback();
             throw new RuntimeException('A linked shipment cannot be removed or replaced.');
         }
+        $this->validateContextLinks($data);
         $this->validateShipmentLink($data);
         $stage = isset(self::stages()[$data['stage']]) ? $data['stage'] : $operation['stage'];
         $progress = self::stages()[$stage];
@@ -152,6 +191,7 @@ class OperationsService
         if (!empty($filters['stage'])) $where[] = 'o.stage='.$this->q($filters['stage']);
         if (!empty($filters['service_type'])) $where[] = 'o.service_type='.$this->q($filters['service_type']);
         if (!empty($filters['owner'])) $where[] = 'o.fk_user_assign='.(int)$filters['owner'];
+        if (!empty($filters['socid'])) $where[] = 'o.fk_soc='.(int)$filters['socid'];
         if (!empty($filters['q'])) { $q='%'.$filters['q'].'%'; $where[]='(o.ref LIKE '.$this->q($q).' OR o.title LIKE '.$this->q($q).' OR s.nom LIKE '.$this->q($q).' OR o.next_action LIKE '.$this->q($q).')'; }
         $sql = "SELECT o.*,s.nom customer_name,u.login owner_login FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=o.fk_user_assign WHERE ".implode(' AND ',$where)." ORDER BY FIELD(o.priority,'urgent','high','normal','low'),o.date_deadline IS NULL,o.date_deadline,o.tms DESC LIMIT 500";
         return $this->rows($sql);
@@ -306,7 +346,7 @@ class OperationsService
         );
         $items=isset($templates[$type])?$templates[$type]:array('Review requirements','Execute work','Supervisor review','Publish result');
         $taskService=new InternalTaskService($this->db);
-        foreach($items as $title)$taskService->createTask(array('fk_operation'=>$operationId,'title'=>$title,'description'=>$title,'fk_usergroup'=>!empty($data['fk_usergroup'])?(int)$data['fk_usergroup']:0,'fk_user_assign'=>!empty($data['fk_usergroup'])?(int)($data['fk_user_assign']??0):0,'priority'=>$data['priority']??'normal','date_deadline'=>'','fk_user_creat'=>$userId),true,false);
+        foreach($items as $title)$taskService->createTask(array('fk_operation'=>$operationId,'title'=>$title,'description'=>$title,'fk_usergroup'=>!empty($data['fk_usergroup'])?(int)$data['fk_usergroup']:0,'fk_user_assign'=>(int)($data['fk_user_assign']??0),'priority'=>$data['priority']??'normal','date_deadline'=>'','fk_user_creat'=>$userId),true,false);
     }
 
     private function shippingOrderBucket($stage, array $service)
@@ -384,10 +424,38 @@ class OperationsService
         $resql = $this->db->query($sql);
         if (!$resql || $this->db->num_rows($resql) !== 1) { $this->db->rollback(); throw new RuntimeException('Shipment, customer, and project must match.'); }
     }
+    private function validateContextLinks(array $data)
+    {
+        $socid = !empty($data['fk_soc']) ? (int) $data['fk_soc'] : 0;
+        $projectId = !empty($data['fk_project']) ? (int) $data['fk_project'] : 0;
+        $orderId = !empty($data['fk_commande']) ? (int) $data['fk_commande'] : 0;
+        if ($projectId <= 0 && $orderId <= 0) return;
+        if ($socid <= 0) throw new RuntimeException('A project or order link requires a customer.');
+        if ($projectId > 0) {
+            $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'projet WHERE rowid='.$projectId.' AND entity='.$this->entity.' AND fk_soc='.$socid.' LIMIT 1');
+            if (!$res || $this->db->num_rows($res) !== 1) throw new RuntimeException('Project and customer must match.');
+        }
+        if ($orderId > 0) {
+            $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'commande WHERE rowid='.$orderId.' AND entity='.$this->entity.' AND fk_soc='.$socid.' LIMIT 1');
+            if (!$res || $this->db->num_rows($res) !== 1) throw new RuntimeException('Order and customer must match.');
+        }
+    }
+    private function validateAssignment(array $data)
+    {
+        $ownerId = !empty($data['fk_user_assign']) ? (int) $data['fk_user_assign'] : 0;
+        $groupId = !empty($data['fk_usergroup']) ? (int) $data['fk_usergroup'] : 0;
+        if ($ownerId <= 0) throw new RuntimeException('Operation owner is required.');
+        if ($groupId <= 0) throw new RuntimeException('A valid primary team is required.');
+        $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.$ownerId.' AND entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 LIMIT 1');
+        if (!$res || $this->db->num_rows($res) !== 1) throw new RuntimeException('Operation owner must be an active internal user.');
+        $res = $this->db->query('SELECT gu.fk_user FROM '.MAIN_DB_PREFIX.'usergroup_user gu JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity WHERE gu.entity='.$this->entity.' AND gu.fk_usergroup='.$groupId.' AND gu.fk_user='.$ownerId.' LIMIT 1');
+        if (!$res || $this->db->num_rows($res) !== 1) throw new RuntimeException('Operation owner must belong to the selected team.');
+    }
     private function rows($sql){$out=array();$res=$this->db->query($sql);if(!$res)return $out;while($o=$this->db->fetch_object($res))$out[]=get_object_vars($o);return $out;}
     private function q($value){return "'".$this->db->escape((string)$value)."'";}
     private function n($data,$key){return !empty($data[$key])?(int)$data[$key]:'NULL';}
     private function dateOrNull($value){if(empty($value))return 'NULL';$ts=strtotime($value);return $ts?$this->q(date('Y-m-d H:i:s',$ts)):'NULL';}
     private function now(){return $this->db->idate(dol_now());}
+    private function releaseNamedLock($name){$this->db->query('SELECT RELEASE_LOCK('.$this->q($name).')');}
     private function fail(){$error=$this->db->lasterror();$this->db->rollback();throw new RuntimeException($error);}
 }

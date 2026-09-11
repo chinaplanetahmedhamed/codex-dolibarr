@@ -33,6 +33,7 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
     function cpcc_admin_shell_navigation($active = '', $context = array())
     {
         $items = array(
+            'workspace'=>array('/chinaplanetoperations/workspace.php', 'fa-compass', 'Workspace / مساحة العمل', 'Today / اليوم'),
             'dashboard'=>array('/chinaplanetcustomercenter/admin_dashboard.php', 'fa-chart-line', 'Dashboard / الرئيسية', 'Home / الرئيسية'),
             'website_requests'=>array('/chinaplanetoperations/operations/public_requests.php', 'fa-inbox', 'Website Requests / طلبات الموقع', 'Requests / الطلبات'),
             'portal'=>array('/chinaplanetcustomercenter/board.php', 'fa-users', 'Customer Center / مركز العملاء', 'Customers / العملاء'),
@@ -45,10 +46,10 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
             'financial'=>array('/chinaplanetcustomercenter/admin/financial_portfolio.php', 'fa-wallet', 'Financial Center / المركز المالي', 'Finance / المالية'),
         );
 
-        $primaryKeys = array('dashboard', 'website_requests', 'portal', 'operations', 'shipping', 'financial');
+        $primaryKeys = array('workspace', 'website_requests', 'portal', 'operations', 'shipping', 'financial');
         $groups = array(
             'work'=>array('fa-briefcase', 'Work / العمل', array('tasks', 'sop')),
-            'records'=>array('fa-folder-open', 'More / المزيد', array('documents', 'reports')),
+            'records'=>array('fa-folder-open', 'More / المزيد', array('dashboard', 'documents', 'reports')),
         );
 
         // Older shipping pages still pass their former section key. Keep those
