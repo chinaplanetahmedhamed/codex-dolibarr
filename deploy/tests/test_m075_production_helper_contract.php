@@ -18,11 +18,12 @@ function contractAssert($condition, $message)
 	print 'PASS '.$message.PHP_EOL;
 }
 
-contractAssert(hash_file('sha256', $helperPath) === '4ae414d560ea4baa6ad20e06300e86f72e337ee8d82fc01f9bce7891bdee1964', 'helper matches its immutable pin');
+contractAssert(hash_file('sha256', $helperPath) === '1fd9041ee91e88231318dba8d33edc05cab9292eb1bd8ebae5518a62b1370941', 'helper matches its immutable pin');
 contractAssert(hash_file('sha256', $sudoersPath) === '1f3c02d9f8b5923b89c90f5451b5ced2f1ae3eba8ba0cfe8f89bdd2f0349ef92', 'sudoers matches its immutable pin');
-contractAssert(strpos($installer, "HELPER_SHA='4ae414d560ea4baa6ad20e06300e86f72e337ee8d82fc01f9bce7891bdee1964'") !== false, 'installer pins the exact helper');
+contractAssert(strpos($installer, "HELPER_SHA='1fd9041ee91e88231318dba8d33edc05cab9292eb1bd8ebae5518a62b1370941'") !== false, 'installer pins the exact helper');
+contractAssert(strpos($installer, "PREVIOUS_HELPER_SHA='4ae414d560ea4baa6ad20e06300e86f72e337ee8d82fc01f9bce7891bdee1964'") !== false, 'installer accepts only the installed R01 predecessor');
 contractAssert(strpos($installer, "SUDOERS_SHA='1f3c02d9f8b5923b89c90f5451b5ced2f1ae3eba8ba0cfe8f89bdd2f0349ef92'") !== false, 'installer pins the exact sudoers file');
-contractAssert(strpos($helper, "ARTIFACT_SHA='5a5a356798b7ab4410f03a86c01008d6c2d012fa238f2d12bbea5898630acb86'") !== false, 'helper pins the exact release artifact');
+contractAssert(strpos($helper, "ARTIFACT_SHA='9a37ae2a1a03c45b9d561d29dae2e8ab28994eb709932fe969b04fe74ed90da1'") !== false, 'helper pins the exact release artifact');
 contractAssert(strpos($helper, "TARGET_CONTAINER='vision_erp'") !== false && strpos($helper, "TARGET_VOLUME='vision-os_dolibarr_custom'") !== false, 'helper is restricted to the production ERP container and custom volume');
 contractAssert(strpos($helper, "TARGET_HTTP='https://erp.visiontrading.biz/'") !== false, 'helper verifies only the production ERP URL');
 contractAssert(strpos($helper, 'create_backups; save_state BACKED_UP') < strpos($helper, 'mutated=1; apply_files'), 'code and configuration backups precede every release mutation');
