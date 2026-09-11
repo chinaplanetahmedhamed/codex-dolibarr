@@ -41,6 +41,8 @@ $editChecks = array(
     'posted project is authorization checked'=>'Project is outside your authorized project scope.',
     'posted order is authorization checked'=>'Order is outside your authorized order scope.',
     'posted shipment is authorization checked'=>'Shipment is outside your authorized customer scope.',
+    'restricted create project forgery is rejected'=>'Project link requires native project permission.',
+    'restricted create order forgery is rejected'=>'Order link requires native order permission.',
 );
 foreach ($editChecks as $label=>$needle) {
     if (strpos($edit, $needle) === false) {fwrite(STDERR, "FAIL $label\n"); exit(1);}

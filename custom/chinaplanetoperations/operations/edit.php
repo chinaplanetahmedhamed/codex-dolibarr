@@ -66,8 +66,12 @@ if ($action === 'save') try {
     $serviceData = array();
     $postedServiceData = GETPOST('service_data', 'array');
     foreach (OperationsService::serviceFields($type) as $field) $serviceData[$field] = trim((string) ($postedServiceData[$field] ?? ''));
-    $postedProjectId = $id > 0 && !$canReadProjects ? (int) $operation['fk_project'] : GETPOSTINT('fk_project');
-    $postedOrderId = $id > 0 && !$canReadOrders ? (int) $operation['fk_commande'] : GETPOSTINT('fk_commande');
+    $requestedProjectId = GETPOSTINT('fk_project');
+    $requestedOrderId = GETPOSTINT('fk_commande');
+    if ($id <= 0 && !$canReadProjects && $requestedProjectId > 0) throw new RuntimeException('Project link requires native project permission.');
+    if ($id <= 0 && !$canReadOrders && $requestedOrderId > 0) throw new RuntimeException('Order link requires native order permission.');
+    $postedProjectId = $id > 0 && !$canReadProjects ? (int) $operation['fk_project'] : $requestedProjectId;
+    $postedOrderId = $id > 0 && !$canReadOrders ? (int) $operation['fk_commande'] : $requestedOrderId;
     $data = array(
         'request_hash'=>$requestHash,'service_type'=>$type,'title'=>GETPOST('title','alphanohtml'),'fk_soc'=>GETPOSTINT('fk_soc'),'fk_usergroup'=>GETPOSTINT('fk_usergroup'),
         'fk_project'=>$postedProjectId,'fk_commande'=>$postedOrderId,'fk_shipment'=>GETPOSTINT('fk_shipment'),'require_assignment'=>1,
