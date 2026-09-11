@@ -1,4 +1,5 @@
 deploy/tools/m075_vision_os_config.php
+deploy/tools/apply_vision_whitelabel.php
 deploy/tests/test_m075_vision_ui_release.php
 deploy/tests/test_vision_whitelabel.php
 docs/MISSIONS/M075_VISION_CHINA_PLANET_OS_PRODUCTION_UI.md
