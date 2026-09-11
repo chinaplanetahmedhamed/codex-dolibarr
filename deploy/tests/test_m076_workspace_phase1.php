@@ -28,9 +28,13 @@ $editChecks = array(
     'shipment selector'=>'id="cpo-shipment"',
     'context filtering'=>'function filter(select,socid)',
     'owner list is entity exact'=>'WHERE entity=".(int) $conf->entity." AND statut=1 AND COALESCE(fk_soc,0)=0',
-    'safe create readiness gate'=>'$createReady = $id || ($taskBoardReady && !empty($teams))',
+    'safe create readiness gate'=>'$createReady = $taskBoardReady && !empty($teams)',
     'disabled save until ready'=>"!\$createReady ? ' disabled' : ''",
     'guided create explicitly requires assignment'=>"'require_assignment'=>1",
+    'existing operation team is derived'=>'SELECT fk_usergroup FROM ".MAIN_DB_PREFIX."cpo_task',
+    'team selector remains on edit'=>'$selectedTeamId === (int) $team[\'id\']',
+    'customer sales representative scope'=>"hasRight('societe', 'client', 'voir')",
+    'private projects require global project read'=>"hasRight('projet', 'all', 'lire')",
 );
 foreach ($editChecks as $label=>$needle) {
     if (strpos($edit, $needle) === false) {fwrite(STDERR, "FAIL $label\n"); exit(1);}

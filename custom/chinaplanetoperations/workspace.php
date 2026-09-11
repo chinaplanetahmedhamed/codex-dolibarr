@@ -16,6 +16,7 @@ $canCreateOperation = cpo_can($user, 'operation_write');
 $canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
 $canReadOrders = !empty($user->admin) || $user->hasRight('commande', 'lire');
 $canReadProjects = !empty($user->admin) || $user->hasRight('projet', 'all', 'lire');
+$customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client', 'voir') ? '' : ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'societe_commerciaux csc WHERE csc.fk_soc=s.rowid AND csc.fk_user='.(int) $user->id.')';
 $view = GETPOST('view', 'aZ09');
 if (!in_array($view, array('manager', 'my', 'customers', 'customer'), true)) $view = $canManage ? 'manager' : 'my';
 if (!$canManage && $view === 'manager') $view = 'my';
@@ -52,7 +53,7 @@ $customers = !$canReadCustomers ? array() : $rows($db, "SELECT s.rowid,s.nom,s.c
     " FROM ".MAIN_DB_PREFIX."societe s".
     " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.entity=s.entity AND o.fk_soc=s.rowid AND o.status=1".
     " LEFT JOIN ".MAIN_DB_PREFIX."socpeople c ON c.entity=s.entity AND c.fk_soc=s.rowid AND c.statut=1".
-    " WHERE s.entity=".$entity." AND s.status=1 AND s.client>0".
+    " WHERE s.entity=".$entity." AND s.status=1 AND s.client>0".$customerAccessSql.
     " GROUP BY s.rowid,s.nom,s.code_client ORDER BY MAX(COALESCE(o.tms,s.tms)) DESC,s.nom LIMIT 100");
 
 $customer = null;
@@ -61,7 +62,7 @@ $customerOrders = array();
 $customerProjects = array();
 if ($view === 'customer') {
     $socid = GETPOSTINT('socid');
-    $res = $db->query("SELECT rowid,nom,code_client,address,town,phone,email FROM ".MAIN_DB_PREFIX."societe WHERE entity=".$entity." AND status=1 AND client>0 AND rowid=".(int) $socid." LIMIT 1");
+    $res = $db->query("SELECT s.rowid,s.nom,s.code_client,s.address,s.town,s.phone,s.email FROM ".MAIN_DB_PREFIX."societe s WHERE s.entity=".$entity." AND s.status=1 AND s.client>0 AND s.rowid=".(int) $socid.$customerAccessSql." LIMIT 1");
     $obj = $res ? $db->fetch_object($res) : null;
     if (!$obj) accessforbidden();
     $customer = get_object_vars($obj);

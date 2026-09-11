@@ -5,6 +5,8 @@ require_once __DIR__.'/../lib/main.lib.php';
 require_once __DIR__.'/../class/OperationsService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 cpo_require($user, 'operation_write');
+$canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
+if (!$canReadCustomers) accessforbidden();
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $service = new OperationsService($db);
 $id = GETPOSTINT('id');
@@ -14,9 +16,10 @@ if ($id && !$operation) accessforbidden();
 $type = $operation['service_type'] ?? GETPOST('service_type', 'alphanohtml');
 if (!in_array($type, OperationsService::serviceTypes(), true)) $type = 'general';
 $selectedSocid = $operation ? (int) $operation['fk_soc'] : GETPOSTINT('fk_soc');
+$customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client', 'voir') ? '' : ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'societe_commerciaux csc WHERE csc.fk_soc=s.rowid AND csc.fk_user='.(int) $user->id.')';
 
 $companies = array(0=>'— اختر العميل أولاً —');
-$res = $db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int) $conf->entity." AND status=1 AND client>0 ORDER BY nom LIMIT 1000");
+$res = $db->query("SELECT s.rowid,s.nom FROM ".MAIN_DB_PREFIX."societe s WHERE s.entity=".(int) $conf->entity." AND s.status=1 AND s.client>0".$customerAccessSql." ORDER BY s.nom LIMIT 1000");
 while ($res && ($o = $db->fetch_object($res))) $companies[(int) $o->rowid] = $o->nom;
 $users = array(0=>'— غير مسند —');
 $res = $db->query("SELECT rowid,login,firstname,lastname FROM ".MAIN_DB_PREFIX."user WHERE entity=".(int) $conf->entity." AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login");
@@ -32,15 +35,25 @@ while ($res && ($o = $db->fetch_object($res))) {
 $taskMigration = new InternalTaskMigration($db);
 $taskBoardReady = $taskMigration->isReady(true);
 $taskBoardReason = $taskBoardReady ? 'READY' : $taskMigration->readinessReason();
-$createReady = $id || ($taskBoardReady && !empty($teams));
+$createReady = $taskBoardReady && !empty($teams);
+$selectedTeamId = 0;
+if ($id > 0) {
+    $res = $db->query("SELECT fk_usergroup FROM ".MAIN_DB_PREFIX."cpo_task WHERE entity=".(int) $conf->entity." AND fk_operation=".(int) $id." AND fk_usergroup IS NOT NULL AND fk_usergroup>0 ORDER BY rowid LIMIT 1");
+    $existingTeam = $res ? $db->fetch_object($res) : null;
+    $selectedTeamId = $existingTeam ? (int) $existingTeam->fk_usergroup : 0;
+}
 $projects = array();
-$res = $db->query("SELECT rowid,ref,title,fk_soc FROM ".MAIN_DB_PREFIX."projet WHERE entity=".(int) $conf->entity." ORDER BY rowid DESC LIMIT 1000");
-while ($res && ($o = $db->fetch_object($res))) $projects[] = array('id'=>(int) $o->rowid,'socid'=>(int) $o->fk_soc,'label'=>$o->ref.' · '.$o->title);
+if (!empty($user->admin) || $user->hasRight('projet', 'all', 'lire')) {
+    $res = $db->query("SELECT p.rowid,p.ref,p.title,p.fk_soc FROM ".MAIN_DB_PREFIX."projet p INNER JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=p.fk_soc AND s.entity=p.entity WHERE p.entity=".(int) $conf->entity.$customerAccessSql." ORDER BY p.rowid DESC LIMIT 1000");
+    while ($res && ($o = $db->fetch_object($res))) $projects[] = array('id'=>(int) $o->rowid,'socid'=>(int) $o->fk_soc,'label'=>$o->ref.' · '.$o->title);
+}
 $orders = array();
-$res = $db->query("SELECT rowid,ref,fk_soc FROM ".MAIN_DB_PREFIX."commande WHERE entity=".(int) $conf->entity." ORDER BY rowid DESC LIMIT 1000");
-while ($res && ($o = $db->fetch_object($res))) $orders[] = array('id'=>(int) $o->rowid,'socid'=>(int) $o->fk_soc,'label'=>$o->ref);
+if (!empty($user->admin) || $user->hasRight('commande', 'lire')) {
+    $res = $db->query("SELECT o.rowid,o.ref,o.fk_soc FROM ".MAIN_DB_PREFIX."commande o INNER JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity WHERE o.entity=".(int) $conf->entity.$customerAccessSql." ORDER BY o.rowid DESC LIMIT 1000");
+    while ($res && ($o = $db->fetch_object($res))) $orders[] = array('id'=>(int) $o->rowid,'socid'=>(int) $o->fk_soc,'label'=>$o->ref);
+}
 $shipments = array();
-$res = $db->query("SELECT l.rowid,l.ref,l.fk_soc,l.fk_project,s.nom customer_name FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=l.fk_soc AND s.entity=l.entity WHERE l.entity=".(int) $conf->entity." ORDER BY l.rowid DESC LIMIT 1000");
+$res = $db->query("SELECT l.rowid,l.ref,l.fk_soc,l.fk_project,s.nom customer_name FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l INNER JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=l.fk_soc AND s.entity=l.entity WHERE l.entity=".(int) $conf->entity.$customerAccessSql." ORDER BY l.rowid DESC LIMIT 1000");
 while ($res && ($o = $db->fetch_object($res))) $shipments[] = array('id'=>(int) $o->rowid,'socid'=>(int) $o->fk_soc,'projectid'=>(int) $o->fk_project,'label'=>$o->ref.' · '.($o->customer_name ?: '—'));
 $csrfToken = newToken();
 $requestHash = GETPOST('request_hash', 'alphanohtml');
@@ -95,7 +108,7 @@ cpcc_admin_shell_open('workspace', $langs->trans($id ? 'EditOperation' : 'NewOpe
       <label class="cpo-field"><span><?php echo $langs->trans('Customer'); ?> *</span><select required id="cpo-customer" name="fk_soc"><?php foreach ($companies as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_soc') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select></label>
       <label class="cpo-field"><span><?php echo $langs->trans('Title'); ?> *</span><input required name="title" value="<?php echo dol_escape_htmltag($v('title')); ?>" placeholder="مثال: LOCAL TEST - متابعة طلبية وتجهيز الشحن"></label>
       <label class="cpo-field"><span><?php echo $langs->trans('Owner'); ?> *</span><select required id="cpo-owner" name="fk_user_assign"><?php foreach ($users as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_user_assign') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select></label>
-      <?php if (!$id) { ?><label class="cpo-field"><span>فريق مهام العملية *</span><select required id="cpo-team" name="fk_usergroup"<?php echo !$teams ? ' disabled' : ''; ?>><option value="">— اختر فريق المسؤول —</option><?php foreach ($teams as $team) { ?><option value="<?php echo $team['id']; ?>" data-members="<?php echo dol_escape_htmltag(implode(',', $team['members'])); ?>"><?php echo dol_escape_htmltag($team['label']); ?></option><?php } ?></select><small>تظهر الفرق التي لديها أعضاء داخليون نشطون فقط.</small></label><?php } ?>
+      <label class="cpo-field"><span>فريق مهام العملية *</span><select required id="cpo-team" name="fk_usergroup"<?php echo !$teams ? ' disabled' : ''; ?>><option value="">— اختر فريق المسؤول —</option><?php foreach ($teams as $team) { ?><option value="<?php echo $team['id']; ?>" data-members="<?php echo dol_escape_htmltag(implode(',', $team['members'])); ?>"<?php echo $selectedTeamId === (int) $team['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($team['label']); ?></option><?php } ?></select><small>تظهر الفرق التي لديها أعضاء داخليون نشطون فقط.</small></label>
       <label class="cpo-field"><span><?php echo $langs->trans('Priority'); ?></span><select name="priority"><?php foreach (array('urgent','high','normal','low') as $p) { ?><option value="<?php echo $p; ?>"<?php echo $v('priority','normal') === $p ? ' selected' : ''; ?>><?php echo $langs->trans('Priority_'.$p); ?></option><?php } ?></select></label>
       <?php if ($id) { ?><label class="cpo-field"><span><?php echo $langs->trans('Stage'); ?></span><select name="stage"><?php foreach (OperationsService::stages() as $s=>$progress) { ?><option value="<?php echo $s; ?>"<?php echo $v('stage') === $s ? ' selected' : ''; ?>><?php echo $langs->trans('Stage_'.$s); ?></option><?php } ?></select></label><?php } ?>
       <label class="cpo-field"><span><?php echo $langs->trans('WaitingOn'); ?></span><select name="waiting_on"><?php foreach (array('internal','customer','supplier','factory','forwarder','customs','none') as $w) { ?><option value="<?php echo $w; ?>"<?php echo $v('waiting_on','internal') === $w ? ' selected' : ''; ?>><?php echo $langs->trans('Party_'.$w); ?></option><?php } ?></select></label>

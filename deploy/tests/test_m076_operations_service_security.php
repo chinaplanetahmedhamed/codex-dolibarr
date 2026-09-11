@@ -68,6 +68,7 @@ foreach (array(
     "hasRight('societe', 'lire')",
     "hasRight('commande', 'lire')",
     "hasRight('projet', 'all', 'lire')",
+    "hasRight('societe', 'client', 'voir')",
     "if (!\$canReadCustomers && in_array(\$view, array('customers', 'customer'), true)) accessforbidden()",
 ) as $needle) if (strpos($workspace, $needle) === false) throw new RuntimeException('Workspace permission guard missing: '.$needle);
 
