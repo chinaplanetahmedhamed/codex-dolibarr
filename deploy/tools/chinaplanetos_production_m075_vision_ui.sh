@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M075-R01'
-readonly RUNTIME_COMMIT='2de2d564ba3cb347a9ae3ae1402896d64c853e1b'
-readonly ARTIFACT_NAME='m075-vision-os-ui-2de2d56.tar.gz'
-readonly ARTIFACT_SHA='5a5a356798b7ab4410f03a86c01008d6c2d012fa238f2d12bbea5898630acb86'
+readonly RELEASE='M075-R02'
+readonly RUNTIME_COMMIT='fbad2afcdab87ea51d75bad2b852db15e8641457'
+readonly ARTIFACT_NAME='m075-r02-vision-os-ui-fbad2af.tar.gz'
+readonly ARTIFACT_SHA='9a37ae2a1a03c45b9d561d29dae2e8ab28994eb709932fe969b04fe74ed90da1'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
@@ -33,6 +33,7 @@ readonly -a PHP_RUNTIME_FILES=(
 	'custom/chinaplanetoperations/sop/view.php'
 	'custom/chinaplanetoperations/tasks/board.php'
 	'custom/visiontradingui/admin/setup.php'
+	'custom/visiontradingui/class/actions_visiontradingui.class.php'
 	'custom/visiontradingui/core/hooks/actions_visiontradingui.class.php'
 	'custom/visiontradingui/core/modules/modVisionTradingUI.class.php'
 )
@@ -52,6 +53,7 @@ readonly -a RUNTIME_FILES=(
 	'custom/chinaplanetoperations/sop/view.php'
 	'custom/chinaplanetoperations/tasks/board.php'
 	'custom/visiontradingui/admin/setup.php'
+	'custom/visiontradingui/class/actions_visiontradingui.class.php'
 	'custom/visiontradingui/core/hooks/actions_visiontradingui.class.php'
 	'custom/visiontradingui/core/modules/modVisionTradingUI.class.php'
 	'custom/visiontradingui/css/branding.css'
@@ -66,7 +68,15 @@ readonly -a SUPPORT_FILES=(
 	'deploy/tests/test_m075_vision_ui_release.php'
 	'deploy/tests/test_vision_whitelabel.php'
 	'deploy/tools/m075_vision_os_config.php'
+	'deploy/tools/apply_vision_whitelabel.php'
 	'docs/MISSIONS/M075_VISION_CHINA_PLANET_OS_PRODUCTION_UI.md'
+	'custom/chinaplanetcustomercenter/board.php'
+	'custom/chinaplanetcustomercenter/order.php'
+	'custom/chinaplanetcustomercenter/orders.php'
+	'custom/chinaplanetcustomercenter/projects.php'
+	'custom/chinaplanetcustomercenter/funding.php'
+	'custom/chinaplanetcustomercenter/admin/operations.php'
+	'custom/cpkanban/board.php'
 )
 readonly -a ALL_FILES=("${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}")
 

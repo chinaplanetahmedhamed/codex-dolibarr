@@ -13,6 +13,7 @@ custom/chinaplanetoperations/sop/index.php
 custom/chinaplanetoperations/sop/view.php
 custom/chinaplanetoperations/tasks/board.php
 custom/visiontradingui/admin/setup.php
+custom/visiontradingui/class/actions_visiontradingui.class.php
 custom/visiontradingui/core/hooks/actions_visiontradingui.class.php
 custom/visiontradingui/core/modules/modVisionTradingUI.class.php
 custom/visiontradingui/css/branding.css
