@@ -1,0 +1,6 @@
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m076-workspace compare
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m076-workspace preflight
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m076-workspace apply
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m076-workspace verify
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m076-workspace rollback
+codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m076-workspace status
