@@ -104,12 +104,13 @@ class OperationsService
         }
         try {
             if ($manageTransaction) {$this->db->begin();$transactionStarted=true;}
-            $this->validateAssignment($data);
+            $this->validateAssignment($data, !empty($data['require_assignment']));
             $this->validateContextLinks($data);
             $this->validateShipmentLink($data);
             if ($requestHash !== '') {
                 $existingResult = $this->db->query("SELECT fk_operation,message FROM ".MAIN_DB_PREFIX."cpo_activity WHERE entity=".$this->entity." AND fk_user=".(int) $userId." AND action_code='operation_create_request' AND message LIKE ".$this->q($requestHash.':%')." AND fk_operation IS NOT NULL ORDER BY rowid DESC LIMIT 1 FOR UPDATE");
-                $existing = $existingResult ? $this->db->fetch_object($existingResult) : null;
+                if (!$existingResult) throw new RuntimeException($this->db->lasterror() ?: 'Unable to check operation request identity.');
+                $existing = $this->db->fetch_object($existingResult);
                 if ($existing) {
                     if (!hash_equals((string) $existing->message, $requestMessage)) throw new RuntimeException('Operation request payload changed.');
                     if ($manageTransaction) {$this->db->commit();$transactionStarted=false;}
@@ -162,6 +163,7 @@ class OperationsService
             $this->db->rollback();
             throw new RuntimeException('A linked shipment cannot be removed or replaced.');
         }
+        $this->validateAssignment($data, true);
         $this->validateContextLinks($data);
         $this->validateShipmentLink($data);
         $stage = isset(self::stages()[$data['stage']]) ? $data['stage'] : $operation['stage'];
@@ -176,7 +178,7 @@ class OperationsService
 
     public function get($id)
     {
-        $sql = "SELECT o.*,s.nom customer_name,u.login owner_login FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=o.fk_user_assign WHERE o.entity=".$this->entity." AND o.rowid=".(int)$id;
+        $sql = "SELECT o.*,s.nom customer_name,u.login owner_login FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=o.fk_user_assign AND u.entity=o.entity WHERE o.entity=".$this->entity." AND o.rowid=".(int)$id;
         $res = $this->db->query($sql); $obj = $res ? $this->db->fetch_object($res) : null;
         if (!$obj) return null;
         $row = get_object_vars($obj);
@@ -193,7 +195,7 @@ class OperationsService
         if (!empty($filters['owner'])) $where[] = 'o.fk_user_assign='.(int)$filters['owner'];
         if (!empty($filters['socid'])) $where[] = 'o.fk_soc='.(int)$filters['socid'];
         if (!empty($filters['q'])) { $q='%'.$filters['q'].'%'; $where[]='(o.ref LIKE '.$this->q($q).' OR o.title LIKE '.$this->q($q).' OR s.nom LIKE '.$this->q($q).' OR o.next_action LIKE '.$this->q($q).')'; }
-        $sql = "SELECT o.*,s.nom customer_name,u.login owner_login FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=o.fk_user_assign WHERE ".implode(' AND ',$where)." ORDER BY FIELD(o.priority,'urgent','high','normal','low'),o.date_deadline IS NULL,o.date_deadline,o.tms DESC LIMIT 500";
+        $sql = "SELECT o.*,s.nom customer_name,u.login owner_login FROM ".MAIN_DB_PREFIX."cpo_operation o LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=o.fk_soc AND s.entity=o.entity LEFT JOIN ".MAIN_DB_PREFIX."user u ON u.rowid=o.fk_user_assign AND u.entity=o.entity WHERE ".implode(' AND ',$where)." ORDER BY FIELD(o.priority,'urgent','high','normal','low'),o.date_deadline IS NULL,o.date_deadline,o.tms DESC LIMIT 500";
         return $this->rows($sql);
     }
 
@@ -429,8 +431,12 @@ class OperationsService
         $socid = !empty($data['fk_soc']) ? (int) $data['fk_soc'] : 0;
         $projectId = !empty($data['fk_project']) ? (int) $data['fk_project'] : 0;
         $orderId = !empty($data['fk_commande']) ? (int) $data['fk_commande'] : 0;
-        if ($projectId <= 0 && $orderId <= 0) return;
-        if ($socid <= 0) throw new RuntimeException('A project or order link requires a customer.');
+        if ($socid <= 0) {
+            if ($projectId > 0 || $orderId > 0) throw new RuntimeException('A project or order link requires a customer.');
+            return;
+        }
+        $customer = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'societe WHERE rowid='.$socid.' AND entity='.$this->entity.' AND status=1 AND client>0 LIMIT 1');
+        if (!$customer || $this->db->num_rows($customer) !== 1) throw new RuntimeException('Customer must be an active customer in the current entity.');
         if ($projectId > 0) {
             $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'projet WHERE rowid='.$projectId.' AND entity='.$this->entity.' AND fk_soc='.$socid.' LIMIT 1');
             if (!$res || $this->db->num_rows($res) !== 1) throw new RuntimeException('Project and customer must match.');
@@ -440,10 +446,11 @@ class OperationsService
             if (!$res || $this->db->num_rows($res) !== 1) throw new RuntimeException('Order and customer must match.');
         }
     }
-    private function validateAssignment(array $data)
+    private function validateAssignment(array $data, $required = false)
     {
         $ownerId = !empty($data['fk_user_assign']) ? (int) $data['fk_user_assign'] : 0;
         $groupId = !empty($data['fk_usergroup']) ? (int) $data['fk_usergroup'] : 0;
+        if (!$required && $ownerId <= 0 && $groupId <= 0) return;
         if ($ownerId <= 0) throw new RuntimeException('Operation owner is required.');
         if ($groupId <= 0) throw new RuntimeException('A valid primary team is required.');
         $res = $this->db->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.$ownerId.' AND entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 LIMIT 1');

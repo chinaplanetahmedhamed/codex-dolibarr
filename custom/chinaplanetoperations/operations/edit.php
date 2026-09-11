@@ -52,7 +52,7 @@ if ($action === 'save') try {
     foreach (OperationsService::serviceFields($type) as $field) $serviceData[$field] = trim((string) ($postedServiceData[$field] ?? ''));
     $data = array(
         'request_hash'=>$requestHash,'service_type'=>$type,'title'=>GETPOST('title','alphanohtml'),'fk_soc'=>GETPOSTINT('fk_soc'),'fk_usergroup'=>GETPOSTINT('fk_usergroup'),
-        'fk_project'=>GETPOSTINT('fk_project'),'fk_commande'=>GETPOSTINT('fk_commande'),'fk_shipment'=>GETPOSTINT('fk_shipment'),
+        'fk_project'=>GETPOSTINT('fk_project'),'fk_commande'=>GETPOSTINT('fk_commande'),'fk_shipment'=>GETPOSTINT('fk_shipment'),'require_assignment'=>1,
         'fk_user_assign'=>GETPOSTINT('fk_user_assign'),'priority'=>GETPOST('priority','alpha'),'stage'=>GETPOST('stage','alphanohtml') ?: 'new',
         'waiting_on'=>GETPOST('waiting_on','alphanohtml'),'next_action'=>GETPOST('next_action','alphanohtml'),'date_deadline'=>GETPOST('date_deadline','alphanohtml'),
         'note_private'=>GETPOST('note_private','restricthtml'),'note_public'=>GETPOST('note_public','restricthtml'),'customer_visible'=>GETPOSTINT('customer_visible'),'service_data'=>$serviceData,

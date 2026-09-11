@@ -30,6 +30,7 @@ $editChecks = array(
     'owner list is entity exact'=>'WHERE entity=".(int) $conf->entity." AND statut=1 AND COALESCE(fk_soc,0)=0',
     'safe create readiness gate'=>'$createReady = $id || ($taskBoardReady && !empty($teams))',
     'disabled save until ready'=>"!\$createReady ? ' disabled' : ''",
+    'guided create explicitly requires assignment'=>"'require_assignment'=>1",
 );
 foreach ($editChecks as $label=>$needle) {
     if (strpos($edit, $needle) === false) {fwrite(STDERR, "FAIL $label\n"); exit(1);}
@@ -37,9 +38,11 @@ foreach ($editChecks as $label=>$needle) {
 
 $serviceChecks = array(
     'operation request lock'=>'SELECT GET_LOCK(',
+    'operation retry lookup fails closed'=>'Unable to check operation request identity.',
     'operation retry lookup'=>"action_code='operation_create_request'",
     'payload conflict'=>'Operation request payload changed.',
     'customer project validation'=>'Project and customer must match.',
+    'customer itself is validated'=>'Customer must be an active customer in the current entity.',
     'customer order validation'=>'Order and customer must match.',
     'customer filter'=>"if (!empty(\$filters['socid']))",
     'active internal owner validation'=>'Operation owner must be an active internal user.',

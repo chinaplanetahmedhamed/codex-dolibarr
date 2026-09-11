@@ -13,9 +13,13 @@ $taskService = new InternalTaskService($db, $user, $entity);
 $taskAuth = $taskService->authorization();
 $canManage = !empty($user->admin) || cpo_can($user, 'operation_write');
 $canCreateOperation = cpo_can($user, 'operation_write');
+$canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
+$canReadOrders = !empty($user->admin) || $user->hasRight('commande', 'lire');
+$canReadProjects = !empty($user->admin) || $user->hasRight('projet', 'all', 'lire');
 $view = GETPOST('view', 'aZ09');
 if (!in_array($view, array('manager', 'my', 'customers', 'customer'), true)) $view = $canManage ? 'manager' : 'my';
 if (!$canManage && $view === 'manager') $view = 'my';
+if (!$canReadCustomers && in_array($view, array('customers', 'customer'), true)) accessforbidden();
 
 $rows = static function ($db, $sql) {
     $out = array();
@@ -44,7 +48,7 @@ $myOpenTasks = array_values(array_filter($myTasks, static function ($task) {
     return empty($task['date_archived']) && !in_array((string) $task['status'], array('done', 'cancelled', 'deleted'), true);
 }));
 
-$customers = $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".
+$customers = !$canReadCustomers ? array() : $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".
     " FROM ".MAIN_DB_PREFIX."societe s".
     " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.entity=s.entity AND o.fk_soc=s.rowid AND o.status=1".
     " LEFT JOIN ".MAIN_DB_PREFIX."socpeople c ON c.entity=s.entity AND c.fk_soc=s.rowid AND c.statut=1".
@@ -62,8 +66,8 @@ if ($view === 'customer') {
     if (!$obj) accessforbidden();
     $customer = get_object_vars($obj);
     $customerOperations = $operationsService->search(array('socid'=>$socid));
-    $customerOrders = $rows($db, "SELECT rowid,ref,fk_statut,total_ht,date_commande FROM ".MAIN_DB_PREFIX."commande WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
-    $customerProjects = $rows($db, "SELECT rowid,ref,title,fk_statut FROM ".MAIN_DB_PREFIX."projet WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
+    if ($canReadOrders) $customerOrders = $rows($db, "SELECT rowid,ref,fk_statut,total_ht,date_commande FROM ".MAIN_DB_PREFIX."commande WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
+    if ($canReadProjects) $customerProjects = $rows($db, "SELECT rowid,ref,title,fk_statut FROM ".MAIN_DB_PREFIX."projet WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
 }
 
 $morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
@@ -86,7 +90,7 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
   <nav class="cpw-tabs" aria-label="مساحة العمل">
     <?php if ($canManage) { ?><a<?php echo $view === 'manager' ? ' class="active" aria-current="page"' : ''; ?> href="?view=manager">لوحة المدير</a><?php } ?>
     <?php if ($taskAuth->canOpenBoard()) { ?><a<?php echo $view === 'my' ? ' class="active" aria-current="page"' : ''; ?> href="?view=my">عملي اليوم <span><?php echo count($myOpenTasks); ?></span></a><?php } ?>
-    <a<?php echo in_array($view, array('customers','customer'), true) ? ' class="active" aria-current="page"' : ''; ?> href="?view=customers">العملاء والعمليات</a>
+    <?php if ($canReadCustomers) { ?><a<?php echo in_array($view, array('customers','customer'), true) ? ' class="active" aria-current="page"' : ''; ?> href="?view=customers">العملاء والعمليات</a><?php } ?>
   </nav>
 
   <?php if ($view === 'manager') {
@@ -114,12 +118,12 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
       <?php if (!$attention) { ?><div class="cpw-empty">لا توجد عمليات عالية الأولوية أو متأخرة أو في انتظار حالياً.</div><?php } ?>
     </div>
   </section>
-  <section class="cpo-panel cpw-section">
+  <?php if ($canReadCustomers) { ?><section class="cpo-panel cpw-section">
     <div class="cpo-panel-head"><div><h2>أحدث العملاء والعمليات</h2><p>ابدأ من الشركة، ثم افتح العمل المرتبط بها.</p></div><a href="?view=customers">كل العملاء</a></div>
     <div class="cpw-customer-grid">
       <?php foreach (array_slice($customers, 0, 8) as $row) { ?><a href="?view=customer&amp;socid=<?php echo (int) $row['rowid']; ?>"><strong><?php echo $esc($row['nom']); ?></strong><span><?php echo (int) $row['operation_count']; ?> عمليات · <?php echo (int) $row['contact_count']; ?> جهات اتصال</span><b>فتح ملف العميل ←</b></a><?php } ?>
     </div>
-  </section>
+  </section><?php } ?>
   <?php } elseif ($view === 'my') { ?>
   <?php if ($taskError) { ?><div class="cpo-notice"><?php echo $esc($taskError); ?></div><?php } ?>
   <section class="cpw-summary" aria-label="ملخص مهامي">
@@ -158,8 +162,8 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
   </section>
   <section class="cpw-summary" aria-label="ملخص العميل">
     <a href="#customer-operations"><small>العمليات</small><strong><?php echo count($customerOperations); ?></strong><span>الخدمات والمتابعات</span></a>
-    <a href="#customer-orders"><small>طلبات البيع</small><strong><?php echo count($customerOrders); ?></strong><span>السجلات الأصلية</span></a>
-    <a href="#customer-projects"><small>المشروعات</small><strong><?php echo count($customerProjects); ?></strong><span>السجلات الأصلية</span></a>
+    <?php if ($canReadOrders) { ?><a href="#customer-orders"><small>طلبات البيع</small><strong><?php echo count($customerOrders); ?></strong><span>السجلات الأصلية</span></a><?php } ?>
+    <?php if ($canReadProjects) { ?><a href="#customer-projects"><small>المشروعات</small><strong><?php echo count($customerProjects); ?></strong><span>السجلات الأصلية</span></a><?php } ?>
   </section>
   <section class="cpo-panel cpw-section" id="customer-operations">
     <div class="cpo-panel-head"><div><h2>عمليات العميل</h2><p>الخطوة التالية والمسؤول والموعد واضحة لكل عملية.</p></div></div>
@@ -169,8 +173,8 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
     </div>
   </section>
   <div class="cpw-two-columns">
-    <section class="cpo-panel cpw-section" id="customer-orders"><div class="cpo-panel-head"><h2>طلبات البيع</h2><a href="<?php echo DOL_URL_ROOT; ?>/commande/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">طلب جديد</a></div><?php foreach ($customerOrders as $order) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/commande/card.php?id=<?php echo (int) $order['rowid']; ?>"><strong><?php echo $esc($order['ref']); ?></strong><span><?php echo price((float) $order['total_ht']); ?> · <?php echo $esc($order['date_commande'] ?: 'دون تاريخ'); ?></span></a><?php } ?><?php if (!$customerOrders) { ?><div class="cpw-empty">لا توجد طلبات بيع.</div><?php } ?></section>
-    <section class="cpo-panel cpw-section" id="customer-projects"><div class="cpo-panel-head"><h2>المشروعات</h2><a href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">مشروع جديد</a></div><?php foreach ($customerProjects as $project) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?id=<?php echo (int) $project['rowid']; ?>"><strong><?php echo $esc($project['ref']); ?></strong><span><?php echo $esc($project['title']); ?></span></a><?php } ?><?php if (!$customerProjects) { ?><div class="cpw-empty">لا توجد مشروعات.</div><?php } ?></section>
+    <?php if ($canReadOrders) { ?><section class="cpo-panel cpw-section" id="customer-orders"><div class="cpo-panel-head"><h2>طلبات البيع</h2><a href="<?php echo DOL_URL_ROOT; ?>/commande/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">طلب جديد</a></div><?php foreach ($customerOrders as $order) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/commande/card.php?id=<?php echo (int) $order['rowid']; ?>"><strong><?php echo $esc($order['ref']); ?></strong><span><?php echo price((float) $order['total_ht']); ?> · <?php echo $esc($order['date_commande'] ?: 'دون تاريخ'); ?></span></a><?php } ?><?php if (!$customerOrders) { ?><div class="cpw-empty">لا توجد طلبات بيع.</div><?php } ?></section><?php } ?>
+    <?php if ($canReadProjects) { ?><section class="cpo-panel cpw-section" id="customer-projects"><div class="cpo-panel-head"><h2>المشروعات</h2><a href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">مشروع جديد</a></div><?php foreach ($customerProjects as $project) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?id=<?php echo (int) $project['rowid']; ?>"><strong><?php echo $esc($project['ref']); ?></strong><span><?php echo $esc($project['title']); ?></span></a><?php } ?><?php if (!$customerProjects) { ?><div class="cpw-empty">لا توجد مشروعات.</div><?php } ?></section><?php } ?>
   </div>
   <?php } ?>
 

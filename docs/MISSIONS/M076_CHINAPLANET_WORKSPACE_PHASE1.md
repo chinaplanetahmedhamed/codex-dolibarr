@@ -3,7 +3,7 @@
 - Owner: Ahmed Hamed
 - Coordinator and writer: Agent 007
 - Date: 2026-09-12
-- Status: RELEASE_PREPARATION
+- Status: R02_SECURITY_REMEDIATION
 - Approval: Ahmed explicitly approved execution after the M075 scope gap was explained: `ok, do it`.
 - Current environment: local Dolibarr only. Staging and Production require later, separate approvals.
 
@@ -61,6 +61,8 @@ This approval covers the bounded local implementation and local synthetic accept
 ## Production authorization — 2026-09-12
 
 Ahmed subsequently authorized publishing the exact reviewed M076 Phase 1 scope to canonical Production at `erp.visiontrading.biz`, including immutable artifact upload, restricted compare/preflight, scoped backups, apply, verify, status, and runtime acceptance. This does not authorize DNS/proxy changes, staging changes, schema migration, configuration repair, team-membership changes, synthetic records, or any deployment to `erp.chinaplanet.org`.
+
+The first independent production review rejected R01 before upload. R02 remedies the reported blockers by preserving unassigned legacy booking/intake creation while requiring assignment in the guided UI; validating the customer and assignment on create/update; failing closed on idempotency lookup errors; entity-scoping customer/user joins; gating native customer/order/project projections by their native rights; verifying a root-private artifact copy; keeping compare/preflight free of persistent candidate copies; and making rollback available for interrupted apply states without depending on HTTP or the candidate artifact. R01 is retired and must never be installed or applied.
 
 ## Local acceptance evidence — 2026-09-12
 
