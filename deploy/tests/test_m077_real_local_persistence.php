@@ -32,6 +32,7 @@ final class M077DolDb
     public function __construct(mysqli $mysqli) { $this->mysqli = $mysqli; }
     public function query($sql) { try { return $this->mysqli->query($sql); } catch (Throwable $e) { $this->error=$e->getMessage(); return false; } }
     public function fetch_object($result) { return $result instanceof mysqli_result ? $result->fetch_object() : null; }
+    public function num_rows($result) { return $result instanceof mysqli_result ? $result->num_rows : 0; }
     public function escape($value) { return $this->mysqli->real_escape_string((string) $value); }
     public function idate($value) { return date('Y-m-d H:i:s', is_numeric($value) ? (int) $value : strtotime((string) $value)); }
     public function last_insert_id($table = '') { return (int) $this->mysqli->insert_id; }
@@ -42,7 +43,9 @@ final class M077DolDb
 }
 
 require_once $repoRoot.'/custom/chinaplanetcustomercenter/class/CustomerFundsService.class.php';
+require_once $repoRoot.'/custom/chinaplanetcustomercenter/class/ManagedFundsNativeGuard.class.php';
 require_once $repoRoot.'/custom/chinaplanetoperations/class/OperationShipmentService.class.php';
+require_once $repoRoot.'/custom/chinaplanetcustomercenter/lib/export.lib.php';
 
 $source = m077RealConfig($sourceConf);
 m077RealAssert(m077RealLocalHost($source['host']), 'remote source database forbidden');
@@ -61,7 +64,7 @@ try {
     $created = true;
     $target = new mysqli($source['host'], $adminCredentials[0], $adminCredentials[1], $database, $source['port']);
     $target->query('SET FOREIGN_KEY_CHECKS=0');
-    $requiredTables = array('llx_user','llx_societe','llx_projet','llx_commande','llx_facture','llx_facturedet','llx_paiement','llx_paiement_facture','llx_societe_remise_except','llx_cpo_operation','llx_cpo_operation_data','llx_cpo_activity','llx_chinaplanetlogistics','llx_cpl_shipment_event','llx_cpcc_financial_entry');
+    $requiredTables = array('llx_user','llx_societe','llx_projet','llx_commande','llx_facture','llx_facturedet','llx_paiement','llx_paiement_facture','llx_societe_remise_except','llx_cpo_operation','llx_cpo_operation_data','llx_cpo_activity','llx_chinaplanetlogistics','llx_cpl_shipment_event','llx_cpcc_financial_entry','llx_cpcc_export_document','llx_cpcc_export_document_line');
     foreach ($requiredTables as $table) {
         $result = $sourceDb->query("SHOW CREATE TABLE ".$table);
         $row = $result->fetch_row();
@@ -88,11 +91,12 @@ try {
     $target->query("INSERT INTO llx_paiement(rowid,entity,ref,datep,amount,multicurrency_amount,statut,fk_paiement) VALUES(77018,1,'LOCAL-M077-ORD-PAY','2026-09-12',1000,1000,1,1)");
     $target->query("INSERT INTO llx_paiement_facture(fk_facture,fk_paiement,amount,multicurrency_amount) VALUES(77017,77018,1000,1000)");
     $serviceJson = $target->real_escape_string(json_encode(array('pol'=>'NANSHA','pod'=>'SOKHNA','container_type'=>'40HQ','etd'=>'2026-10-01','eta'=>'2026-10-25')));
-    $target->query("INSERT INTO llx_cpo_operation(rowid,entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_user_assign,stage,status,fk_user_creat,date_creation) VALUES(77007,1,'CP-SB-LOCAL-M077','shipping_booking','LOCAL TEST - M077 Shipping',77001,77003,77004,1,'new',1,1,NOW())");
-    $target->query("INSERT INTO llx_cpo_operation_data(entity,fk_operation,section_code,data_json,fk_user_modif) VALUES(1,77007,'service','".$serviceJson."',1)");
+    $target->query("INSERT INTO llx_cpo_operation(rowid,entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_user_assign,stage,status,fk_user_creat,date_creation) VALUES(77007,1,'CP-SB-LOCAL-M077-A','shipping_booking','LOCAL TEST - M077 Shipping A',77001,77003,77004,1,'new',1,1,NOW()),(77023,1,'CP-SB-LOCAL-M077-B','shipping_booking','LOCAL TEST - M077 Shipping B',77001,77003,77004,1,'new',1,1,NOW())");
+    $target->query("INSERT INTO llx_cpo_operation_data(entity,fk_operation,section_code,data_json,fk_user_modif) VALUES(1,77007,'service','".$serviceJson."',1),(1,77023,'service','".$serviceJson."',1)");
     $target->query("INSERT INTO llx_cpcc_financial_entry(rowid,entity,fk_soc,fk_project,entry_date,entry_type,direction,description,amount,currency_code,source_type,source_id,customer_visible,status,fk_user_creat,date_creation) VALUES(77008,1,77001,77003,NOW(),'supplier_payment','D','LOCAL TEST - actual posted debit',4000,'USD','operation',77007,0,1,1,NOW()),(77019,1,77001,77003,NOW(),'supplier_payment','D','LOCAL TEST - unrelated debit',4000,'USD','project',77003,0,1,1,NOW())");
 
     $db = new M077DolDb($target);
+    m077RealAssert(ManagedFundsNativeGuard::install($db),'native-credit guard installation failed');
     $funds = new CustomerFundsService($db, 1);
     $receiptData = array('fk_soc'=>77001,'receipt_date'=>'2026-09-12','amount'=>10000,'currency_code'=>'USD','reference'=>'LOCAL-M077-RECEIPT','note_private'=>'LOCAL TEST only','request_key'=>hash('sha256','LOCAL TEST M077 receipt'));
     $receiptId = $funds->createPendingReceipt($receiptData, 1);
@@ -111,6 +115,26 @@ try {
     $ordinaryRejected = false;
     try { $funds->confirmReceipt($ordinaryReceipt, 77018, 1); } catch (RuntimeException $e) { $ordinaryRejected = true; }
     m077RealAssert($ordinaryRejected, 'ordinary invoice payment became managed money');
+    $target->query("INSERT INTO llx_societe_remise_except(entity,fk_soc,datec,amount_ht,amount_ttc,fk_user,fk_facture,fk_facture_source,description,multicurrency_code,multicurrency_amount_ht,multicurrency_amount_ttc) VALUES(1,77001,NOW(),2000,2000,1,77015,77005,'LOCAL TEST - native deposit consumption','USD',2000,2000)");
+    $initialReconciliation=$funds->reconcileReceipt($receiptId);
+    m077RealAssert(abs((float)$initialReconciliation['native_consumed']-2000.0)<0.00001 && abs((float)$initialReconciliation['available']-8000.0)<0.00001,'native consumption not reflected in authoritative availability');
+    $target->query("INSERT INTO llx_societe_remise_except(entity,fk_soc,datec,amount_ht,amount_ttc,fk_user,fk_facture_source,description,multicurrency_code,multicurrency_amount_ht,multicurrency_amount_ttc) VALUES(1,77001,NOW(),100,100,1,77005,'LOCAL TEST - race candidate','USD',100,100)");
+    $raceCreditId=(int)$target->insert_id;
+    $raceOut=tempnam(sys_get_temp_dir(),'m077-race-out-');$raceErr=tempnam(sys_get_temp_dir(),'m077-race-err-');
+    $mysqlTool='/Applications/MAMP/Library/bin/mysql';
+    m077RealAssert(is_file($mysqlTool),'mysql client is required for the native-allocation race test');
+    $raceCommand=array($mysqlTool,'-h',$source['host'],'-P',(string)$source['port'],'-u',$adminCredentials[0],$database,'-e',"SELECT SLEEP(0.05); UPDATE llx_societe_remise_except SET fk_facture=77015 WHERE rowid=".$raceCreditId);
+    $racePipes=array();$raceProcess=proc_open($raceCommand,array(0=>array('pipe','r'),1=>array('file',$raceOut,'w'),2=>array('file',$raceErr,'w')),$racePipes,$repoRoot,array_merge($_ENV,array('MYSQL_PWD'=>$adminCredentials[1])));
+    m077RealAssert(is_resource($raceProcess),'race process could not start');fclose($racePipes[0]);
+    $raceAllocationId=0;$raceAllocationCommitted=false;
+    try{$raceAllocationId=$funds->reserve($receiptId,array('target_type'=>'project','target_id'=>77003,'amount'=>8000,'request_key'=>hash('sha256','LOCAL TEST M077 real race')),1);$raceAllocationCommitted=true;}catch(RuntimeException $e){}
+    $raceExit=proc_close($raceProcess);
+    $nativeRaceCommitted=$raceExit===0;
+    @unlink($raceOut);@unlink($raceErr);
+    m077RealAssert(!($raceAllocationCommitted&&$nativeRaceCommitted),'native consumption and managed reservation both committed in race');
+    m077RealAssert($raceAllocationCommitted||$nativeRaceCommitted,'race made no safe progress');
+    if($raceAllocationCommitted)$funds->reverseAllocation($raceAllocationId,'LOCAL TEST race cleanup',1);
+    if($nativeRaceCommitted)$target->query("UPDATE llx_societe_remise_except SET fk_facture=NULL WHERE rowid=".$raceCreditId);
 
     $shipmentService = new OperationShipmentService($db, 1);
     $target->query("INSERT INTO llx_cpo_operation(rowid,entity,ref,service_type,title,fk_soc,fk_project,fk_commande,fk_user_assign,stage,status,fk_user_creat,date_creation) VALUES(77021,1,'CP-SB-M077-BAD-PROJ','shipping_booking','LOCAL TEST - wrong project',77001,77012,77004,1,'new',1,1,NOW()),(77022,1,'CP-SB-M077-BAD-ORDER','shipping_booking','LOCAL TEST - wrong order',77001,77003,77013,1,'new',1,1,NOW())");
@@ -122,15 +146,22 @@ try {
     }
     $shipmentId = $shipmentService->createLinkedDraft(77007, 1);
     m077RealAssert($shipmentId === $shipmentService->createLinkedDraft(77007, 1), 'shipment retry duplicated');
+    $shipmentIdB=$shipmentService->createLinkedDraft(77023,1);
+    m077RealAssert($shipmentIdB!==$shipmentId && $shipmentIdB===$shipmentService->createLinkedDraft(77023,1),'second shipment was not independently idempotent');
     $shipment = $target->query("SELECT s.fk_statut,s.fk_soc,s.fk_project,s.fk_commande,s.customer_visible,o.fk_shipment FROM llx_chinaplanetlogistics s INNER JOIN llx_cpo_operation o ON o.rowid=77007 WHERE s.rowid=".$shipmentId)->fetch_assoc();
     m077RealAssert((int)$shipment['fk_statut']===0 && (int)$shipment['fk_soc']===77001 && (int)$shipment['fk_project']===77003 && (int)$shipment['fk_commande']===77004 && (int)$shipment['customer_visible']===0 && (int)$shipment['fk_shipment']===$shipmentId, 'draft shipment context or visibility mismatch');
     $event = $target->query("SELECT event_type,milestone_code,source_type,customer_visible FROM llx_cpl_shipment_event WHERE fk_shipment=".$shipmentId)->fetch_assoc();
     m077RealAssert($event['event_type']==='baseline' && $event['milestone_code']==='inquiry' && $event['source_type']==='operation_draft' && (int)$event['customer_visible']===0, 'shipment provenance mismatch');
+    $target->query("INSERT INTO llx_cpcc_export_document(entity,fk_soc,fk_project,fk_shipment,document_type,ref,document_date,currency_code,total_amount,port_loading,port_destination,customer_visible,status,fk_user_creat,date_creation) VALUES(1,77001,77003,".$shipmentId.",'commercial_invoice','LOCAL-M077-PRIVATE-EXPORT','2026-09-12','USD',1000,'NANSHA','SOKHNA',1,1,1,NOW())");
+    $privateDocumentId=(int)$target->insert_id;
+    $target->query("INSERT INTO llx_cpcc_export_document_line(fk_document,position,description,quantity,unit_price,total_amount,date_creation) VALUES(".$privateDocumentId.",1,'LOCAL TEST private shipment item',1,1000,1000,NOW())");
+    m077RealAssert(cpcc_export_fetch($db,$privateDocumentId,77001,true)===null,'private shipment export detail leaked');
+    m077RealAssert(count(cpcc_export_documents($db,77001,0,0,true))===0,'private shipment export list leaked');
 
     $allocAData = array('target_type'=>'operation','target_id'=>77007,'amount'=>3000,'request_key'=>hash('sha256','LOCAL TEST M077 A'),'note_private'=>'shipment A');
     $allocationA = $funds->reserve($receiptId, $allocAData, 1);
     m077RealAssert($allocationA === $funds->reserve($receiptId, $allocAData, 1), 'allocation retry duplicated');
-    $allocationB = $funds->reserve($receiptId, array('target_type'=>'shipment','target_id'=>$shipmentId,'amount'=>2500,'request_key'=>hash('sha256','LOCAL TEST M077 B'),'note_private'=>'shipment B'), 1);
+    $allocationB = $funds->reserve($receiptId, array('target_type'=>'shipment','target_id'=>$shipmentIdB,'amount'=>2500,'request_key'=>hash('sha256','LOCAL TEST M077 B'),'note_private'=>'shipment B'), 1);
     $wrongCustomerRejected=false;
     try { $funds->reserve($receiptId,array('target_type'=>'project','target_id'=>77012,'amount'=>100,'request_key'=>hash('sha256','LOCAL TEST M077 other customer')),1); } catch (RuntimeException $e) { $wrongCustomerRejected=strpos($e->getMessage(),'does not belong')!==false; }
     m077RealAssert($wrongCustomerRejected,'other-customer allocation target accepted');
@@ -152,7 +183,9 @@ try {
     try { $funds->settle($allocationD,77008,1); } catch (RuntimeException $e) { $settlementCeilingRejected=strpos($e->getMessage(),'exceed')!==false; }
     m077RealAssert($settlementCeilingRejected,'settlement ceiling was not enforced');
     $funds->reverseAllocation($allocationD,'LOCAL TEST ceiling reservation released',1);
-    $target->query("INSERT INTO llx_societe_remise_except(entity,fk_soc,datec,amount_ht,amount_ttc,fk_user,fk_facture,fk_facture_source,description,multicurrency_code,multicurrency_amount_ht,multicurrency_amount_ttc) VALUES(1,77001,NOW(),2000,2000,1,77015,77005,'LOCAL TEST - native deposit consumption','USD',2000,2000)");
+    $nativeConcurrentRejected=false;
+    try { $target->query("INSERT INTO llx_societe_remise_except(entity,fk_soc,datec,amount_ht,amount_ttc,fk_user,fk_facture,fk_facture_source,description,multicurrency_code,multicurrency_amount_ht,multicurrency_amount_ttc) VALUES(1,77001,NOW(),100,100,1,77015,77005,'LOCAL TEST - forbidden concurrent native use','USD',100,100)"); } catch (mysqli_sql_exception $e) { $nativeConcurrentRejected=strpos($e->getMessage(),'Managed funds are reserved')!==false; }
+    m077RealAssert($nativeConcurrentRejected,'native deposit use committed while managed allocations were active');
     $nativeUseRejected = false;
     try { $funds->reserve($receiptId, array('target_type'=>'project','target_id'=>77003,'amount'=>1600,'request_key'=>hash('sha256','LOCAL TEST M077 native use'),'note_private'=>'must fail'), 1); } catch (RuntimeException $e) { $nativeUseRejected = strpos($e->getMessage(), 'native Dolibarr credit use') !== false; }
     m077RealAssert($nativeUseRejected, 'native deposit consumption was ignored');
@@ -165,11 +198,14 @@ try {
     m077RealAssert($settledReverseRejected, 'settled allocation reversed without native correction');
 
     $counts = $target->query("SELECT (SELECT COUNT(*) FROM llx_cpcc_customer_receipt) receipts,(SELECT COUNT(*) FROM llx_cpcc_fund_allocation) allocations,(SELECT COUNT(*) FROM llx_cpcc_fund_event) events,(SELECT COUNT(*) FROM llx_chinaplanetlogistics) shipments")->fetch_assoc();
-    m077RealAssert((int)$counts['receipts']===2 && (int)$counts['allocations']===4 && (int)$counts['events']===11 && (int)$counts['shipments']===1, 'persistence/idempotency counts incorrect '.json_encode($counts));
+    $expectedAllocations=4+($raceAllocationCommitted?1:0);$expectedEvents=11+($raceAllocationCommitted?2:0);
+    m077RealAssert((int)$counts['receipts']===2 && (int)$counts['allocations']===$expectedAllocations && (int)$counts['events']===$expectedEvents && (int)$counts['shipments']===2, 'persistence/idempotency counts incorrect '.json_encode($counts));
     $settled = (float) $target->query("SELECT COALESCE(SUM(amount),0) total FROM llx_cpcc_fund_allocation WHERE status='settled'")->fetch_assoc()['total'];
     $reserved = (float) $target->query("SELECT COALESCE(SUM(amount),0) total FROM llx_cpcc_fund_allocation WHERE status='reserved'")->fetch_assoc()['total'];
     m077RealAssert(abs($settled-4000.0)<0.00001 && abs($reserved)<0.00001, 'persisted reconciliation mismatch');
-    echo "M077_REAL_LOCAL=PASS SOURCE_DB_MUTATED=NO RECEIPTS=2 MANAGED_CONFIRMED=1 ORDINARY_REJECTED=1 ALLOCATIONS=4 SETTLED=4000 RESERVED=0 UNALLOCATED=6000 SHIPMENTS=1 SHIPMENT_STATUS=0 CUSTOMER_VISIBLE=0 MILESTONE=inquiry\n";
+    $finalReconciliation=$funds->reconcileReceipt($receiptId);
+    m077RealAssert(abs((float)$finalReconciliation['available']-4000.0)<0.00001,'final authoritative availability ignored native consumption');
+    echo "M077_REAL_LOCAL=PASS SOURCE_DB_MUTATED=NO RECEIPTS=2 MANAGED_CONFIRMED=1 ORDINARY_REJECTED=1 NATIVE_GUARD=PASS NATIVE_RACE=PASS EXPORT_PRIVATE=PASS ALLOCATIONS=".$expectedAllocations." SETTLED=4000 RESERVED=0 UNALLOCATED=4000 SHIPMENTS=2 SHIPMENT_STATUS=0 CUSTOMER_VISIBLE=0 MILESTONE=inquiry\n";
 } finally {
     if ($target instanceof mysqli) $target->close();
     if ($created) {

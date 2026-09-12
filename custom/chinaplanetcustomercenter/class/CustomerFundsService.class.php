@@ -126,8 +126,12 @@ class CustomerFundsService
         $started = false;
         try {
             $this->db->begin(); $started = true;
+            $receiptHint = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $receiptId." LIMIT 1");
+            if (!$receiptHint || (string) $receiptHint->status !== 'confirmed') throw new RuntimeException('Allocation requires a confirmed receipt.');
+            $this->lockNativeEvidence((int) $receiptHint->native_source_id);
             $receipt = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $receiptId." FOR UPDATE");
             if (!$receipt || (string) $receipt->status !== 'confirmed') throw new RuntimeException('Allocation requires a confirmed receipt.');
+            if ((int) $receipt->native_source_id !== (int) $receiptHint->native_source_id) throw new RuntimeException('Managed receipt evidence changed during allocation.');
             $evidence = $this->validatedCustomerPayment((int) $receipt->native_source_id);
             if (!$evidence || (int) $evidence['fk_soc'] !== (int) $receipt->fk_soc || (string) $evidence['currency'] !== (string) $receipt->currency_code || !$this->sameAmount($evidence['amount'], $receipt->amount)) {
                 throw new RuntimeException('Managed receipt evidence is no longer valid; allocation is blocked.');
@@ -163,6 +167,11 @@ class CustomerFundsService
     {
         $this->db->begin();
         try {
+            $allocationHint = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND rowid=".(int) $allocationId." LIMIT 1");
+            if (!$allocationHint) throw new RuntimeException('Allocation was not found.');
+            $receiptHint = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $allocationHint->fk_receipt." LIMIT 1");
+            if (!$receiptHint || (string) $receiptHint->status !== 'confirmed') throw new RuntimeException('Settlement requires a currently valid managed receipt.');
+            $this->lockNativeEvidence((int) $receiptHint->native_source_id);
             $allocation = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND rowid=".(int) $allocationId." FOR UPDATE");
             if (!$allocation) throw new RuntimeException('Allocation was not found.');
             if ((string) $allocation->status === 'settled') {
@@ -170,6 +179,13 @@ class CustomerFundsService
                 $this->db->commit(); return true;
             }
             if ((string) $allocation->status !== 'reserved') throw new RuntimeException('Only reserved funds can be settled.');
+            if ((int) $allocation->fk_receipt !== (int) $receiptHint->rowid) throw new RuntimeException('Allocation receipt changed during settlement.');
+            $receipt = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $allocation->fk_receipt." FOR UPDATE");
+            if (!$receipt || (string) $receipt->status !== 'confirmed') throw new RuntimeException('Settlement requires a currently valid managed receipt.');
+            if ((int) $receipt->native_source_id !== (int) $receiptHint->native_source_id) throw new RuntimeException('Managed receipt evidence changed during settlement.');
+            $reconciliation = $this->reconcileReceiptObject($receipt, true);
+            $covered = $this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND fk_receipt=".(int) $receipt->rowid." AND status IN ('reserved','settled') AND rowid<=".(int) $allocation->rowid." FOR UPDATE");
+            if (!$reconciliation['evidence_valid'] || $covered > (float) $reconciliation['allocatable'] + 0.00000001) throw new RuntimeException('Allocation is blocked because native deposit evidence or consumption changed.');
             $entry = $this->one("SELECT rowid,fk_soc,fk_project,entry_type,source_type,source_id,amount,currency_code,direction,status FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".$this->entity." AND rowid=".(int) $financialEntryId." FOR UPDATE");
             if (!$entry || (int) $entry->fk_soc !== (int) $allocation->fk_soc || (string) $entry->direction !== 'D' || (int) $entry->status !== 1) throw new RuntimeException('Settlement requires a posted customer debit.');
             if ((string) cpcc_financial_currency($entry->currency_code, '') !== (string) $allocation->currency_code) throw new RuntimeException('Settlement currency does not match the allocation.');
@@ -219,15 +235,65 @@ class CustomerFundsService
         return array('fk_soc'=>(int) $row->fk_soc, 'currency'=>cpcc_financial_currency($row->currency, ''), 'amount'=>(float) $row->amount);
     }
 
-    private function nativeConsumedAmount($paymentId, $currency)
+    public function reconcileReceipt($receiptId)
+    {
+        $this->db->begin();
+        try {
+            $receipt = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $receiptId." LIMIT 1");
+            if (!$receipt) throw new RuntimeException('Receipt was not found.');
+            $result = $this->reconcileReceiptObject($receipt, false);
+            $this->db->commit();
+            return $result;
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        }
+    }
+
+    private function reconcileReceiptObject($receipt, $locked)
+    {
+        $valid = (string) $receipt->status === 'confirmed';
+        $evidence = $valid ? $this->validatedCustomerPayment((int) $receipt->native_source_id) : null;
+        $valid = $valid && $evidence && (int) $evidence['fk_soc'] === (int) $receipt->fk_soc
+            && (string) $evidence['currency'] === (string) $receipt->currency_code
+            && $this->sameAmount($evidence['amount'], $receipt->amount);
+        $nativeConsumed = $valid ? $this->nativeConsumedAmount((int) $receipt->native_source_id, (string) $receipt->currency_code, $locked) : 0.0;
+        $suffix = $locked ? ' FOR UPDATE' : '';
+        $managedActive = $this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND fk_receipt=".(int) $receipt->rowid." AND status IN ('reserved','settled')".$suffix);
+        $allocatable = $valid ? max(0.0, (float) $receipt->amount - $nativeConsumed) : 0.0;
+        return array(
+            'evidence_valid'=>(bool) $valid,
+            'native_consumed'=>$nativeConsumed,
+            'managed_active'=>$managedActive,
+            'allocatable'=>$allocatable,
+            'available'=>max(0.0, $allocatable - $managedActive),
+            'blocked'=>max(0.0, $managedActive - $allocatable),
+        );
+    }
+
+    private function nativeConsumedAmount($paymentId, $currency, $locked = false)
     {
         $base = function_exists('getDolGlobalString') ? cpcc_financial_currency(getDolGlobalString('MAIN_MONNAIE'), 'EUR') : 'EUR';
         $amountExpr = (string) $currency === $base ? 'r.amount_ttc' : 'r.multicurrency_amount_ttc';
-        $sql = "SELECT COALESCE(SUM(".$amountExpr."),0) amount FROM ".MAIN_DB_PREFIX."societe_remise_except r LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line WHERE r.entity=".$this->entity." AND r.fk_facture_source IN (SELECT pf.fk_facture FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=".$this->entity." AND f.type=3 WHERE pf.fk_paiement=".(int) $paymentId.") AND COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL";
-        $row = $this->one($sql);
-        $amount = $row ? (float) $row->amount : 0.0;
+        $sql = "SELECT r.rowid,".$amountExpr." amount FROM ".MAIN_DB_PREFIX."societe_remise_except r LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line WHERE r.entity=".$this->entity." AND r.fk_facture_source IN (SELECT pf.fk_facture FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=".$this->entity." AND f.type=3 WHERE pf.fk_paiement=".(int) $paymentId.") AND COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL".($locked ? " FOR UPDATE" : "");
+        $res = $this->db->query($sql);
+        if (!$res) $this->fail('Unable to reconcile native credit consumption.');
+        $amount = 0.0;
+        while ($row = $this->db->fetch_object($res)) $amount += (float) $row->amount;
         if ($amount < -0.00000001) throw new RuntimeException('Native credit consumption is invalid.');
         return max(0.0, $amount);
+    }
+
+    private function lockNativeEvidence($paymentId)
+    {
+        $payment = $this->one("SELECT rowid FROM ".MAIN_DB_PREFIX."paiement WHERE entity=".$this->entity." AND rowid=".(int) $paymentId." FOR UPDATE");
+        if (!$payment) throw new RuntimeException('Managed receipt evidence is no longer valid; allocation is blocked.');
+        $res = $this->db->query("SELECT f.rowid FROM ".MAIN_DB_PREFIX."facture f INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_facture=f.rowid WHERE f.entity=".$this->entity." AND f.type=3 AND pf.fk_paiement=".(int) $paymentId." FOR UPDATE");
+        if (!$res) $this->fail('Unable to lock native deposit evidence.');
+        while ($this->db->fetch_object($res)) {}
+        $res = $this->db->query("SELECT r.rowid FROM ".MAIN_DB_PREFIX."societe_remise_except r WHERE r.entity=".$this->entity." AND r.fk_facture_source IN (SELECT pf.fk_facture FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=".$this->entity." AND f.type=3 WHERE pf.fk_paiement=".(int) $paymentId.") FOR UPDATE");
+        if (!$res) $this->fail('Unable to lock native credit rows.');
+        while ($this->db->fetch_object($res)) {}
     }
 
     private function validateTarget($type, $id, $socid, $receiptCurrency)

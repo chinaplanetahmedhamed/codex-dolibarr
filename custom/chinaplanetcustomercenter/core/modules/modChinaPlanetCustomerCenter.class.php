@@ -12,7 +12,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 98;
         $this->description = 'ChinaPlanet Customer Center';
-        $this->version = '2.4.0';
+        $this->version = '2.5.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'project';
@@ -283,11 +283,28 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             }
         }
 
-        return $this->_init(array(), $options);
+        $result = $this->_init(array(), $options);
+        if ($result <= 0) return $result;
+        require_once __DIR__.'/../../class/ManagedFundsNativeGuard.class.php';
+        if (!ManagedFundsNativeGuard::install($this->db)) {
+            $this->error = 'Unable to install managed-funds native-credit guard.';
+            return -1;
+        }
+        return $result;
     }
 
     public function remove($options = '')
     {
+        $active = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE status IN ('reserved','settled') LIMIT 1");
+        if ($active && $this->db->num_rows($active) > 0) {
+            $this->error = 'Reverse or formally close active managed-funds allocations before disabling the native-credit guard.';
+            return -1;
+        }
+        require_once __DIR__.'/../../class/ManagedFundsNativeGuard.class.php';
+        if (!ManagedFundsNativeGuard::remove($this->db)) {
+            $this->error = 'Unable to remove managed-funds native-credit guard.';
+            return -1;
+        }
         return $this->_remove(array(), $options);
     }
 }

@@ -49,6 +49,8 @@ foreach (array(
     "Allocation exceeds funds remaining after native Dolibarr credit use.",
     "f.type=3",
     "nativeConsumedAmount",
+    "reconcileReceipt",
+    "lockNativeEvidence",
     "Customer invoice currency does not match",
     "Settlement requires a posted customer debit.",
     "Settlement currency does not match the allocation.",
@@ -94,20 +96,28 @@ foreach (array(
     "'reserve'",
     "'settle'",
     "'reverse'",
-    'Pending is never available',
+    'Pending or invalid evidence is never available',
     'Reserved and settled remain separate',
     'Due now',
     'Future due',
+    'Currently allocatable',
+    'Invalid evidence',
 ) as $needle) m077Assert(strpos($fundsPage, $needle) !== false, 'managed-funds UI missing '.$needle);
 m077Assert(strpos($fundsPage, "preg_match('/^(operation|shipment|project|customer_invoice):[1-9][0-9]*$/") !== false, 'allocation target is not allowlisted');
 
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 m077Assert(strpos($descriptor, "'financial_read'") !== false && strpos($descriptor, "'financial_write'") !== false, 'dedicated disabled-by-default finance rights missing');
-m077Assert(strpos($descriptor, "'2.4.0'") !== false, 'module version not advanced for additive schema');
+m077Assert(strpos($descriptor, "'2.5.0'") !== false, 'module version not advanced for guarded schema');
 $logisticsDescriptor = m077Source('custom/chinaplanetlogistics/core/modules/modChinaPlanetLogistics.class.php');
 m077Assert(strpos($logisticsDescriptor, "'1.4.0'") !== false, 'logistics module version not advanced for visibility schema');
 $financeAdmin = m077Source('custom/chinaplanetcustomercenter/admin/financial.php');
 m077Assert(strpos($financeAdmin, "name=\"finance_target\"") !== false || strpos($financeAdmin, "'finance_target'") !== false, 'posted debit cannot be bound to an exact target');
+$nativeGuard = m077Source('custom/chinaplanetcustomercenter/class/ManagedFundsNativeGuard.class.php');
+foreach (array('BEFORE INSERT','BEFORE UPDATE',"SIGNAL SQLSTATE '45000'","a.status IN ('reserved','settled')",'DROP TRIGGER IF EXISTS') as $needle) m077Assert(strpos($nativeGuard,$needle)!==false,'native-credit concurrency guard missing '.$needle);
+$descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
+m077Assert(strpos($descriptor,'Reverse or formally close active managed-funds allocations')!==false,'module removal does not preserve active native-credit guard');
+$exportLib = m077Source('custom/chinaplanetcustomercenter/lib/export.lib.php');
+m077Assert(substr_count($exportLib,'d.fk_shipment IS NULL OR l.customer_visible=1')>=2,'private shipment export list/detail gate missing');
 
 $localSchema = m077Source('deploy/tools/m077_local_schema.php');
 foreach (array('REMOTE_DATABASE_FORBIDDEN','--single-transaction','--routines','--triggers','--events','M077_TABLES_ALREADY_PRESENT','NEW_TABLE_NOT_EMPTY','GET_LOCK(','MIGRATION_FAILED_TABLES_PRESERVED') as $needle) {
