@@ -20,13 +20,16 @@ require_once dirname(__DIR__,2).'/custom/chinaplanetcustomercenter/class/Managed
 $names=array(MAIN_DB_PREFIX.'cpcc_m077_credit_insert',MAIN_DB_PREFIX.'cpcc_m077_credit_update');
 $present=0;
 foreach($names as $name){$res=$mysqli->query("SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME='".$mysqli->real_escape_string($name)."'");$present+=$res->num_rows;}
-if($mode==='status'){echo "M077_NATIVE_GUARD=STATUS PRESENT=".$present."/2 DATABASE=LOCAL\n";exit($present===2?0:2);}
+if($mode==='status'){$verified=ManagedFundsNativeGuard::verify($adapter);echo "M077_NATIVE_GUARD=STATUS PRESENT=".$present."/2 VERIFIED=".($verified?'YES':'NO')." DATABASE=LOCAL\n";exit($verified?0:2);}
 if($mode==='remove'){
     if(getenv('M077_NATIVE_GUARD_REMOVE')!=='1') throw new RuntimeException('EXPLICIT_LOCAL_REMOVE_GATE_REQUIRED');
-    $active=$mysqli->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE status IN ('reserved','settled') LIMIT 1");
-    if($active->num_rows>0) throw new RuntimeException('ACTIVE_MANAGED_ALLOCATIONS_BLOCK_GUARD_REMOVAL');
     if(!ManagedFundsNativeGuard::remove($adapter)) throw new RuntimeException('NATIVE_GUARD_REMOVE_FAILED');
     echo "M077_NATIVE_GUARD=REMOVED TRIGGERS=2 DATABASE=LOCAL\n";exit(0);
+}
+if($mode==='repair'){
+    if(getenv('M077_NATIVE_GUARD_REPAIR')!=='1') throw new RuntimeException('EXPLICIT_LOCAL_REPAIR_GATE_REQUIRED');
+    if(!ManagedFundsNativeGuard::repair($adapter)) throw new RuntimeException('NATIVE_GUARD_REPAIR_FAILED_OR_ACTIVE_ALLOCATIONS');
+    echo "M077_NATIVE_GUARD=REPAIRED TRIGGERS=2 VERIFIED=YES DATABASE=LOCAL\n";exit(0);
 }
 if($mode!=='apply'||getenv('M077_NATIVE_GUARD_APPLY')!=='1') throw new RuntimeException('EXPLICIT_LOCAL_APPLY_GATE_REQUIRED');
 if(!ManagedFundsNativeGuard::install($adapter)) throw new RuntimeException('NATIVE_GUARD_INSTALL_FAILED');

@@ -102,6 +102,7 @@ foreach (array(
     'Future due',
     'Currently allocatable',
     'Invalid evidence',
+    '$settledByReceipt',
 ) as $needle) m077Assert(strpos($fundsPage, $needle) !== false, 'managed-funds UI missing '.$needle);
 m077Assert(strpos($fundsPage, "preg_match('/^(operation|shipment|project|customer_invoice):[1-9][0-9]*$/") !== false, 'allocation target is not allowlisted');
 
@@ -113,9 +114,10 @@ m077Assert(strpos($logisticsDescriptor, "'1.4.0'") !== false, 'logistics module 
 $financeAdmin = m077Source('custom/chinaplanetcustomercenter/admin/financial.php');
 m077Assert(strpos($financeAdmin, "name=\"finance_target\"") !== false || strpos($financeAdmin, "'finance_target'") !== false, 'posted debit cannot be bound to an exact target');
 $nativeGuard = m077Source('custom/chinaplanetcustomercenter/class/ManagedFundsNativeGuard.class.php');
-foreach (array('BEFORE INSERT','BEFORE UPDATE',"SIGNAL SQLSTATE '45000'","a.status IN ('reserved','settled')",'DROP TRIGGER IF EXISTS') as $needle) m077Assert(strpos($nativeGuard,$needle)!==false,'native-credit concurrency guard missing '.$needle);
+foreach (array('BEFORE INSERT','BEFORE UPDATE',"SIGNAL SQLSTATE '45000'","a.status IN ('reserved','settled')",'DROP TRIGGER IF EXISTS','INFORMATION_SCHEMA.TRIGGERS','ACTION_STATEMENT','LIFECYCLE_LOCK','multicurrency_amount_ttc','function repair') as $needle) m077Assert(strpos($nativeGuard,$needle)!==false,'native-credit concurrency guard missing '.$needle);
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 m077Assert(strpos($descriptor,'Reverse or formally close active managed-funds allocations')!==false,'module removal does not preserve active native-credit guard');
+m077Assert(strpos($descriptor,'ManagedFundsNativeGuard::acquireLifecycle')<strpos($descriptor,"_load_tables('/chinaplanetcustomercenter/sql/')")&&strpos($descriptor,'ManagedFundsNativeGuard::install($this->db, true)')<strpos($descriptor,'return $this->_init'), 'module init is not lifecycle-locked through exact guard installation');
 $exportLib = m077Source('custom/chinaplanetcustomercenter/lib/export.lib.php');
 m077Assert(substr_count($exportLib,'d.fk_shipment IS NULL OR l.customer_visible=1')>=2,'private shipment export list/detail gate missing');
 

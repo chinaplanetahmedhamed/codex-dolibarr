@@ -91,14 +91,19 @@ if ($socid > 0) {
         if ($allocation['status'] === 'reserved') $currencySummaries[$currency]['reserved'] += (float) $allocation['amount'];
         if ($allocation['status'] === 'settled') $currencySummaries[$currency]['settled'] += (float) $allocation['amount'];
     }
-    $coverageRunning=array();
-    foreach (array_reverse($allocations) as $allocation) {
-        if (!in_array($allocation['status'],array('reserved','settled'),true)) continue;
+    $settledByReceipt=array();
+    foreach ($allocations as $allocation) {
+        if ($allocation['status']!=='settled') continue;
         $receiptId=(int)$allocation['fk_receipt'];
-        if (!isset($coverageRunning[$receiptId])) $coverageRunning[$receiptId]=0.0;
-        $coverageRunning[$receiptId]+=(float)$allocation['amount'];
+        if (!isset($settledByReceipt[$receiptId])) $settledByReceipt[$receiptId]=0.0;
+        $settledByReceipt[$receiptId]+=(float)$allocation['amount'];
+    }
+    foreach ($allocations as $allocation) {
+        if ($allocation['status']!=='reserved') continue;
+        $receiptId=(int)$allocation['fk_receipt'];
         $reconciliation=$receiptReconciliation[$receiptId]??array('evidence_valid'=>false,'allocatable'=>0);
-        $allocationCoverage[(int)$allocation['rowid']]=!empty($reconciliation['evidence_valid'])&&$coverageRunning[$receiptId]<=(float)$reconciliation['allocatable']+0.00000001;
+        $settled=(float)($settledByReceipt[$receiptId]??0.0);
+        $allocationCoverage[(int)$allocation['rowid']]=!empty($reconciliation['evidence_valid'])&&$settled+(float)$allocation['amount']<=(float)$reconciliation['allocatable']+0.00000001;
     }
 
     $baseCurrency = cpcc_financial_currency(!empty($conf->currency) ? $conf->currency : 'EUR', 'EUR');

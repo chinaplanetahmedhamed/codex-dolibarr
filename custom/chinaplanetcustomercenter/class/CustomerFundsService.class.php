@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__.'/../lib/financial.lib.php';
+require_once __DIR__.'/ManagedFundsNativeGuard.class.php';
 
 /**
  * Allocation control for customer funds already recorded by native Dolibarr.
@@ -123,6 +124,12 @@ class CustomerFundsService
         if ($amount <= 0) throw new RuntimeException('Allocation amount must be greater than zero.');
         $this->assertRequestKey($requestKey);
         $lockName = $this->lock('m077a', $requestKey);
+        $guardLocked = ManagedFundsNativeGuard::acquireLifecycle($this->db);
+        if (!$guardLocked || !ManagedFundsNativeGuard::verify($this->db)) {
+            if ($guardLocked) ManagedFundsNativeGuard::releaseLifecycle($this->db);
+            $this->unlock($lockName);
+            throw new RuntimeException('Managed-funds native-credit guard is unavailable or changed; allocation is blocked.');
+        }
         $started = false;
         try {
             $this->db->begin(); $started = true;
@@ -132,7 +139,7 @@ class CustomerFundsService
             $receipt = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $receiptId." FOR UPDATE");
             if (!$receipt || (string) $receipt->status !== 'confirmed') throw new RuntimeException('Allocation requires a confirmed receipt.');
             if ((int) $receipt->native_source_id !== (int) $receiptHint->native_source_id) throw new RuntimeException('Managed receipt evidence changed during allocation.');
-            $evidence = $this->validatedCustomerPayment((int) $receipt->native_source_id);
+            $evidence = $this->validatedCustomerPayment((int) $receipt->native_source_id, true);
             if (!$evidence || (int) $evidence['fk_soc'] !== (int) $receipt->fk_soc || (string) $evidence['currency'] !== (string) $receipt->currency_code || !$this->sameAmount($evidence['amount'], $receipt->amount)) {
                 throw new RuntimeException('Managed receipt evidence is no longer valid; allocation is blocked.');
             }
@@ -141,11 +148,11 @@ class CustomerFundsService
             $existing = $this->one("SELECT rowid,payload_hash FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND request_key=".$this->q($requestKey)." FOR UPDATE");
             if ($existing) {
                 if (!hash_equals((string) $existing->payload_hash, $payloadHash)) throw new RuntimeException('Allocation request payload changed.');
-                $this->db->commit(); $started = false; $this->unlock($lockName);
+                $this->db->commit(); $started = false; ManagedFundsNativeGuard::releaseLifecycle($this->db); $guardLocked=false; $this->unlock($lockName);
                 return (int) $existing->rowid;
             }
             $used = $this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND fk_receipt=".(int) $receiptId." AND status IN ('reserved','settled') FOR UPDATE");
-            $nativeConsumed = $this->nativeConsumedAmount((int) $receipt->native_source_id, (string) $receipt->currency_code);
+            $nativeConsumed = $this->nativeConsumedAmount((int) $receipt->native_source_id, (string) $receipt->currency_code, true);
             if ((float) $used + $nativeConsumed + $amount > (float) $receipt->amount + 0.00000001) throw new RuntimeException('Allocation exceeds funds remaining after native Dolibarr credit use.');
             $projectId = isset($target['fk_project']) ? (int) $target['fk_project'] : 0;
             $operationId = $targetType === 'operation' ? $targetId : (isset($target['fk_operation']) ? (int) $target['fk_operation'] : 0);
@@ -155,18 +162,25 @@ class CustomerFundsService
             if (!$this->db->query($sql)) $this->fail('Unable to reserve customer funds.');
             $id = (int) $this->db->last_insert_id(MAIN_DB_PREFIX.'cpcc_fund_allocation');
             $this->event((int) $receipt->fk_soc, 'allocation', $id, 'funds_reserved', '', 'reserved', $targetType.' #'.$targetId, $userId);
-            $this->db->commit(); $started = false; $this->unlock($lockName);
+            $this->db->commit(); $started = false; ManagedFundsNativeGuard::releaseLifecycle($this->db); $guardLocked=false; $this->unlock($lockName);
             return $id;
         } catch (Throwable $e) {
             if ($started) $this->db->rollback();
+            if ($guardLocked) ManagedFundsNativeGuard::releaseLifecycle($this->db);
             $this->unlock($lockName); throw $e;
         }
     }
 
     public function settle($allocationId, $financialEntryId, $userId)
     {
-        $this->db->begin();
+        $guardLocked = ManagedFundsNativeGuard::acquireLifecycle($this->db);
+        if (!$guardLocked || !ManagedFundsNativeGuard::verify($this->db)) {
+            if ($guardLocked) ManagedFundsNativeGuard::releaseLifecycle($this->db);
+            throw new RuntimeException('Managed-funds native-credit guard is unavailable or changed; settlement is blocked.');
+        }
+        $started = false;
         try {
+            $this->db->begin(); $started = true;
             $allocationHint = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND rowid=".(int) $allocationId." LIMIT 1");
             if (!$allocationHint) throw new RuntimeException('Allocation was not found.');
             $receiptHint = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $allocationHint->fk_receipt." LIMIT 1");
@@ -176,7 +190,7 @@ class CustomerFundsService
             if (!$allocation) throw new RuntimeException('Allocation was not found.');
             if ((string) $allocation->status === 'settled') {
                 if ((string) $allocation->disbursement_type !== 'financial_entry' || (int) $allocation->disbursement_id !== (int) $financialEntryId) throw new RuntimeException('Allocation is already settled with different evidence.');
-                $this->db->commit(); return true;
+                $this->db->commit(); $started = false; ManagedFundsNativeGuard::releaseLifecycle($this->db); $guardLocked=false; return true;
             }
             if ((string) $allocation->status !== 'reserved') throw new RuntimeException('Only reserved funds can be settled.');
             if ((int) $allocation->fk_receipt !== (int) $receiptHint->rowid) throw new RuntimeException('Allocation receipt changed during settlement.');
@@ -184,8 +198,8 @@ class CustomerFundsService
             if (!$receipt || (string) $receipt->status !== 'confirmed') throw new RuntimeException('Settlement requires a currently valid managed receipt.');
             if ((int) $receipt->native_source_id !== (int) $receiptHint->native_source_id) throw new RuntimeException('Managed receipt evidence changed during settlement.');
             $reconciliation = $this->reconcileReceiptObject($receipt, true);
-            $covered = $this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND fk_receipt=".(int) $receipt->rowid." AND status IN ('reserved','settled') AND rowid<=".(int) $allocation->rowid." FOR UPDATE");
-            if (!$reconciliation['evidence_valid'] || $covered > (float) $reconciliation['allocatable'] + 0.00000001) throw new RuntimeException('Allocation is blocked because native deposit evidence or consumption changed.');
+            $settledFunds = $this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND fk_receipt=".(int) $receipt->rowid." AND status='settled' AND rowid<>".(int) $allocation->rowid." FOR UPDATE");
+            if (!$reconciliation['evidence_valid'] || $settledFunds + (float) $allocation->amount > (float) $reconciliation['allocatable'] + 0.00000001) throw new RuntimeException('Allocation is blocked because settled spending plus this settlement exceeds current deposit coverage.');
             $entry = $this->one("SELECT rowid,fk_soc,fk_project,entry_type,source_type,source_id,amount,currency_code,direction,status FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".$this->entity." AND rowid=".(int) $financialEntryId." FOR UPDATE");
             if (!$entry || (int) $entry->fk_soc !== (int) $allocation->fk_soc || (string) $entry->direction !== 'D' || (int) $entry->status !== 1) throw new RuntimeException('Settlement requires a posted customer debit.');
             if ((string) cpcc_financial_currency($entry->currency_code, '') !== (string) $allocation->currency_code) throw new RuntimeException('Settlement currency does not match the allocation.');
@@ -197,9 +211,11 @@ class CustomerFundsService
             $sql = "UPDATE ".MAIN_DB_PREFIX."cpcc_fund_allocation SET status='settled',disbursement_type='financial_entry',disbursement_id=".(int) $financialEntryId.",fk_user_settle=".(int) $userId.",date_settlement=".$this->q($this->now())." WHERE entity=".$this->entity." AND rowid=".(int) $allocationId;
             if (!$this->db->query($sql)) $this->fail('Unable to settle allocation.');
             $this->event((int) $allocation->fk_soc, 'allocation', (int) $allocationId, 'funds_settled', 'reserved', 'settled', 'Linked to posted debit #'.(int) $financialEntryId, $userId);
-            $this->db->commit(); return true;
+            $this->db->commit(); $started = false; ManagedFundsNativeGuard::releaseLifecycle($this->db); $guardLocked=false; return true;
         } catch (Throwable $e) {
-            $this->db->rollback(); throw $e;
+            if ($started) $this->db->rollback();
+            if ($guardLocked) ManagedFundsNativeGuard::releaseLifecycle($this->db);
+            throw $e;
         }
     }
 
@@ -223,13 +239,13 @@ class CustomerFundsService
         }
     }
 
-    private function validatedCustomerPayment($paymentId)
+    private function validatedCustomerPayment($paymentId, $locked = false)
     {
         if ($paymentId <= 0) return null;
         $base = function_exists('getDolGlobalString') ? cpcc_financial_currency(getDolGlobalString('MAIN_MONNAIE'), 'EUR') : 'EUR';
         $currencyExpr = "CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN UPPER(f.multicurrency_code) ELSE ".$this->q($base)." END";
         $amountExpr = "CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END";
-        $sql = "SELECT MIN(f.fk_soc) fk_soc,COUNT(DISTINCT f.fk_soc) customer_count,MIN(".$currencyExpr.") currency,COUNT(DISTINCT ".$currencyExpr.") currency_count,SUM(".$amountExpr.") amount FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=p.entity WHERE p.entity=".$this->entity." AND p.rowid=".$paymentId." AND f.type=3 AND ".cpcc_financial_payment_status_sql('p')." GROUP BY p.rowid";
+        $sql = "SELECT MIN(f.fk_soc) fk_soc,COUNT(DISTINCT f.fk_soc) customer_count,MIN(".$currencyExpr.") currency,COUNT(DISTINCT ".$currencyExpr.") currency_count,SUM(".$amountExpr.") amount FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=p.entity WHERE p.entity=".$this->entity." AND p.rowid=".$paymentId." AND f.type=3 AND ".cpcc_financial_payment_status_sql('p')." GROUP BY p.rowid".($locked ? " FOR UPDATE" : "");
         $row = $this->one($sql);
         if (!$row || (int) $row->customer_count !== 1 || (int) $row->currency_count !== 1 || (float) $row->amount <= 0) return null;
         return array('fk_soc'=>(int) $row->fk_soc, 'currency'=>cpcc_financial_currency($row->currency, ''), 'amount'=>(float) $row->amount);
@@ -253,7 +269,7 @@ class CustomerFundsService
     private function reconcileReceiptObject($receipt, $locked)
     {
         $valid = (string) $receipt->status === 'confirmed';
-        $evidence = $valid ? $this->validatedCustomerPayment((int) $receipt->native_source_id) : null;
+        $evidence = $valid ? $this->validatedCustomerPayment((int) $receipt->native_source_id, $locked) : null;
         $valid = $valid && $evidence && (int) $evidence['fk_soc'] === (int) $receipt->fk_soc
             && (string) $evidence['currency'] === (string) $receipt->currency_code
             && $this->sameAmount($evidence['amount'], $receipt->amount);

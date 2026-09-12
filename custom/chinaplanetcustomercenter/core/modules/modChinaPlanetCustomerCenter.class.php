@@ -262,10 +262,14 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
 
     public function init($options = '')
     {
-        $result = $this->_load_tables('/chinaplanetcustomercenter/sql/');
-        if ($result <= 0) {
-            return $result;
+        require_once __DIR__.'/../../class/ManagedFundsNativeGuard.class.php';
+        if (!ManagedFundsNativeGuard::acquireLifecycle($this->db)) {
+            $this->error = 'Unable to acquire the managed-funds lifecycle lock.';
+            return -1;
         }
+        try {
+            $result = $this->_load_tables('/chinaplanetcustomercenter/sql/');
+            if ($result <= 0) return $result;
 
         $cpExists = $this->db->query("SHOW TABLES LIKE '".MAIN_DB_PREFIX."cpkanban_column'");
         if (!$cpExists || $this->db->num_rows($cpExists) === 0) {
@@ -283,26 +287,21 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             }
         }
 
-        $result = $this->_init(array(), $options);
-        if ($result <= 0) return $result;
-        require_once __DIR__.'/../../class/ManagedFundsNativeGuard.class.php';
-        if (!ManagedFundsNativeGuard::install($this->db)) {
-            $this->error = 'Unable to install managed-funds native-credit guard.';
-            return -1;
+            if (!ManagedFundsNativeGuard::install($this->db, true)) {
+                $this->error = 'Unable to install managed-funds native-credit guard.';
+                return -1;
+            }
+            return $this->_init(array(), $options);
+        } finally {
+            ManagedFundsNativeGuard::releaseLifecycle($this->db);
         }
-        return $result;
     }
 
     public function remove($options = '')
     {
-        $active = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE status IN ('reserved','settled') LIMIT 1");
-        if ($active && $this->db->num_rows($active) > 0) {
-            $this->error = 'Reverse or formally close active managed-funds allocations before disabling the native-credit guard.';
-            return -1;
-        }
         require_once __DIR__.'/../../class/ManagedFundsNativeGuard.class.php';
         if (!ManagedFundsNativeGuard::remove($this->db)) {
-            $this->error = 'Unable to remove managed-funds native-credit guard.';
+            $this->error = 'Reverse or formally close active managed-funds allocations, and verify the guard database state, before disabling this module.';
             return -1;
         }
         return $this->_remove(array(), $options);
