@@ -44,6 +44,7 @@ $sql_ship_options = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.fk_soc, s
     . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
     . " WHERE t.entity=".(int) $conf->entity
     . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
+    . ($is_external ? " AND t.customer_visible=1" : "")
     . " ORDER BY t.rowid DESC";
 $res_ship_options = $db->query($sql_ship_options);
 if ($res_ship_options) {
@@ -144,6 +145,7 @@ if ($is_external && $socid <= 0) {
          . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
          . " WHERE t.entity=".(int) $conf->entity
          . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
+         . ($is_external ? " AND t.customer_visible=1" : "")
          . (!empty($search) ? " AND (t.ref LIKE '%".$db->escape($search)."%' OR t.container_no LIKE '%".$db->escape($search)."%' OR t.bl_no LIKE '%".$db->escape($search)."%')" : "")
          . " ORDER BY t.date_eta DESC, t.rowid DESC";
     $resql = $db->query($sql);

@@ -34,20 +34,23 @@ This Mission does not turn every prototype control on at once. A control becomes
 
 1. Dolibarr bank, customer payment, supplier invoice/payment, and accounting records remain authoritative.
 2. A managed customer receipt starts `pending` and can become `confirmed` only through an explicit authorized action tied to validated native evidence. Historical receipts are never auto-confirmed.
+   Eligible evidence is limited to a native payment applied to a Dolibarr deposit invoice (`facture.type=3`); an ordinary customer-invoice payment is already consumed and cannot become managed funds.
 3. Confirmation never creates a second cash movement. The CP record is an allocation/control record referencing the native receipt.
 4. One confirmed receipt may fund multiple operations, shipments, invoices, or services in the same original currency.
 5. Allocation states are `reserved`, `settled`, or `reversed`. Reserved funds reduce unallocated funds but are not reported as spent. Settled funds require a real posted debit/native supplier payment.
-6. Total active allocation cannot exceed the confirmed receipt, and total settlement against one debit cannot exceed that debit.
+6. Total active allocation plus any native Dolibarr use of the deposit credit cannot exceed the confirmed receipt. Evidence is revalidated on every reservation, and total settlement against one debit cannot exceed that debit.
 7. Original currencies remain separate. No FX is invented and no currencies are netted without an explicit paired conversion record, rate, date, and source.
 8. Customer funds, company fees, supplier costs, and profit remain distinct. Supplier identities/costs stay private unless explicitly approved for the customer projection.
 9. An unsettled reservation may be reversed with a reason. A settled attribution cannot release funds while its posted debit remains active; the native debit must be reversed first through a later reviewed correction flow.
-10. Every transition is entity/customer scoped, permission gated by the calling page, transaction protected, and append-only audited.
+10. Settlement evidence must be a posted debit bound to the same exact target, customer, project (when present), and currency; opening, adjustment, transfer, and FX records are not settlement evidence.
+11. Every transition is entity/customer scoped, permission gated by the calling page, transaction protected, and append-only audited.
 
 ## Shipment invariants
 
 1. A draft shipment may be created only from an entity-scoped operation with a real customer and a shipping service type.
 2. The operation’s customer, project, and order links are copied only after ownership validation.
 3. The draft stores entered origin/destination as planning data and starts at status `0`; it does not claim booking, loading, departure, arrival, CargoX, originals, DHL, or customer notification.
+   Operation-created drafts also start `customer_visible=0` and remain absent from every external portal/mobile shipment and shipment-document projection until a later explicit publication workflow is reviewed.
 4. Creation and linking are one transaction and idempotent: retry returns the already linked shipment.
 5. Later milestone updates retain manual/API provenance and planned/actual separation.
 6. Loading completion follow-ups will be idempotent: one collection follow-up and one export-document draft review per shipment. The collection deadline convention must come from configuration or the approved existing calendar convention.
@@ -79,13 +82,13 @@ This Mission does not turn every prototype control on at once. A control becomes
 
 ## Local acceptance
 
-- Additive schema applies twice without duplicate business rows and preserves existing data.
+- Additive schema uses an exclusive migration lock, applies twice without duplicate business rows, preserves existing data, and never drops partially created tables on an uncertain DDL failure.
 - One labeled synthetic pending receipt cannot affect available funds.
 - Explicit confirmation references validated native evidence and does not duplicate the native payment.
 - Two synthetic shipments and one standalone service can reserve one same-currency receipt without exceeding it; retry is idempotent.
 - Reservation is not presented as spending; settlement requires a validated actual debit; reversal restores the correct available amount with audit history retained.
 - An eligible synthetic shipping operation creates exactly one status-0 linked shipment; retry returns the same shipment.
-- Mismatched entity/customer/project/order/evidence, mixed currency, excessive allocation, and unauthorized customer projection fail closed.
+- Mismatched entity/customer/project/order/evidence, ordinary-invoice payment evidence, invalidated payment evidence, native deposit-credit consumption, mixed currency, unrelated debit, excessive allocation/settlement, changed retry payload, settled reversal, and unauthorized customer projection fail closed.
 - Relevant PHP syntax checks, focused tests, migration replay/rollback checks, and `git diff --check` pass.
 
 ## Hard boundaries
@@ -108,3 +111,12 @@ Because this Mission changes financial allocation and cross-module persistence, 
 - The three M077 tables were added empty to the local database. Replay succeeded and post-apply row counts remained zero.
 - Authenticated local admin browser acceptance loaded `Managed Customer Funds`, selected the existing labeled local customer `LOCAL TEST - Connected MVP 20260911`, and rendered the four guided actions plus empty receipt/allocation tables. A read-only operation check rendered the new linked-draft action for `CP-SB-2026-000001`, showed its explicit no-booking/no-loading/no-sailing warning, and did not activate it. Database verification retained `fk_shipment=0` and zero rows in all three M077 tables.
 - This acceptance proves the local foundation and UI rendering only. No real financial record, shipment, message, CargoX/DHL action, or external write was created. Phone-width acceptance and independent Accounting/Security/QA review remain open before release.
+
+## C01/C02 correction evidence — 2026-09-12
+
+- The first independent review returned `CORRECTION_REQUIRED`: managed-funds evidence was too broad, native deposit-credit use was not reconciled, invoice currency and settlement target were not bound, operation-created drafts could enter customer projections, migration failure cleanup could remove newly created tables, and the test matrix/UI totals were incomplete.
+- The corrected implementation restricts confirmation to payments on native deposit invoices, revalidates evidence and subtracts consumed native credit at reservation time, enforces invoice currency, and binds settlement to the exact target/customer/project/currency with a settlement ceiling.
+- Staff can explicitly bind a real posted expense to an operation, shipment, project, or customer invoice; unbound general expenses remain valid ledger entries but cannot settle a managed allocation.
+- Shipment records now have an explicit publication flag. Existing shipments remain visible by default; operation-created status-0 drafts are private, and external list/card/dashboard/project/document/gallery/mobile projections require visibility.
+- The local migration helper now takes an exclusive named lock and preserves all tables after uncertain partial DDL instead of attempting destructive cleanup.
+- The disposable real-MariaDB test now covers deposit-only eligibility, invalidated evidence, native credit consumption, currency mismatch, changed request payload, unrelated settlement evidence, settled-reversal rejection, and private draft creation. Static regressions and authenticated local admin rendering passed; no action form was submitted and persistent M077 business tables remain empty.

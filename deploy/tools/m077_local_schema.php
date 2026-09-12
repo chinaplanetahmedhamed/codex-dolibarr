@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Local-only M077 schema installer with full dump and absent-table rollback.
+ * Local-only M077 schema installer with a full dump and exclusive migration lock.
  * Never accepts a remote database host.
  */
 if (PHP_SAPI !== 'cli') { fwrite(STDERR, "M077_LOCAL_SCHEMA=FAIL REASON=CLI_ONLY\n"); exit(1); }
@@ -17,6 +17,9 @@ $host = strtolower(trim((string)$config['host'], " \t\n\r\0\x0B[]"));
 if (!in_array($host, array('localhost','127.0.0.1','::1'), true)) throw new RuntimeException('REMOTE_DATABASE_FORBIDDEN');
 if (!preg_match('/^[a-zA-Z0-9_]+$/', (string)$config['name'])) throw new RuntimeException('UNSAFE_DATABASE_NAME');
 $db = new mysqli($config['host'],$config['user'],$config['pass'],$config['name'],$config['port']);
+$lockName = 'm077-local-schema-'.$config['name'];
+$lockResult = $db->query("SELECT GET_LOCK('".$db->real_escape_string($lockName)."',10) acquired")->fetch_assoc();
+if ((int)($lockResult['acquired'] ?? 0) !== 1) throw new RuntimeException('MIGRATION_LOCK_UNAVAILABLE');
 $tables = array('llx_cpcc_customer_receipt','llx_cpcc_fund_allocation','llx_cpcc_fund_event');
 $existing = array();
 foreach ($tables as $table) {
@@ -25,6 +28,7 @@ foreach ($tables as $table) {
 }
 if ($mode === 'status') {
     echo "M077_LOCAL_SCHEMA=STATUS DATABASE=LOCAL TABLES=".($existing ? implode(',', $existing) : 'ABSENT')."\n";
+    $db->query("SELECT RELEASE_LOCK('".$db->real_escape_string($lockName)."')");
     exit(0);
 }
 if ($mode !== 'apply' || getenv('M077_LOCAL_SCHEMA_APPLY') !== '1') throw new RuntimeException('EXPLICIT_LOCAL_APPLY_GATE_REQUIRED');
@@ -49,13 +53,11 @@ file_put_contents($absencePath,implode("\n",$tables)."\n");
 chmod($absencePath,0600);
 if (is_file($errorPath) && filesize($errorPath)===0) unlink($errorPath);
 
-$created = array();
 try {
     foreach (array('llx_cpcc_customer_receipt.sql','llx_cpcc_fund_allocation.sql','llx_cpcc_fund_event.sql') as $file) {
         $sql = file_get_contents($repoRoot.'/custom/chinaplanetcustomercenter/sql/'.$file);
         if ($sql === false || trim($sql)==='') throw new RuntimeException('MIGRATION_FILE_INVALID');
         $db->query($sql);
-        $created[] = preg_replace('/\.sql$/','',$file);
         $db->query($sql);
     }
     foreach ($tables as $table) {
@@ -65,11 +67,7 @@ try {
         if ((int)$count['total'] !== 0) throw new RuntimeException('NEW_TABLE_NOT_EMPTY');
     }
 } catch (Throwable $e) {
-    foreach (array_reverse($created) as $table) {
-        if (!in_array($table,$tables,true)) continue;
-        $db->query("DROP TABLE IF EXISTS ".$table);
-    }
-    throw $e;
+    throw new RuntimeException('MIGRATION_FAILED_TABLES_PRESERVED: '.$e->getMessage(), 0, $e);
 }
 $manifest = array(
     'environment'=>'LOCAL','database'=>$config['name'],'source_mutated'=>'schema_only',
@@ -80,4 +78,5 @@ $manifest = array(
 $manifestPath = $backupRoot.'/manifest.json';
 file_put_contents($manifestPath,json_encode($manifest,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n");
 chmod($manifestPath,0600);
+$db->query("SELECT RELEASE_LOCK('".$db->real_escape_string($lockName)."')");
 echo "M077_LOCAL_SCHEMA=APPLIED TABLES=3 ROWS=0 BACKUP=".$dumpPath." BACKUP_SHA256=".$manifest['database_backup_sha256']." ABSENT_LIST=".$absencePath." ABSENT_SHA256=".$manifest['absent_list_sha256']."\n";

@@ -165,7 +165,7 @@ function cpcc_portal_authorized_shipment($db, $user, $shipid, $requestedSocid = 
     $sql .= " WHERE rowid=".$shipid." AND entity=".(int) $conf->entity;
     if (!empty($scope['is_external'])) {
         if ((int) $scope['socid'] <= 0) return null;
-        $sql .= " AND fk_soc=".(int) $scope['socid'];
+        $sql .= " AND fk_soc=".(int) $scope['socid']." AND customer_visible=1";
     } elseif ((int) $requestedSocid > 0) {
         $sql .= " AND fk_soc=".(int) $requestedSocid;
     }
@@ -806,7 +806,7 @@ function cpcc_portal_customer_gallery_items($db, $user, $shipment = null)
     else $sql .= "'staff' AS source_origin,'published' AS response_status,NULL AS customer_upload_status,NULL AS response_note,NULL AS date_response,";
     $sql .= " t.ref AS shipment_ref,t.container_no,t.bl_no";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
-    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc AND t.customer_visible=1";
     $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid." AND p.customer_visible=1 AND p.status=1";
     if ($shipmentId > 0) $sql .= " AND p.fk_shipment=".$shipmentId;
     $sql .= " ORDER BY p.date_publication DESC,p.rowid DESC";
@@ -840,7 +840,7 @@ function cpcc_portal_customer_gallery_publication($db, $user, $publicToken)
     else $sql .= "'staff' AS source_origin,'published' AS response_status,NULL AS customer_upload_status,NULL AS response_note,NULL AS date_response,";
     $sql .= " t.ref AS shipment_ref";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
-    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc AND t.customer_visible=1";
     $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid." AND p.customer_visible=1 AND p.status=1";
     $result = $db->query($sql);
     while ($result && ($row = $db->fetch_object($result))) {

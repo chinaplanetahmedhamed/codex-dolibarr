@@ -52,7 +52,7 @@ if ($is_external_customer) {
     $candelete = false;
     $cansendshipmentemail = false;
     if ($id > 0) {
-        if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
+        if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid || empty($object->customer_visible)) {
             if ($is_modal) {
                 http_response_code(403);
                 header('Content-Type: text/html; charset=UTF-8');

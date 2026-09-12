@@ -46,9 +46,13 @@ foreach (array(
     "native_source_type='customer_payment'",
     "cpcc_financial_payment_status_sql('p')",
     "Native payment amount does not match the receipt.",
-    "Allocation exceeds unallocated confirmed funds.",
+    "Allocation exceeds funds remaining after native Dolibarr credit use.",
+    "f.type=3",
+    "nativeConsumedAmount",
+    "Customer invoice currency does not match",
     "Settlement requires a posted customer debit.",
     "Settlement currency does not match the allocation.",
+    "Posted debit is not bound to this exact allocation target.",
     "Only an unsettled reservation can be reversed.",
     "status IN ('reserved','settled') FOR UPDATE",
     'cpcc_fund_event',
@@ -60,7 +64,7 @@ m077Assert(strpos($funds, 'exchange_rate') === false, 'service invents FX');
 
 $shipment = m077Source('custom/chinaplanetoperations/class/OperationShipmentService.class.php');
 foreach (array(
-    "fk_statut,notes,customer_note,date_creation",
+    "fk_statut,notes,customer_note,customer_visible,date_creation",
     ",'baseline','inquiry',0,",
     "'operation_draft'",
     "customer_visible,",
@@ -92,19 +96,36 @@ foreach (array(
     "'reverse'",
     'Pending is never available',
     'Reserved and settled remain separate',
+    'Due now',
+    'Future due',
 ) as $needle) m077Assert(strpos($fundsPage, $needle) !== false, 'managed-funds UI missing '.$needle);
 m077Assert(strpos($fundsPage, "preg_match('/^(operation|shipment|project|customer_invoice):[1-9][0-9]*$/") !== false, 'allocation target is not allowlisted');
 
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 m077Assert(strpos($descriptor, "'financial_read'") !== false && strpos($descriptor, "'financial_write'") !== false, 'dedicated disabled-by-default finance rights missing');
 m077Assert(strpos($descriptor, "'2.4.0'") !== false, 'module version not advanced for additive schema');
+$logisticsDescriptor = m077Source('custom/chinaplanetlogistics/core/modules/modChinaPlanetLogistics.class.php');
+m077Assert(strpos($logisticsDescriptor, "'1.4.0'") !== false, 'logistics module version not advanced for visibility schema');
+$financeAdmin = m077Source('custom/chinaplanetcustomercenter/admin/financial.php');
+m077Assert(strpos($financeAdmin, "name=\"finance_target\"") !== false || strpos($financeAdmin, "'finance_target'") !== false, 'posted debit cannot be bound to an exact target');
 
 $localSchema = m077Source('deploy/tools/m077_local_schema.php');
-foreach (array('REMOTE_DATABASE_FORBIDDEN','--single-transaction','--routines','--triggers','--events','M077_TABLES_ALREADY_PRESENT','NEW_TABLE_NOT_EMPTY','DROP TABLE IF EXISTS') as $needle) {
+foreach (array('REMOTE_DATABASE_FORBIDDEN','--single-transaction','--routines','--triggers','--events','M077_TABLES_ALREADY_PRESENT','NEW_TABLE_NOT_EMPTY','GET_LOCK(','MIGRATION_FAILED_TABLES_PRESERVED') as $needle) {
     m077Assert(strpos($localSchema, $needle) !== false, 'local schema safety contract missing '.$needle);
 }
+m077Assert(strpos($localSchema, 'DROP TABLE') === false, 'local migration can drop tables after partial DDL');
 m077Assert(strpos($localSchema, "'rows'=>array_fill_keys(\$tables,0)") !== false, 'local migration does not attest empty new tables');
 m077Assert(is_file(dirname(__DIR__).'/tests/test_m077_real_local_persistence.php'), 'real local persistence test missing');
+
+foreach (array(
+    'custom/chinaplanetlogistics/list.php',
+    'custom/chinaplanetlogistics/card.php',
+    'custom/chinaplanetlogistics/index.php',
+    'custom/chinaplanetcustomercenter/project.php',
+    'custom/chinaplanetcustomercenter/documents.php',
+    'custom/chinaplanetcustomercenter/lib/portal.lib.php',
+    'custom/chinaplanetcustomercenter/lib/mobile_api_data.lib.php',
+) as $file) m077Assert(strpos(m077Source($file), 'customer_visible') !== false, 'customer draft publication gate missing '.$file);
 
 foreach (array(
     'custom/chinaplanetcustomercenter/sql/llx_cpcc_customer_receipt.sql'=>array('uk_cpcc_receipt_request','uk_cpcc_receipt_native','payload_hash'),

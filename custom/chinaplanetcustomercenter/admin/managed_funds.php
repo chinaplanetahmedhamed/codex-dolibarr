@@ -73,22 +73,29 @@ if ($socid > 0) {
     while ($res && ($row = $db->fetch_object($res))) $allocations[] = get_object_vars($row);
     foreach ($receipts as $receipt) {
         $currency = cpcc_financial_currency($receipt['currency_code'], '');
-        if (!isset($currencySummaries[$currency])) $currencySummaries[$currency] = array('pending'=>0.0,'confirmed'=>0.0,'reserved'=>0.0,'settled'=>0.0,'unallocated'=>0.0);
+        if (!isset($currencySummaries[$currency])) $currencySummaries[$currency] = array('pending'=>0.0,'confirmed'=>0.0,'reserved'=>0.0,'settled'=>0.0,'unallocated'=>0.0,'due_now'=>0.0,'future_due'=>0.0);
         if ($receipt['status'] === 'pending') $currencySummaries[$currency]['pending'] += (float) $receipt['amount'];
         if ($receipt['status'] === 'confirmed') $currencySummaries[$currency]['confirmed'] += (float) $receipt['amount'];
     }
     foreach ($allocations as $allocation) {
         $currency = cpcc_financial_currency($allocation['currency_code'], '');
-        if (!isset($currencySummaries[$currency])) $currencySummaries[$currency] = array('pending'=>0.0,'confirmed'=>0.0,'reserved'=>0.0,'settled'=>0.0,'unallocated'=>0.0);
+        if (!isset($currencySummaries[$currency])) $currencySummaries[$currency] = array('pending'=>0.0,'confirmed'=>0.0,'reserved'=>0.0,'settled'=>0.0,'unallocated'=>0.0,'due_now'=>0.0,'future_due'=>0.0);
         if ($allocation['status'] === 'reserved') $currencySummaries[$currency]['reserved'] += (float) $allocation['amount'];
         if ($allocation['status'] === 'settled') $currencySummaries[$currency]['settled'] += (float) $allocation['amount'];
     }
     foreach ($currencySummaries as $currency=>$totals) $currencySummaries[$currency]['unallocated'] = max(0.0, $totals['confirmed'] - $totals['reserved'] - $totals['settled']);
 
     $baseCurrency = cpcc_financial_currency(!empty($conf->currency) ? $conf->currency : 'EUR', 'EUR');
+    foreach (cpcc_financial_unpaid_invoices($db, $socid, $baseCurrency) as $invoice) {
+        if ((float) $invoice['remaining'] <= 0.005) continue;
+        $currency = cpcc_financial_currency($invoice['currency'], $baseCurrency);
+        if (!isset($currencySummaries[$currency])) $currencySummaries[$currency] = array('pending'=>0.0,'confirmed'=>0.0,'reserved'=>0.0,'settled'=>0.0,'unallocated'=>0.0,'due_now'=>0.0,'future_due'=>0.0);
+        $dueDate = trim((string) $invoice['due_date']);
+        $currencySummaries[$currency][($dueDate !== '' && $dueDate <= date('Y-m-d')) ? 'due_now' : 'future_due'] += (float) $invoice['remaining'];
+    }
     $currencyExpr = "CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN UPPER(f.multicurrency_code) ELSE '".$db->escape($baseCurrency)."' END";
     $amountExpr = "CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END";
-    $sql = "SELECT p.rowid,p.ref,p.datep,MIN(".$currencyExpr.") currency,COUNT(DISTINCT ".$currencyExpr.") currency_count,SUM(".$amountExpr.") amount,GROUP_CONCAT(DISTINCT f.ref ORDER BY f.ref) invoice_refs FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=p.entity WHERE p.entity=".(int) $conf->entity." AND f.fk_soc=".$socid." AND ".cpcc_financial_payment_status_sql('p')." GROUP BY p.rowid,p.ref,p.datep ORDER BY p.datep DESC,p.rowid DESC";
+    $sql = "SELECT p.rowid,p.ref,p.datep,MIN(".$currencyExpr.") currency,COUNT(DISTINCT ".$currencyExpr.") currency_count,SUM(".$amountExpr.") amount,GROUP_CONCAT(DISTINCT f.ref ORDER BY f.ref) invoice_refs FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=p.entity WHERE p.entity=".(int) $conf->entity." AND f.fk_soc=".$socid." AND f.type=3 AND ".cpcc_financial_payment_status_sql('p')." GROUP BY p.rowid,p.ref,p.datep ORDER BY p.datep DESC,p.rowid DESC";
     $res = $db->query($sql);
     while ($res && ($row = $db->fetch_object($res))) if ((int) $row->currency_count === 1) $paymentOptions[(int) $row->rowid] = ($row->ref ?: '#'.$row->rowid).' · '.$row->datep.' · '.cpcc_portal_money($row->amount).' '.$row->currency.' · '.$row->invoice_refs;
 
@@ -102,8 +109,8 @@ if ($socid > 0) {
         $res = $db->query($sql);
         while ($res && ($row = $db->fetch_object($res))) $targetOptions[$type.':'.(int) $row->rowid] = ucfirst(str_replace('_',' ',$type)).' · '.$row->label;
     }
-    $res = $db->query("SELECT rowid,entry_date,entry_type,description,amount,currency_code,reference FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".(int) $conf->entity." AND fk_soc=".$socid." AND direction='D' AND status=1 ORDER BY entry_date DESC,rowid DESC");
-    while ($res && ($row = $db->fetch_object($res))) $debitOptions[(int) $row->rowid] = '#'.$row->rowid.' · '.$row->entry_date.' · '.$row->entry_type.' · '.cpcc_portal_money($row->amount).' '.$row->currency_code.' · '.($row->reference ?: $row->description);
+    $res = $db->query("SELECT rowid,entry_date,entry_type,source_type,source_id,description,amount,currency_code,reference FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".(int) $conf->entity." AND fk_soc=".$socid." AND direction='D' AND status=1 AND source_type IN ('operation','shipment','project','customer_invoice') AND source_id>0 ORDER BY entry_date DESC,rowid DESC");
+    while ($res && ($row = $db->fetch_object($res))) $debitOptions[(int) $row->rowid] = '#'.$row->rowid.' · '.$row->source_type.' #'.$row->source_id.' · '.$row->entry_date.' · '.$row->entry_type.' · '.cpcc_portal_money($row->amount).' '.$row->currency_code.' · '.($row->reference ?: $row->description);
 }
 
 function m077RequestKey($userId, $purpose)
@@ -119,7 +126,7 @@ cpcc_admin_shell_open('financial', 'Managed Customer Funds / أموال العم
 <div class="info">هذه الصفحة لا تنشئ دفعة بنكية ولا دفع مورد. هي تربط دفعة Dolibarr مؤكدة بتخصيصات تشغيلية قابلة للتدقيق. Pending ليس رصيداً متاحاً، وReserved ليس دفعاً فعلياً.</div>
 <form method="get" class="cpad-context-form"><div class="cpad-context-fields"><label><span>Customer / العميل</span><select required name="socid"><option value="">— اختر العميل —</option><?php foreach($customers as $id=>$name){ ?><option value="<?php echo $id; ?>"<?php echo $socid===$id?' selected':''; ?>><?php echo dol_escape_htmltag($name); ?></option><?php } ?></select></label><button class="button">Load / عرض</button></div></form>
 <?php if($socid>0){ ?>
-<section class="cpad-kpis"><?php foreach($currencySummaries as $currency=>$totals){ ?><div class="cpad-kpi"><b><?php echo dol_escape_htmltag($currency).' '.cpcc_portal_money($totals['unallocated']); ?></b><span>Unallocated confirmed / مؤكد غير مخصص</span><small>Pending <?php echo cpcc_portal_money($totals['pending']); ?> · Reserved <?php echo cpcc_portal_money($totals['reserved']); ?> · Settled <?php echo cpcc_portal_money($totals['settled']); ?></small></div><?php } ?><?php if(!$currencySummaries){ ?><div class="cpad-kpi"><b>—</b><span>No managed receipts / لا توجد حوالات مُدارة</span></div><?php } ?></section>
+<section class="cpad-kpis"><?php foreach($currencySummaries as $currency=>$totals){ ?><div class="cpad-kpi"><b><?php echo dol_escape_htmltag($currency).' '.cpcc_portal_money($totals['unallocated']); ?></b><span>Unallocated confirmed / مؤكد غير مخصص</span><small>Due now <?php echo cpcc_portal_money($totals['due_now']); ?> · Future due <?php echo cpcc_portal_money($totals['future_due']); ?></small><small>Pending <?php echo cpcc_portal_money($totals['pending']); ?> · Reserved <?php echo cpcc_portal_money($totals['reserved']); ?> · Settled <?php echo cpcc_portal_money($totals['settled']); ?></small></div><?php } ?><?php if(!$currencySummaries){ ?><div class="cpad-kpi"><b>—</b><span>No managed receipts or due invoices / لا توجد حوالات أو فواتير مستحقة</span></div><?php } ?></section>
 <?php if($canWrite){ ?><div class="fichecenter"><div class="fichehalfleft">
 <section class="cpad-panel"><h2>1. Register pending receipt / تسجيل حوالة معلقة</h2><form method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="create_pending"><input type="hidden" name="socid" value="<?php echo $socid; ?>"><input type="hidden" name="request_key" value="<?php echo m077RequestKey($user->id,'receipt'); ?>"><label class="cpo-field"><span>Date / التاريخ</span><input required type="date" name="receipt_date" value="<?php echo date('Y-m-d'); ?>"></label><label class="cpo-field"><span>Amount / المبلغ</span><input required inputmode="decimal" name="amount"></label><label class="cpo-field"><span>Currency / العملة</span><input required maxlength="3" name="currency_code" placeholder="USD"></label><label class="cpo-field"><span>Reference / المرجع</span><input name="reference"></label><label class="cpo-field"><span>Internal note / ملاحظة داخلية</span><textarea name="note_private"></textarea></label><button class="button button-save">Register pending only / تسجيل كمعلق فقط</button></form></section>
 <section class="cpad-panel"><h2>2. Confirm with native payment / تأكيد بدفعة أصلية</h2><form method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="confirm_receipt"><input type="hidden" name="socid" value="<?php echo $socid; ?>"><label class="cpo-field"><span>Pending receipt / الحوالة المعلقة</span><select required name="receipt_id"><option value="">—</option><?php foreach($receipts as $receipt)if($receipt['status']==='pending'){ ?><option value="<?php echo (int)$receipt['rowid']; ?>">#<?php echo (int)$receipt['rowid'].' · '.dol_escape_htmltag($receipt['reference']?:'—').' · '.cpcc_portal_money($receipt['amount']).' '.dol_escape_htmltag($receipt['currency_code']); ?></option><?php } ?></select></label><label class="cpo-field"><span>Dolibarr payment / دفعة Dolibarr</span><select required name="native_payment_id"><option value="">—</option><?php foreach($paymentOptions as $id=>$label){ ?><option value="<?php echo $id; ?>"><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select></label><button class="button button-save">Confirm exact match / تأكيد التطابق</button></form></section>

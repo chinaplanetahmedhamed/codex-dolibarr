@@ -128,7 +128,11 @@ class CustomerFundsService
             $this->db->begin(); $started = true;
             $receipt = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int) $receiptId." FOR UPDATE");
             if (!$receipt || (string) $receipt->status !== 'confirmed') throw new RuntimeException('Allocation requires a confirmed receipt.');
-            $target = $this->validateTarget($targetType, $targetId, (int) $receipt->fk_soc);
+            $evidence = $this->validatedCustomerPayment((int) $receipt->native_source_id);
+            if (!$evidence || (int) $evidence['fk_soc'] !== (int) $receipt->fk_soc || (string) $evidence['currency'] !== (string) $receipt->currency_code || !$this->sameAmount($evidence['amount'], $receipt->amount)) {
+                throw new RuntimeException('Managed receipt evidence is no longer valid; allocation is blocked.');
+            }
+            $target = $this->validateTarget($targetType, $targetId, (int) $receipt->fk_soc, (string) $receipt->currency_code);
             $payloadHash = hash('sha256', json_encode(array((int) $receiptId, $targetType, $targetId, $this->decimal($amount), (string) $receipt->currency_code, (string) ($data['note_private'] ?? '')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $existing = $this->one("SELECT rowid,payload_hash FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND request_key=".$this->q($requestKey)." FOR UPDATE");
             if ($existing) {
@@ -137,7 +141,8 @@ class CustomerFundsService
                 return (int) $existing->rowid;
             }
             $used = $this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND fk_receipt=".(int) $receiptId." AND status IN ('reserved','settled') FOR UPDATE");
-            if ((float) $used + $amount > (float) $receipt->amount + 0.00000001) throw new RuntimeException('Allocation exceeds unallocated confirmed funds.');
+            $nativeConsumed = $this->nativeConsumedAmount((int) $receipt->native_source_id, (string) $receipt->currency_code);
+            if ((float) $used + $nativeConsumed + $amount > (float) $receipt->amount + 0.00000001) throw new RuntimeException('Allocation exceeds funds remaining after native Dolibarr credit use.');
             $projectId = isset($target['fk_project']) ? (int) $target['fk_project'] : 0;
             $operationId = $targetType === 'operation' ? $targetId : (isset($target['fk_operation']) ? (int) $target['fk_operation'] : 0);
             $shipmentId = $targetType === 'shipment' ? $targetId : (isset($target['fk_shipment']) ? (int) $target['fk_shipment'] : 0);
@@ -165,9 +170,12 @@ class CustomerFundsService
                 $this->db->commit(); return true;
             }
             if ((string) $allocation->status !== 'reserved') throw new RuntimeException('Only reserved funds can be settled.');
-            $entry = $this->one("SELECT rowid,fk_soc,amount,currency_code,direction,status FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".$this->entity." AND rowid=".(int) $financialEntryId." FOR UPDATE");
+            $entry = $this->one("SELECT rowid,fk_soc,fk_project,entry_type,source_type,source_id,amount,currency_code,direction,status FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".$this->entity." AND rowid=".(int) $financialEntryId." FOR UPDATE");
             if (!$entry || (int) $entry->fk_soc !== (int) $allocation->fk_soc || (string) $entry->direction !== 'D' || (int) $entry->status !== 1) throw new RuntimeException('Settlement requires a posted customer debit.');
             if ((string) cpcc_financial_currency($entry->currency_code, '') !== (string) $allocation->currency_code) throw new RuntimeException('Settlement currency does not match the allocation.');
+            if ((string) $entry->source_type !== (string) $allocation->target_type || (int) $entry->source_id !== (int) $allocation->target_id) throw new RuntimeException('Posted debit is not bound to this exact allocation target.');
+            if ((int) $allocation->fk_project > 0 && (int) $entry->fk_project !== (int) $allocation->fk_project) throw new RuntimeException('Posted debit project does not match the allocation context.');
+            if (in_array((string) $entry->entry_type, array('opening_balance','adjustment','fx_in','fx_out','transfer'), true)) throw new RuntimeException('This financial entry type cannot prove an actual target debit.');
             $already = $this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND disbursement_type='financial_entry' AND disbursement_id=".(int) $financialEntryId." AND status='settled' AND rowid<>".(int) $allocationId." FOR UPDATE");
             if ((float) $already + (float) $allocation->amount > (float) $entry->amount + 0.00000001) throw new RuntimeException('Settlements exceed the posted debit.');
             $sql = "UPDATE ".MAIN_DB_PREFIX."cpcc_fund_allocation SET status='settled',disbursement_type='financial_entry',disbursement_id=".(int) $financialEntryId.",fk_user_settle=".(int) $userId.",date_settlement=".$this->q($this->now())." WHERE entity=".$this->entity." AND rowid=".(int) $allocationId;
@@ -205,13 +213,24 @@ class CustomerFundsService
         $base = function_exists('getDolGlobalString') ? cpcc_financial_currency(getDolGlobalString('MAIN_MONNAIE'), 'EUR') : 'EUR';
         $currencyExpr = "CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN UPPER(f.multicurrency_code) ELSE ".$this->q($base)." END";
         $amountExpr = "CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END";
-        $sql = "SELECT MIN(f.fk_soc) fk_soc,COUNT(DISTINCT f.fk_soc) customer_count,MIN(".$currencyExpr.") currency,COUNT(DISTINCT ".$currencyExpr.") currency_count,SUM(".$amountExpr.") amount FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=p.entity WHERE p.entity=".$this->entity." AND p.rowid=".$paymentId." AND ".cpcc_financial_payment_status_sql('p')." GROUP BY p.rowid";
+        $sql = "SELECT MIN(f.fk_soc) fk_soc,COUNT(DISTINCT f.fk_soc) customer_count,MIN(".$currencyExpr.") currency,COUNT(DISTINCT ".$currencyExpr.") currency_count,SUM(".$amountExpr.") amount FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=p.entity WHERE p.entity=".$this->entity." AND p.rowid=".$paymentId." AND f.type=3 AND ".cpcc_financial_payment_status_sql('p')." GROUP BY p.rowid";
         $row = $this->one($sql);
         if (!$row || (int) $row->customer_count !== 1 || (int) $row->currency_count !== 1 || (float) $row->amount <= 0) return null;
         return array('fk_soc'=>(int) $row->fk_soc, 'currency'=>cpcc_financial_currency($row->currency, ''), 'amount'=>(float) $row->amount);
     }
 
-    private function validateTarget($type, $id, $socid)
+    private function nativeConsumedAmount($paymentId, $currency)
+    {
+        $base = function_exists('getDolGlobalString') ? cpcc_financial_currency(getDolGlobalString('MAIN_MONNAIE'), 'EUR') : 'EUR';
+        $amountExpr = (string) $currency === $base ? 'r.amount_ttc' : 'r.multicurrency_amount_ttc';
+        $sql = "SELECT COALESCE(SUM(".$amountExpr."),0) amount FROM ".MAIN_DB_PREFIX."societe_remise_except r LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line WHERE r.entity=".$this->entity." AND r.fk_facture_source IN (SELECT pf.fk_facture FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture AND f.entity=".$this->entity." AND f.type=3 WHERE pf.fk_paiement=".(int) $paymentId.") AND COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL";
+        $row = $this->one($sql);
+        $amount = $row ? (float) $row->amount : 0.0;
+        if ($amount < -0.00000001) throw new RuntimeException('Native credit consumption is invalid.');
+        return max(0.0, $amount);
+    }
+
+    private function validateTarget($type, $id, $socid, $receiptCurrency)
     {
         $map = array(
             'operation'=>array('cpo_operation', 'rowid', 'fk_soc', 'fk_project', 'fk_shipment'),
@@ -223,8 +242,10 @@ class CustomerFundsService
         $fields = array($def[1].' rowid', $def[2].' fk_soc');
         if ($def[3]) $fields[] = $def[3].' fk_project';
         if ($def[4]) $fields[] = $def[4].' fk_shipment';
+        if ($type === 'customer_invoice') $fields[] = "CASE WHEN TRIM(COALESCE(multicurrency_code,''))<>'' THEN UPPER(multicurrency_code) ELSE ".$this->q(function_exists('getDolGlobalString') ? cpcc_financial_currency(getDolGlobalString('MAIN_MONNAIE'), 'EUR') : 'EUR')." END target_currency";
         $row = $this->one("SELECT ".implode(',', $fields)." FROM ".MAIN_DB_PREFIX.$def[0]." WHERE entity=".$this->entity." AND ".$def[1]."=".(int) $id." AND ".$def[2]."=".(int) $socid." LIMIT 1");
         if (!$row) throw new RuntimeException('Allocation target does not belong to the customer and active entity.');
+        if ($type === 'customer_invoice' && (string) $row->target_currency !== (string) $receiptCurrency) throw new RuntimeException('Customer invoice currency does not match the managed receipt.');
         return get_object_vars($row);
     }
 

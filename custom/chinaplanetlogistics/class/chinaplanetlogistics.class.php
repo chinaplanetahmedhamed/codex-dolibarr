@@ -40,6 +40,7 @@ class ChinaPlanetLogistics extends CommonObject
     public $fk_statut;
     public $notes;
     public $customer_note;
+    public $customer_visible = 1;
     public $date_creation;
     public $tms;
     public $audit_source_type = 'manual_team';
@@ -101,7 +102,7 @@ class ChinaPlanetLogistics extends CommonObject
         $sql .= "shipping_line, vessel_name, voyage_no, port_loading, port_destination,";
         $sql .= "date_etd, date_atd, date_eta, date_ata,";
         $sql .= "freetime_days, freetime_start, freetime_end,";
-        $sql .= "fk_statut, notes, customer_note, date_creation";
+        $sql .= "fk_statut, notes, customer_note, customer_visible, date_creation";
         $sql .= ") VALUES (";
         $sql .= $this->sqlStr($this->ref).", ".$entity.", ".$this->sqlInt($this->fk_soc).", ".$this->sqlInt($this->fk_project).", ".(int)$user->id.", ";
         $sql .= $this->sqlStr($this->container_no).", ".$this->sqlStr($this->container_type).", ".$this->sqlInt($this->nb_containers).", ";
@@ -110,7 +111,7 @@ class ChinaPlanetLogistics extends CommonObject
         $sql .= $this->sqlStr($this->port_loading).", ".$this->sqlStr($this->port_destination).", ";
         $sql .= $this->sqlDate($this->date_etd).", ".$this->sqlDate($this->date_atd).", ".$this->sqlDate($this->date_eta).", ".$this->sqlDate($this->date_ata).", ";
         $sql .= $this->sqlInt($this->freetime_days).", ".$this->sqlDate($this->freetime_start).", ".$this->sqlDate($this->freetime_end).", ";
-        $sql .= $this->sqlInt($this->fk_statut).", ".$this->sqlStr($this->notes).", ".$this->sqlStr($this->customer_note).", ";
+        $sql .= $this->sqlInt($this->fk_statut).", ".$this->sqlStr($this->notes).", ".$this->sqlStr($this->customer_note).", ".(!empty($this->customer_visible) ? 1 : 0).", ";
         $sql .= "'".$this->db->idate(dol_now())."'";
         $sql .= ")";
 
@@ -187,6 +188,7 @@ class ChinaPlanetLogistics extends CommonObject
         $this->fk_statut      = $obj->fk_statut;
         $this->notes          = $obj->notes;
         $this->customer_note  = $obj->customer_note;
+        $this->customer_visible = isset($obj->customer_visible) ? (int) $obj->customer_visible : 1;
         $this->date_creation  = $this->db->jdate($obj->date_creation);
         $this->tms            = isset($obj->tms) ? $this->db->jdate($obj->tms) : null;
         return 1;
