@@ -124,6 +124,9 @@ class ManagedFundsNativeGuard
     {
         if(!self::acquireLifecycle($db)) return false;
         try{
+            // Fail closed before the first DROP if the installed protection set
+            // is missing or differs from the reviewed definitions.
+            if(!self::verify($db)) return false;
             $active=$db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE status IN ('reserved','settled') LIMIT 1");
             if(!$active||$db->fetch_object($active)) return false;
             $guided=$db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."cpcc_guided_receipt LIMIT 1");

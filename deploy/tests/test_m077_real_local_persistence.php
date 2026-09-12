@@ -10,7 +10,7 @@ if (getenv('M077_REAL_LOCAL') !== '1') {
 }
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 define('MAIN_DB_PREFIX', 'llx_');
-$conf = (object) array('entity'=>1);
+$conf = (object) array('entity'=>1,'currency'=>'USD');
 $repoRoot = dirname(__DIR__, 2);
 $sourceConf = '/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/dolibarr-23.0.3/htdocs/conf/conf.php';
 
@@ -30,24 +30,57 @@ final class M077DolDb
     private $mysqli;
     private $error = '';
     private $afterQuery;
+    private $failQuery;
+    private $transactionDepth = 0;
+    private $maxTransactionDepth = 0;
     public function __construct(mysqli $mysqli) { $this->mysqli = $mysqli; }
     public function afterNextMatchingQuery($needle, callable $callback) { $this->afterQuery=array($needle,$callback); }
-    public function query($sql) { try { $result=$this->mysqli->query($sql); if($this->afterQuery&&strpos($sql,$this->afterQuery[0])!==false){$callback=$this->afterQuery[1];$this->afterQuery=null;$callback();} return $result; } catch (Throwable $e) { $this->error=$e->getMessage(); return false; } }
+    public function failNextMatchingQuery($needle, $error) { $this->failQuery=array($needle,$error); }
+    public function query($sql) { try { if($this->failQuery&&strpos($sql,$this->failQuery[0])!==false){$this->error=$this->failQuery[1];$this->failQuery=null;return false;} $result=$this->mysqli->query($sql); if($this->afterQuery&&strpos($sql,$this->afterQuery[0])!==false){$callback=$this->afterQuery[1];$this->afterQuery=null;$callback();} return $result; } catch (Throwable $e) { $this->error=$e->getMessage(); return false; } }
     public function fetch_object($result) { return $result instanceof mysqli_result ? $result->fetch_object() : null; }
     public function num_rows($result) { return $result instanceof mysqli_result ? $result->num_rows : 0; }
     public function escape($value) { return $this->mysqli->real_escape_string((string) $value); }
     public function idate($value) { return date('Y-m-d H:i:s', is_numeric($value) ? (int) $value : strtotime((string) $value)); }
     public function last_insert_id($table = '') { return (int) $this->mysqli->insert_id; }
-    public function begin() { return $this->mysqli->begin_transaction(); }
-    public function commit() { return $this->mysqli->commit(); }
-    public function rollback() { return $this->mysqli->rollback(); }
+    public function begin() { if($this->transactionDepth===0)$this->mysqli->begin_transaction();$this->transactionDepth++;$this->maxTransactionDepth=max($this->maxTransactionDepth,$this->transactionDepth);return true; }
+    public function commit() { if($this->transactionDepth<=0)return false;$this->transactionDepth--;return $this->transactionDepth===0?$this->mysqli->commit():true; }
+    public function rollback() { if($this->transactionDepth<=1){$this->transactionDepth=0;return $this->mysqli->rollback();}$this->transactionDepth--;return true; }
+    public function transactionDepth() { return $this->transactionDepth; }
+    public function maxTransactionDepth() { return $this->maxTransactionDepth; }
     public function lasterror() { return $this->error !== '' ? $this->error : $this->mysqli->error; }
+}
+
+final class M077FinanceActor
+{
+    public $id = 1;
+    public function hasRight($module, $right, $action = null) { return $module === 'facture' && $right === 'paiement'; }
 }
 
 require_once $repoRoot.'/custom/chinaplanetcustomercenter/class/CustomerFundsService.class.php';
 require_once $repoRoot.'/custom/chinaplanetcustomercenter/class/ManagedFundsNativeGuard.class.php';
+require_once $repoRoot.'/custom/chinaplanetcustomercenter/class/NativeAdvanceWorkflowService.class.php';
 require_once $repoRoot.'/custom/chinaplanetoperations/class/OperationShipmentService.class.php';
 require_once $repoRoot.'/custom/chinaplanetcustomercenter/lib/export.lib.php';
+
+final class M077NativePaymentTestService extends NativeAdvanceWorkflowService
+{
+    public $failure = '';
+    public $paymentId = 0;
+    public $bankId = 0;
+
+    protected function createNativeBankPayment($socid, $invoiceId, $accountId, $mode, $date, $reference, $amount, $currency, $token, $user)
+    {
+        if ($this->failure === 'before_payment') throw new RuntimeException('LOCAL TEST before native payment');
+        $db = $GLOBALS['m077NativeTestDb'];
+        $db->query("INSERT INTO llx_paiement(rowid,entity,ref,datep,amount,multicurrency_amount,fk_paiement,num_paiement,note,fk_bank,fk_user_creat,statut) VALUES(".(int)$this->paymentId.",1,'LOCAL-M077-TEST-WRITER','".$db->real_escape_string($date)."',".(float)$amount.",".(float)$amount.",".(int)$mode->id.",'".$db->real_escape_string($token)."','".$db->real_escape_string($reference)."',0,".(int)$user->id.",1)");
+        $db->query("INSERT INTO llx_paiement_facture(fk_facture,fk_paiement,amount,multicurrency_amount) VALUES(".(int)$invoiceId.",".(int)$this->paymentId.",".(float)$amount.",".(float)$amount.")");
+        if ($this->failure === 'before_bank') throw new RuntimeException('LOCAL TEST before native bank posting');
+        $db->query("INSERT INTO llx_bank(rowid,datev,dateo,amount,label,fk_account,fk_user_author,fk_type,num_chq) VALUES(".(int)$this->bankId.",'".$db->real_escape_string($date)."','".$db->real_escape_string($date)."',".(float)$amount.",'LOCAL TEST native writer bank',".(int)$accountId.",".(int)$user->id.",'".$db->real_escape_string((string)$mode->code)."','".$db->real_escape_string($token)."')");
+        $db->query("INSERT INTO llx_bank_url(fk_bank,url_id,url,label,type) VALUES(".(int)$this->bankId.",".(int)$this->paymentId.",'','(paiement)','payment')");
+        $db->query("UPDATE llx_paiement SET fk_bank=".(int)$this->bankId." WHERE rowid=".(int)$this->paymentId);
+        return (int) $this->paymentId;
+    }
+}
 
 $source = m077RealConfig($sourceConf);
 m077RealAssert(m077RealLocalHost($source['host']), 'remote source database forbidden');
@@ -66,7 +99,7 @@ try {
     $created = true;
     $target = new mysqli($source['host'], $adminCredentials[0], $adminCredentials[1], $database, $source['port']);
     $target->query('SET FOREIGN_KEY_CHECKS=0');
-    $requiredTables = array('llx_user','llx_societe','llx_projet','llx_commande','llx_facture','llx_facturedet','llx_paiement','llx_paiement_facture','llx_societe_remise_except','llx_cpo_operation','llx_cpo_operation_data','llx_cpo_activity','llx_chinaplanetlogistics','llx_cpl_shipment_event','llx_cpcc_financial_entry','llx_cpcc_export_document','llx_cpcc_export_document_line');
+    $requiredTables = array('llx_user','llx_societe','llx_projet','llx_commande','llx_facture','llx_facturedet','llx_paiement','llx_paiement_facture','llx_bank','llx_bank_url','llx_bank_account','llx_c_paiement','llx_societe_remise_except','llx_cpo_operation','llx_cpo_operation_data','llx_cpo_activity','llx_chinaplanetlogistics','llx_cpl_shipment_event','llx_cpcc_financial_entry','llx_cpcc_export_document','llx_cpcc_export_document_line');
     foreach ($requiredTables as $table) {
         $result = $sourceDb->query("SHOW CREATE TABLE ".$table);
         $row = $result->fetch_row();
@@ -84,6 +117,8 @@ try {
     }
 
     $target->query("INSERT INTO llx_user(rowid,entity,login,lastname,admin,statut) VALUES(1,1,'m077-local-test','M077 LOCAL TEST',1,1)");
+    $target->query("INSERT INTO llx_c_paiement(id,entity,code,libelle,type,active,position) VALUES(77035,1,'VIR','LOCAL TEST transfer',0,1,1)");
+    $target->query("INSERT INTO llx_bank_account(rowid,ref,label,entity,fk_pays,courant,clos,currency_code) VALUES(77033,'M077-USD','LOCAL TEST USD bank',1,117,1,0,'USD')");
     $target->query("INSERT INTO llx_societe(rowid,entity,nom,status,client) VALUES(77001,1,'LOCAL TEST - M077 Customer',1,1),(77002,1,'LOCAL TEST - Other Customer',1,1)");
     $target->query("INSERT INTO llx_projet(rowid,entity,ref,title,fk_soc,fk_user_creat) VALUES(77003,1,'LOCAL-M077-PROJ','LOCAL TEST - M077 Project',77001,1),(77012,1,'LOCAL-M077-OTHER-PROJ','LOCAL TEST - Other Project',77002,1)");
     $target->query("INSERT INTO llx_commande(rowid,entity,ref,fk_soc) VALUES(77004,1,'LOCAL-M077-ORDER',77001),(77013,1,'LOCAL-M077-OTHER-ORDER',77002)");
@@ -99,6 +134,7 @@ try {
     $target->query("INSERT INTO llx_cpo_operation_data(entity,fk_operation,section_code,data_json,fk_user_modif) VALUES(1,77007,'service','".$serviceJson."',1),(1,77023,'service','".$serviceJson."',1)");
     $target->query("INSERT INTO llx_cpcc_financial_entry(rowid,entity,fk_soc,fk_project,entry_date,entry_type,direction,description,amount,currency_code,source_type,source_id,customer_visible,status,fk_user_creat,date_creation) VALUES(77008,1,77001,77003,NOW(),'supplier_payment','D','LOCAL TEST - actual posted debit',4000,'USD','operation',77007,0,1,1,NOW()),(77019,1,77001,77003,NOW(),'supplier_payment','D','LOCAL TEST - unrelated debit',4000,'USD','project',77003,0,1,1,NOW())");
 
+    $GLOBALS['m077NativeTestDb']=$target;
     $db = new M077DolDb($target);
     m077RealAssert(ManagedFundsNativeGuard::install($db),'native-credit guard installation failed');
     m077RealAssert(ManagedFundsNativeGuard::verify($db),'native-credit guard did not verify after installation');
@@ -106,7 +142,15 @@ try {
     $target->query('CREATE TRIGGER llx_cpcc_m077_credit_insert BEFORE INSERT ON llx_societe_remise_except FOR EACH ROW SET @m077_noop=1');
     m077RealAssert(!ManagedFundsNativeGuard::verify($db),'same-name no-op trigger passed definition verification');
     m077RealAssert(!ManagedFundsNativeGuard::install($db),'install accepted same-name changed trigger');
+    m077RealAssert(!ManagedFundsNativeGuard::remove($db),'remove accepted a changed trigger definition');
+    $guardCount=(int)$target->query("SELECT COUNT(*) n FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGGER_SCHEMA='".$target->real_escape_string($database)."' AND TRIGGER_NAME LIKE 'llx_cpcc_m077_%'")->fetch_assoc()['n'];
+    m077RealAssert($guardCount===4,'remove dropped triggers after changed-definition verification failed');
     m077RealAssert(ManagedFundsNativeGuard::repair($db)&&ManagedFundsNativeGuard::verify($db),'guard repair did not restore reviewed definitions');
+    $target->query('DROP TRIGGER llx_cpcc_m077_guided_payment_update');
+    m077RealAssert(!ManagedFundsNativeGuard::remove($db),'remove accepted a missing trigger definition');
+    $guardCount=(int)$target->query("SELECT COUNT(*) n FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGGER_SCHEMA='".$target->real_escape_string($database)."' AND TRIGGER_NAME LIKE 'llx_cpcc_m077_%'")->fetch_assoc()['n'];
+    m077RealAssert($guardCount===3,'remove dropped remaining triggers after missing-definition verification failed');
+    m077RealAssert(ManagedFundsNativeGuard::repair($db)&&ManagedFundsNativeGuard::verify($db),'guard repair did not restore a missing definition');
     $guidedToken='CPMF-'.str_repeat('A',40);$guidedPayload=hash('sha256','guided fixture');
     $target->query("INSERT INTO llx_cpcc_guided_receipt(entity,fk_soc,fk_invoice,origin_type,origin_id,request_token,payload_hash,status,fk_user_creat,date_creation) VALUES(1,77001,77025,'commande',77004,'".$guidedToken."','".$guidedPayload."','invoice_ready',1,NOW())");
     $target->query("INSERT INTO llx_paiement(rowid,entity,ref,datep,amount,multicurrency_amount,statut,fk_paiement,num_paiement) VALUES(77028,1,'LOCAL-M077-NATIVE-RACE','2026-09-12',1,1,1,1,'NATIVE'),(77029,1,'LOCAL-M077-GUIDED-RACE','2026-09-12',1,1,1,1,'GUIDED'),(77030,1,'LOCAL-M077-ORDINARY-EXTRA','2026-09-12',1,1,1,1,'ORDINARY')");
@@ -117,6 +161,185 @@ try {
     $nativePaymentDb->query("INSERT INTO llx_paiement_facture(fk_facture,fk_paiement,amount,multicurrency_amount) VALUES(77017,77030,1,1)");
     $nativePaymentDb->close();
     $target->query("DELETE FROM llx_paiement_facture WHERE fk_paiement IN (77029,77030)");$target->query("DELETE FROM llx_paiement WHERE rowid IN (77028,77029,77030)");$target->query("DELETE FROM llx_cpcc_guided_receipt WHERE fk_invoice=77025");
+
+    $actor = new M077FinanceActor();
+    $freshFixture=function($markerId,$invoiceId,$requestToken,$amount)use($target){
+        $target->query("INSERT INTO llx_facture(rowid,entity,ref,fk_soc,fk_projet,fk_statut,type,datef,multicurrency_code,multicurrency_total_ttc,total_ttc) VALUES(".$invoiceId.",1,'LOCAL-M077-FRESH-".$invoiceId."',77001,77003,1,3,'2026-09-12','USD',".$amount.",".$amount.")");
+        $target->query("INSERT INTO llx_cpcc_guided_receipt(rowid,entity,fk_soc,fk_invoice,origin_type,origin_id,request_token,payload_hash,status,fk_user_creat,date_creation) VALUES(".$markerId.",1,77001,".$invoiceId.",'commande',77004,'".$requestToken."','".hash('sha256','fresh-'.$markerId)."','invoice_ready',1,NOW())");
+    };
+
+    // The actual postBankReceipt lifecycle is executed with a synthetic native
+    // writer so rollback boundaries are tested without real business records.
+    $freshFixture(77082,77081,'CPMF-'.str_repeat('B',40),2400);
+    $beforePayment=new M077NativePaymentTestService($db,1);$beforePayment->failure='before_payment';$beforePayment->paymentId=77083;$beforePayment->bankId=77084;
+    $beforePaymentRejected=false;
+    try{$beforePayment->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-A',$actor,hash('sha256','LOCAL TEST fresh before'));}catch(RuntimeException $e){$beforePaymentRejected=strpos($e->getMessage(),'before native payment')!==false;}
+    m077RealAssert($beforePaymentRejected,'pre-payment failure was not surfaced');
+    $freshMarker=$target->query("SELECT status,payment_token,payment_payload_hash,fk_payment FROM llx_cpcc_guided_receipt WHERE rowid=77082")->fetch_assoc();
+    m077RealAssert($freshMarker['status']==='invoice_ready'&&$freshMarker['payment_token']===null&&$freshMarker['payment_payload_hash']===null&&$freshMarker['fk_payment']===null,'pre-payment failure did not roll back marker reservation');
+
+    $beforeBank=new M077NativePaymentTestService($db,1);$beforeBank->failure='before_bank';$beforeBank->paymentId=77083;$beforeBank->bankId=77084;
+    $beforeBankRejected=false;
+    try{$beforeBank->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-A',$actor,hash('sha256','LOCAL TEST fresh before'));}catch(RuntimeException $e){$beforeBankRejected=strpos($e->getMessage(),'before native bank')!==false;}
+    m077RealAssert($beforeBankRejected,'pre-bank failure was not surfaced');
+    m077RealAssert((int)$target->query("SELECT COUNT(*) n FROM llx_paiement WHERE rowid=77083")->fetch_assoc()['n']===0&&(int)$target->query("SELECT COUNT(*) n FROM llx_paiement_facture WHERE fk_paiement=77083")->fetch_assoc()['n']===0,'pre-bank failure left native payment evidence');
+    $freshMarker=$target->query("SELECT status,payment_token,payment_payload_hash,fk_payment FROM llx_cpcc_guided_receipt WHERE rowid=77082")->fetch_assoc();
+    m077RealAssert($freshMarker['status']==='invoice_ready'&&$freshMarker['payment_token']===null&&$freshMarker['payment_payload_hash']===null&&$freshMarker['fk_payment']===null,'pre-bank failure did not roll back marker reservation');
+
+    $clearFailure=new M077NativePaymentTestService($db,1);$clearFailure->paymentId=77083;$clearFailure->bankId=77084;
+    $db->failNextMatchingQuery('SET @cpcc_guided_receipt_token=NULL','LOCAL TEST authorization clear failure');
+    $clearRejected=false;
+    try{$clearFailure->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-A',$actor,hash('sha256','LOCAL TEST fresh before'));}catch(RuntimeException $e){$clearRejected=strpos($e->getMessage(),'Unable to clear')!==false;}
+    m077RealAssert($clearRejected,'authorization-clear failure did not block the native transaction');
+    m077RealAssert((int)$target->query("SELECT COUNT(*) n FROM llx_paiement WHERE rowid=77083")->fetch_assoc()['n']===0&&(int)$target->query("SELECT COUNT(*) n FROM llx_bank WHERE rowid=77084")->fetch_assoc()['n']===0,'authorization-clear failure committed native cash');
+    $freshMarker=$target->query("SELECT status,payment_token,payment_payload_hash,fk_payment FROM llx_cpcc_guided_receipt WHERE rowid=77082")->fetch_assoc();
+    m077RealAssert($freshMarker['status']==='invoice_ready'&&$freshMarker['payment_token']===null&&$freshMarker['payment_payload_hash']===null&&$freshMarker['fk_payment']===null,'authorization-clear failure did not roll back marker reservation');
+
+    $freshKey=hash('sha256','LOCAL TEST fresh success');
+    $freshSuccess=new M077NativePaymentTestService($db,1);$freshSuccess->paymentId=77083;$freshSuccess->bankId=77084;
+    $concurrentConnection=new mysqli($source['host'],$adminCredentials[0],$adminCredentials[1],$database,$source['port']);
+    $concurrentDb=new M077DolDb($concurrentConnection);
+    $concurrentAttempt=new M077NativePaymentTestService($concurrentDb,1);$concurrentAttempt->failure='before_payment';$concurrentAttempt->paymentId=77085;$concurrentAttempt->bankId=77086;
+    $concurrentRejected=false;
+    $db->afterNextMatchingQuery('SELECT f.rowid,f.fk_soc,f.fk_statut',function()use($concurrentAttempt,$actor,&$concurrentRejected){
+        try{$concurrentAttempt->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-A',$actor,hash('sha256','LOCAL TEST concurrent distinct'));}catch(RuntimeException $e){$concurrentRejected=true;}
+    });
+    $db->failNextMatchingQuery('INSERT INTO llx_cpcc_customer_receipt','LOCAL TEST before pending receipt');
+    $afterBankRejected=false;
+    try{$freshSuccess->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-A',$actor,$freshKey);}catch(RuntimeException $e){$afterBankRejected=true;}
+    m077RealAssert($afterBankRejected,'post-bank pending-receipt failure was not surfaced');
+    $freshMarker=$target->query("SELECT status,fk_payment FROM llx_cpcc_guided_receipt WHERE rowid=77082")->fetch_assoc();
+    m077RealAssert($freshMarker['status']==='bank_posted'&&(int)$freshMarker['fk_payment']===77083&&(int)$target->query("SELECT COUNT(*) n FROM llx_bank WHERE rowid=77084")->fetch_assoc()['n']===1,'native bank commit was not durable before managed-receipt failure');
+    m077RealAssert($concurrentRejected&&(int)$target->query("SELECT COUNT(*) n FROM llx_paiement WHERE rowid IN (77083,77085)")->fetch_assoc()['n']===1,'concurrent distinct-key request created more than one payment');
+    $concurrentConnection->close();
+    m077RealAssert((int)$target->query("SELECT COUNT(*) n FROM llx_cpcc_customer_receipt WHERE native_source_id=77083")->fetch_assoc()['n']===0,'failed pending receipt was committed');
+
+    $native = new NativeAdvanceWorkflowService($db, 1);
+    $freshResult=$native->resumeBankReceipt(77001,77082,$actor);
+    $freshRetry=$freshSuccess->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-A',$actor,$freshKey);
+    m077RealAssert($freshResult===$freshRetry,'same native request did not resolve to persisted receipt');
+    $freshChangedRejected=false;
+    try{$freshSuccess->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-CHANGED',$actor,$freshKey);}catch(RuntimeException $e){$freshChangedRejected=strpos($e->getMessage(),'payload changed')!==false;}
+    m077RealAssert($freshChangedRejected,'same request key accepted changed payment payload');
+    $freshDistinctRejected=false;
+    try{$freshSuccess->postBankReceipt(77001,77081,77033,'VIR','2026-09-12','LOCAL-M077-FRESH-A',$actor,hash('sha256','LOCAL TEST fresh distinct'));}catch(RuntimeException $e){$freshDistinctRejected=strpos($e->getMessage(),'payload changed')!==false;}
+    m077RealAssert($freshDistinctRejected,'distinct request key created a second payment for one guided invoice');
+    m077RealAssert((int)$target->query("SELECT COUNT(*) n FROM llx_paiement_facture WHERE fk_facture=77081")->fetch_assoc()['n']===1,'guided invoice received duplicate payment links');
+
+    $target->query("DELETE FROM llx_cpcc_fund_event WHERE object_type='receipt' AND object_id=".(int)$freshResult['receipt_id']);
+    $target->query("DELETE FROM llx_cpcc_customer_receipt WHERE rowid=".(int)$freshResult['receipt_id']);
+    $target->query("DELETE FROM llx_paiement_facture WHERE fk_paiement=77083");
+    $target->query("DELETE FROM llx_cpcc_guided_receipt WHERE rowid=77082");
+    $target->query("DELETE FROM llx_paiement WHERE rowid=77083");
+    $target->query("DELETE FROM llx_bank_url WHERE fk_bank=77084");
+    $target->query("DELETE FROM llx_bank WHERE rowid=77084");
+    $target->query("DELETE FROM llx_facture WHERE rowid=77081");
+
+    $guidedFixture = function($markerId,$invoiceId,$paymentId,$bankId,$amount,$requestKey,$reference)use($target){
+        $paymentToken='CPMF-'.strtoupper(substr(hash('sha256','payment:'.$requestKey),0,40));
+        $requestToken='CPMF-'.strtoupper(substr(hash('sha256','invoice:fixture-'.$markerId),0,40));
+        $payloadHash=hash('sha256','LOCAL TEST guided invoice '.$markerId);
+        $paymentPayloadHash=hash('sha256',json_encode(array(77001,$invoiceId,77033,'VIR','2026-09-12',$reference,number_format((float)$amount,8,'.',''),'USD'),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        $target->query("INSERT INTO llx_facture(rowid,entity,ref,fk_soc,fk_projet,fk_statut,type,datef,multicurrency_code,multicurrency_total_ttc,total_ttc) VALUES(".$invoiceId.",1,'LOCAL-M077-GUIDED-".$invoiceId."',77001,77003,2,3,'2026-09-12','USD',".$amount.",".$amount.")");
+        $target->query("INSERT INTO llx_bank(rowid,datev,dateo,amount,label,fk_account,fk_user_author,fk_type,num_chq) VALUES(".$bankId.",'2026-09-12','2026-09-12',".$amount.",'LOCAL TEST bank receipt',77033,1,'VIR','".$paymentToken."')");
+        $target->query("INSERT INTO llx_bank_url(fk_bank,url_id,url,label,type) VALUES(".$bankId.",".$paymentId.",'','(paiement)','payment')");
+        $target->query("INSERT INTO llx_paiement(rowid,entity,ref,datep,amount,multicurrency_amount,fk_paiement,num_paiement,note,fk_bank,fk_user_creat,statut) VALUES(".$paymentId.",1,'LOCAL-M077-PAY-".$paymentId."','2026-09-12',".$amount.",".$amount.",77035,'".$target->real_escape_string($paymentToken)."','".$target->real_escape_string($reference)."',".$bankId.",1,1)");
+        $target->query("INSERT INTO llx_cpcc_guided_receipt(rowid,entity,fk_soc,fk_invoice,fk_payment,origin_type,origin_id,request_token,payload_hash,payment_token,payment_payload_hash,status,fk_user_creat,date_creation) VALUES(".$markerId.",1,77001,".$invoiceId.",".$paymentId.",'commande',77004,'".$requestToken."','".$payloadHash."','".$paymentToken."','".$paymentPayloadHash."','bank_posted',1,NOW())");
+        $target->query("SET @cpcc_guided_receipt_token='".$requestToken."'");
+        $target->query("INSERT INTO llx_paiement_facture(fk_facture,fk_paiement,amount,multicurrency_amount) VALUES(".$invoiceId.",".$paymentId.",".$amount.",".$amount.")");
+        $target->query("SET @cpcc_guided_receipt_token=NULL");
+        return array('marker_id'=>$markerId,'invoice_id'=>$invoiceId,'payment_id'=>$paymentId,'bank_id'=>$bankId,'request_key'=>$requestKey,'request_token'=>$requestToken,'payment_token'=>$paymentToken);
+    };
+
+    // Already-bank-posted evidence can be completed and retried without cash.
+    $resumeA=$guidedFixture(77036,77031,77032,77034,2000,hash('sha256','LOCAL TEST resume A'),'LOCAL-M077-BANK-A');
+    $paymentCountBefore=(int)$target->query("SELECT COUNT(*) n FROM llx_paiement")->fetch_assoc()['n'];
+    $resumeResult=$native->resumeBankReceipt(77001,$resumeA['marker_id'],$actor);
+    $resumeRetry=$native->resumeBankReceipt(77001,$resumeA['marker_id'],$actor);
+    m077RealAssert($resumeResult===$resumeRetry,'persisted bank receipt resume was not idempotent');
+    m077RealAssert((int)$target->query("SELECT COUNT(*) n FROM llx_paiement")->fetch_assoc()['n']===$paymentCountBefore,'persisted resume created native cash');
+
+    $crossCustomerRejected=false;
+    try{$native->resumeBankReceipt(77002,$resumeA['marker_id'],$actor);}catch(RuntimeException $e){$crossCustomerRejected=true;}
+    m077RealAssert($crossCustomerRejected,'cross-customer persisted resume succeeded');
+    $target->query("UPDATE llx_paiement SET note='LOCAL-M077-BANK-A-CHANGED' WHERE rowid=".$resumeA['payment_id']);
+    $changedEvidenceRejected=false;
+    try{$native->resumeBankReceipt(77001,$resumeA['marker_id'],$actor);}catch(RuntimeException $e){$changedEvidenceRejected=strpos($e->getMessage(),'payload changed')!==false;}
+    m077RealAssert($changedEvidenceRejected,'changed persisted payment payload resumed');
+    $target->query("UPDATE llx_paiement SET note='LOCAL-M077-BANK-A' WHERE rowid=".$resumeA['payment_id']);
+
+    $assertResumeMutation=function($label,$mutate,$restore)use($native,$actor,$resumeA,$target){
+        $target->query("SET @cpcc_guided_receipt_token='".$resumeA['request_token']."'");
+        try{$mutate();}finally{$target->query("SET @cpcc_guided_receipt_token=NULL");}
+        $rejected=false;
+        try{$native->resumeBankReceipt(77001,$resumeA['marker_id'],$actor);}catch(RuntimeException $e){$rejected=true;}
+        $target->query("SET @cpcc_guided_receipt_token='".$resumeA['request_token']."'");
+        try{$restore();}finally{$target->query("SET @cpcc_guided_receipt_token=NULL");}
+        m077RealAssert($rejected,$label.' mutation resumed');
+    };
+    $assertResumeMutation('invoice-link amount',function()use($target,$resumeA){$target->query("UPDATE llx_paiement_facture SET amount=1999,multicurrency_amount=1999 WHERE fk_paiement=".$resumeA['payment_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_paiement_facture SET amount=2000,multicurrency_amount=2000 WHERE fk_paiement=".$resumeA['payment_id']);});
+    $assertResumeMutation('payment total',function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET amount=1999,multicurrency_amount=1999 WHERE rowid=".$resumeA['payment_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET amount=2000,multicurrency_amount=2000 WHERE rowid=".$resumeA['payment_id']);});
+    $assertResumeMutation('invoice currency',function()use($target,$resumeA){$target->query("UPDATE llx_facture SET multicurrency_code='EUR' WHERE rowid=".$resumeA['invoice_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_facture SET multicurrency_code='USD' WHERE rowid=".$resumeA['invoice_id']);});
+    $assertResumeMutation('bank account',function()use($target,$resumeA){$target->query("UPDATE llx_bank SET fk_account=999999 WHERE rowid=".$resumeA['bank_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_bank SET fk_account=77033 WHERE rowid=".$resumeA['bank_id']);});
+    $assertResumeMutation('payment method',function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET fk_paiement=999999 WHERE rowid=".$resumeA['payment_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET fk_paiement=77035 WHERE rowid=".$resumeA['payment_id']);});
+    $assertResumeMutation('payment date',function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET datep='2026-09-13' WHERE rowid=".$resumeA['payment_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET datep='2026-09-12' WHERE rowid=".$resumeA['payment_id']);});
+    $assertResumeMutation('payment token',function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET num_paiement='CPMF-".str_repeat('F',40)."' WHERE rowid=".$resumeA['payment_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_paiement SET num_paiement='".$resumeA['payment_token']."' WHERE rowid=".$resumeA['payment_id']);});
+    $assertResumeMutation('payload hash',function()use($target,$resumeA){$target->query("UPDATE llx_cpcc_guided_receipt SET payment_payload_hash='".str_repeat('0',64)."' WHERE rowid=".$resumeA['marker_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_cpcc_guided_receipt SET payment_payload_hash='".hash('sha256',json_encode(array(77001,$resumeA['invoice_id'],77033,'VIR','2026-09-12','LOCAL-M077-BANK-A',number_format(2000,8,'.',''),'USD'),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES))."' WHERE rowid=".$resumeA['marker_id']);});
+    $assertResumeMutation('bank amount',function()use($target,$resumeA){$target->query("UPDATE llx_bank SET amount=1999 WHERE rowid=".$resumeA['bank_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_bank SET amount=2000 WHERE rowid=".$resumeA['bank_id']);});
+    $assertResumeMutation('bank date',function()use($target,$resumeA){$target->query("UPDATE llx_bank SET dateo='2026-09-13' WHERE rowid=".$resumeA['bank_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_bank SET dateo='2026-09-12' WHERE rowid=".$resumeA['bank_id']);});
+    $assertResumeMutation('bank method',function()use($target,$resumeA){$target->query("UPDATE llx_bank SET fk_type='CHQ' WHERE rowid=".$resumeA['bank_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_bank SET fk_type='VIR' WHERE rowid=".$resumeA['bank_id']);});
+    $assertResumeMutation('bank payment reference',function()use($target,$resumeA){$target->query("UPDATE llx_bank SET num_chq='CHANGED' WHERE rowid=".$resumeA['bank_id']);},function()use($target,$resumeA){$target->query("UPDATE llx_bank SET num_chq='".$resumeA['payment_token']."' WHERE rowid=".$resumeA['bank_id']);});
+    $assertResumeMutation('bank payment link',function()use($target,$resumeA){$target->query("DELETE FROM llx_bank_url WHERE fk_bank=".$resumeA['bank_id']." AND url_id=".$resumeA['payment_id']." AND type='payment'");},function()use($target,$resumeA){$target->query("INSERT INTO llx_bank_url(fk_bank,url_id,url,label,type) VALUES(".$resumeA['bank_id'].",".$resumeA['payment_id'].",'','(paiement)','payment')");});
+
+    // Failure after pending creation reuses and confirms the same receipt.
+    $resumeB=$guidedFixture(77056,77051,77052,77054,2100,hash('sha256','LOCAL TEST resume B'),'LOCAL-M077-BANK-B');
+    $faultDb=new mysqli($source['host'],$adminCredentials[0],$adminCredentials[1],$database,$source['port']);
+    $db->afterNextMatchingQuery('INSERT INTO llx_cpcc_customer_receipt',function()use($faultDb,$resumeB){$faultDb->query('UPDATE llx_paiement SET statut=9 WHERE rowid='.(int)$resumeB['payment_id']);});
+    $pendingFailure=false;
+    try{$native->resumeBankReceipt(77001,$resumeB['marker_id'],$actor);}catch(RuntimeException $e){$pendingFailure=true;}
+    m077RealAssert($pendingFailure,'invalidated evidence confirmed after pending creation');
+    $pendingReceiptId=(int)$target->query("SELECT rowid FROM llx_cpcc_customer_receipt WHERE request_key='".hash('sha256','native-bank-receipt:'.$resumeB['payment_token'])."'")->fetch_assoc()['rowid'];
+    m077RealAssert($pendingReceiptId>0,'pending receipt was not durably created before confirmation failure');
+    $faultDb->query('UPDATE llx_paiement SET statut=1 WHERE rowid='.(int)$resumeB['payment_id']);
+    $resumeBResult=$native->resumeBankReceipt(77001,$resumeB['marker_id'],$actor);
+    m077RealAssert((int)$resumeBResult['receipt_id']===$pendingReceiptId,'resume duplicated pending managed receipt');
+    $faultDb->close();
+
+    // Failure after managed confirmation but before marker update is retryable.
+    $resumeC=$guidedFixture(77066,77061,77062,77064,2200,hash('sha256','LOCAL TEST resume C'),'LOCAL-M077-BANK-C');
+    $db->failNextMatchingQuery("UPDATE llx_cpcc_guided_receipt SET status='confirmed'",'LOCAL TEST marker update failure');
+    $markerFailure=false;
+    try{$native->resumeBankReceipt(77001,$resumeC['marker_id'],$actor);}catch(RuntimeException $e){$markerFailure=strpos($e->getMessage(),'marker update failed')!==false;}
+    m077RealAssert($markerFailure,'marker-update failure was not reported');
+    $confirmedBeforeRetry=$target->query("SELECT rowid,status FROM llx_cpcc_customer_receipt WHERE request_key='".hash('sha256','native-bank-receipt:'.$resumeC['payment_token'])."'")->fetch_assoc();
+    m077RealAssert(!empty($confirmedBeforeRetry['rowid'])&&$confirmedBeforeRetry['status']==='pending','marker failure did not atomically roll confirmation back to the durable pending receipt');
+    $resumeCResult=$native->resumeBankReceipt(77001,$resumeC['marker_id'],$actor);
+    m077RealAssert((int)$resumeCResult['receipt_id']===(int)$confirmedBeforeRetry['rowid'],'marker retry duplicated confirmed receipt');
+
+    // Prior marker evidence with a deleted payment must never recreate cash.
+    $deleted=$guidedFixture(77076,77071,77072,77074,2300,hash('sha256','LOCAL TEST deleted payment'),'LOCAL-M077-BANK-D');
+    $target->query("DELETE FROM llx_paiement_facture WHERE fk_paiement=".$deleted['payment_id']);
+    $target->query("DELETE FROM llx_paiement WHERE rowid=".$deleted['payment_id']);
+    $target->query("UPDATE llx_facture SET fk_statut=1 WHERE rowid=".$deleted['invoice_id']);
+    $deletedRejected=false;
+    try{$native->postBankReceipt(77001,$deleted['invoice_id'],77033,'VIR','2026-09-12','LOCAL-M077-BANK-D',$actor,$deleted['request_key']);}catch(RuntimeException $e){$deletedRejected=strpos($e->getMessage(),'prior payment evidence')!==false;}
+    m077RealAssert($deletedRejected,'deleted native payment was recreated from prior marker evidence');
+    $distinctRejected=false;
+    try{$native->postBankReceipt(77001,$deleted['invoice_id'],77033,'VIR','2026-09-12','LOCAL-M077-BANK-D',$actor,hash('sha256','LOCAL TEST distinct key'));}catch(RuntimeException $e){$distinctRejected=strpos($e->getMessage(),'payload changed')!==false;}
+    m077RealAssert($distinctRejected,'distinct request key bypassed existing marker evidence');
+    m077RealAssert((int)$target->query("SELECT COUNT(*) n FROM llx_paiement WHERE rowid=".$deleted['payment_id'])->fetch_assoc()['n']===0,'deleted payment retry created replacement cash');
+    m077RealAssert($db->transactionDepth()===0&&$db->maxTransactionDepth()===2,'guided lifecycle did not exercise the Dolibarr nested transaction model exactly');
+
+    $guidedReceiptIds=array((int)$resumeResult['receipt_id'],(int)$resumeBResult['receipt_id'],(int)$resumeCResult['receipt_id']);
+    $target->query("DELETE FROM llx_cpcc_fund_event WHERE object_type='receipt' AND object_id IN (".implode(',',$guidedReceiptIds).")");
+    $target->query("DELETE FROM llx_cpcc_customer_receipt WHERE rowid IN (".implode(',',$guidedReceiptIds).")");
+    $target->query("DELETE FROM llx_paiement_facture WHERE fk_paiement IN (77032,77052,77062)");
+    $target->query("DELETE FROM llx_cpcc_guided_receipt WHERE rowid IN (77036,77056,77066,77076)");
+    $target->query("DELETE FROM llx_paiement WHERE rowid IN (77032,77052,77062)");
+    $target->query("DELETE FROM llx_bank_url WHERE fk_bank IN (77034,77054,77064,77074)");
+    $target->query("DELETE FROM llx_bank WHERE rowid IN (77034,77054,77064,77074)");
+    $target->query("DELETE FROM llx_facture WHERE rowid IN (77031,77051,77061,77071)");
+
     $funds = new CustomerFundsService($db, 1);
     $fixtureKey=hash('sha256','LOCAL TEST M077 settlement coverage fixture');
     $target->query("INSERT INTO llx_cpcc_customer_receipt(rowid,entity,fk_soc,receipt_date,amount,currency_code,reference,status,native_source_type,native_source_id,request_key,payload_hash,fk_user_creat,fk_user_confirm,date_confirmation,date_creation) VALUES(77110,1,77001,'2026-09-12',12000,'USD','LOCAL-M077-COVERAGE','confirmed','customer_payment',77026,'".$fixtureKey."','".$fixtureKey."',1,1,NOW(),NOW())");
@@ -234,7 +457,7 @@ try {
     m077RealAssert(abs($settled-4000.0)<0.00001 && abs($reserved)<0.00001, 'persisted reconciliation mismatch');
     $finalReconciliation=$funds->reconcileReceipt($receiptId);
     m077RealAssert(abs((float)$finalReconciliation['available']-4000.0)<0.00001,'final authoritative availability ignored native consumption');
-    echo "M077_REAL_LOCAL=PASS SOURCE_DB_MUTATED=NO RECEIPTS=2 MANAGED_CONFIRMED=1 ORDINARY_REJECTED=1 NATIVE_GUARD=PASS NATIVE_RACE=PASS EXPORT_PRIVATE=PASS ALLOCATIONS=".$expectedAllocations." SETTLED=4000 RESERVED=0 UNALLOCATED=4000 SHIPMENTS=2 SHIPMENT_STATUS=0 CUSTOMER_VISIBLE=0 MILESTONE=inquiry\n";
+    echo "M077_REAL_LOCAL=PASS SOURCE_DB_MUTATED=NO RECEIPTS=2 MANAGED_CONFIRMED=1 ORDINARY_REJECTED=1 NATIVE_GUARD=PASS GUARD_REMOVE_FAIL_CLOSED=PASS AUTHORIZATION_CLEAR_FAIL_CLOSED=PASS GUIDED_POST_ROLLBACK=PASS GUIDED_RESUME=PASS EVIDENCE_MUTATIONS=BLOCKED DELETED_PAYMENT_RETRY=BLOCKED DISTINCT_KEY_CONCURRENCY=PASS NATIVE_RACE=PASS NESTED_TRANSACTION_MODEL=PASS EXPORT_PRIVATE=PASS ALLOCATIONS=".$expectedAllocations." SETTLED=4000 RESERVED=0 UNALLOCATED=4000 SHIPMENTS=2 SHIPMENT_STATUS=0 CUSTOMER_VISIBLE=0 MILESTONE=inquiry\n";
 } finally {
     if ($target instanceof mysqli) $target->close();
     if ($created) {

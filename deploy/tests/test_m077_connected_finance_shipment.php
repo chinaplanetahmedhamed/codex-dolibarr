@@ -106,12 +106,14 @@ foreach (array(
 ) as $needle) m077Assert(strpos($fundsPage, $needle) !== false, 'managed-funds UI missing '.$needle);
 m077Assert(strpos($fundsPage, "preg_match('/^(operation|shipment|project|customer_invoice):[1-9][0-9]*$/") !== false, 'allocation target is not allowlisted');
 $nativeAdvance=m077Source('custom/chinaplanetcustomercenter/class/NativeAdvanceWorkflowService.class.php');
-foreach(array('createDepositFromOrigin','Facture::createDepositFromOrigin','createDepositFromOrigin($origin','postBankReceipt','addPaymentToBank',"code<>'INTR'",'Bank account currency must exactly match','fk_bank','createPendingReceipt','confirmReceipt','GET_LOCK') as $needle)m077Assert(strpos($nativeAdvance,$needle)!==false,'guided native receipt invariant missing '.$needle);
+foreach(array('createDepositFromOrigin','Facture::createDepositFromOrigin','createDepositFromOrigin($origin','postBankReceipt','resumeBankReceipt','addPaymentToBank',"code<>'INTR'",'Bank account currency must exactly match','prior payment evidence','invoice_count','bank_payment_link_count','bank_amount','bank_dateo','bank_datev','bank_reference','payment_amount','clearGuidedAuthorization','Persisted native payment payload changed','native-bank-receipt:','fk_bank','createPendingReceipt','confirmReceipt','GET_LOCK') as $needle)m077Assert(strpos($nativeAdvance,$needle)!==false,'guided native receipt invariant missing '.$needle);
 m077Assert(strpos($nativeAdvance, "'CPMF-'.strtoupper(substr(hash('sha256', \$kind.':'.\$key), 0, 40))") !== false, 'native payment token does not fit the Dolibarr varchar(50) contract');
 m077Assert(strpos($nativeAdvance, 'DATE(p.datep) datep') !== false, 'payment retry date is not normalized');
 m077Assert(strpos($nativeAdvance, 'p.note note_private') !== false && strpos($nativeAdvance, 'p.note_private') === false, 'payment retry reads a non-existent Dolibarr column');
 m077Assert(strpos($nativeAdvance, "array(1, 2)") !== false && strpos($nativeAdvance, "!\$global && (int) \$invoice->fk_statut !== 1") !== false, 'bank-posted retry cannot resume after Dolibarr closes the paid invoice');
-m077Assert(strpos($fundsPage,"'create_native_deposit'")!==false&&strpos($fundsPage,"'post_native_receipt'")!==false&&strpos($fundsPage,'Same-currency bank account')!==false,'guided native receipt UI missing');
+m077Assert(strpos($fundsPage,"'create_native_deposit'")!==false&&strpos($fundsPage,"'post_native_receipt'")!==false&&strpos($fundsPage,"'resume_native_receipt'")!==false&&strpos($fundsPage,"GETPOSTINT('marker_id')")!==false&&strpos($fundsPage,'Same-currency bank account')!==false,'guided native receipt UI missing');
+$resumeStart=strpos($nativeAdvance,'public function resumeBankReceipt');$resumeEnd=strpos($nativeAdvance,'private function token',$resumeStart);$resumeSource=substr($nativeAdvance,$resumeStart,$resumeEnd-$resumeStart);
+m077Assert(strpos($resumeSource,'new Paiement')===false&&strpos($resumeSource,'addPaymentToBank')===false,'persisted resume can create native cash');
 
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 m077Assert(strpos($descriptor, "'financial_read'") !== false && strpos($descriptor, "'financial_write'") !== false, 'dedicated disabled-by-default finance rights missing');
@@ -122,6 +124,8 @@ $financeAdmin = m077Source('custom/chinaplanetcustomercenter/admin/financial.php
 m077Assert(strpos($financeAdmin, "name=\"finance_target\"") !== false || strpos($financeAdmin, "'finance_target'") !== false, 'posted debit cannot be bound to an exact target');
 $nativeGuard = m077Source('custom/chinaplanetcustomercenter/class/ManagedFundsNativeGuard.class.php');
 foreach (array('BEFORE INSERT','BEFORE UPDATE',"SIGNAL SQLSTATE '45000'","a.status IN ('reserved','settled')",'DROP TRIGGER IF EXISTS','INFORMATION_SCHEMA.TRIGGERS','ACTION_STATEMENT','LIFECYCLE_LOCK','multicurrency_amount_ttc','guided_payment_insert','guided_payment_update','@cpcc_guided_receipt_token','function repair') as $needle) m077Assert(strpos($nativeGuard,$needle)!==false,'native-credit concurrency guard missing '.$needle);
+$removeStart=strpos($nativeGuard,'public static function remove');$removeSource=substr($nativeGuard,$removeStart);
+m077Assert(strpos($removeSource,'self::verify($db)')!==false&&strpos($removeSource,'self::verify($db)')<strpos($removeSource,'DROP TRIGGER IF EXISTS'),'guard removal does not verify exact definitions before dropping triggers');
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 m077Assert(strpos($descriptor,'Reverse or formally close active managed-funds allocations')!==false,'module removal does not preserve active native-credit guard');
 m077Assert(strpos($descriptor,'ManagedFundsNativeGuard::acquireLifecycle')<strpos($descriptor,"_load_tables('/chinaplanetcustomercenter/sql/')")&&strpos($descriptor,'ManagedFundsNativeGuard::install($this->db, true)')<strpos($descriptor,'return $this->_init'), 'module init is not lifecycle-locked through exact guard installation');
