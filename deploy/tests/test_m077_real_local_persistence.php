@@ -76,7 +76,7 @@ try {
     $visibilityColumn=$target->query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='".$target->real_escape_string($database)."' AND TABLE_NAME='llx_chinaplanetlogistics' AND COLUMN_NAME='customer_visible'");
     if ($visibilityColumn->num_rows===0) $target->query("ALTER TABLE llx_chinaplanetlogistics ADD COLUMN customer_visible tinyint NOT NULL DEFAULT 1 AFTER customer_note");
     $target->query('SET FOREIGN_KEY_CHECKS=1');
-    foreach (array('llx_cpcc_customer_receipt.sql','llx_cpcc_fund_allocation.sql','llx_cpcc_fund_event.sql') as $file) {
+    foreach (array('llx_cpcc_customer_receipt.sql','llx_cpcc_fund_allocation.sql','llx_cpcc_fund_event.sql','llx_cpcc_guided_receipt.sql') as $file) {
         $sql = file_get_contents($repoRoot.'/custom/chinaplanetcustomercenter/sql/'.$file);
         m077RealAssert($sql !== false, 'missing migration '.$file);
         $target->query($sql);
@@ -107,6 +107,16 @@ try {
     m077RealAssert(!ManagedFundsNativeGuard::verify($db),'same-name no-op trigger passed definition verification');
     m077RealAssert(!ManagedFundsNativeGuard::install($db),'install accepted same-name changed trigger');
     m077RealAssert(ManagedFundsNativeGuard::repair($db)&&ManagedFundsNativeGuard::verify($db),'guard repair did not restore reviewed definitions');
+    $guidedToken='CPMF-'.str_repeat('A',40);$guidedPayload=hash('sha256','guided fixture');
+    $target->query("INSERT INTO llx_cpcc_guided_receipt(entity,fk_soc,fk_invoice,origin_type,origin_id,request_token,payload_hash,status,fk_user_creat,date_creation) VALUES(1,77001,77025,'commande',77004,'".$guidedToken."','".$guidedPayload."','invoice_ready',1,NOW())");
+    $target->query("INSERT INTO llx_paiement(rowid,entity,ref,datep,amount,multicurrency_amount,statut,fk_paiement,num_paiement) VALUES(77028,1,'LOCAL-M077-NATIVE-RACE','2026-09-12',1,1,1,1,'NATIVE'),(77029,1,'LOCAL-M077-GUIDED-RACE','2026-09-12',1,1,1,1,'GUIDED'),(77030,1,'LOCAL-M077-ORDINARY-EXTRA','2026-09-12',1,1,1,1,'ORDINARY')");
+    $nativePaymentDb=new mysqli($source['host'],$adminCredentials[0],$adminCredentials[1],$database,$source['port']);
+    $nativeGuidedRejected=false;try{$nativePaymentDb->query("INSERT INTO llx_paiement_facture(fk_facture,fk_paiement,amount,multicurrency_amount) VALUES(77025,77028,1,1)");}catch(mysqli_sql_exception $e){$nativeGuidedRejected=strpos($e->getMessage(),'Guided deposit receipt is protected')!==false;}
+    m077RealAssert($nativeGuidedRejected,'native payment linked to a guided deposit invoice outside the authorized session');
+    $target->query("SET @cpcc_guided_receipt_token='".$guidedToken."'");$target->query("INSERT INTO llx_paiement_facture(fk_facture,fk_paiement,amount,multicurrency_amount) VALUES(77025,77029,1,1)");$target->query("SET @cpcc_guided_receipt_token=NULL");
+    $nativePaymentDb->query("INSERT INTO llx_paiement_facture(fk_facture,fk_paiement,amount,multicurrency_amount) VALUES(77017,77030,1,1)");
+    $nativePaymentDb->close();
+    $target->query("DELETE FROM llx_paiement_facture WHERE fk_paiement IN (77029,77030)");$target->query("DELETE FROM llx_paiement WHERE rowid IN (77028,77029,77030)");$target->query("DELETE FROM llx_cpcc_guided_receipt WHERE fk_invoice=77025");
     $funds = new CustomerFundsService($db, 1);
     $fixtureKey=hash('sha256','LOCAL TEST M077 settlement coverage fixture');
     $target->query("INSERT INTO llx_cpcc_customer_receipt(rowid,entity,fk_soc,receipt_date,amount,currency_code,reference,status,native_source_type,native_source_id,request_key,payload_hash,fk_user_creat,fk_user_confirm,date_confirmation,date_creation) VALUES(77110,1,77001,'2026-09-12',12000,'USD','LOCAL-M077-COVERAGE','confirmed','customer_payment',77026,'".$fixtureKey."','".$fixtureKey."',1,1,NOW(),NOW())");

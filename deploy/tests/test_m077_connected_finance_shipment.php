@@ -107,6 +107,10 @@ foreach (array(
 m077Assert(strpos($fundsPage, "preg_match('/^(operation|shipment|project|customer_invoice):[1-9][0-9]*$/") !== false, 'allocation target is not allowlisted');
 $nativeAdvance=m077Source('custom/chinaplanetcustomercenter/class/NativeAdvanceWorkflowService.class.php');
 foreach(array('createDepositFromOrigin','Facture::createDepositFromOrigin','createDepositFromOrigin($origin','postBankReceipt','addPaymentToBank',"code<>'INTR'",'Bank account currency must exactly match','fk_bank','createPendingReceipt','confirmReceipt','GET_LOCK') as $needle)m077Assert(strpos($nativeAdvance,$needle)!==false,'guided native receipt invariant missing '.$needle);
+m077Assert(strpos($nativeAdvance, "'CPMF-'.strtoupper(substr(hash('sha256', \$kind.':'.\$key), 0, 40))") !== false, 'native payment token does not fit the Dolibarr varchar(50) contract');
+m077Assert(strpos($nativeAdvance, 'DATE(p.datep) datep') !== false, 'payment retry date is not normalized');
+m077Assert(strpos($nativeAdvance, 'p.note note_private') !== false && strpos($nativeAdvance, 'p.note_private') === false, 'payment retry reads a non-existent Dolibarr column');
+m077Assert(strpos($nativeAdvance, "array(1, 2)") !== false && strpos($nativeAdvance, "!\$global && (int) \$invoice->fk_statut !== 1") !== false, 'bank-posted retry cannot resume after Dolibarr closes the paid invoice');
 m077Assert(strpos($fundsPage,"'create_native_deposit'")!==false&&strpos($fundsPage,"'post_native_receipt'")!==false&&strpos($fundsPage,'Same-currency bank account')!==false,'guided native receipt UI missing');
 
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
@@ -117,7 +121,7 @@ m077Assert(strpos($logisticsDescriptor, "'1.4.0'") !== false, 'logistics module 
 $financeAdmin = m077Source('custom/chinaplanetcustomercenter/admin/financial.php');
 m077Assert(strpos($financeAdmin, "name=\"finance_target\"") !== false || strpos($financeAdmin, "'finance_target'") !== false, 'posted debit cannot be bound to an exact target');
 $nativeGuard = m077Source('custom/chinaplanetcustomercenter/class/ManagedFundsNativeGuard.class.php');
-foreach (array('BEFORE INSERT','BEFORE UPDATE',"SIGNAL SQLSTATE '45000'","a.status IN ('reserved','settled')",'DROP TRIGGER IF EXISTS','INFORMATION_SCHEMA.TRIGGERS','ACTION_STATEMENT','LIFECYCLE_LOCK','multicurrency_amount_ttc','function repair') as $needle) m077Assert(strpos($nativeGuard,$needle)!==false,'native-credit concurrency guard missing '.$needle);
+foreach (array('BEFORE INSERT','BEFORE UPDATE',"SIGNAL SQLSTATE '45000'","a.status IN ('reserved','settled')",'DROP TRIGGER IF EXISTS','INFORMATION_SCHEMA.TRIGGERS','ACTION_STATEMENT','LIFECYCLE_LOCK','multicurrency_amount_ttc','guided_payment_insert','guided_payment_update','@cpcc_guided_receipt_token','function repair') as $needle) m077Assert(strpos($nativeGuard,$needle)!==false,'native-credit concurrency guard missing '.$needle);
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 m077Assert(strpos($descriptor,'Reverse or formally close active managed-funds allocations')!==false,'module removal does not preserve active native-credit guard');
 m077Assert(strpos($descriptor,'ManagedFundsNativeGuard::acquireLifecycle')<strpos($descriptor,"_load_tables('/chinaplanetcustomercenter/sql/')")&&strpos($descriptor,'ManagedFundsNativeGuard::install($this->db, true)')<strpos($descriptor,'return $this->_init'), 'module init is not lifecycle-locked through exact guard installation');
@@ -146,6 +150,7 @@ foreach (array(
     'custom/chinaplanetcustomercenter/sql/llx_cpcc_customer_receipt.sql'=>array('uk_cpcc_receipt_request','uk_cpcc_receipt_native','payload_hash'),
     'custom/chinaplanetcustomercenter/sql/llx_cpcc_fund_allocation.sql'=>array('uk_cpcc_allocation_request','disbursement_type','fk_shipment'),
     'custom/chinaplanetcustomercenter/sql/llx_cpcc_fund_event.sql'=>array('action_code','status_from','status_to'),
+    'custom/chinaplanetcustomercenter/sql/llx_cpcc_guided_receipt.sql'=>array('uk_cpcc_guided_invoice','uk_cpcc_guided_payment_token','payment_payload_hash'),
 ) as $file=>$needles) {
     $sql = m077Source($file);
     m077Assert(stripos($sql, 'CREATE TABLE IF NOT EXISTS') !== false, 'schema is not additive '.$file);
