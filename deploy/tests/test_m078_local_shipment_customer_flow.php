@@ -76,4 +76,13 @@ m078Assert(strpos($shipmentObject, '$sql .= "customer_visible = ".(!empty($this-
 $customerBoard = m078Source('custom/chinaplanetcustomercenter/board.php');
 m078Assert(strpos($customerBoard, "\$shipmentVisibilitySql = \$is_external ? ' AND customer_visible=1' : '';") !== false, 'external shipment summary does not match portal visibility');
 
+$customerOrders = m078Source('custom/chinaplanetcustomercenter/orders.php');
+foreach (array('c.multicurrency_code,c.multicurrency_total_ttc', '$orderHasMulticurrency', '$orderAmount', "dol_escape_htmltag(\$orderCurrency)") as $needle) {
+    m078Assert(strpos($customerOrders, $needle) !== false, 'order list multicurrency display missing '.$needle);
+}
+$customerOrder = m078Source('custom/chinaplanetcustomercenter/order.php');
+foreach (array('$orderHasMulticurrency', '$orderTotal', '$line->multicurrency_subprice', '$line->multicurrency_total_ttc', "dol_escape_htmltag(\$orderCurrency)") as $needle) {
+    m078Assert(strpos($customerOrder, $needle) !== false, 'order detail multicurrency display missing '.$needle);
+}
+
 echo "M078_LOCAL_SHIPMENT_CUSTOMER_FLOW=PASS NATIVE_CUSTOMER=YES SHIPPING_CENTER=YES LOADED_STATUS=8\n";

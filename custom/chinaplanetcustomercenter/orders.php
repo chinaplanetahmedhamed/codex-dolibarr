@@ -4,12 +4,14 @@ if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once __DIR__.'/lib/portal.lib.php';
+require_once __DIR__.'/lib/financial.lib.php';
 
 cpcc_portal_require_access($user);
 $scope = cpcc_portal_user_scope($user);
 $isExternal = !empty($scope['is_external']);
 $socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
 $canOpenCoreOrder = !$isExternal && isModEnabled('order') && $user->hasRight('commande', 'lire');
+$currencyFallback = cpcc_financial_currency(!empty($conf->currency) ? $conf->currency : 'USD');
 
 $requestedView = GETPOST('status', 'alpha');
 $view = in_array($requestedView, array('active', 'completed', 'all'), true) ? $requestedView : 'all';
@@ -119,7 +121,7 @@ $orderStatuses = array(
 		if ($dateFrom !== '') $where[] = "c.date_commande >= '".$db->escape($dateFrom)." 00:00:00'";
 		if ($dateTo !== '') $where[] = "c.date_commande <= '".$db->escape($dateTo)." 23:59:59'";
 
-		$sql = "SELECT c.rowid,c.ref,c.date_commande,c.total_ttc,c.fk_statut,s.nom AS customer_name"
+		$sql = "SELECT c.rowid,c.ref,c.date_commande,c.total_ttc,c.multicurrency_code,c.multicurrency_total_ttc,c.fk_statut,s.nom AS customer_name"
 			." FROM ".MAIN_DB_PREFIX."commande c"
 			." LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=c.fk_soc"
 			." WHERE ".implode(' AND ', $where)
@@ -138,12 +140,15 @@ $orderStatuses = array(
 				<?php if (!$resql || $resultCount === 0) { ?><tr><td colspan="<?php echo $isExternal ? 5 : 6; ?>" class="center opacitymedium">لا توجد طلبات مطابقة للفلاتر / No matching orders.</td></tr><?php } ?>
 				<?php if ($resql) while ($obj = $db->fetch_object($resql)) {
 					$orderUrl = dol_buildpath('/chinaplanetcustomercenter/order.php', 1).'?id='.(int) $obj->rowid.(!$isExternal ? '&socid='.(int) $socid : '');
+					$orderHasMulticurrency = trim((string) $obj->multicurrency_code) !== '';
+					$orderCurrency = cpcc_financial_currency($obj->multicurrency_code, $currencyFallback);
+					$orderAmount = $orderHasMulticurrency ? (float) $obj->multicurrency_total_ttc : (float) $obj->total_ttc;
 				?>
 					<tr>
 						<td><a class="cpcc-order-ref" href="<?php echo dol_escape_htmltag($orderUrl); ?>"><?php echo dol_escape_htmltag($obj->ref); ?></a></td>
 						<?php if (!$isExternal) { ?><td><?php echo dol_escape_htmltag($obj->customer_name ?: '-'); ?></td><?php } ?>
 						<td><?php echo !empty($obj->date_commande) ? dol_print_date($obj->date_commande, 'day') : '-'; ?></td>
-						<td class="money"><?php echo cpcc_portal_money($obj->total_ttc); ?></td>
+						<td class="money"><?php echo cpcc_portal_money($orderAmount).' '.dol_escape_htmltag($orderCurrency); ?></td>
 						<td><span class="cpcc-order-status status-<?php echo (int) $obj->fk_statut; ?>"><?php echo dol_escape_htmltag(isset($orderStatuses[(int) $obj->fk_statut]) ? $orderStatuses[(int) $obj->fk_statut] : (string) $obj->fk_statut); ?></span></td>
 						<td><a class="cpcc-order-open" href="<?php echo dol_escape_htmltag($orderUrl); ?>">فتح / Open</a><?php if ($canOpenCoreOrder) { ?> <a class="cpcc-order-core" target="_blank" rel="noopener" href="<?php echo dol_escape_htmltag(dol_buildpath('/commande/card.php', 1).'?id='.(int) $obj->rowid); ?>">Vision Advanced ↗</a><?php } ?></td>
 					</tr>
