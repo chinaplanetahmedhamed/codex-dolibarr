@@ -105,6 +105,9 @@ foreach (array(
     '$settledByReceipt',
 ) as $needle) m077Assert(strpos($fundsPage, $needle) !== false, 'managed-funds UI missing '.$needle);
 m077Assert(strpos($fundsPage, "preg_match('/^(operation|shipment|project|customer_invoice):[1-9][0-9]*$/") !== false, 'allocation target is not allowlisted');
+$nativeAdvance=m077Source('custom/chinaplanetcustomercenter/class/NativeAdvanceWorkflowService.class.php');
+foreach(array('createDepositFromOrigin','Facture::createDepositFromOrigin','createDepositFromOrigin($origin','postBankReceipt','addPaymentToBank',"code<>'INTR'",'Bank account currency must exactly match','fk_bank','createPendingReceipt','confirmReceipt','GET_LOCK') as $needle)m077Assert(strpos($nativeAdvance,$needle)!==false,'guided native receipt invariant missing '.$needle);
+m077Assert(strpos($fundsPage,"'create_native_deposit'")!==false&&strpos($fundsPage,"'post_native_receipt'")!==false&&strpos($fundsPage,'Same-currency bank account')!==false,'guided native receipt UI missing');
 
 $descriptor = m077Source('custom/chinaplanetcustomercenter/core/modules/modChinaPlanetCustomerCenter.class.php');
 m077Assert(strpos($descriptor, "'financial_read'") !== false && strpos($descriptor, "'financial_write'") !== false, 'dedicated disabled-by-default finance rights missing');

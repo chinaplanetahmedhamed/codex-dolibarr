@@ -135,7 +135,9 @@ Because this Mission changes financial allocation and cross-module persistence, 
 
 ## Remaining integration checklist after C01/C02
 
-- This deposit-invoice-backed workflow is the safe first slice for customer advances held on account; it is not the whole payments program. Staff still need a reviewed guided workflow to create the native advance/deposit invoice, post the bank receipt, and then confirm it here without navigating raw accounting screens.
+- The prerequisite-backed guided workflow now lets staff select a validated customer-owned proposal/order whose native payment term contains a deposit percentage, creates and validates the native deposit invoice with inherited VAT/currency/project provenance, then records the full native customer payment to an explicitly selected same-currency open bank account. Managed funds are confirmed only after the payment has a verified native bank link. Named retry keys prevent duplicate invoice/payment creation and reject changed retry payloads.
+- Authenticated local rendering passed for the selected labeled test customer and showed the guided source, deposit-invoice, same-currency bank-account, payment-method, date, and bank-reference controls without submitting a form or creating a business row. That customer currently has no eligible configured proposal/order, so destructive native create/payment acceptance remains pending a disposable native fixture.
+- Money received before any proposal/order remains a separate accounting-policy gap: standalone advances must not invent VAT, payment terms, or provenance until Ahmed confirms the current business recording convention.
 - Native supplier third parties, supplier orders/invoices/payments, and their exact allocation evidence remain C03.
 - Loading completion, export-document draft review, original-document release, CargoX submission, DHL purchase, and external email/message sending remain separate idempotent actions with their own approval and audit rules.
 - Customer shipment/document/statement publication remains C04 and requires authenticated positive/negative ownership checks plus Arabic/English desktop/phone acceptance.
