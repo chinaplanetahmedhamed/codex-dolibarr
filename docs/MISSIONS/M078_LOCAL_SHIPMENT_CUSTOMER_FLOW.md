@@ -16,6 +16,7 @@ Make the Operations register readable and complete the shortest native workflow 
 - Add a permission-gated action from a new Operation to Dolibarr's native customer form.
 - Return from native customer creation to the Operation form with the new customer selected.
 - Add permission-gated Operations shortcuts to Shipping Center and native shipment creation.
+- Include shipment counts and shipment tracking cards in the customer workspace, permission scoped to logistics readers.
 - Create one clearly local test customer named `Sarah Company` and one local shipment at status `Loaded & Going to Export Customs`.
 - Keep missing container, route, bill-of-lading, carrier, and ETA facts visibly pending; do not invent them.
 
@@ -35,6 +36,7 @@ Make the Operations register readable and complete the shortest native workflow 
 - The native Add Customer action returns to the new Operation form and auto-selects the created customer.
 - `Sarah Company` exists once locally as a customer.
 - Its shipment exists once locally in Shipping Center at loaded/export-customs status and remains private.
+- Sarah's customer card shows one shipment and opens the same Shipping Center record without requiring a synthetic Operation.
 - Focused source-contract, syntax, existing shipment-link regression, visual desktop, and narrow-width checks pass.
 
 ## Hard boundaries

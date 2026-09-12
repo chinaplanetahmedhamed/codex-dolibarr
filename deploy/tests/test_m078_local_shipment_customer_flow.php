@@ -44,6 +44,8 @@ foreach (array(
     '.cpad-section-content .cpo-table td a{color:#76ddff!important',
     '.cpad-section-content .cpo-table td .cpo-badge{',
     'color:#123f7a!important',
+    '.cpw-native-row{display:flex;',
+    'background:#fff;color:var(--cpw-navy)!important',
 ) as $needle) m078Assert(strpos($css, $needle) !== false, 'dark-table contrast missing '.$needle);
 
 $shipmentService = m078Source('custom/chinaplanetoperations/class/OperationShipmentService.class.php');
@@ -52,6 +54,16 @@ m078Assert(strpos($shipmentService, 'fk_shipment') !== false, 'operation does no
 
 $statusLib = m078Source('custom/chinaplanetlogistics/lib/chinaplanetlogistics.lib.php');
 m078Assert(strpos($statusLib, "8 => 'Loaded & Going to Export Customs'") !== false, 'loaded shipment status missing');
+
+$workspace = m078Source('custom/chinaplanetoperations/workspace.php');
+foreach (array(
+    "hasRight('chinaplanetlogistics', 'read')",
+    'COUNT(DISTINCT l.rowid) shipment_count',
+    'SELECT rowid,ref,container_no,bl_no,date_eta,fk_statut,customer_visible',
+    'id="customer-shipments"',
+    'شحنات العميل',
+    '/custom/chinaplanetlogistics/list.php?socid=',
+) as $needle) m078Assert(strpos($workspace, $needle) !== false, 'customer workspace shipment link missing '.$needle);
 
 $shipmentCard = m078Source('custom/chinaplanetlogistics/card.php');
 m078Assert(substr_count($shipmentCard, "\$object->customer_visible = GETPOSTINT('customer_visible') ? 1 : 0;") === 2, 'shipment portal visibility is not explicit on create and update');
