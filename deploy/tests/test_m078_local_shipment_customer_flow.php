@@ -73,4 +73,7 @@ m078Assert(substr_count($shipmentCard, "GETPOST('container_type', 'alpha') === '
 $shipmentObject = m078Source('custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php');
 m078Assert(strpos($shipmentObject, '$sql .= "customer_visible = ".(!empty($this->customer_visible) ? 1 : 0)." ";') !== false, 'shipment update cannot change portal visibility');
 
+$customerBoard = m078Source('custom/chinaplanetcustomercenter/board.php');
+m078Assert(strpos($customerBoard, "\$shipmentVisibilitySql = \$is_external ? ' AND customer_visible=1' : '';") !== false, 'external shipment summary does not match portal visibility');
+
 echo "M078_LOCAL_SHIPMENT_CUSTOMER_FLOW=PASS NATIVE_CUSTOMER=YES SHIPPING_CENTER=YES LOADED_STATUS=8\n";

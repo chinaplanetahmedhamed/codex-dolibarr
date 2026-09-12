@@ -71,7 +71,8 @@ $shippingOrderStats = array('total_current'=>0,'active'=>0,'confirmed'=>0,'close
 $shippingOrderLabels = array('active'=>'نشط / Active','confirmed'=>'مؤكد / تم استلام SO / Confirmed','closed'=>'مغلق / Closed','cancelled'=>'ملغي / Cancelled');
 $recentShippingOrders = array();
 if ($socid > 0) {
-    $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")");
+    $shipmentVisibilitySql = $is_external ? ' AND customer_visible=1' : '';
+    $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$shipmentVisibilitySql);
     if ($resql && ($obj=$db->fetch_object($resql))) $shipActive=(int)$obj->nb;
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."commande WHERE entity IN (".getEntity('commande').") AND fk_soc=".$socid." AND fk_statut>=3");
     if ($resql && ($obj=$db->fetch_object($resql))) $ordersCompleted=(int)$obj->nb;
