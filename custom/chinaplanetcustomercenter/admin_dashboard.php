@@ -183,6 +183,17 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <button type="button" id="cpad-cancel-layout" class="cpad-tool" hidden>Cancel</button>
     <span id="cpad-layout-message" class="cpad-layout-message" hidden></span>
   </div>
+  <section class="cpad-work-start" aria-labelledby="cpad-work-start-title">
+    <div class="cpad-work-start-head"><div><span>DAILY WORK</span><h1 id="cpad-work-start-title">ابدأ العمل من هنا</h1><p>شاشات مبسطة للموظف؛ Dolibarr يحفظ السجلات في الخلفية.</p></div><a href="<?php echo dol_buildpath('/chinaplanetoperations/workspace.php',1); ?>">فتح مساحة العمل اليومية ←</a></div>
+    <div class="cpad-work-start-grid">
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=order',1); ?>"><span class="fas fa-shopping-cart"></span><b>طلب عميل</b><small>Customer order</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=sourcing',1); ?>"><span class="fas fa-search"></span><b>بحث عن منتج</b><small>Product sourcing</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=purchasing',1); ?>"><span class="fas fa-boxes"></span><b>شراء ومتابعة مورد</b><small>Purchasing</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=quality_control',1); ?>"><span class="fas fa-clipboard-check"></span><b>فحص جودة</b><small>Quality control</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b>حجز شحن</b><small>Shipping booking</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=customs',1); ?>"><span class="fas fa-file-contract"></span><b>جمارك ومستندات</b><small>Customs & documents</small></a>
+    </div>
+  </section>
   <div id="cpad-widget-grid" class="cpad-widget-grid" aria-live="polite"></div>
 
   <section class="cpad-kpis">

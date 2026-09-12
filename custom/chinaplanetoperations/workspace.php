@@ -104,6 +104,20 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
     <?php if ($canReadCustomers) { ?><a<?php echo in_array($view, array('customers','customer'), true) ? ' class="active" aria-current="page"' : ''; ?> href="?view=customers">العملاء والعمليات</a><?php } ?>
   </nav>
 
+  <?php if ($canCreateOperation && in_array($view, array('manager', 'my'), true)) { ?>
+  <section class="cpw-launch" aria-labelledby="cpw-launch-title">
+    <div class="cpw-launch-head"><div><span>START HERE</span><h2 id="cpw-launch-title">ابدأ عملاً جديداً</h2><p>اختر نوع العمل؛ ستفتح شاشة China Planet OS الموجّهة مع الاحتفاظ بالسجل الأصلي في الخلفية.</p></div><a href="operations/index.php">سجل العمليات ←</a></div>
+    <div class="cpw-launch-grid">
+      <a href="operations/edit.php?service_type=order"><span class="fas fa-shopping-cart" aria-hidden="true"></span><strong>طلب عميل</strong><small>Customer order</small></a>
+      <a href="operations/edit.php?service_type=sourcing"><span class="fas fa-search" aria-hidden="true"></span><strong>بحث عن منتج</strong><small>Product sourcing</small></a>
+      <a href="operations/edit.php?service_type=purchasing"><span class="fas fa-boxes" aria-hidden="true"></span><strong>شراء ومتابعة مورد</strong><small>Purchasing</small></a>
+      <a href="operations/edit.php?service_type=quality_control"><span class="fas fa-clipboard-check" aria-hidden="true"></span><strong>فحص جودة</strong><small>Quality control</small></a>
+      <a href="operations/edit.php?service_type=shipping_booking"><span class="fas fa-ship" aria-hidden="true"></span><strong>حجز ومتابعة شحن</strong><small>Shipping booking</small></a>
+      <a href="operations/edit.php?service_type=customs"><span class="fas fa-file-contract" aria-hidden="true"></span><strong>جمارك ومستندات</strong><small>Customs & documents</small></a>
+    </div>
+  </section>
+  <?php } ?>
+
   <?php if ($view === 'manager') {
       $attention = array_values(array_filter($allOperations, static function ($op) use ($isDone, $isOverdue) {
           return !$isDone($op['stage']) && ($isOverdue($op['date_deadline']) || in_array($op['priority'], array('urgent','high'), true) || in_array($op['stage'], array('waiting_information','waiting_external','on_hold','corrective_action'), true));
