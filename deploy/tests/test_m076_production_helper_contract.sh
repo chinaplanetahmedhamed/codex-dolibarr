@@ -8,8 +8,8 @@ fail(){ echo "M076_PRODUCTION_HELPER_CONTRACT=FAIL REASON=$1" >&2; exit 1; }
 
 bash -n "$helper" || fail HELPER_SYNTAX
 bash -n "$installer" || fail INSTALLER_SYNTAX
-grep -Fq "readonly RUNTIME_COMMIT='b233b525a94e610fad97045db214e9bbb043ebea'" "$helper" || fail COMMIT_PIN
-grep -Fq "readonly ARTIFACT_SHA='bd43c2192e3e74300bd701e5da5a4fc1fa257a471e10a144e9c30a490e526e61'" "$helper" || fail ARTIFACT_PIN
+grep -Fq "readonly RUNTIME_COMMIT='526976f21c609bc30482624719afb092905da810'" "$helper" || fail COMMIT_PIN
+grep -Fq "readonly ARTIFACT_SHA='45c526d8c8139567993df0d5702f6cd2233aae4369f8713d601834bd3969dca4'" "$helper" || fail ARTIFACT_PIN
 grep -Fq "readonly TARGET_CONTAINER='vision_erp'" "$helper" || fail CONTAINER_PIN
 grep -Fq "readonly TARGET_VOLUME='vision-os_dolibarr_custom'" "$helper" || fail VOLUME_PIN
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz'" "$helper" || fail HTTP_PIN
@@ -33,8 +33,8 @@ grep -Fq "ACTIVE_INTERNAL_TEAM_MEMBERSHIP_REQUIRED" "$root/deploy/tools/m076_pro
 grep -Fq "SCRIPT_FILENAME'] = \$documentRoot.'/custom/chinaplanetoperations/workspace.php';" "$root/deploy/tools/m076_production_preflight.php" || fail STDIN_SCRIPT_FILENAME_CONTEXT
 grep -Fq "REQUEST_METHOD'] = 'GET';" "$root/deploy/tools/m076_production_preflight.php" || fail STDIN_REQUEST_CONTEXT
 [[ $(grep -c '^codex-deploy ALL=(root) NOPASSWD:' "$sudoers") -eq 6 ]] || fail SUDOERS_COMMAND_COUNT
-grep -Fq "readonly HELPER_SHA='8a60a545dad11476d2c7cdeb65f58a08689d836705911b53dcb4213c819cd868'" "$installer" || fail HELPER_INSTALL_PIN
-grep -Fq "readonly PRIOR_HELPER_SHA='6f3ddb8ca466ebc1d8a7903af57b892f8c64180c92f8d16fb7c8e74bd8063f22'" "$installer" || fail PRIOR_HELPER_INSTALL_PIN
+grep -Fq "readonly HELPER_SHA='b1fe7fb8ea447b5db0daff683eefa7ee150ae803ace278ca403182d48586c01e'" "$installer" || fail HELPER_INSTALL_PIN
+grep -Fq "readonly PRIOR_HELPER_SHA='8a60a545dad11476d2c7cdeb65f58a08689d836705911b53dcb4213c819cd868'" "$installer" || fail PRIOR_HELPER_INSTALL_PIN
 grep -Fq "readonly SUDOERS_SHA='311468a7e1ff85dff9324f35e5961d478c8b6d6bf79abfae1d301400ad2d8e03'" "$installer" || fail SUDOERS_INSTALL_PIN
 grep -Fq 'PRODUCTION_DATABASE_CHANGED=NO' "$installer" || fail DATABASE_BOUNDARY
 echo 'M076_PRODUCTION_HELPER_CONTRACT=PASS TARGET=erp.visiontrading.biz RUNTIME_FILES=7 COMMANDS=6 BASELINE=PINNED BACKUP=SCOPED AUTO_ROLLBACK=YES DATABASE_MUTATED=NO'
