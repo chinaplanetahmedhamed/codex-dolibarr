@@ -93,6 +93,17 @@
 .cpad-section-content .cpo-card-side h3,
 .cpad-section-content .cpo-card-side h3 a{color:#172033!important}
 .cpad-section-content .cpo-table th{color:#172033}
+.cpad-section-content .cpo-table td{color:#edf5ff!important}
+.cpad-section-content .cpo-table td a{color:#76ddff!important;text-decoration-thickness:1px;text-underline-offset:2px}
+.cpad-section-content .cpo-table td .cpo-badge{
+  background:#dcecff!important;
+  border:1px solid #93c5fd;
+  color:#123f7a!important;
+}
+.cpad-section-content .cpo-table tr.cpo-overdue td{color:#172033!important}
+.cpad-section-content .cpo-table tr.cpo-overdue td a{color:#075ea8!important}
+.cpo-customer-control .cpo-new-customer{align-self:flex-start;margin:3px 0 0}
+.cpo-customer-control small{line-height:1.45;color:#526173}
 .cpad-section-content .cpo-notice{color:#6b4d00!important}
 
 /* M043-C02 — staff-facing public request review */

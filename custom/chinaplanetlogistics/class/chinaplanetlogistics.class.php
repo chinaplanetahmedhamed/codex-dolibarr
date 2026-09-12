@@ -241,7 +241,8 @@ class ChinaPlanetLogistics extends CommonObject
         $sql .= "freetime_end = ".$this->sqlDate($this->freetime_end).", ";
         $sql .= "fk_statut = ".$this->sqlInt($this->fk_statut).", ";
         $sql .= "notes = ".$this->sqlStr($this->notes).", ";
-        $sql .= "customer_note = ".$this->sqlStr($this->customer_note)." ";
+        $sql .= "customer_note = ".$this->sqlStr($this->customer_note).", ";
+        $sql .= "customer_visible = ".(!empty($this->customer_visible) ? 1 : 0)." ";
         $sql .= "WHERE rowid = ".(int)$this->id." AND entity = ".$this->activeEntity();
 
         $resql = $this->db->query($sql);

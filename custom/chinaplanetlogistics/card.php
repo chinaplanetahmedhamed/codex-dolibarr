@@ -97,7 +97,7 @@ if ($action == 'add' && $canwrite && $is_post) {
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
     $object->container_no     = GETPOST('container_no', 'alpha');
-    $object->container_type   = GETPOST('container_type', 'alpha');
+    $object->container_type   = GETPOST('container_type', 'alpha') === '-1' ? '' : GETPOST('container_type', 'alpha');
     $object->nb_containers    = (int) GETPOST('nb_containers', 'int');
     $object->booking_no       = GETPOST('booking_no', 'alpha');
     $object->bl_no            = GETPOST('bl_no', 'alpha');
@@ -120,6 +120,7 @@ if ($action == 'add' && $canwrite && $is_post) {
     $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
     $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
     $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
+    $object->customer_visible = GETPOSTINT('customer_visible') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
@@ -144,7 +145,7 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
     $object->container_no     = GETPOST('container_no', 'alpha');
-    $object->container_type   = GETPOST('container_type', 'alpha');
+    $object->container_type   = GETPOST('container_type', 'alpha') === '-1' ? '' : GETPOST('container_type', 'alpha');
     $object->nb_containers    = (int) GETPOST('nb_containers', 'int');
     $object->booking_no       = GETPOST('booking_no', 'alpha');
     $object->bl_no            = GETPOST('bl_no', 'alpha');
@@ -167,6 +168,7 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
     $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
     $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
+    $object->customer_visible = GETPOSTINT('customer_visible') ? 1 : 0;
     $sendStatusEmail = GETPOSTINT('send_status_email') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
@@ -477,12 +479,14 @@ if ($action == 'create' || $action == 'edit') {
     print $form->selectarray('fk_statut', $statuses, $object->fk_statut);
     print '</td></tr>';
 
+    print '<tr><td>Customer portal visibility / ظهور الشحنة للعميل</td><td><label><input type="checkbox" name="customer_visible" value="1"'.(!empty($object->customer_visible) && $action === 'edit' ? ' checked' : '').'> Publish the shipment record in the customer portal / إظهار سجل الشحنة في بوابة العميل</label></td></tr>';
+
     print '<tr><td>'.$langs->trans('CPLPublicUpdateSource').'</td><td>';
     $publicSourceOptions = array(); foreach (cpl_public_source_types() as $sourceCode=>$unusedLabel) $publicSourceOptions[$sourceCode] = cpl_public_source_label($langs, $sourceCode);
     print $form->selectarray('audit_source_type', $publicSourceOptions, 'manual_team', 0);
     print '</td></tr>';
     print '<tr><td>'.$langs->trans('CPLPublicUpdateReason').'</td><td><input type="text" name="audit_reason_public" maxlength="1000" style="width:95%"></td></tr>';
-    print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1" checked></td></tr>';
+    print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1"'.($action === 'edit' ? ' checked' : '').'></td></tr>';
     if ($action === 'edit') {
         print '<tr><td>'.$langs->trans('CPLSendStatusEmail').'</td><td>';
         if ($cansendshipmentemail) print '<label><input type="checkbox" name="send_status_email" value="1"> '.$langs->trans('CPLSendStatusEmailHelp').'</label>';
