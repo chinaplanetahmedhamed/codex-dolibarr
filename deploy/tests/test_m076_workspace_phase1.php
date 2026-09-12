@@ -4,6 +4,7 @@ $workspace = file_get_contents($root.'/custom/chinaplanetoperations/workspace.ph
 $edit = file_get_contents($root.'/custom/chinaplanetoperations/operations/edit.php');
 $service = file_get_contents($root.'/custom/chinaplanetoperations/class/OperationsService.class.php');
 $shell = file_get_contents($root.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php');
+$css = file_get_contents($root.'/custom/chinaplanetoperations/css/operations.css');
 
 $checks = array(
     'workspace requires authenticated operations read' => "cpo_require(\$user, 'read')",
@@ -68,5 +69,13 @@ foreach ($serviceChecks as $label=>$needle) {
 
 if (strpos($shell, "'workspace'=>array('/chinaplanetoperations/workspace.php'") === false) {
     fwrite(STDERR, "FAIL shared workspace navigation\n"); exit(1);
+}
+
+$cssChecks = array(
+    'workspace hero heading overrides shared shell color'=>'.cpad-section-content .cpw-hero h1{color:#fff}',
+    'workspace hero subtitle overrides shared shell color'=>'.cpad-section-content .cpw-hero p{color:#dbe8f7}',
+);
+foreach ($cssChecks as $label=>$needle) {
+    if (strpos($css, $needle) === false) {fwrite(STDERR, "FAIL $label\n"); exit(1);}
 }
 echo "M076_WORKSPACE_PHASE1_CONTRACT=PASS\n";
