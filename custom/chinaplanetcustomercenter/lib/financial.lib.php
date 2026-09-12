@@ -6,6 +6,16 @@ function cpcc_financial_schema_ready($db)
     return $resql && $db->num_rows($resql) > 0;
 }
 
+/** M077 managed-funds allocation tables are additive to the legacy ledger. */
+function cpcc_managed_funds_schema_ready($db)
+{
+    foreach (array('cpcc_customer_receipt', 'cpcc_fund_allocation', 'cpcc_fund_event') as $table) {
+        $resql = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.$table)."'");
+        if (!$resql || $db->num_rows($resql) < 1) return false;
+    }
+    return true;
+}
+
 function cpcc_financial_currency($code, $fallback = 'USD')
 {
     $code = strtoupper(trim((string) $code));

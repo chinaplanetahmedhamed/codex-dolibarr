@@ -1,0 +1,110 @@
+# M077 — Connected finance and shipment foundation
+
+- Owner: Ahmed Hamed
+- Coordinator and writer: Agent 007
+- Date: 2026-09-12
+- Status: C02_LOCAL_ACCEPTANCE
+- Approval: Ahmed explicitly requested connecting the accepted workspace to the main system, beginning with payments and shipment tracking.
+- Current environment: source and local synthetic verification only. Production requires a separate immutable release and explicit approval.
+
+## Objective
+
+Replace the Phase 1 “not connected” boundary with reviewed, auditable links to native Dolibarr records. Payments and shipment tracking are first because supplier settlement, document release, CargoX, DHL, customer statements, and portal publication depend on them.
+
+This Mission does not turn every prototype control on at once. A control becomes connected only after its native owner, authorization, persistence, audit, idempotency, failure behavior, and customer projection are verified.
+
+## Durable integration inventory
+
+| Capability | Current owner | State before M077 | M077 direction |
+|---|---|---|---|
+| Customers and contacts | Dolibarr Third Parties/Contacts | Connected | Preserve native records and entity ownership. |
+| Products/services | Dolibarr Products/Services | Connected but not fully surfaced in the workspace | Reuse native products/services; never create a parallel catalog. |
+| Customer quotations/orders/invoices/payments | Dolibarr native commercial/accounting objects | Partially connected | Treat validated native records as authoritative. |
+| Customer funds held for later use | CP Customer Center ledger | Partial and unsafe for explicit reservation lifecycle | Add pending/confirmed receipt registration plus same-currency allocation lifecycle without duplicating native cash. |
+| Supplier/company payment | Dolibarr supplier invoices/payments and CP customer-cost allocation | Partial | Link an allocation to an actual native supplier payment or posted CP debit; never infer payment from a task/status. |
+| Operations/tasks | ChinaPlanet Operations | Connected | Preserve owner, next action, deadline, team authorization, and idempotency. |
+| Shipment tracking | ChinaPlanet Logistics | Connected when manually created; partial from Operations | Create/link an auditable draft shipment from eligible operations without false booking/loading/sailing claims. |
+| Milestones | ChinaPlanet Logistics event history | Connected manual provenance | Keep planned versus actual dates and source labels distinct; carrier API remains a later reviewed integration. |
+| Operation documents | ChinaPlanet Operations versioned documents | Partial | Add explicit reviewer/deadline workflow later; receipt/opening never means approval. |
+| CargoX/DHL | External systems | Missing | Draft/task/reference first; no submission, label purchase, or message without separate authorization. |
+| Customer portal | Customer Center server-side projection | Partial | Publish only customer-owned, approved safe fields after positive/negative access tests. |
+| Email/messages | Dolibarr mail + Operations drafts | Partial | Drafts are allowed; external send remains an explicit action and approval boundary. |
+
+## Financial invariants
+
+1. Dolibarr bank, customer payment, supplier invoice/payment, and accounting records remain authoritative.
+2. A managed customer receipt starts `pending` and can become `confirmed` only through an explicit authorized action tied to validated native evidence. Historical receipts are never auto-confirmed.
+3. Confirmation never creates a second cash movement. The CP record is an allocation/control record referencing the native receipt.
+4. One confirmed receipt may fund multiple operations, shipments, invoices, or services in the same original currency.
+5. Allocation states are `reserved`, `settled`, or `reversed`. Reserved funds reduce unallocated funds but are not reported as spent. Settled funds require a real posted debit/native supplier payment.
+6. Total active allocation cannot exceed the confirmed receipt, and total settlement against one debit cannot exceed that debit.
+7. Original currencies remain separate. No FX is invented and no currencies are netted without an explicit paired conversion record, rate, date, and source.
+8. Customer funds, company fees, supplier costs, and profit remain distinct. Supplier identities/costs stay private unless explicitly approved for the customer projection.
+9. An unsettled reservation may be reversed with a reason. A settled attribution cannot release funds while its posted debit remains active; the native debit must be reversed first through a later reviewed correction flow.
+10. Every transition is entity/customer scoped, permission gated by the calling page, transaction protected, and append-only audited.
+
+## Shipment invariants
+
+1. A draft shipment may be created only from an entity-scoped operation with a real customer and a shipping service type.
+2. The operation’s customer, project, and order links are copied only after ownership validation.
+3. The draft stores entered origin/destination as planning data and starts at status `0`; it does not claim booking, loading, departure, arrival, CargoX, originals, DHL, or customer notification.
+4. Creation and linking are one transaction and idempotent: retry returns the already linked shipment.
+5. Later milestone updates retain manual/API provenance and planned/actual separation.
+6. Loading completion follow-ups will be idempotent: one collection follow-up and one export-document draft review per shipment. The collection deadline convention must come from configuration or the approved existing calendar convention.
+
+## Delivery phases
+
+### M077-C01 — Finance and shipment foundation
+
+- Add receipt/allocation/audit schema and a server-side service enforcing the financial invariants.
+- Add an operation-to-draft-shipment service with entity/customer/project/order validation and no external side effects.
+- Add focused contract tests and synthetic reconciliation examples for two shipments plus one standalone service.
+
+### M077-C02 — Staff workflow
+
+- Add permission/CSRF-protected staff screens for pending receipt, confirmation, reservation, and settlement.
+- Add the explicit “Create linked draft shipment” action to eligible Operations pages.
+- Show per-currency confirmed, pending, reserved, settled, unallocated, due-now, and future-due values without cross-currency totals.
+
+### M077-C03 — Supplier/order/document follow-ups
+
+- Reuse native supplier Third Parties, products/services, supplier orders, invoices, and payments.
+- Implement idempotent loading-completion tasks and document draft review.
+- Keep CargoX, originals release, DHL, and external sending as independent reviewed actions.
+
+### M077-C04 — Customer-safe projection
+
+- Publish only approved customer-owned shipment, document, and statement fields.
+- Add authenticated positive/negative ownership tests and representative Arabic/English desktop/phone acceptance.
+
+## Local acceptance
+
+- Additive schema applies twice without duplicate business rows and preserves existing data.
+- One labeled synthetic pending receipt cannot affect available funds.
+- Explicit confirmation references validated native evidence and does not duplicate the native payment.
+- Two synthetic shipments and one standalone service can reserve one same-currency receipt without exceeding it; retry is idempotent.
+- Reservation is not presented as spending; settlement requires a validated actual debit; reversal restores the correct available amount with audit history retained.
+- An eligible synthetic shipping operation creates exactly one status-0 linked shipment; retry returns the same shipment.
+- Mismatched entity/customer/project/order/evidence, mixed currency, excessive allocation, and unauthorized customer projection fail closed.
+- Relevant PHP syntax checks, focused tests, migration replay/rollback checks, and `git diff --check` pass.
+
+## Hard boundaries
+
+- No Production or staging mutation, no DNS/proxy change, and no React/WordPress change under this local approval.
+- No Production data and no unlabeled historical-money confirmation.
+- No email, CargoX submission, DHL purchase, customer publication, or other external write.
+- No fixed employee assignment and no staff membership changes beyond separately approved prerequisites.
+- The accepted September 11 prototype is design authority only; its sample people, companies, amounts, and transactions are never imported.
+
+## Review and release gates
+
+Because this Mission changes financial allocation and cross-module persistence, Accounting, Security, and QA must review frozen source and migration evidence before any release artifact is prepared. Production compare/preflight and Production apply/verify remain separate approval gates.
+
+## C01/C02 local acceptance evidence — 2026-09-12
+
+- Source contract and legacy finance/workspace regression tests pass.
+- A real MariaDB test used a random disposable schema-only database. It copied table definitions but no customer/business rows, applied each new table definition twice, then persisted one labeled receipt, three allocations, two settlements, one reservation reversal, and one linked shipment draft. It verified idempotent retries, exact customer/project/order ownership, status `0`, baseline milestone `inquiry`, private provenance, allocation ceiling, and reconciliation. The disposable database was dropped and its absence verified.
+- The existing local Dolibarr database was backed up before the additive browser-acceptance migration. Full dump: `/var/folders/9v/6t5wqy7x6yn4q4x7x27_bh3h0000gn/T/m077-local-schema-20260912T152459Z-010c5ee2/dolibarr-before-m077.sql`, SHA-256 `ef47c9e5f7f17dfc660a85869e43883c71ef9d0278ee8ab41f5a3a82afeee2a3`. Prestate recorded all three M077 tables absent; absence-list SHA-256 `4e0ca5a0e2107ea1a14803a15ad0462e5044b1bb8cb7074c107baa5f307f7341`.
+- The three M077 tables were added empty to the local database. Replay succeeded and post-apply row counts remained zero.
+- Authenticated local admin browser acceptance loaded `Managed Customer Funds`, selected the existing labeled local customer `LOCAL TEST - Connected MVP 20260911`, and rendered the four guided actions plus empty receipt/allocation tables. A read-only operation check rendered the new linked-draft action for `CP-SB-2026-000001`, showed its explicit no-booking/no-loading/no-sailing warning, and did not activate it. Database verification retained `fk_shipment=0` and zero rows in all three M077 tables.
+- This acceptance proves the local foundation and UI rendering only. No real financial record, shipment, message, CargoX/DHL action, or external write was created. Phone-width acceptance and independent Accounting/Security/QA review remain open before release.
