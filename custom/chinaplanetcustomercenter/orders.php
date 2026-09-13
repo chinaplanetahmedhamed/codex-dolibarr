@@ -30,6 +30,7 @@ if ($socid > 0) {
 } elseif ($isExternal) {
 	$scopeSql .= " AND 1=0";
 }
+if ($isExternal) $scopeSql .= " AND c.fk_statut>0";
 
 $orderCounts = array('active'=>0, 'completed'=>0, 'all'=>0);
 $countSql = "SELECT"
@@ -88,7 +89,7 @@ $orderStatuses = array(
 				<span>الطلبات المكتملة / Completed Orders</span><strong><?php echo $orderCounts['completed']; ?></strong><small>Closed orders / الطلبات المغلقة</small>
 			</a>
 			<a class="cpcc-order-view-card<?php echo $view === 'all' ? ' is-active' : ''; ?>" href="<?php echo dol_escape_htmltag($viewUrls['all']); ?>">
-				<span>كل الطلبات / All Orders</span><strong><?php echo $orderCounts['all']; ?></strong><small>Includes drafts and canceled / تشمل المسودات والملغاة</small>
+				<span>كل الطلبات / All Orders</span><strong><?php echo $orderCounts['all']; ?></strong><small><?php echo $isExternal ? 'Validated customer records only / السجلات المعتمدة فقط' : 'Includes drafts and canceled / تشمل المسودات والملغاة'; ?></small>
 			</a>
 		</section>
 

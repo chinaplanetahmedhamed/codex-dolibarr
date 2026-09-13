@@ -16,6 +16,7 @@ $id = GETPOSTINT('id');
 $order = new Commande($db);
 if ($id <= 0 || $order->fetch($id) <= 0) cpcc_portal_access_denied($user, 'orders');
 if ($is_external && (int) $order->socid !== (int) $scope['socid']) cpcc_portal_access_denied($user, 'orders');
+if ($is_external && (int) $order->statut <= 0) cpcc_portal_access_denied($user, 'orders');
 $currencyFallback = cpcc_financial_currency(!empty($conf->currency) ? $conf->currency : 'USD');
 $orderHasMulticurrency = trim((string) $order->multicurrency_code) !== '';
 $orderCurrency = cpcc_financial_currency($order->multicurrency_code, $currencyFallback);
