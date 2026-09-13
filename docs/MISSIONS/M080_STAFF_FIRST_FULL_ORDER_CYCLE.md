@@ -3,7 +3,7 @@
 - Owner: Ahmed Hamed
 - Coordinator: Agent 007
 - Date: 2026-09-14
-- Status: C01 IMPLEMENTED LOCALLY — isolated native end-to-end acceptance still required
+- Status: C01–C04 COMPLETED LOCALLY — release preparation and independent reviews required
 - Environment: local synthetic only
 
 ## Five-stage checklist
@@ -14,7 +14,7 @@
 4. **C04 — Full local UAT and bounded fixes:** synthetic USD, CNY/RMB, and EGP cycles; staff/customer permissions, reload, RTL/LTR, desktop/390px, and negative cases.
 5. **R01 — Release preparation:** freeze commit/artifact, Accounting/Security/QA and affected-domain reviews, migration/rollback evidence, then separately approved Staging and Production gates.
 
-Only C01 is specified below. Later stages require their own frozen scope and approval.
+M082 supplied the separately approved C02–C04 scope and completed it locally on 2026-09-14. R01 remains a separate release gate.
 
 ## C01 exact scope
 
@@ -132,3 +132,10 @@ Approval recorded from Ahmed on 2026-09-14. C02–C04 and R01 remain on the deli
 
 - Source rollback: revert the C01 commit after it is created.
 - Local schema rollback: `rollback-empty` is permitted only while `llx_cpo_billing_action` contains zero rows. Once markers exist, retain the table and correct through a reviewed migration.
+
+## M082 C02–C04 completion — 2026-09-14
+
+- Added the native supplier order, invoice, partial/full payment, same-currency bank, optional managed-funds attribution, and durable recovery path.
+- Added evidence-only shipment and reviewed-document follow-up to the operation screen.
+- Completed schema-only disposable native UAT in USD, CNY, and EGP from quotation through customer collection and supplier settlement; the disposable database was deleted and the working business database was not mutated by UAT.
+- R01 remains unapproved. No Push, Staging, or Production action occurred.

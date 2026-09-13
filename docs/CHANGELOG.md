@@ -1,5 +1,14 @@
 # ChinaPlanetOS Change Log
 
+## 2026-09-14 — M082 staff-first local completion
+
+- Added a guided staff-only supplier workflow to the operation screen: explicit native supplier order, separate validation, linked native supplier invoice, and partial/full same-currency supplier payment with bank evidence.
+- Added durable request, object, and payment markers so retries recover exact server-owned evidence and never recreate supplier cash; optional customer-funds attribution is explicit, same-currency, and linked to the exact native supplier payment.
+- Added an evidence-only shipment/document checklist for booking, loading, departure, arrival, delivery, Commercial Invoice, Packing List, BL, and customer publication; missing evidence remains pending.
+- Completed schema-only disposable UAT for USD, CNY, and EGP from native quotation and sales order through customer collection and supplier settlement: 3 quotations, 3 sales orders, 3 customer invoices, 6 customer receipts, 3 supplier orders, 3 supplier invoices, 6 supplier payments, and 12 bank entries.
+- Verified idempotent partial/full retries, explicit funds attribution, wrong-currency and overpayment rejection, customer writer denial, reviewed-document projection, authenticated desktop rendering, and 390px no-overflow behavior.
+- Local only. No real business records, automatic FX, external send, Push, Staging, or Production action occurred; independent release reviews remain pending.
+
 ## 2026-09-14 — M081 customer portal clarity and traceability
 
 - Separated Sarah Company's financial summary by original currency so USD, CNY, and EGP are never combined into a misleading total.

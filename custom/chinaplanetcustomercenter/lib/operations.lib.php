@@ -18,6 +18,29 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
         if ($charge['paid'] > 0.005) $supplierPaidAny = true;
         if ($charge['remaining'] > 0.005) $supplierFullyPaid = false;
     }
+    // M082 native supplier evidence supersedes the legacy manual commitment
+    // projection when a guided supplier invoice exists. Only boolean lifecycle
+    // state leaves this server-side query; supplier identity and cost stay private.
+    $supplierMarkerReady = false;
+    $tableCheck = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.'cpo_supplier_action')."'");
+    if ($tableCheck && $db->num_rows($tableCheck) === 1) {
+        $sql = "SELECT f.rowid,CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN f.multicurrency_total_ttc ELSE f.total_ttc END invoice_total,";
+        $sql .= "COALESCE((SELECT SUM(CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END) FROM ".MAIN_DB_PREFIX."paiementfourn_facturefourn pf WHERE pf.fk_facturefourn=f.rowid),0) paid_total ";
+        $sql .= "FROM ".MAIN_DB_PREFIX."cpo_supplier_action a JOIN ".MAIN_DB_PREFIX."facture_fourn f ON f.rowid=a.fk_supplier_invoice AND f.entity=a.entity ";
+        $sql .= "WHERE a.entity=".(int)$GLOBALS['conf']->entity." AND a.fk_soc_customer=".(int)$socid." AND a.fk_project=".(int)$projectid." AND a.action_type='supplier_invoice' AND a.status='confirmed' AND f.fk_statut>0";
+        $res = $db->query($sql);
+        $nativeCount = 0; $nativePaidAny = false; $nativeAllPaid = true;
+        while ($res && ($native = $db->fetch_object($res))) {
+            $nativeCount++;
+            if ((float)$native->paid_total > 0.005) $nativePaidAny = true;
+            if ((float)$native->invoice_total - (float)$native->paid_total > 0.005) $nativeAllPaid = false;
+        }
+        if ($nativeCount > 0) {
+            $supplierMarkerReady = true;
+            $supplierPaidAny = $nativePaidAny;
+            $supplierFullyPaid = $nativeAllPaid;
+        }
+    }
 
     $invoiceCount = 0;
     $invoiceOpen = 0;

@@ -219,6 +219,49 @@ class CustomerFundsService
         }
     }
 
+    /**
+     * Settle an explicit managed-funds reservation against an already posted
+     * native supplier payment. This records attribution only; it never creates
+     * cash, an invoice, a bank movement, or an FX entry.
+     */
+    public function settleWithSupplierPayment($allocationId, $supplierPaymentId, $userId)
+    {
+        $guardLocked = ManagedFundsNativeGuard::acquireLifecycle($this->db);
+        if (!$guardLocked || !ManagedFundsNativeGuard::verify($this->db)) {
+            if ($guardLocked) ManagedFundsNativeGuard::releaseLifecycle($this->db);
+            throw new RuntimeException('Managed-funds native-credit guard is unavailable or changed; supplier-payment attribution is blocked.');
+        }
+        $started = false;
+        try {
+            $this->db->begin(); $started = true;
+            $allocation = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND rowid=".(int)$allocationId." FOR UPDATE");
+            if (!$allocation) throw new RuntimeException('Customer funds allocation was not found.');
+            if ((string)$allocation->status === 'settled') {
+                if ((string)$allocation->disbursement_type !== 'supplier_payment' || (int)$allocation->disbursement_id !== (int)$supplierPaymentId) throw new RuntimeException('Allocation is already settled with different evidence.');
+                $this->db->commit(); $started=false; ManagedFundsNativeGuard::releaseLifecycle($this->db); return true;
+            }
+            if ((string)$allocation->status !== 'reserved' || (string)$allocation->target_type !== 'operation' || (int)$allocation->fk_operation <= 0 || (int)$allocation->target_id !== (int)$allocation->fk_operation) throw new RuntimeException('Choose a reserved allocation for this exact operation.');
+            $receipt = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_customer_receipt WHERE entity=".$this->entity." AND rowid=".(int)$allocation->fk_receipt." FOR UPDATE");
+            $evidence = $receipt && (string)$receipt->status === 'confirmed' ? $this->validatedCustomerPayment((int)$receipt->native_source_id, true) : null;
+            if (!$evidence || (int)$evidence['fk_soc'] !== (int)$allocation->fk_soc || (string)$evidence['currency'] !== (string)$allocation->currency_code) throw new RuntimeException('Customer receipt evidence is no longer valid.');
+            $sql="SELECT p.rowid,p.fk_bank,p.fk_paiement,DATE(p.datep) payment_date,pf.fk_facturefourn,pf.amount,pf.multicurrency_amount,UPPER(CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN f.multicurrency_code ELSE ".$this->q(function_exists('getDolCurrency')?getDolCurrency():'EUR')." END) currency,f.fk_soc supplier_id,f.fk_projet project_id,b.fk_account,(SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."paiementfourn_facturefourn x WHERE x.fk_paiementfourn=p.rowid) invoice_count FROM ".MAIN_DB_PREFIX."paiementfourn p JOIN ".MAIN_DB_PREFIX."paiementfourn_facturefourn pf ON pf.fk_paiementfourn=p.rowid JOIN ".MAIN_DB_PREFIX."facture_fourn f ON f.rowid=pf.fk_facturefourn AND f.entity=p.entity LEFT JOIN ".MAIN_DB_PREFIX."bank b ON b.rowid=p.fk_bank WHERE p.entity=".$this->entity." AND p.rowid=".(int)$supplierPaymentId." FOR UPDATE";
+            $native=$this->one($sql);
+            if(!$native||(int)$native->invoice_count!==1||(int)$native->fk_bank<=0||(int)$native->fk_account<=0)throw new RuntimeException('Native supplier payment and bank evidence are required.');
+            if((int)$native->project_id!==(int)$allocation->fk_project||(string)$native->currency!==(string)$allocation->currency_code)throw new RuntimeException('Supplier payment project or currency does not match the allocation.');
+            $nativeAmount=(string)$native->currency===(function_exists('getDolCurrency')?strtoupper((string)getDolCurrency()):'EUR')?(float)$native->amount:(float)$native->multicurrency_amount;
+            $already=$this->lockedAmountTotal("SELECT amount FROM ".MAIN_DB_PREFIX."cpcc_fund_allocation WHERE entity=".$this->entity." AND disbursement_type='supplier_payment' AND disbursement_id=".(int)$supplierPaymentId." AND status='settled' AND rowid<>".(int)$allocationId." FOR UPDATE");
+            if($already+(float)$allocation->amount>$nativeAmount+0.00000001)throw new RuntimeException('Customer-funds attributions exceed the native supplier payment.');
+            $update="UPDATE ".MAIN_DB_PREFIX."cpcc_fund_allocation SET status='settled',disbursement_type='supplier_payment',disbursement_id=".(int)$supplierPaymentId.",fk_user_settle=".(int)$userId.",date_settlement=".$this->q($this->now())." WHERE entity=".$this->entity." AND rowid=".(int)$allocationId;
+            if(!$this->db->query($update))$this->fail('Unable to attribute customer funds to supplier payment.');
+            $this->event((int)$allocation->fk_soc,'allocation',(int)$allocationId,'funds_settled','reserved','settled','Linked to verified native supplier payment #'.(int)$supplierPaymentId.'; no cash was recreated.',(int)$userId);
+            $this->db->commit();$started=false;ManagedFundsNativeGuard::releaseLifecycle($this->db);$guardLocked=false;return true;
+        } catch(Throwable $e) {
+            if($started)$this->db->rollback();
+            if($guardLocked)ManagedFundsNativeGuard::releaseLifecycle($this->db);
+            throw $e;
+        }
+    }
+
     public function reverseAllocation($allocationId, $reason, $userId)
     {
         $reason = trim((string) $reason);
