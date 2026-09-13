@@ -7,6 +7,7 @@
 - Added an evidence-only shipment/document checklist for booking, loading, departure, arrival, delivery, Commercial Invoice, Packing List, BL, and customer publication; missing evidence remains pending.
 - Completed schema-only disposable UAT for USD, CNY, and EGP from native quotation and sales order through customer collection and supplier settlement: 3 quotations, 3 sales orders, 3 customer invoices, 6 customer receipts, 3 supplier orders, 3 supplier invoices, 6 supplier payments, and 12 bank entries.
 - Verified idempotent partial/full retries, explicit funds attribution, wrong-currency and overpayment rejection, customer writer denial, reviewed-document projection, authenticated desktop rendering, and 390px no-overflow behavior.
+- Corrected the initial review findings: supplier payment now uses Dolibarr's real supplier-invoice-create and bank-read permissions, advanced supplier validations follow `MAIN_USE_ADVANCED_PERMS`, and external shipment pages expose no mutation forms and reject every direct customer POST.
 - Local only. No real business records, automatic FX, external send, Push, Staging, or Production action occurred; independent release reviews remain pending.
 
 ## 2026-09-14 — M081 customer portal clarity and traceability

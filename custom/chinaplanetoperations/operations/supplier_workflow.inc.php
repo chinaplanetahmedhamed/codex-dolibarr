@@ -1,11 +1,13 @@
 <?php
 require_once __DIR__.'/../class/OperationSupplierWorkflowService.class.php';
 $supplierEligible=!empty($operation['fk_commande'])&&!empty($operation['fk_project']);
-$supplierCanRead=$supplierEligible&&empty($user->socid)&&(!empty($user->admin)||($user->hasRight('fournisseur','commande','lire')&&$user->hasRight('fournisseur','facture','lire')));
+$supplierCanRead=$supplierEligible&&OperationSupplierWorkflowService::canReadSupplierWorkflow($user);
 $supplierCanOperate=$supplierCanRead&&cpo_can($user,'operation_write');
-$supplierCanOrder=$supplierCanOperate&&(!empty($user->admin)||$user->hasRight('fournisseur','commande','creer'));
-$supplierCanInvoice=$supplierCanOperate&&(!empty($user->admin)||$user->hasRight('fournisseur','facture','creer'));
-$supplierCanPay=$supplierCanOperate&&(!empty($user->admin)||($user->hasRight('fournisseur','facture','payer')&&$user->hasRight('banque','lire')));
+$supplierCanOrder=$supplierCanOperate&&OperationSupplierWorkflowService::canCreateSupplierOrder($user);
+$supplierCanValidateOrder=$supplierCanOperate&&OperationSupplierWorkflowService::canValidateSupplierOrder($user);
+$supplierCanInvoice=$supplierCanOperate&&OperationSupplierWorkflowService::canCreateSupplierInvoice($user);
+$supplierCanValidateInvoice=$supplierCanOperate&&OperationSupplierWorkflowService::canValidateSupplierInvoice($user);
+$supplierCanPay=$supplierCanOperate&&OperationSupplierWorkflowService::canPostSupplierPayment($user);
 $supplierService=$supplierCanRead?new OperationSupplierWorkflowService($db):null;
 $supplierActions=array('supplier_create_order','supplier_validate_order','supplier_create_invoice','supplier_validate_invoice','supplier_post_payment','supplier_resume_payment');
 if(in_array($action,$supplierActions,true)){

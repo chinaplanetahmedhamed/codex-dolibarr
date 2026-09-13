@@ -25,7 +25,7 @@ m020C02Assert(strpos($portalSource, 'cpcc_portal_validate_shipment_upload') !== 
 m020C02Assert(strpos($downloadSource, "\$type === 'gallery'") !== false && strpos($downloadSource, "GETPOST('publication'") !== false, 'Protected route accepts an opaque publication token');
 m020C02Assert(strpos($downloadSource, "Cache-Control: private, no-store") !== false && strpos($downloadSource, 'X-Content-Type-Options: nosniff') !== false, 'Protected route emits private and nosniff headers');
 m020C02Assert(strpos($downloadSource, "if (\$type === 'shipment')") !== false && strpos($downloadSource, "if (!empty(\$scope['is_external'])) accessforbidden()") !== false, 'Legacy raw-path downloads remain internal-only');
-m020C02Assert(strpos($documentsSource, 'CPLShipmentFilesPageTitle') !== false && strpos($documentsSource, 'cpcc_portal_customer_shipment_file_groups') !== false, 'Customer Documents page projects Shipment Documents and Gallery from one allowlist');
+m020C02Assert(strpos($documentsSource, 'cpcc-documents-page') !== false && strpos($documentsSource, 'cpcc_portal_customer_shipment_file_groups') !== false, 'Customer Documents page projects Shipment Documents and Gallery from one allowlist');
 m020C02Assert(strpos($cardSource, 'cpcc_portal_customer_shipment_files_html') !== false && strpos($cardSource, '<!--CPL_SHIPMENT_FILES-->') !== false, 'Shipment card inserts documents and gallery directly after the timeline');
 m020C02Assert(strpos($cardSource, 'cpcc_portal_staff_shipment_files_html') !== false, 'Shipment view and edit modes expose the shared staff file manager');
 

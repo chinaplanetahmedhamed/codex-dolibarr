@@ -3,7 +3,7 @@
 - Owner: Ahmed Hamed
 - Coordinator and writer: Agent 007
 - Date: 2026-09-14
-- Status: COMPLETED LOCALLY — RELEASE REVIEW REQUIRED
+- Status: CORRECTED LOCALLY — RENEWED RELEASE REVIEW REQUIRED
 - Environment: isolated local Dolibarr and disposable synthetic data only
 
 ## Objective
@@ -96,3 +96,11 @@ Approval recorded from Ahmed on 2026-09-14.
 - The authenticated local operation screen rendered the new supplier and follow-up panels at desktop and 390px with no page-wide overflow. The tested staff account correctly showed the supplier-permission gate rather than exposing an unauthorized writer.
 
 Release preparation remains separately gated by a frozen commit and independent Accounting, Security, and QA reviews.
+
+## Post-review correction
+
+- The first independent staff review found that the supplier-payment gate referenced a nonexistent `fournisseur.facture.payer` permission. The corrected gate now follows Dolibarr 23.0.3 native supplier-payment creation: supplier-invoice create permission plus bank read permission. Supplier-order and supplier-invoice validation also honor `MAIN_USE_ADVANCED_PERMS` and the native advanced validation rights.
+- The first customer review found legacy shipment collaboration forms in the external portal. The corrected customer shipment view contains no confirmation, comment, upload, container-receipt, or original-document receipt form, and every direct external POST to the shipment card is rejected before action routing.
+- Existing historical customer collaboration records and staff-only file controls remain readable/operable in their authorized scopes; no stored record was deleted.
+- The corrected full schema-only UAT passed for a legitimate non-admin permission model and negative bank/customer/advanced-permission cases. Eleven related M077-M082, shipment, gallery, collaboration, and upload-dependency source regressions passed.
+- Renewed independent Staff and Customer/Security/QA acceptance is required on the corrected frozen commit before any release preparation.

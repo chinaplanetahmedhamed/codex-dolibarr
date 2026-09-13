@@ -980,12 +980,6 @@ function cpcc_portal_customer_document_items_html(array $items, $shipmentId = 0)
         }
         if (!$hasEventNote && !empty($item->response_note)) $html .= '<p class="cpcc-document-note">'.nl2br(dol_escape_htmltag($item->response_note)).'</p>';
         $html .= '</div><div class="cpcc-document-actions"><a class="cpcc-gallery-download" href="'.dol_escape_htmltag($downloadUrl).'">'.dol_escape_htmltag($langs->trans('CPLGalleryDownload')).'</a>';
-        if ((string)$item->source_origin === 'staff' && (string)$item->response_status !== 'confirmed' && (int)$shipmentId > 0) {
-            $html .= '<form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipmentId.'"><input type="hidden" name="action" value="customer_document_confirm"><input type="hidden" name="publication" value="'.dol_escape_htmltag($item->public_token).'"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmDocument')).'</button></form>';
-        }
-        if ((string)$item->source_origin === 'staff' && (int)$shipmentId > 0) {
-            $html .= '<details class="cpcc-document-response"><summary>'.dol_escape_htmltag($langs->trans('CPLRequestAmendmentOrComment')).'</summary><form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipmentId.'"><input type="hidden" name="publication" value="'.dol_escape_htmltag($item->public_token).'"><textarea required name="response_note" maxlength="2000" placeholder="'.dol_escape_htmltag($langs->trans('CPLWriteCustomerNote')).'"></textarea><button type="submit" name="action" value="customer_document_amend" class="button button-cancel">'.dol_escape_htmltag($langs->trans('CPLRequestAmendment')).'</button><button type="submit" name="action" value="customer_document_comment" class="button">'.dol_escape_htmltag($langs->trans('CPLAddComment')).'</button></form></details>';
-        }
         $html .= '</div></article>';
     }
     return $html.'</div>';
@@ -1002,7 +996,6 @@ function cpcc_portal_customer_shipment_files_html($db, $user, $shipment)
     if (cpcc_portal_collaboration_schema_ready($db)) {
         $html .= '<div class="cpcc-customer-uploaded-section"><div class="cpcc-subsection-title"><div><span>'.dol_escape_htmltag($langs->trans('CPLCustomerUploadedFilesEyebrow')).'</span><h3>'.dol_escape_htmltag($langs->trans('CPLCustomerUploadedFilesTitle')).'</h3></div><b>'.count($groups['customer_uploads']).'</b></div>';
         $html .= cpcc_portal_customer_upload_items_html($groups['customer_uploads']).'</div>';
-        $html .= '<div class="cpcc-customer-upload"><h3>'.dol_escape_htmltag($langs->trans('CPLUploadShipmentDocument')).'</h3><form method="POST" enctype="multipart/form-data"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_document_upload"><input required type="file" name="customer_file"><textarea name="response_note" maxlength="2000" placeholder="'.dol_escape_htmltag($langs->trans('CPLWriteCustomerNote')).'"></textarea><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLUpload')).'</button></form></div>';
         $events = cpcc_portal_shipment_collaboration_events($db, $shipment);
         $originalStatuses = cpcc_portal_original_document_statuses(); $latestOriginal = ''; $originalReceived = false;
         foreach ($events as $event) { if ($event->event_type === 'original_document_status') $latestOriginal = (string)$event->status_code; if ($event->event_type === 'original_documents_received') $originalReceived = true; }
@@ -1011,7 +1004,6 @@ function cpcc_portal_customer_shipment_files_html($db, $user, $shipment)
             $html .= '<div class="cpcc-original-documents"><h3>'.dol_escape_htmltag($langs->trans('CPLOriginalDocumentsTimeline')).'</h3><ol>';
             foreach ($originalStatuses as $index=>$code) $html .= '<li class="'.($index <= $currentIndex ? 'is-complete' : '').'"><span>'.dol_escape_htmltag($langs->trans('CPLOriginalStatus'.str_replace(' ', '', ucwords(str_replace('_', ' ', $code))))).'</span></li>';
             $html .= '</ol>';
-            if ($latestOriginal === 'delivered' && !$originalReceived) $html .= '<form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_original_documents_received"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmOriginalDocumentsReceived')).'</button></form>';
             $html .= '</div>';
         }
     }

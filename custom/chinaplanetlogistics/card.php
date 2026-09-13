@@ -68,6 +68,10 @@ if ($is_external_customer) {
 
 $listurl = DOL_URL_ROOT.'/custom/chinaplanetlogistics/list.php';
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
+// M082 staff-first boundary: the external customer shipment experience is
+// strictly read-only. Keep the legacy collaboration writers for historical
+// records, but reject every direct external mutation before action routing.
+if ($is_external_customer && $is_post) accessforbidden();
 
 $parseDateTime = function ($value) {
     $value = trim((string) $value);

@@ -99,7 +99,7 @@ try {
     $user->rights->chinaplanetoperations = (object) array('operation_write'=>1);
     $user->rights->fournisseur = new stdClass();
     $user->rights->fournisseur->commande = (object) array('creer'=>1);
-    $user->rights->fournisseur->facture = (object) array('creer'=>1, 'payer'=>1);
+    $user->rights->fournisseur->facture = (object) array('creer'=>1);
     $user->rights->facture = (object) array('creer'=>1, 'paiement'=>1);
     $user->rights->propal = (object) array('creer'=>1, 'lire'=>1);
     $user->rights->commande = (object) array('creer'=>1, 'lire'=>1);
@@ -107,6 +107,26 @@ try {
     $user->rights->chinaplanetcustomercenter = (object) array('financial_write'=>1);
     $user->rights->banque = (object) array('lire'=>1);
     $GLOBALS['user'] = $user;
+
+    $staffActor = clone $user; $staffActor->admin=0; $staffActor->socid=0;
+    unset($conf->global->MAIN_USE_ADVANCED_PERMS);
+    m082Assert(OperationSupplierWorkflowService::canCreateSupplierOrder($staffActor), 'non-admin supplier-order creator rejected');
+    m082Assert(OperationSupplierWorkflowService::canValidateSupplierOrder($staffActor), 'non-admin standard supplier-order validator rejected');
+    m082Assert(OperationSupplierWorkflowService::canCreateSupplierInvoice($staffActor), 'non-admin supplier-invoice creator rejected');
+    m082Assert(OperationSupplierWorkflowService::canValidateSupplierInvoice($staffActor), 'non-admin standard supplier-invoice validator rejected');
+    m082Assert(OperationSupplierWorkflowService::canPostSupplierPayment($staffActor), 'non-admin native supplier-payment actor rejected');
+    $staffNoBank = clone $staffActor; $staffNoBank->rights = clone $staffActor->rights; $staffNoBank->rights->banque = (object) array('lire'=>0);
+    m082Assert(!OperationSupplierWorkflowService::canPostSupplierPayment($staffNoBank), 'supplier payment accepted without bank read');
+    $conf->global->MAIN_USE_ADVANCED_PERMS = 1;
+    m082Assert(!OperationSupplierWorkflowService::canValidateSupplierOrder($staffActor), 'advanced supplier-order validation accepted without native right');
+    m082Assert(!OperationSupplierWorkflowService::canValidateSupplierInvoice($staffActor), 'advanced supplier-invoice validation accepted without native right');
+    $staffActor->rights->fournisseur->supplier_order_advance = (object) array('validate'=>1);
+    $staffActor->rights->fournisseur->supplier_invoice_advance = (object) array('validate'=>1);
+    m082Assert(OperationSupplierWorkflowService::canValidateSupplierOrder($staffActor), 'advanced supplier-order validator rejected');
+    m082Assert(OperationSupplierWorkflowService::canValidateSupplierInvoice($staffActor), 'advanced supplier-invoice validator rejected');
+    unset($conf->global->MAIN_USE_ADVANCED_PERMS);
+    $externalActor = clone $staffActor; $externalActor->socid=82002;
+    m082Assert(!OperationSupplierWorkflowService::canPostSupplierPayment($externalActor), 'external customer passed supplier-payment permission');
 
     $db->query("INSERT INTO llx_user(rowid,entity,login,lastname,admin,statut) VALUES(82001,1,'m082-uat-admin','M082 UAT',1,1)");
     $db->query("INSERT INTO llx_societe(rowid,nom,entity,statut,status,code_client,code_fournisseur,client,fournisseur,fk_pays,datec,fk_user_creat) VALUES(82002,'M082 UAT Synthetic Customer',1,1,1,'M082-CUST',NULL,1,0,117,NOW(),82001),(82003,'M082 UAT Synthetic Supplier',1,1,1,NULL,'M082-SUP',0,1,117,NOW(),82001),(82004,'M082 UAT Other Customer',1,1,1,'M082-OTHER',NULL,1,0,117,NOW(),82001)");

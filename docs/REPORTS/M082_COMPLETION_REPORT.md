@@ -2,8 +2,8 @@
 
 - Date: 2026-09-14
 - Environment: local Dolibarr 23.0.3 plus a schema-only disposable database
-- Outcome: COMPLETED LOCALLY
-- Release state: not pushed or deployed; independent reviews required
+- Outcome: CORRECTED LOCALLY AFTER INITIAL REVIEW
+- Release state: not pushed or deployed; renewed independent reviews required
 
 ## Delivered outcome
 
@@ -49,3 +49,12 @@ The clone contained schemas and synthetic fixtures only and was deleted after th
 No real customer, supplier, financial, shipment, or document record was created or changed. No external request, email, CargoX, DHL, automatic FX, overpayment, Push, Staging, or Production action occurred.
 
 The next step is release preparation: freeze the local commit and obtain independent Accounting, Security, and QA reviews. Any Push or deployment requires a new exact approval for the named commit/artifact and environment.
+
+## Initial-review findings and correction
+
+The first independent Staff and Customer reviews returned `FAIL` for two release-blocking issues. Both were corrected locally without changing permissions or business data:
+
+- Supplier payment no longer checks the nonexistent `fournisseur.facture.payer` path. It now matches the native Dolibarr 23.0.3 supplier-payment create gate (`fournisseur.facture.creer` or its native alias) and additionally requires bank read. Supplier-order and supplier-invoice validation buttons and services follow `MAIN_USE_ADVANCED_PERMS` and the corresponding native advanced validation rights.
+- The external shipment card is now strictly read-only. Customer document confirmation/comment/upload, container receipt, and original-document receipt forms are absent, and every external POST is rejected before legacy action routing. Historical collaboration events remain viewable and internal staff file actions are unchanged.
+
+The corrected disposable UAT passed with a non-admin positive permission actor plus negative bank, external-customer, and advanced-validation permission cases. The complete native USD/CNY/EGP counts and idempotency/security results remained unchanged. Eleven related source regressions passed after updating one stale M020 title assertion to the current M081 Documents page marker.
