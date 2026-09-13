@@ -13,12 +13,12 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.7.0';
+        $this->version = '2.8.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
         $this->config_page_url = array('setup.php@chinaplanetoperations');
-        $this->depends = array('modSociete', 'modProduct', 'modPropale', 'modChinaPlanetShippingPrices');
+        $this->depends = array('modSociete', 'modProduct', 'modPropale', 'modCommande', 'modFacture', 'modBanque', 'modProjet', 'modChinaPlanetShippingPrices', 'modChinaPlanetCustomerCenter');
         $this->phpmin = array(7, 4);
         $this->need_dolibarr_version = array(23, 0);
         $this->module_parts = array('api' => 1);
