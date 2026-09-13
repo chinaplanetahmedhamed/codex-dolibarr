@@ -90,16 +90,17 @@ try {
     $user = new User($db);
     $user->id = 82001;
     $user->entity = 1;
-    $user->login = 'm082-uat-admin';
+    $user->login = 'm082-uat-staff';
     $user->lastname = 'M082 UAT';
-    $user->admin = 1;
+    $user->admin = 0;
     $user->statut = 1;
     $user->socid = 0;
     $user->rights = new stdClass();
     $user->rights->chinaplanetoperations = (object) array('operation_write'=>1);
     $user->rights->fournisseur = new stdClass();
-    $user->rights->fournisseur->commande = (object) array('creer'=>1);
-    $user->rights->fournisseur->facture = (object) array('creer'=>1);
+    $user->rights->fournisseur->lire = 1;
+    $user->rights->fournisseur->commande = (object) array('lire'=>1, 'creer'=>1);
+    $user->rights->fournisseur->facture = (object) array('lire'=>1, 'creer'=>1);
     $user->rights->facture = (object) array('creer'=>1, 'paiement'=>1);
     $user->rights->propal = (object) array('creer'=>1, 'lire'=>1);
     $user->rights->commande = (object) array('creer'=>1, 'lire'=>1);
@@ -108,7 +109,7 @@ try {
     $user->rights->banque = (object) array('lire'=>1);
     $GLOBALS['user'] = $user;
 
-    $staffActor = clone $user; $staffActor->admin=0; $staffActor->socid=0;
+    $staffActor = clone $user; $staffActor->socid=0;
     unset($conf->global->MAIN_USE_ADVANCED_PERMS);
     m082Assert(OperationSupplierWorkflowService::canCreateSupplierOrder($staffActor), 'non-admin supplier-order creator rejected');
     m082Assert(OperationSupplierWorkflowService::canValidateSupplierOrder($staffActor), 'non-admin standard supplier-order validator rejected');
@@ -128,7 +129,7 @@ try {
     $externalActor = clone $staffActor; $externalActor->socid=82002;
     m082Assert(!OperationSupplierWorkflowService::canPostSupplierPayment($externalActor), 'external customer passed supplier-payment permission');
 
-    $db->query("INSERT INTO llx_user(rowid,entity,login,lastname,admin,statut) VALUES(82001,1,'m082-uat-admin','M082 UAT',1,1)");
+    $db->query("INSERT INTO llx_user(rowid,entity,login,lastname,admin,statut) VALUES(82001,1,'m082-uat-staff','M082 UAT',0,1)");
     $db->query("INSERT INTO llx_societe(rowid,nom,entity,statut,status,code_client,code_fournisseur,client,fournisseur,fk_pays,datec,fk_user_creat) VALUES(82002,'M082 UAT Synthetic Customer',1,1,1,'M082-CUST',NULL,1,0,117,NOW(),82001),(82003,'M082 UAT Synthetic Supplier',1,1,1,NULL,'M082-SUP',0,1,117,NOW(),82001),(82004,'M082 UAT Other Customer',1,1,1,'M082-OTHER',NULL,1,0,117,NOW(),82001)");
     $db->query("INSERT INTO llx_product(rowid,ref,entity,datec,label,tva_tx,fk_user_author,tosell,tobuy,fk_product_type) VALUES(82005,'M082-UAT-ITEM',1,NOW(),'M082 synthetic item',14,82001,1,1,0)");
     $db->query("INSERT INTO llx_c_paiement(id,entity,code,libelle,type,active,position) VALUES(82006,1,'VIR','M082 UAT transfer',2,1,1)");
@@ -254,7 +255,7 @@ try {
     foreach (array('booking','loading','commercial_invoice','packing_list','bill_of_lading','customer_publication') as $step) m082Assert($followup['steps'][$step]===true,'verified shipment/document evidence not projected: '.$step);
     foreach (array('departure','arrival','delivery') as $step) m082Assert($followup['steps'][$step]===false,'missing shipment evidence was invented: '.$step);
 
-    echo "M082_FULL_UAT=PASS SOURCE_DB_MUTATED=NO SCHEMA_ONLY=YES SYNTHETIC_ONLY=YES CURRENCIES=USD,CNY,EGP QUOTATIONS=3 SALES_ORDERS=3 CUSTOMER_INVOICES=3 CUSTOMER_RECEIPTS=6 SUPPLIER_ORDERS=3 SUPPLIER_INVOICES=3 SUPPLIER_PAYMENTS=6 BANK_ENTRIES=12 FUNDS_ATTRIBUTION=PASS RETRY=IDEMPOTENT WRONG_CURRENCY=BLOCKED OVERPAYMENT=BLOCKED CUSTOMER_WRITE=BLOCKED SHIPMENT_CHECKLIST=EVIDENCE_ONLY\n";
+    echo "M082_FULL_UAT=PASS ACTOR=NON_ADMIN_STAFF SOURCE_DB_MUTATED=NO SCHEMA_ONLY=YES SYNTHETIC_ONLY=YES CURRENCIES=USD,CNY,EGP QUOTATIONS=3 SALES_ORDERS=3 CUSTOMER_INVOICES=3 CUSTOMER_RECEIPTS=6 SUPPLIER_ORDERS=3 SUPPLIER_INVOICES=3 SUPPLIER_PAYMENTS=6 BANK_ENTRIES=12 FUNDS_ATTRIBUTION=PASS RETRY=IDEMPOTENT WRONG_CURRENCY=BLOCKED OVERPAYMENT=BLOCKED CUSTOMER_WRITE=BLOCKED SHIPMENT_CHECKLIST=EVIDENCE_ONLY\n";
 } finally {
     if (isset($db) && is_object($db) && isset($db->database_name) && $db->database_name === $database) $db->close();
     if ($created) {
