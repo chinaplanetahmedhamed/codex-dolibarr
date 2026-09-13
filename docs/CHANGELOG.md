@@ -1,5 +1,13 @@
 # ChinaPlanetOS Change Log
 
+## 2026-09-14 — M081 customer portal clarity and traceability
+
+- Separated Sarah Company's financial summary by original currency so USD, CNY, and EGP are never combined into a misleading total.
+- Added read-only, customer-scoped native quotation list/detail pages and customer-safe project/order links to quotations, invoices, shipments, documents, and reports.
+- Exposed published commercial documents from the main Documents page and changed operation reports into readable responsive cards.
+- Authenticated desktop and 390px acceptance, customer-isolation checks, accounting review, focused regressions, and independent Security/QA passed. Synthetic UAT record names remain a non-blocking content-cleanup item.
+- Local source only: no business data, schema, module state, Push, Staging, or Production changed. Mobile quotation/journey parity remains pending a separate Mission.
+
 ## 2026-08-28 — M062-R04 separate Alexandria terminal trends
 
 - Replaced the intentionally empty grouped Alexandria history contract with independently queried Old Port, TMT and optional terminal-not-specified series; no terminal prices are averaged together.

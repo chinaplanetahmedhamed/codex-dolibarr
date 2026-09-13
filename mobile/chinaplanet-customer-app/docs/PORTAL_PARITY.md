@@ -1,5 +1,17 @@
 # Admin, Customer Portal, and Mobile App Parity
 
+## 2026-09-14 — M081 customer portal clarity and traceability
+
+- Source change: the web Customer Center separates financial totals by original currency, adds read-only native quotation list/detail pages, exposes published commercial documents from the main Documents page, renders operation reports as responsive cards, and adds customer-safe project/order commercial trace links.
+- Admin ERP: `UNCHANGED`; no native object, schema, module state, permission, or staff action changed.
+- Customer Portal: `LOCAL_RUNTIME_VERIFIED`; authenticated ownership remains derived from the external user's customer link, drafts and foreign records are denied, and no customer write action was added.
+- Mobile App: `PENDING`; the native app does not yet expose quotations or the new project/order journey. Existing invoice, payment, shipment, document, and project contracts are unchanged.
+- API/data dependency: no API change. Web pages read native Dolibarr proposal/order/invoice/project links and existing customer-visible shipment/document/report projections.
+- Design/terminology impact: adds `Quotations / عروض الأسعار`, per-currency financial blocks, responsive report cards, and `Project/Order Journey` wording.
+- Phone verification: authenticated desktop and 390px browser review passed with no page-wide overflow; independent Customer Portal/Security/QA acceptance is `PASS_WITH_CONDITIONS` only because synthetic UAT record names remain customer-visible.
+- Status: `PORTAL_LOCAL_RUNTIME_VERIFIED`, `MOBILE_PENDING`, `NO_STAGING_OR_PRODUCTION`.
+- Follow-up: after portal acceptance, create a separately approved mobile/API Mission for quotation and journey parity; do not infer these links inside the mobile app.
+
 ## 2026-08-28 — M062 Alexandria public-search grouping
 
 - Source change: the public China Planet website shows one `ALEXANDRIA` POD option, while its public-safe Dolibarr gateway returns separate generic, Old Port and TMT price cards and exact terminal-bound booking tokens.

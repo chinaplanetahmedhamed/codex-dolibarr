@@ -32,7 +32,7 @@ $candelete = (!$is_external && ($user->admin || $user->hasRight('chinaplanetcust
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
 $form = new Form($db);
 $customer_options = array();
-$commercial_documents = (!$is_external && $socid > 0) ? cpcc_export_documents($db, $socid, 0, 0, true) : array();
+$commercial_documents = $socid > 0 ? cpcc_export_documents($db, $socid, 0, 0, $is_external) : array();
 if (!$is_external) {
     $res_customers=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");
     if($res_customers) while($customer=$db->fetch_object($res_customers)) $customer_options[(int)$customer->rowid]=$customer->nom;
@@ -117,7 +117,7 @@ print '<span class="cpcc-eyebrow">CUSTOMER DOCUMENTS</span>';
 print '<h1>المستندات / Documents</h1>';
 print '<p>'.($is_external ? 'مستندات وملفات الشحن المنشورة للعميل في مكان واحد. / Published shipment documents and gallery files in one place.' : 'المستندات التجارية وملفات الشحن المنشورة للعميل في مكان واحد. / Published commercial and shipment documents in one place.').'</p>';
 print '</div></header>';
-if (!$is_external && $socid > 0) {
+if ($socid > 0) {
     print '<section class="cpcc-commercial-documents"><div class="cpcc-section-head"><div><h2>المستندات التجارية / Commercial Documents</h2><p>Commercial invoices, packing lists, and other approved customer documents.</p></div><div class="cpcc-document-count"><span>Published</span><strong>'.count($commercial_documents).'</strong></div></div>';
     if (empty($commercial_documents)) {
         print '<div class="cpcc-empty">لا توجد مستندات تجارية منشورة لهذا العميل. / No published commercial documents.</div>';

@@ -35,9 +35,8 @@ m031_assert_contains($board, "lib/export.lib.php", 'Commercial document helper l
 m031_assert_contains($board, 'cpcc_portal_customer_document_count($db, $user, $socid)', 'Dashboard shared document count');
 
 $documents = m031_source('custom/chinaplanetcustomercenter/documents.php');
-m031_assert_contains($documents, 'cpcc_export_documents($db, $socid, 0, 0, true)', 'Customer-visible commercial documents');
-m031_assert_contains($documents, '(!$is_external && $socid > 0) ? cpcc_export_documents', 'Admin-only commercial document query');
-m031_assert_contains($documents, 'if (!$is_external && $socid > 0)', 'Admin-only commercial document section');
+m031_assert_contains($documents, '$socid > 0 ? cpcc_export_documents($db, $socid, 0, 0, $is_external)', 'Scope-aware commercial document query');
+m031_assert_contains($documents, 'if ($socid > 0)', 'Commercial documents section for scoped customer');
 m031_assert_contains($documents, 'المستندات التجارية / Commercial Documents', 'Combined Documents page section');
 m031_assert_contains($documents, "llxHeader('', 'Documents / المستندات'", 'Generic customer Documents browser title');
 m031_assert_contains($documents, 'cpcc-document-type', 'Compact customer document type');

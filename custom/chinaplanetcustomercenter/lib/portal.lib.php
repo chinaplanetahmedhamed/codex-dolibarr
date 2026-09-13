@@ -79,6 +79,7 @@ function cpcc_portal_navigation($user, $active = '')
         'documents' => 'documents',
         'commercial_documents' => 'documents',
         'reports' => 'documents',
+        'quotations' => 'quotations',
         'orders' => 'requests',
         'profile' => 'account',
     );
@@ -91,6 +92,7 @@ function cpcc_portal_navigation($user, $active = '')
         'shippingprices' => array('أسعار الشحن', 'Shipping Prices', 'fa-search-dollar', '/chinaplanetshippingprices/index.php'),
         'account' => array('الحساب المالي', 'Financial Account', 'fa-wallet', '/chinaplanetcustomercenter/balance.php'),
         'documents' => array('المستندات', 'Documents', 'fa-file-alt', '/chinaplanetcustomercenter/documents.php'),
+        'quotations' => array('عروض الأسعار', 'Quotations', 'fa-file-signature', '/chinaplanetcustomercenter/quotations.php'),
         'requests' => array('الطلبات والدعم', 'Orders & Support', 'fa-headset', '/chinaplanetcustomercenter/orders.php'),
     );
 
