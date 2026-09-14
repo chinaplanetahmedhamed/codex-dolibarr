@@ -4,7 +4,7 @@
 - Coordinator and sole writer: Agent 007
 - Runtime commit: `d21c0ca30150e1b885586f1c337773b6c71f7802`
 - Target: `https://erp.visiontrading.biz` Production only
-- Candidate: M083-R04 (R01–R03 rejected by independent review and never uploaded or installed)
+- Candidate: M083-R05 (R01–R04 rejected by independent review and never uploaded or installed)
 - Status: PREPARING RENEWED IMMUTABLE RELEASE — NO PRODUCTION ACTION AUTHORIZED
 
 ## Business outcome
@@ -34,7 +34,7 @@ The release carries the completed M076–M082 local work:
 
 ## Exact release scope
 
-- 57 runtime files listed in `deploy/releases/m083-runtime-files.txt`.
+- 58 runtime files listed in `deploy/releases/m083-runtime-files.txt`.
 - Six additive marker/ledger tables and four exact managed-funds database triggers.
 - No Dolibarr core file, document volume, Compose definition, container image, proxy, DNS, firewall, or public React website change.
 - No automatic permission grant. Existing Admin remains usable; staff permissions must be granted separately and deliberately.

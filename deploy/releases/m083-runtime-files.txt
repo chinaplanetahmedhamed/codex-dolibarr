@@ -10,6 +10,7 @@ custom/chinaplanetcustomercenter/css/admin_dashboard.css
 custom/chinaplanetcustomercenter/css/documents.css
 custom/chinaplanetcustomercenter/css/quotations.css
 custom/chinaplanetcustomercenter/documents.php
+custom/chinaplanetcustomercenter/funding.php
 custom/chinaplanetcustomercenter/lib/admin_shell.lib.php
 custom/chinaplanetcustomercenter/lib/commercial_trace.lib.php
 custom/chinaplanetcustomercenter/lib/export.lib.php
