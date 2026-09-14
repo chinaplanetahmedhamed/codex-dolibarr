@@ -37,7 +37,14 @@ m081Assert(strpos($board,'$quotationTotal')!==false&&strpos($board,'$quotationsU
 
 $order=m081Source($root,'custom/chinaplanetcustomercenter/order.php');
 $project=m081Source($root,'custom/chinaplanetcustomercenter/project.php');
+$fundingPage=m081Source($root,'custom/chinaplanetcustomercenter/funding.php');
+$financialLibrary=m081Source($root,'custom/chinaplanetcustomercenter/lib/financial.lib.php');
 m081Assert(strpos($order,'cpcc_customer_order_trace')!==false&&strpos($order,'مسار الطلب / Order Journey')!==false,'order detail shows linked commercial journey');
 m081Assert(strpos($project,'مسار المشروع / Project Journey')!==false&&strpos($project,'cpcc_customer_quotations')!==false,'project shows customer-safe journey and quotations');
+m081Assert(strpos($order,'$order->entity !== (int) $conf->entity')!==false,'order detail rejects records from another entity');
+m081Assert(strpos($project,'WHERE p.entity=".(int)$conf->entity')!==false,'project detail is restricted to the active entity');
+m081Assert(strpos($project,'cpcc_financial_project_charges($db,$socid,$id,$currencyFallback,!$isExternal)')!==false,'project exposes supplier identity only to internal staff');
+m081Assert(strpos($fundingPage,"0, '', !\$isExternal")!==false,'funding page exposes supplier identity only to internal staff');
+m081Assert(strpos($financialLibrary,"'supplier' => \$includeSupplierIdentity ?")!==false,'financial projection redacts supplier identity by default');
 
-echo "M081=PASS CUSTOMER_SCOPE=YES ORIGINAL_CURRENCIES=SEPARATE QUOTATIONS=READ_ONLY DOCUMENTS=VISIBLE REPORT_CARDS=RESPONSIVE TRACE=YES\n";
+echo "M081=PASS CUSTOMER_SCOPE=YES ENTITY_SCOPE=YES SUPPLIER_IDENTITY=STAFF_ONLY ORIGINAL_CURRENCIES=SEPARATE QUOTATIONS=READ_ONLY DOCUMENTS=VISIBLE REPORT_CARDS=RESPONSIVE TRACE=YES\n";

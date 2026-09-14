@@ -168,7 +168,7 @@ function cpcc_financial_is_supplier_category($category)
  * excluded from future-services totals later, because that invoice is counted
  * in the native unpaid-invoice balance instead.
  */
-function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
+function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid = 0, $asOf = '', $includeSupplierIdentity = false)
 {
     $rows = array();
     if (!cpcc_financial_schema_ready($db) || (int) $socid <= 0) return $rows;
@@ -204,7 +204,7 @@ function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $project
             'date' => (string) $obj->charge_date,
             'category' => (string) $obj->category,
             'label' => (string) $obj->label,
-            'supplier' => (string) $obj->supplier_label,
+            'supplier' => $includeSupplierIdentity ? (string) $obj->supplier_label : '',
             'amount' => $amount,
             'paid' => $paid,
             'remaining' => max(0.0, $amount - $paid),
@@ -575,7 +575,7 @@ function cpcc_financial_summarize_rows($rows)
     return $summary;
 }
 
-function cpcc_financial_project_charges($db, $socid, $projectid, $currencyFallback)
+function cpcc_financial_project_charges($db, $socid, $projectid, $currencyFallback, $includeSupplierIdentity = false)
 {
-    return cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid);
+    return cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid, '', $includeSupplierIdentity);
 }
