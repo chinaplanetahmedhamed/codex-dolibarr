@@ -8,8 +8,8 @@
 ## Frozen pins
 
 - Artifact `m083-r01-staff-first-ecf1518.tar.gz`: `c71cd69c5547dfdda0941dd2759b7c67b5fdf94d313a42e802586fcacdddcb91`
-- Restricted helper: `6c67eb3955cb5c2b09d76f794f421039d5abf6318b9ec695bbfcf1a0944c92ba`
-- Root installer: `12c39eaba32376d54c557b76e59ab31cf195d19468e90c80ca48cc9f401d24ca`
+- Restricted helper: `1ae7dc3a069725ae661956f632814200ff7cda1e9c3f8d79d34736fd93eab08f`
+- Root installer: `1583dc1d23cb9b73209878d57890c05384202d55c356ee1cb8bff35bafa5ae11`
 - Sudoers: `03b11843b7f0e5780e02c4cf68b356c2c439cb2110c72d7b71cac8c4f7e76a91`
 
 The artifact is metadata-free and contains exactly 71 regular files: 57 runtime files, 11 support files, and three release manifests. It contains no configuration, credential, key, database dump, document, log, symlink, or Dolibarr core file.
