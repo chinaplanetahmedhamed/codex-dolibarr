@@ -18,7 +18,7 @@ grep -Fq "readonly TARGET_DB_CONTAINER='vision_db'" "$helper"
 grep -Fq "readonly TARGET_DB_VOLUME='vision-os_mariadb_data'" "$helper"
 grep -Fq "readonly TARGET_DB_NAME='dolibarr_db'" "$helper"
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz'" "$helper"
-grep -Fq "readonly RELEASE='M083-R03'" "$helper"
+grep -Fq "readonly RELEASE='M083-R04'" "$helper"
 grep -Fq 'SCHEMA_PRESTATE_NOT_ABSENT' "$helper"
 grep -Fq 'create_db_backup' "$helper"
 grep -Fq 'rollback_schema_empty' "$helper"
@@ -33,4 +33,4 @@ grep -Fq 'stage_candidate;validate_restore_materials' "$helper"
 [[ $(wc -l<"$sudoers") -eq 6 ]]
 for command in compare preflight apply verify rollback status;do grep -Fxq "codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m083-staff-first $command" "$sudoers";done
 if [[ ${M083_FINAL_PINS:-0} == 1 ]];then ! grep -Rq '__[A-Z_]*__' "$helper" "$installer";fi
-echo 'M083_RELEASE_CONTRACT=PASS TARGET=PRODUCTION RELEASE=M083-R03 COMMANDS=6 DB_RESTORE=FORBIDDEN EMERGENCY_ROLLBACK=RETAINED_AND_STAGED'
+echo 'M083_RELEASE_CONTRACT=PASS TARGET=PRODUCTION RELEASE=M083-R04 COMMANDS=6 DB_RESTORE=FORBIDDEN EMERGENCY_ROLLBACK=RETAINED_AND_STAGED'

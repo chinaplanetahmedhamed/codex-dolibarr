@@ -2,9 +2,9 @@
 
 - Owner: Ahmed Hamed
 - Coordinator and sole writer: Agent 007
-- Runtime commit: `ecf151802ca8396c51214d758c6150cf1db49a9d`
+- Runtime commit: `d21c0ca30150e1b885586f1c337773b6c71f7802`
 - Target: `https://erp.visiontrading.biz` Production only
-- Candidate: M083-R03 (R01 and R02 rejected by independent review and never uploaded or installed)
+- Candidate: M083-R04 (R01–R03 rejected by independent review and never uploaded or installed)
 - Status: PREPARING RENEWED IMMUTABLE RELEASE — NO PRODUCTION ACTION AUTHORIZED
 
 ## Business outcome
