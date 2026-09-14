@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M083-R02'
+readonly RELEASE='M083-R03'
 readonly RUNTIME_COMMIT='ecf151802ca8396c51214d758c6150cf1db49a9d'
-readonly ARTIFACT_NAME='m083-r02-staff-first-ecf1518.tar.gz'
-readonly ARTIFACT_SHA='9913967555a9a88b0c9e9dd3ab3f74dbe6474c8d4942c3f695c2d687c5447c1f'
+readonly ARTIFACT_NAME='m083-r03-staff-first-ecf1518.tar.gz'
+readonly ARTIFACT_SHA='4feed681c06b2c7fb1fbd99d18519e29febc173e2b30ede505fe7f0abb79d266'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
@@ -18,7 +18,7 @@ readonly TARGET_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'
 readonly TARGET_HTTP='https://erp.visiontrading.biz'
 readonly CODE_BACKUP_ROOT='/root/chinaplanetos-production-m083-code-backups'
 readonly DB_BACKUP_ROOT='/root/chinaplanetos-production-db-backups'
-readonly STATE_ROOT='/var/lib/chinaplanetos-m083-production-r02'
+readonly STATE_ROOT='/var/lib/chinaplanetos-m083-production-r03'
 readonly STATE_FILE="$STATE_ROOT/m083.state"
 readonly LOCK_FILE="$STATE_ROOT/m083.lock"
 readonly RUNTIME_MANIFEST='deploy/releases/m083-runtime-files.txt'
@@ -101,8 +101,11 @@ validate_artifact(){
  [[ $(wc -l<"$CANDIDATE_ROOT/$BASELINE_MANIFEST") -eq ${#RUNTIME_FILES[@]} ]]||die BASELINE_COUNT_MISMATCH
  rm -f "$listing" "$expected" "$actual" "$stderr"
 }
-candidate_checks(){
+stage_candidate(){
  CANDIDATE_REMOTE="/tmp/m083-candidate-$$";docker exec "$TARGET_CONTAINER" rm -rf "$CANDIDATE_REMOTE";docker exec "$TARGET_CONTAINER" mkdir -m 0700 "$CANDIDATE_REMOTE";docker cp "$CANDIDATE_ROOT/." "$TARGET_CONTAINER:$CANDIDATE_REMOTE"
+}
+candidate_checks(){
+ stage_candidate
  local f;for f in "${RUNTIME_FILES[@]}" "${SUPPORT_FILES[@]}";do [[ "$f" != *.php ]]||docker exec "$TARGET_CONTAINER" php -l "$CANDIDATE_REMOTE/$f">/dev/null||die CANDIDATE_LINT_FAILED;done
  for f in "${SOURCE_TESTS[@]}";do docker exec "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$f">/dev/null||die CANDIDATE_TEST_FAILED;done
 }
@@ -179,7 +182,7 @@ command_apply(){ check_environment;ensure_state_dirs;exec 9>"$LOCK_FILE";flock -
 command_verify(){ check_environment;validate_artifact;candidate_checks;load_state;[[ "$STATE_STATUS" == DEPLOYED ]]||die STATE_NOT_DEPLOYED;compare_files>/dev/null;[[ $CURRENT_COUNT -eq ${#RUNTIME_FILES[@]}&&$BASELINE_COUNT -eq 0 ]]||die PRODUCTION_NOT_EXACT_RELEASE;live_checks||die LIVE_VERIFY_FAILED;echo "M083_PRODUCTION_VERIFY=PASS STATE=DEPLOYED SCHEMA=READY DATABASE_MUTATED_BY_COMMAND=NO"; }
 command_rollback(){
  check_core_environment;ensure_state_dirs;exec 9>"$LOCK_FILE";flock -n 9||die LOCKED;load_state;[[ "$STATE_STATUS" == DEPLOYED||"$STATE_STATUS" == APPLY_IN_PROGRESS||"$STATE_STATUS" == APPLY_FAILED_RECOVERY_REQUIRED ]]||die STATE_NOT_ROLLBACKABLE
- validate_artifact "$RETAINED_ARTIFACT" retained;[[ $(sha256 "$RETAINED_ARTIFACT") == "$RETAINED_ARTIFACT_SHA" ]]||die RETAINED_ARTIFACT_HASH_MISMATCH;validate_restore_materials||die ROLLBACK_MATERIAL_INVALID;schema_empty_check||die ROLLBACK_BLOCKED_SCHEMA_NOT_EMPTY;create_db_backup
+ validate_artifact "$RETAINED_ARTIFACT" retained;[[ $(sha256 "$RETAINED_ARTIFACT") == "$RETAINED_ARTIFACT_SHA" ]]||die RETAINED_ARTIFACT_HASH_MISMATCH;stage_candidate;validate_restore_materials||die ROLLBACK_MATERIAL_INVALID;schema_empty_check||die ROLLBACK_BLOCKED_SCHEMA_NOT_EMPTY;create_db_backup
  if ! restore_code||! verify_code_restored;then apply_files||die ROLLBACK_CODE_FAILED_RELEASE_REAPPLY_FAILED;compare_files>/dev/null||die ROLLBACK_CODE_FAILED_RELEASE_VERIFY_FAILED;[[ $CURRENT_COUNT -eq ${#RUNTIME_FILES[@]} ]]||die ROLLBACK_CODE_FAILED_RELEASE_VERIFY_FAILED;save_state APPLY_FAILED_RECOVERY_REQUIRED;die ROLLBACK_CODE_FAILED_RELEASE_REAPPLIED;fi
  if ! rollback_schema_empty;then apply_files||die ROLLBACK_SCHEMA_FAILED_RELEASE_REAPPLY_FAILED;compare_files>/dev/null||die ROLLBACK_SCHEMA_FAILED_RELEASE_VERIFY_FAILED;[[ $CURRENT_COUNT -eq ${#RUNTIME_FILES[@]} ]]||die ROLLBACK_SCHEMA_FAILED_RELEASE_VERIFY_FAILED;save_state APPLY_FAILED_RECOVERY_REQUIRED;die ROLLBACK_SCHEMA_FAILED_RELEASE_REAPPLIED;fi
  save_state ROLLED_BACK;echo "M083_PRODUCTION_ROLLBACK=PASS CODE_RESTORED=$CODE_BACKUP SCHEMA=ABSENT SAFETY_DB_BACKUP=$DB_BACKUP SAFETY_DB_BACKUP_SHA=$DB_BACKUP_SHA HTTP_REQUIRED=NO"
