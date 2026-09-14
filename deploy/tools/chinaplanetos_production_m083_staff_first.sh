@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M083-R06'
+readonly RELEASE='M083-R07'
 readonly RUNTIME_COMMIT='d21c0ca30150e1b885586f1c337773b6c71f7802'
-readonly ARTIFACT_NAME='m083-r06-staff-first-d21c0ca.tar.gz'
-readonly ARTIFACT_SHA='ad500e2a4c933bff8068b119784bc57d1da7bbdccea3adceab89c7ad94e3af6e'
+readonly ARTIFACT_NAME='m083-r07-staff-first-d21c0ca.tar.gz'
+readonly ARTIFACT_SHA='feecf3dcf58d362768ad384dc4b4569e7cc35a6484181a71a4a9b89632af4b24'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
@@ -18,7 +18,7 @@ readonly TARGET_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'
 readonly TARGET_HTTP='https://erp.visiontrading.biz'
 readonly CODE_BACKUP_ROOT='/root/chinaplanetos-production-m083-code-backups'
 readonly DB_BACKUP_ROOT='/root/chinaplanetos-production-db-backups'
-readonly STATE_ROOT='/var/lib/chinaplanetos-m083-production-r06'
+readonly STATE_ROOT='/var/lib/chinaplanetos-m083-production-r07'
 readonly STATE_FILE="$STATE_ROOT/m083.state"
 readonly LOCK_FILE="$STATE_ROOT/m083.lock"
 readonly RUNTIME_MANIFEST='deploy/releases/m083-runtime-files.txt'
@@ -36,7 +36,7 @@ readonly -a SOURCE_TESTS=(
 
 CANDIDATE_ROOT=''; ARTIFACT_COPY=''; CANDIDATE_REMOTE=''; ROUTE_BODY=''
 CODE_BACKUP=''; CODE_BACKUP_SHA=''; ABSENT_LIST=''; ABSENT_LIST_SHA=''; DB_BACKUP=''; DB_BACKUP_SHA=''; SCHEMA_PRESTATE=''; RETAINED_ARTIFACT=''; RETAINED_ARTIFACT_SHA=''
-BASELINE_COUNT=0; CURRENT_COUNT=0
+BASELINE_COUNT=0; CURRENT_COUNT=0; SAME_COUNT=0
 declare -a RUNTIME_FILES=() SUPPORT_FILES=()
 die(){ echo "M083_PRODUCTION_FAIL=$1" >&2; return 1; }
 sha256(){ sha256sum "$1" | awk '{print $1}'; }
@@ -111,14 +111,16 @@ candidate_checks(){
 }
 expected_baseline(){ awk -v p="$1" '$2==p{print $1}' "$CANDIDATE_ROOT/$BASELINE_MANIFEST"; }
 compare_files(){
- local f rel target release_hash target_hash baseline state;BASELINE_COUNT=0;CURRENT_COUNT=0
+ local f rel target release_hash target_hash baseline state;BASELINE_COUNT=0;CURRENT_COUNT=0;SAME_COUNT=0
  for f in "${RUNTIME_FILES[@]}";do rel=${f#custom/};target="$TARGET_ROOT/$rel";release_hash=$(sha256 "$CANDIDATE_ROOT/$f");baseline=$(expected_baseline "$f");[[ -n "$baseline" ]]||die BASELINE_ENTRY_MISSING
   if [[ ! -e "$target"&&! -L "$target" ]];then [[ "$baseline" == ABSENT ]]||die PRODUCTION_DRIFT_ABSENT;state=CREATE_REQUIRED;((BASELINE_COUNT+=1));echo "M083_PRODUCTION_COMPARE FILE=$f STATE=$state RELEASE_SHA=$release_hash";continue;fi
-  [[ -f "$target"&&! -L "$target" ]]||die TARGET_INVALID;target_hash=$(sha256 "$target");if [[ "$target_hash" == "$release_hash" ]];then state=CURRENT;((CURRENT_COUNT+=1));elif [[ "$target_hash" == "$baseline" ]];then state=UPDATE_REQUIRED;((BASELINE_COUNT+=1));else die PRODUCTION_DRIFT_HASH;fi
+  [[ -f "$target"&&! -L "$target" ]]||die TARGET_INVALID;target_hash=$(sha256 "$target");if [[ "$target_hash" == "$release_hash"&&"$release_hash" == "$baseline" ]];then state=UNCHANGED;((SAME_COUNT+=1));elif [[ "$target_hash" == "$release_hash" ]];then state=CURRENT;((CURRENT_COUNT+=1));elif [[ "$target_hash" == "$baseline" ]];then state=UPDATE_REQUIRED;((BASELINE_COUNT+=1));else die PRODUCTION_DRIFT_HASH;fi
   echo "M083_PRODUCTION_COMPARE FILE=$f STATE=$state PRODUCTION_SHA=$target_hash RELEASE_SHA=$release_hash"
  done
- [[ $BASELINE_COUNT -eq ${#RUNTIME_FILES[@]}||$CURRENT_COUNT -eq ${#RUNTIME_FILES[@]} ]]||die PRODUCTION_MIXED_RELEASE_STATE
+ is_exact_baseline||is_exact_release||die PRODUCTION_MIXED_RELEASE_STATE
 }
+is_exact_baseline(){ [[ $CURRENT_COUNT -eq 0&&$((BASELINE_COUNT+SAME_COUNT)) -eq ${#RUNTIME_FILES[@]} ]]; }
+is_exact_release(){ [[ $BASELINE_COUNT -eq 0&&$((CURRENT_COUNT+SAME_COUNT)) -eq ${#RUNTIME_FILES[@]} ]]; }
 schema_state(){ local out rc=0;set +e;out=$(docker exec -e M083_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SCHEMA" check 2>&1);rc=$?;set -e;if [[ $rc -eq 0&&"$out" == 'M083_SCHEMA_CHECK=PASS TABLES=6 GUARDS=4' ]];then echo READY;elif [[ $rc -eq 2&&"$out" == 'M083_SCHEMA_CHECK=ABSENT TABLES=0 GUARDS=0' ]];then echo ABSENT;else echo "$out" >&2;die SCHEMA_INVALID;fi; }
 schema_empty_check(){ docker exec -e M083_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$SCHEMA" empty-check>/dev/null; }
 run_preflight(){ docker exec -e M083_DOL_DOCUMENT_ROOT=/var/www/html "$TARGET_CONTAINER" php "$CANDIDATE_REMOTE/$PREFLIGHT"; }
@@ -174,17 +176,17 @@ automatic_rollback(){
  set +e;local code_rc=1 schema_rc=1 reapply_rc=0
  if validate_restore_materials&&restore_code&&verify_code_restored;then code_rc=0;rollback_schema_empty;schema_rc=$?;fi
  if [[ $code_rc -eq 0&&$schema_rc -eq 0 ]];then save_state APPLY_FAILED_AUTO_ROLLED_BACK;echo M083_PRODUCTION_AUTO_ROLLBACK=PASS >&2
- else apply_files;reapply_rc=$?;if [[ $reapply_rc -eq 0 ]];then compare_files>/dev/null 2>&1;reapply_rc=$?;[[ $CURRENT_COUNT -eq ${#RUNTIME_FILES[@]} ]]||reapply_rc=1;fi;save_state APPLY_FAILED_RECOVERY_REQUIRED;echo "M083_PRODUCTION_AUTO_ROLLBACK=FAIL CODE_RC=$code_rc SCHEMA_RC=$schema_rc RELEASE_REAPPLY_RC=$reapply_rc DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA" >&2;fi;set -e
+ else apply_files;reapply_rc=$?;if [[ $reapply_rc -eq 0 ]];then compare_files>/dev/null 2>&1;reapply_rc=$?;is_exact_release||reapply_rc=1;fi;save_state APPLY_FAILED_RECOVERY_REQUIRED;echo "M083_PRODUCTION_AUTO_ROLLBACK=FAIL CODE_RC=$code_rc SCHEMA_RC=$schema_rc RELEASE_REAPPLY_RC=$reapply_rc DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA" >&2;fi;set -e
 }
-command_compare(){ check_environment;validate_artifact;candidate_checks;compare_files;local schema;schema=$(schema_state);if [[ $BASELINE_COUNT -eq ${#RUNTIME_FILES[@]} ]];then [[ "$schema" == ABSENT ]]||die BASELINE_SCHEMA_STATE_MISMATCH;else [[ "$schema" == READY ]]||die RELEASE_SCHEMA_STATE_MISMATCH;fi;echo "M083_PRODUCTION_COMPARE=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$schema PRODUCTION_MUTATED=NO"; }
-command_preflight(){ check_environment;validate_artifact;candidate_checks;compare_files>/dev/null;[[ $BASELINE_COUNT -eq ${#RUNTIME_FILES[@]}&&$CURRENT_COUNT -eq 0 ]]||die PRODUCTION_NOT_EXACT_BASELINE;local schema;schema=$(schema_state);[[ "$schema" == ABSENT ]]||die SCHEMA_PRESTATE_NOT_ABSENT;run_preflight;echo "M083_PRODUCTION_PREFLIGHT=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=${#RUNTIME_FILES[@]} SCHEMA=$schema FULL_DB_BACKUP_REQUIRED=YES PRODUCTION_MUTATED=NO"; }
-command_apply(){ check_environment;ensure_state_dirs;exec 9>"$LOCK_FILE";flock -n 9||die LOCKED;validate_artifact;candidate_checks;compare_files>/dev/null;[[ $BASELINE_COUNT -eq ${#RUNTIME_FILES[@]}&&$CURRENT_COUNT -eq 0 ]]||die PRODUCTION_NOT_EXACT_BASELINE;SCHEMA_PRESTATE=$(schema_state);[[ "$SCHEMA_PRESTATE" == ABSENT ]]||die SCHEMA_PRESTATE_NOT_ABSENT;run_preflight>/dev/null;if [[ -f "$STATE_FILE" ]];then load_state;case "$STATE_STATUS" in DEPLOYED)die ALREADY_DEPLOYED;;APPLY_IN_PROGRESS|APPLY_FAILED_RECOVERY_REQUIRED)die RECOVERY_REQUIRED;;esac;SCHEMA_PRESTATE=ABSENT;fi;create_code_backup;create_db_backup;retain_artifact;save_state APPLY_IN_PROGRESS;local mutated=0;trap 'rc=$?;if [[ $mutated -eq 1 ]];then automatic_rollback;fi;exit $rc' ERR;mutated=1;apply_schema;apply_files;live_checks;mutated=0;trap - ERR;save_state DEPLOYED;echo "M083_PRODUCTION_APPLY=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA RETAINED_ARTIFACT=$RETAINED_ARTIFACT"; }
-command_verify(){ check_environment;validate_artifact;candidate_checks;load_state;[[ "$STATE_STATUS" == DEPLOYED ]]||die STATE_NOT_DEPLOYED;compare_files>/dev/null;[[ $CURRENT_COUNT -eq ${#RUNTIME_FILES[@]}&&$BASELINE_COUNT -eq 0 ]]||die PRODUCTION_NOT_EXACT_RELEASE;live_checks||die LIVE_VERIFY_FAILED;echo "M083_PRODUCTION_VERIFY=PASS STATE=DEPLOYED SCHEMA=READY DATABASE_MUTATED_BY_COMMAND=NO"; }
+command_compare(){ check_environment;validate_artifact;candidate_checks;compare_files;local schema;schema=$(schema_state);if is_exact_baseline;then [[ "$schema" == ABSENT ]]||die BASELINE_SCHEMA_STATE_MISMATCH;else [[ "$schema" == READY ]]||die RELEASE_SCHEMA_STATE_MISMATCH;fi;echo "M083_PRODUCTION_COMPARE=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA SCHEMA=$schema UNCHANGED=$SAME_COUNT PRODUCTION_MUTATED=NO"; }
+command_preflight(){ check_environment;validate_artifact;candidate_checks;compare_files>/dev/null;is_exact_baseline||die PRODUCTION_NOT_EXACT_BASELINE;local schema;schema=$(schema_state);[[ "$schema" == ABSENT ]]||die SCHEMA_PRESTATE_NOT_ABSENT;run_preflight;echo "M083_PRODUCTION_PREFLIGHT=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA FILES=${#RUNTIME_FILES[@]} UNCHANGED=$SAME_COUNT SCHEMA=$schema FULL_DB_BACKUP_REQUIRED=YES PRODUCTION_MUTATED=NO"; }
+command_apply(){ check_environment;ensure_state_dirs;exec 9>"$LOCK_FILE";flock -n 9||die LOCKED;validate_artifact;candidate_checks;compare_files>/dev/null;is_exact_baseline||die PRODUCTION_NOT_EXACT_BASELINE;SCHEMA_PRESTATE=$(schema_state);[[ "$SCHEMA_PRESTATE" == ABSENT ]]||die SCHEMA_PRESTATE_NOT_ABSENT;run_preflight>/dev/null;if [[ -f "$STATE_FILE" ]];then load_state;case "$STATE_STATUS" in DEPLOYED)die ALREADY_DEPLOYED;;APPLY_IN_PROGRESS|APPLY_FAILED_RECOVERY_REQUIRED)die RECOVERY_REQUIRED;;esac;SCHEMA_PRESTATE=ABSENT;fi;create_code_backup;create_db_backup;retain_artifact;save_state APPLY_IN_PROGRESS;local mutated=0;trap 'rc=$?;if [[ $mutated -eq 1 ]];then automatic_rollback;fi;exit $rc' ERR;mutated=1;apply_schema;apply_files;live_checks;mutated=0;trap - ERR;save_state DEPLOYED;echo "M083_PRODUCTION_APPLY=PASS RELEASE=$RELEASE RUNTIME_COMMIT=$RUNTIME_COMMIT ARTIFACT_SHA=$ARTIFACT_SHA CODE_BACKUP=$CODE_BACKUP CODE_BACKUP_SHA=$CODE_BACKUP_SHA DB_BACKUP=$DB_BACKUP DB_BACKUP_SHA=$DB_BACKUP_SHA RETAINED_ARTIFACT=$RETAINED_ARTIFACT"; }
+command_verify(){ check_environment;validate_artifact;candidate_checks;load_state;[[ "$STATE_STATUS" == DEPLOYED ]]||die STATE_NOT_DEPLOYED;compare_files>/dev/null;is_exact_release||die PRODUCTION_NOT_EXACT_RELEASE;live_checks||die LIVE_VERIFY_FAILED;echo "M083_PRODUCTION_VERIFY=PASS STATE=DEPLOYED SCHEMA=READY UNCHANGED=$SAME_COUNT DATABASE_MUTATED_BY_COMMAND=NO"; }
 command_rollback(){
  check_core_environment;ensure_state_dirs;exec 9>"$LOCK_FILE";flock -n 9||die LOCKED;load_state;[[ "$STATE_STATUS" == DEPLOYED||"$STATE_STATUS" == APPLY_IN_PROGRESS||"$STATE_STATUS" == APPLY_FAILED_RECOVERY_REQUIRED ]]||die STATE_NOT_ROLLBACKABLE
  validate_artifact "$RETAINED_ARTIFACT" retained;[[ $(sha256 "$RETAINED_ARTIFACT") == "$RETAINED_ARTIFACT_SHA" ]]||die RETAINED_ARTIFACT_HASH_MISMATCH;stage_candidate;validate_restore_materials||die ROLLBACK_MATERIAL_INVALID;schema_empty_check||die ROLLBACK_BLOCKED_SCHEMA_NOT_EMPTY;create_db_backup
- if ! restore_code||! verify_code_restored;then apply_files||die ROLLBACK_CODE_FAILED_RELEASE_REAPPLY_FAILED;compare_files>/dev/null||die ROLLBACK_CODE_FAILED_RELEASE_VERIFY_FAILED;[[ $CURRENT_COUNT -eq ${#RUNTIME_FILES[@]} ]]||die ROLLBACK_CODE_FAILED_RELEASE_VERIFY_FAILED;save_state APPLY_FAILED_RECOVERY_REQUIRED;die ROLLBACK_CODE_FAILED_RELEASE_REAPPLIED;fi
- if ! rollback_schema_empty;then apply_files||die ROLLBACK_SCHEMA_FAILED_RELEASE_REAPPLY_FAILED;compare_files>/dev/null||die ROLLBACK_SCHEMA_FAILED_RELEASE_VERIFY_FAILED;[[ $CURRENT_COUNT -eq ${#RUNTIME_FILES[@]} ]]||die ROLLBACK_SCHEMA_FAILED_RELEASE_VERIFY_FAILED;save_state APPLY_FAILED_RECOVERY_REQUIRED;die ROLLBACK_SCHEMA_FAILED_RELEASE_REAPPLIED;fi
+ if ! restore_code||! verify_code_restored;then apply_files||die ROLLBACK_CODE_FAILED_RELEASE_REAPPLY_FAILED;compare_files>/dev/null||die ROLLBACK_CODE_FAILED_RELEASE_VERIFY_FAILED;is_exact_release||die ROLLBACK_CODE_FAILED_RELEASE_VERIFY_FAILED;save_state APPLY_FAILED_RECOVERY_REQUIRED;die ROLLBACK_CODE_FAILED_RELEASE_REAPPLIED;fi
+ if ! rollback_schema_empty;then apply_files||die ROLLBACK_SCHEMA_FAILED_RELEASE_REAPPLY_FAILED;compare_files>/dev/null||die ROLLBACK_SCHEMA_FAILED_RELEASE_VERIFY_FAILED;is_exact_release||die ROLLBACK_SCHEMA_FAILED_RELEASE_VERIFY_FAILED;save_state APPLY_FAILED_RECOVERY_REQUIRED;die ROLLBACK_SCHEMA_FAILED_RELEASE_REAPPLIED;fi
  save_state ROLLED_BACK;echo "M083_PRODUCTION_ROLLBACK=PASS CODE_RESTORED=$CODE_BACKUP SCHEMA=ABSENT SAFETY_DB_BACKUP=$DB_BACKUP SAFETY_DB_BACKUP_SHA=$DB_BACKUP_SHA HTTP_REQUIRED=NO"
 }
 command_status(){ if [[ -f "$STATE_FILE" ]];then load_state;grep -E '^STATE_(RELEASE|STATUS|RUNTIME_COMMIT|ARTIFACT_SHA|CODE_BACKUP|CODE_BACKUP_SHA|ABSENT_LIST|ABSENT_LIST_SHA|DB_BACKUP|DB_BACKUP_SHA|SCHEMA_PRESTATE|RETAINED_ARTIFACT|RETAINED_ARTIFACT_SHA|UPDATED_AT)=' "$STATE_FILE";else echo M083_PRODUCTION_STATUS=NOT_DEPLOYED;fi; }

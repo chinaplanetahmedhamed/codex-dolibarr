@@ -4,8 +4,8 @@
 - Coordinator and sole writer: Agent 007
 - Runtime commit: `d21c0ca30150e1b885586f1c337773b6c71f7802`
 - Target: `https://erp.visiontrading.biz` Production only
-- Candidate: M083-R06 (R05 compare stopped safely because its baseline predated deployed M076-R07)
-- Status: PREPARING CORRECTED IMMUTABLE RELEASE — NO R06 SERVER ACTION AUTHORIZED
+- Candidate: M083-R07 (R06 rejected locally because unchanged baseline/release files were misclassified)
+- Status: PREPARING CORRECTED IMMUTABLE RELEASE — NO R07 SERVER ACTION AUTHORIZED
 
 ## Business outcome
 
@@ -59,4 +59,4 @@ The release carries the completed M076–M082 local work:
 
 ## Current boundary
 
-R05 `compare` failed closed before mutation because its baseline predated the deployed M076-R07 release. R06 is local-only until its renewed pins and independent reviews are complete. No R06 push, upload, installation, compare, preflight, apply, verify, permission change, or real business record is authorized by this preparation document.
+R05 `compare` failed closed before mutation because its baseline predated the deployed M076-R07 release. R06 was rejected locally before upload because its helper mishandled files unchanged between baseline and release. R07 is local-only until its renewed pins and independent reviews are complete. No R07 push, upload, installation, compare, preflight, apply, verify, permission change, or real business record is authorized by this preparation document.

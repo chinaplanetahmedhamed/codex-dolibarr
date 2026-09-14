@@ -1,20 +1,20 @@
-# M083-R06 Production release preparation
+# M083-R07 Production release preparation
 
 - Runtime commit: `d21c0ca30150e1b885586f1c337773b6c71f7802`
 - Target: `erp.visiontrading.biz` Production only
-- State: corrected R06 candidate frozen locally; renewed independent Security and QA review pending
-- Supersedes: M083-R01 through M083-R04 rejected locally, and R05 stopped safely during Production compare before mutation
+- State: corrected R07 candidate being frozen locally; renewed independent Security and QA review pending
+- Supersedes: M083-R01 through M083-R04 rejected locally, R05 stopped safely during Production compare, and R06 rejected locally
 
 ## Frozen pins
 
-- Artifact `m083-r06-staff-first-d21c0ca.tar.gz`: `ad500e2a4c933bff8068b119784bc57d1da7bbdccea3adceab89c7ad94e3af6e`
-- Restricted helper: `a3edfeb615f7a6a3a9c7a2eee7c1d3fa8d5af139d0fdb6fcc410c65ddf80a309`
-- Root installer: `3c2772897187d243fa35b5e25aea41795eb873e4c926b10d6dd08bdba856c4ac`
+- Artifact `m083-r07-staff-first-d21c0ca.tar.gz`: `feecf3dcf58d362768ad384dc4b4569e7cc35a6484181a71a4a9b89632af4b24`
+- Restricted helper: `8343a6a47983e706640422c76a41ac49aca73ecf8ea2102cef1e2756ebf38447`
+- Root installer: `715a91f01c6f1b533effdad00e2b58d9b6d4ceb9a1a9504a6f7dbaa8263c66b8`
 - Sudoers: `03b11843b7f0e5780e02c4cf68b356c2c439cb2110c72d7b71cac8c4f7e76a91`
 
 The normalized artifact contains exactly 67 regular files: 58 runtime files, six self-contained support files, and three release manifests. Every member has uid/gid 0, an empty owner/group name, mode derived only from source executability, and timestamp zero; the gzip header also has timestamp zero. It contains no configuration, credential, key, database dump, document, log, symlink, Dolibarr core file, or release control executable.
 
-## R06 corrections
+## R07 corrections
 
 - Candidate tests are self-contained inside the artifact; missing cross-Mission dependencies from R01 were removed.
 - The helper rejects every mixed baseline/release state. `preflight` and `apply` require all 58 files at the exact deployed M076-R07 baseline; `verify` requires all 58 at the exact M083 release.
@@ -27,7 +27,8 @@ The normalized artifact contains exactly 67 regular files: 58 runtime files, six
 - External customer order/project routes enforce the active entity explicitly. Supplier identity is redacted by default and is exposed only to authenticated internal staff views, correcting the R03 findings from independent Security review.
 - The customer funding page is explicitly included in the runtime manifest and baseline, correcting the R04 packaging omission.
 - The 58-file baseline now derives from the exact deployed M076-R07 source commit `526976f21c609bc30482624719afb092905da810`; R05 incorrectly expected the earlier M075 state and therefore failed closed during compare.
-- The root installer accepts only the exact installed R05 helper as its predecessor, retains a root-only checksum-locked backup, and restores it if the R06 upgrade does not complete.
+- The root installer accepts only the exact installed R05 helper as its predecessor, retains a root-only checksum-locked backup, and restores it if the R07 upgrade does not complete.
+- Files whose baseline and release hashes are identical are classified as `UNCHANGED`, compatible with both complete states. Regression coverage requires at least one such file and validates the exact-baseline and exact-release predicates.
 - Disposable local schema tests prove exact-schema acceptance, altered type and extra-index rejection, and cleanup of exact empty partial tables/guards.
 
 ## Production gate record
@@ -40,4 +41,4 @@ The normalized artifact contains exactly 67 regular files: 58 runtime files, six
 
 ## Current boundary
 
-No mutating M083 helper action has been executed. R05 `compare` ran read-only and stopped on the stale baseline; `preflight`, `apply`, `verify`, and `rollback` have not run. R06 has not been pushed, uploaded, installed, or executed, and no Production runtime or database content was changed by M083.
+No mutating M083 helper action has been executed. R05 `compare` ran read-only and stopped on the stale baseline; `preflight`, `apply`, `verify`, and `rollback` have not run. R06 was never pushed or uploaded. R07 has not been pushed, uploaded, installed, or executed, and no Production runtime or database content was changed by M083.
