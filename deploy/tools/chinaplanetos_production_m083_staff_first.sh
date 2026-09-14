@@ -6,7 +6,7 @@ umask 077
 readonly RELEASE='M083-R01'
 readonly RUNTIME_COMMIT='ecf151802ca8396c51214d758c6150cf1db49a9d'
 readonly ARTIFACT_NAME='m083-r01-staff-first-ecf1518.tar.gz'
-readonly ARTIFACT_SHA='__ARTIFACT_SHA__'
+readonly ARTIFACT_SHA='c71cd69c5547dfdda0941dd2759b7c67b5fdf94d313a42e802586fcacdddcb91'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
