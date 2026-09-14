@@ -4,7 +4,8 @@
 - Coordinator and sole writer: Agent 007
 - Runtime commit: `ecf151802ca8396c51214d758c6150cf1db49a9d`
 - Target: `https://erp.visiontrading.biz` Production only
-- Status: PREPARING IMMUTABLE RELEASE — NO PRODUCTION ACTION AUTHORIZED
+- Candidate: M083-R02 (R01 rejected by independent review and never uploaded or installed)
+- Status: PREPARING RENEWED IMMUTABLE RELEASE — NO PRODUCTION ACTION AUTHORIZED
 
 ## Business outcome
 
@@ -46,7 +47,7 @@ The release carries the completed M076–M082 local work:
 4. Separately approve restricted Production `compare` and `preflight`; both are read-only and must prove the exact M075 baseline and absent M083 schema.
 5. Separately approve `apply`, conditional `verify`, `status`, and authenticated staff/customer acceptance.
 
-`apply` must create a complete code backup, absent-file manifest, and full database dump before any mutation. A failed apply restores code and drops only empty newly created schema. It never automatically restores a full Production database. Rollback is permitted only while all six M083 tables remain empty; after real business use, recovery requires a new data-preserving plan.
+`apply` must create a complete code backup, absent-file manifest, full database dump, and retained checksum-locked candidate before any mutation. A failed apply first restores and verifies code, then drops only exact empty M083 schema, including safe partial-creation cleanup. It never automatically restores a full Production database. Emergency rollback uses the retained root-owned candidate and code backup, does not depend on the public HTTP route or inbox, and is permitted only while all six M083 tables remain empty. After real business use, recovery requires a new data-preserving plan.
 
 ## Acceptance
 
