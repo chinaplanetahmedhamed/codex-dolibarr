@@ -18,9 +18,9 @@ grep -Fq "readonly TARGET_DB_CONTAINER='vision_db'" "$helper"
 grep -Fq "readonly TARGET_DB_VOLUME='vision-os_mariadb_data'" "$helper"
 grep -Fq "readonly TARGET_DB_NAME='dolibarr_db'" "$helper"
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz'" "$helper"
-grep -Fq "readonly RELEASE='M083-R07'" "$helper"
-grep -Fq "readonly ARTIFACT_SHA='feecf3dcf58d362768ad384dc4b4569e7cc35a6484181a71a4a9b89632af4b24'" "$helper"
-grep -Fq "readonly PRIOR_HELPER_SHA='72cadcb113e33fbf4aac3dd5d132780c12c259ff528773ad9f62165e95363cd6'" "$installer"
+grep -Fq "readonly RELEASE='M083-R08'" "$helper"
+grep -Fq "readonly ARTIFACT_SHA='afce15e8905bc1d6d4eaa69292edbbbbdc17e4b759f2bbc87f80582f9e8fd99d'" "$helper"
+grep -Fq "readonly PRIOR_HELPER_SHA='8343a6a47983e706640422c76a41ac49aca73ecf8ea2102cef1e2756ebf38447'" "$installer"
 grep -Fq 'readonly PRIOR_BACKUP="$BACKUP_ROOT/chinaplanetos-production-m083-staff-first.$PRIOR_HELPER_SHA.bak"' "$installer"
 grep -Fq '$(sha256 "$PRIOR_BACKUP") == "$PRIOR_HELPER_SHA"' "$installer"
 grep -Fq 'mv -f "$restore_stage" "$TARGET_HELPER"' "$installer"
@@ -44,4 +44,4 @@ if [[ ${M083_FINAL_PINS:-0} == 1 ]];then ! grep -Rq '__[A-Z_]*__' "$helper" "$in
 same_count=0
 while read -r expected file;do if [[ "$expected" != ABSENT&&$(shasum -a 256 "$root/$file"|awk '{print $1}') == "$expected" ]];then same_count=$((same_count+1));fi;done<"$baseline"
 [[ $same_count -ge 1 ]]
-echo "M083_RELEASE_CONTRACT=PASS TARGET=PRODUCTION RELEASE=M083-R07 COMMANDS=6 UNCHANGED=$same_count DB_RESTORE=FORBIDDEN EMERGENCY_ROLLBACK=RETAINED_AND_STAGED"
+echo "M083_RELEASE_CONTRACT=PASS TARGET=PRODUCTION RELEASE=M083-R08 COMMANDS=6 UNCHANGED=$same_count DB_RESTORE=FORBIDDEN EMERGENCY_ROLLBACK=RETAINED_AND_STAGED"

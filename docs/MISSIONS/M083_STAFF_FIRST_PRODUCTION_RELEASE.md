@@ -4,8 +4,8 @@
 - Coordinator and sole writer: Agent 007
 - Runtime commit: `d21c0ca30150e1b885586f1c337773b6c71f7802`
 - Target: `https://erp.visiontrading.biz` Production only
-- Candidate: M083-R07 (R06 rejected locally because unchanged baseline/release files were misclassified)
-- Status: PREPARING CORRECTED IMMUTABLE RELEASE — NO R07 SERVER ACTION AUTHORIZED
+- Candidate: M083-R08 (R07 stopped safely during compare because baseline omitted 18 M074-R14 files)
+- Status: R08 CANDIDATE FROZEN AND UPLOADED — AWAITING INSTALLER ACTIVATION
 
 ## Business outcome
 

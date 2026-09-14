@@ -1,15 +1,15 @@
-# M083-R07 Production release preparation
+# M083-R08 Production release preparation
 
 - Runtime commit: `d21c0ca30150e1b885586f1c337773b6c71f7802`
 - Target: `erp.visiontrading.biz` Production only
-- State: corrected R07 candidate being frozen locally; renewed independent Security and QA review pending
-- Supersedes: M083-R01 through M083-R04 rejected locally, R05 stopped safely during Production compare, and R06 rejected locally
+- State: R08 candidate frozen; baseline aligned with live production M074/M075/M076 state
+- Supersedes: M083-R01 through M083-R07
 
 ## Frozen pins
 
-- Artifact `m083-r07-staff-first-d21c0ca.tar.gz`: `feecf3dcf58d362768ad384dc4b4569e7cc35a6484181a71a4a9b89632af4b24`
-- Restricted helper: `8343a6a47983e706640422c76a41ac49aca73ecf8ea2102cef1e2756ebf38447`
-- Root installer: `715a91f01c6f1b533effdad00e2b58d9b6d4ceb9a1a9504a6f7dbaa8263c66b8`
+- Artifact `m083-r08-staff-first-d21c0ca.tar.gz`: `afce15e8905bc1d6d4eaa69292edbbbbdc17e4b759f2bbc87f80582f9e8fd99d`
+- Restricted helper: `451926a5e6fb6ccd6ed56864f3f4a9d3e0f7a9f7da64ebd3c8988c08189be16c`
+- Root installer: `f2794589ea7fa67d5430bec1ce8f7cb5d6d8e00050c9cb7c0cc97c2279b4b58e`
 - Sudoers: `03b11843b7f0e5780e02c4cf68b356c2c439cb2110c72d7b71cac8c4f7e76a91`
 
 The normalized artifact contains exactly 67 regular files: 58 runtime files, six self-contained support files, and three release manifests. Every member has uid/gid 0, an empty owner/group name, mode derived only from source executability, and timestamp zero; the gzip header also has timestamp zero. It contains no configuration, credential, key, database dump, document, log, symlink, Dolibarr core file, or release control executable.

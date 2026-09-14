@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M083-R07'
+readonly RELEASE='M083-R08'
 readonly RUNTIME_COMMIT='d21c0ca30150e1b885586f1c337773b6c71f7802'
-readonly ARTIFACT_NAME='m083-r07-staff-first-d21c0ca.tar.gz'
-readonly ARTIFACT_SHA='feecf3dcf58d362768ad384dc4b4569e7cc35a6484181a71a4a9b89632af4b24'
+readonly ARTIFACT_NAME='m083-r08-staff-first-d21c0ca.tar.gz'
+readonly ARTIFACT_SHA='afce15e8905bc1d6d4eaa69292edbbbbdc17e4b759f2bbc87f80582f9e8fd99d'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
