@@ -3,7 +3,7 @@
 - Owner: Ahmed Hamed
 - Coordinator and writer: Agent 007
 - Date: 2026-09-14
-- Status: CORRECTED LOCALLY — RENEWED RELEASE REVIEW REQUIRED
+- Status: ACCOUNTING CORRECTION IMPLEMENTED — RENEWED REVIEWS REQUIRED
 - Environment: isolated local Dolibarr and disposable synthetic data only
 
 ## Objective
@@ -104,3 +104,11 @@ Release preparation remains separately gated by a frozen commit and independent 
 - Existing historical customer collaboration records and staff-only file controls remain readable/operable in their authorized scopes; no stored record was deleted.
 - The corrected full schema-only UAT ran the complete native commercial, customer-payment, supplier-payment, bank, and shipment-evidence cycle as a legitimate non-admin staff actor, with negative bank/customer/advanced-permission cases. Eleven related M077-M082, shipment, gallery, collaboration, and upload-dependency source regressions passed.
 - Renewed independent Staff and Customer/Security/QA acceptance is required on the corrected frozen commit before any release preparation.
+
+## Accounting review correction
+
+- Supplier payments are serialized by the native supplier-invoice identity, not by the request token. The invoice row and its current paid balance are locked and reread before any new payment is created, so two different tokens cannot both spend the same remaining balance.
+- Retry and manual recovery now revalidate the exact native supplier payment, its single invoice link, bank account, bank-line sign, original-currency amount, main-currency amount, dates, and the exact `payment_supplier` bank link.
+- A confirmed native payment with an unsettled customer-funds allocation remains recoverable. Retrying completes only the attribution and cannot recreate the payment or bank line.
+- Customer-funds attribution now locks and reconciles the original customer receipt, checks exact customer/currency/amount evidence, subtracts native deposit-credit consumption, and rejects active allocations above the remaining allocatable coverage.
+- The disposable full UAT now includes distinct-token concurrency exclusion, post-cash recovery, bank evidence mutation, receipt mutation, and native-consumption coverage cases. All fail closed or recover idempotently as designed.

@@ -48,7 +48,13 @@ The clone contained schemas and synthetic fixtures only and was deleted after th
 
 No real customer, supplier, financial, shipment, or document record was created or changed. No external request, email, CargoX, DHL, automatic FX, overpayment, Push, Staging, or Production action occurred.
 
-The next step is release preparation: freeze the local commit and obtain independent Accounting, Security, and QA reviews. Any Push or deployment requires a new exact approval for the named commit/artifact and environment.
+The next step is renewed independent Accounting, Security, and QA review on the frozen accounting-corrected commit, followed by release preparation. Any Push or deployment requires a new exact approval for the named commit/artifact and environment.
+
+## Accounting correction evidence
+
+The first Accounting review found four release blockers. The corrected implementation now serializes all supplier payments for the same invoice, rereads the balance under lock, completes a pending allocation on retry without recreating cash, validates the exact bank line and `payment_supplier` link, and fully reconciles customer-receipt coverage including native deposit-credit consumption.
+
+The disposable UAT added adversarial cases for two distinct payment tokens, a simulated crash after native cash posting, changed bank amount/link evidence, changed receipt evidence, and pre-existing native credit consumption. Every invalid case was blocked; recovery restored the same native payment and bank identifiers.
 
 ## Initial-review findings and correction
 

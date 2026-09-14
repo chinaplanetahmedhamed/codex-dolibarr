@@ -216,12 +216,55 @@ try {
             m082Assert($allocationCheck, 'synthetic customer-funds allocation fixture did not persist');
         }
 
+        if ($currency === 'USD') {
+            $concurrent = new mysqli($cfg['host'], $adminCredentials[0], $adminCredentials[1], $database, $cfg['port']);
+            $lockName='CPO-SUP-PAY-1-'.$invoiceId;
+            $lockRow=$concurrent->query("SELECT GET_LOCK('".$concurrent->real_escape_string($lockName)."',0) acquired")->fetch_assoc();
+            m082Assert((int)$lockRow['acquired']===1,'concurrency fixture could not hold invoice payment lock');
+            $concurrentRejected=false;$concurrentKey=sha1($database.':USD:concurrent-second-token');
+            try{$service->postPayment($f['operation'],$partial,82007,'VIR','2026-09-14','M082-USD-CONCURRENT',0,$user,$concurrentKey);}catch(RuntimeException $e){$concurrentRejected=strpos($e->getMessage(),'busy')!==false;}
+            $concurrent->query("SELECT RELEASE_LOCK('".$concurrent->real_escape_string($lockName)."')");$concurrent->close();
+            m082Assert($concurrentRejected,'distinct-token concurrent supplier payment was not serialized');
+            $concurrentToken='CPO-SPY-'.strtoupper($concurrentKey);
+            m082Assert((int)$db->fetch_object($db->query("SELECT COUNT(*) n FROM llx_cpo_supplier_action WHERE request_token='".$db->escape($concurrentToken)."'"))->n===0,'blocked concurrent request created a marker');
+        }
+
         $partialResult = $service->postPayment($f['operation'], $partial, 82007 + array_search($currency, array('USD','CNY','EGP'), true), 'VIR', '2026-09-14', 'M082-'.$currency.'-PARTIAL', $allocationId, $user, sha1($database.':'.$currency.':partial'));
         $partialRetry = $service->postPayment($f['operation'], $partial, 82007 + array_search($currency, array('USD','CNY','EGP'), true), 'VIR', '2026-09-14', 'M082-'.$currency.'-PARTIAL', $allocationId, $user, sha1($database.':'.$currency.':partial'));
         m082Assert($partialResult === $partialRetry, 'supplier-payment retry failed for '.$currency);
         if ($allocationId) {
             $allocation = $db->fetch_object($db->query("SELECT status,disbursement_type,disbursement_id FROM llx_cpcc_fund_allocation WHERE rowid=".$allocationId));
             m082Assert($allocation && $allocation->status === 'settled' && $allocation->disbursement_type === 'supplier_payment' && (int) $allocation->disbursement_id === (int) $partialResult['payment_id'], 'explicit customer-funds attribution failed');
+            $cashBefore=$db->fetch_object($db->query("SELECT (SELECT COUNT(*) FROM llx_paiementfourn WHERE rowid=".(int)$partialResult['payment_id'].") payments,(SELECT COUNT(*) FROM llx_bank WHERE rowid=".(int)$partialResult['bank_id'].") banks"));
+            $db->query("UPDATE llx_cpcc_fund_allocation SET status='reserved',disbursement_type=NULL,disbursement_id=NULL,fk_user_settle=NULL,date_settlement=NULL WHERE rowid=".$allocationId);
+            $crashRetry=$service->postPayment($f['operation'],$partial,82007,'VIR','2026-09-14','M082-USD-PARTIAL',$allocationId,$user,sha1($database.':USD:partial'));
+            $allocation=$db->fetch_object($db->query("SELECT status,disbursement_type,disbursement_id FROM llx_cpcc_fund_allocation WHERE rowid=".$allocationId));
+            $cashAfter=$db->fetch_object($db->query("SELECT (SELECT COUNT(*) FROM llx_paiementfourn WHERE rowid=".(int)$partialResult['payment_id'].") payments,(SELECT COUNT(*) FROM llx_bank WHERE rowid=".(int)$partialResult['bank_id'].") banks"));
+            m082Assert($crashRetry===$partialResult&&$allocation->status==='settled'&&(int)$allocation->disbursement_id===(int)$partialResult['payment_id']&&(int)$cashBefore->payments===(int)$cashAfter->payments&&(int)$cashBefore->banks===(int)$cashAfter->banks,'post-cash allocation recovery recreated cash or failed to settle');
+
+            $db->query("UPDATE llx_cpcc_customer_receipt SET amount=amount-1 WHERE rowid=".$receipt);
+            $receiptMutationRejected=false;try{(new CustomerFundsService($db,1))->settleWithSupplierPayment($allocationId,(int)$partialResult['payment_id'],82001);}catch(RuntimeException $e){$receiptMutationRejected=strpos($e->getMessage(),'evidence')!==false||strpos($e->getMessage(),'coverage')!==false;}
+            m082Assert($receiptMutationRejected,'changed native receipt coverage was accepted');
+            $db->query("UPDATE llx_cpcc_customer_receipt SET amount=amount+1 WHERE rowid=".$receipt);
+
+            $db->query("UPDATE llx_cpcc_fund_allocation SET status='reversed',disbursement_type=NULL,disbursement_id=NULL WHERE rowid=".$allocationId);
+            $db->query("INSERT INTO llx_societe_remise_except(entity,fk_soc,discount_type,datec,amount_ht,amount_tva,amount_ttc,tva_tx,fk_user,fk_facture,fk_facture_source,description,multicurrency_code,multicurrency_tx,multicurrency_amount_ht,multicurrency_amount_tva,multicurrency_amount_ttc) VALUES(1,82002,0,NOW(),1,0,1,0,82001,".$customerInvoiceId.",".$depositInvoice.",'M082 synthetic pre-existing native consumption','USD',1,1,0,1)");
+            $creditId=(int)$db->last_insert_id('llx_societe_remise_except');$db->query("UPDATE llx_cpcc_fund_allocation SET status='reserved' WHERE rowid=".$allocationId);
+            $consumptionRejected=false;try{(new CustomerFundsService($db,1))->settleWithSupplierPayment($allocationId,(int)$partialResult['payment_id'],82001);}catch(RuntimeException $e){$consumptionRejected=strpos($e->getMessage(),'coverage')!==false;}
+            m082Assert($consumptionRejected,'native deposit-credit consumption did not reduce allocatable coverage');
+            $db->query("UPDATE llx_cpcc_fund_allocation SET status='reversed' WHERE rowid=".$allocationId);$db->query("DELETE FROM llx_societe_remise_except WHERE rowid=".$creditId);$db->query("UPDATE llx_cpcc_fund_allocation SET status='reserved' WHERE rowid=".$allocationId);
+            m082Assert((new CustomerFundsService($db,1))->settleWithSupplierPayment($allocationId,(int)$partialResult['payment_id'],82001),'allocation did not recover after valid coverage was restored');
+        }
+        if($currency==='CNY'){
+            $bank=$db->fetch_object($db->query("SELECT amount,amount_main_currency FROM llx_bank WHERE rowid=".(int)$partialResult['bank_id']));
+            $db->query("UPDATE llx_bank SET amount=amount+1 WHERE rowid=".(int)$partialResult['bank_id']);$bankMutationRejected=false;
+            try{$service->postPayment($f['operation'],$partial,82008,'VIR','2026-09-14','M082-CNY-PARTIAL',0,$user,sha1($database.':CNY:partial'));}catch(OperationSupplierEvidenceException $e){$bankMutationRejected=true;}
+            m082Assert($bankMutationRejected,'changed supplier bank amount was accepted');$db->query("UPDATE llx_bank SET amount=".(float)$bank->amount.",amount_main_currency=".($bank->amount_main_currency===null?'NULL':(float)$bank->amount_main_currency)." WHERE rowid=".(int)$partialResult['bank_id']);
+            $link=$db->fetch_object($db->query("SELECT rowid,url FROM llx_bank_url WHERE fk_bank=".(int)$partialResult['bank_id']." AND url_id=".(int)$partialResult['payment_id']." AND type='payment_supplier'"));m082Assert($link,'supplier bank/payment link missing');
+            $db->query("UPDATE llx_bank_url SET url='/broken' WHERE rowid=".(int)$link->rowid);$linkMutationRejected=false;
+            try{$service->postPayment($f['operation'],$partial,82008,'VIR','2026-09-14','M082-CNY-PARTIAL',0,$user,sha1($database.':CNY:partial'));}catch(OperationSupplierEvidenceException $e){$linkMutationRejected=true;}
+            m082Assert($linkMutationRejected,'changed supplier bank/payment link was accepted');$db->query("UPDATE llx_bank_url SET url='".$db->escape((string)$link->url)."' WHERE rowid=".(int)$link->rowid);
+            m082Assert($service->postPayment($f['operation'],$partial,82008,'VIR','2026-09-14','M082-CNY-PARTIAL',0,$user,sha1($database.':CNY:partial'))===$partialResult,'supplier payment did not recover after bank evidence restoration');
         }
         $remaining = (float) $service->state($f['operation'], true)['summary']['remaining'];
         m082Assert($remaining > 0 && $remaining < $total, 'partial supplier payment failed for '.$currency);
@@ -255,7 +298,7 @@ try {
     foreach (array('booking','loading','commercial_invoice','packing_list','bill_of_lading','customer_publication') as $step) m082Assert($followup['steps'][$step]===true,'verified shipment/document evidence not projected: '.$step);
     foreach (array('departure','arrival','delivery') as $step) m082Assert($followup['steps'][$step]===false,'missing shipment evidence was invented: '.$step);
 
-    echo "M082_FULL_UAT=PASS ACTOR=NON_ADMIN_STAFF SOURCE_DB_MUTATED=NO SCHEMA_ONLY=YES SYNTHETIC_ONLY=YES CURRENCIES=USD,CNY,EGP QUOTATIONS=3 SALES_ORDERS=3 CUSTOMER_INVOICES=3 CUSTOMER_RECEIPTS=6 SUPPLIER_ORDERS=3 SUPPLIER_INVOICES=3 SUPPLIER_PAYMENTS=6 BANK_ENTRIES=12 FUNDS_ATTRIBUTION=PASS RETRY=IDEMPOTENT WRONG_CURRENCY=BLOCKED OVERPAYMENT=BLOCKED CUSTOMER_WRITE=BLOCKED SHIPMENT_CHECKLIST=EVIDENCE_ONLY\n";
+    echo "M082_FULL_UAT=PASS ACTOR=NON_ADMIN_STAFF SOURCE_DB_MUTATED=NO SCHEMA_ONLY=YES SYNTHETIC_ONLY=YES CURRENCIES=USD,CNY,EGP QUOTATIONS=3 SALES_ORDERS=3 CUSTOMER_INVOICES=3 CUSTOMER_RECEIPTS=6 SUPPLIER_ORDERS=3 SUPPLIER_INVOICES=3 SUPPLIER_PAYMENTS=6 BANK_ENTRIES=12 FUNDS_ATTRIBUTION=PASS RETRY=IDEMPOTENT CONCURRENT_OVERPAYMENT=SERIALIZED POST_CASH_RECOVERY=PASS BANK_EVIDENCE_MUTATION=BLOCKED RECEIPT_MUTATION=BLOCKED NATIVE_CONSUMPTION=BLOCKED WRONG_CURRENCY=BLOCKED OVERPAYMENT=BLOCKED CUSTOMER_WRITE=BLOCKED SHIPMENT_CHECKLIST=EVIDENCE_ONLY\n";
 } finally {
     if (isset($db) && is_object($db) && isset($db->database_name) && $db->database_name === $database) $db->close();
     if ($created) {
