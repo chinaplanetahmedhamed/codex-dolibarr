@@ -4,8 +4,8 @@
 - Coordinator and sole writer: Agent 007
 - Runtime commit: `d21c0ca30150e1b885586f1c337773b6c71f7802`
 - Target: `https://erp.visiontrading.biz` Production only
-- Candidate: M083-R05 (R01–R04 rejected by independent review and never uploaded or installed)
-- Status: PREPARING RENEWED IMMUTABLE RELEASE — NO PRODUCTION ACTION AUTHORIZED
+- Candidate: M083-R06 (R05 compare stopped safely because its baseline predated deployed M076-R07)
+- Status: PREPARING CORRECTED IMMUTABLE RELEASE — NO R06 SERVER ACTION AUTHORIZED
 
 ## Business outcome
 
@@ -44,7 +44,7 @@ The release carries the completed M076–M082 local work:
 1. Freeze and independently review the immutable artifact, helper, installer, sudoers, schema migration, baseline, and rollback behavior.
 2. Separately approve Git Push/upload and remote checksum verification.
 3. Separately approve checksum-locked root helper/sudoers installation.
-4. Separately approve restricted Production `compare` and `preflight`; both are read-only and must prove the exact M075 baseline and absent M083 schema.
+4. Separately approve restricted Production `compare` and `preflight`; both are read-only and must prove the exact deployed M076-R07 baseline and absent M083 schema.
 5. Separately approve `apply`, conditional `verify`, `status`, and authenticated staff/customer acceptance.
 
 `apply` must create a complete code backup, absent-file manifest, full database dump, and retained checksum-locked candidate before any mutation. A failed apply first restores and verifies code, then drops only exact empty M083 schema, including safe partial-creation cleanup. It never automatically restores a full Production database. Emergency rollback uses the retained root-owned candidate and code backup, does not depend on the public HTTP route or inbox, and is permitted only while all six M083 tables remain empty. After real business use, recovery requires a new data-preserving plan.
@@ -59,4 +59,4 @@ The release carries the completed M076–M082 local work:
 
 ## Current boundary
 
-No Push, upload, root installation, Production compare/preflight/apply/verify, permission change, or real business record is authorized by this preparation document.
+R05 `compare` failed closed before mutation because its baseline predated the deployed M076-R07 release. R06 is local-only until its renewed pins and independent reviews are complete. No R06 push, upload, installation, compare, preflight, apply, verify, permission change, or real business record is authorized by this preparation document.

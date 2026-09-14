@@ -3,10 +3,10 @@ set -Eeuo pipefail
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 umask 077
 
-readonly RELEASE='M083-R05'
+readonly RELEASE='M083-R06'
 readonly RUNTIME_COMMIT='d21c0ca30150e1b885586f1c337773b6c71f7802'
-readonly ARTIFACT_NAME='m083-r05-staff-first-d21c0ca.tar.gz'
-readonly ARTIFACT_SHA='547dfce263119fd5d82a36b526f2820b9a369f7c2f23ecf8a8c4980e11dbe6c8'
+readonly ARTIFACT_NAME='m083-r06-staff-first-d21c0ca.tar.gz'
+readonly ARTIFACT_SHA='ad500e2a4c933bff8068b119784bc57d1da7bbdccea3adceab89c7ad94e3af6e'
 readonly INBOX='/home/codex-deploy/staging-inbox'
 readonly ARTIFACT="$INBOX/$ARTIFACT_NAME"
 readonly TARGET_CONTAINER='vision_erp'
@@ -18,7 +18,7 @@ readonly TARGET_ROOT='/var/lib/docker/volumes/vision-os_dolibarr_custom/_data'
 readonly TARGET_HTTP='https://erp.visiontrading.biz'
 readonly CODE_BACKUP_ROOT='/root/chinaplanetos-production-m083-code-backups'
 readonly DB_BACKUP_ROOT='/root/chinaplanetos-production-db-backups'
-readonly STATE_ROOT='/var/lib/chinaplanetos-m083-production-r05'
+readonly STATE_ROOT='/var/lib/chinaplanetos-m083-production-r06'
 readonly STATE_FILE="$STATE_ROOT/m083.state"
 readonly LOCK_FILE="$STATE_ROOT/m083.lock"
 readonly RUNTIME_MANIFEST='deploy/releases/m083-runtime-files.txt'

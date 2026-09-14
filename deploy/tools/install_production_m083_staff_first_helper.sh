@@ -5,14 +5,17 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="$SOURCE_ROOT/chinaplanetos_production_m083_staff_first.sh"
 readonly SOURCE_SUDOERS="$SOURCE_ROOT/codex-deploy-production-m083-staff-first.sudoers"
-readonly HELPER_SHA='72cadcb113e33fbf4aac3dd5d132780c12c259ff528773ad9f62165e95363cd6'
+readonly HELPER_SHA='a3edfeb615f7a6a3a9c7a2eee7c1d3fa8d5af139d0fdb6fcc410c65ddf80a309'
+readonly PRIOR_HELPER_SHA='72cadcb113e33fbf4aac3dd5d132780c12c259ff528773ad9f62165e95363cd6'
 readonly SUDOERS_SHA='03b11843b7f0e5780e02c4cf68b356c2c439cb2110c72d7b71cac8c4f7e76a91'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m083-staff-first'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m083-staff-first'
-helper_stage='';sudoers_stage='';installed_helper=0;installed_sudoers=0;complete=0
+readonly BACKUP_ROOT='/root/chinaplanetos-m083-helper-backups'
+readonly PRIOR_BACKUP="$BACKUP_ROOT/chinaplanetos-production-m083-staff-first.$PRIOR_HELPER_SHA.bak"
+helper_stage='';sudoers_stage='';restore_stage='';installed_helper=0;installed_sudoers=0;upgraded_helper=0;complete=0
 die(){ echo "M083_HELPER_INSTALL=FAIL REASON=$1" >&2;exit 1; }
 sha256(){ sha256sum "$1"|awk '{print $1}'; }
-cleanup(){ local rc=$?;trap - EXIT;if [[ $complete -eq 0 ]];then [[ $installed_sudoers -eq 0 ]]||rm -f -- "$TARGET_SUDOERS";[[ $installed_helper -eq 0 ]]||rm -f -- "$TARGET_HELPER";[[ -z "$helper_stage"||! -e "$helper_stage" ]]||rm -f -- "$helper_stage";[[ -z "$sudoers_stage"||! -e "$sudoers_stage" ]]||rm -f -- "$sudoers_stage";fi;exit "$rc"; }
+cleanup(){ local rc=$?;trap - EXIT;if [[ $complete -eq 0 ]];then [[ $installed_sudoers -eq 0 ]]||rm -f -- "$TARGET_SUDOERS";if [[ $installed_helper -eq 1 ]];then if [[ $upgraded_helper -eq 1&&-f "$PRIOR_BACKUP"&&! -L "$PRIOR_BACKUP"&&$(sha256 "$PRIOR_BACKUP") == "$PRIOR_HELPER_SHA" ]];then restore_stage="$TARGET_HELPER.restore.$$";install -o root -g root -m 0755 "$PRIOR_BACKUP" "$restore_stage"&&mv -f "$restore_stage" "$TARGET_HELPER"||true;else rm -f -- "$TARGET_HELPER";fi;fi;[[ -z "$helper_stage"||! -e "$helper_stage" ]]||rm -f -- "$helper_stage";[[ -z "$sudoers_stage"||! -e "$sudoers_stage" ]]||rm -f -- "$sudoers_stage";[[ -z "$restore_stage"||! -e "$restore_stage" ]]||rm -f -- "$restore_stage";fi;exit "$rc"; }
 trap cleanup EXIT
 [[ $(id -u) -eq 0 ]]||die ROOT_REQUIRED
 [[ $# -eq 0 ]]||die NO_ARGUMENTS_ALLOWED
@@ -22,8 +25,8 @@ for source in "$SOURCE_HELPER" "$SOURCE_SUDOERS";do [[ -f "$source"&&! -L "$sour
 bash -n "$SOURCE_HELPER"||die HELPER_SYNTAX_INVALID
 visudo -cf "$SOURCE_SUDOERS">/dev/null||die SUDOERS_PARSE_FAILED
 visudo -cf /etc/sudoers>/dev/null||die GLOBAL_SUDOERS_PRECHECK_FAILED
-if [[ -e "$TARGET_HELPER"||-L "$TARGET_HELPER" ]];then [[ -f "$TARGET_HELPER"&&! -L "$TARGET_HELPER"&&$(stat -c '%U:%G %a' "$TARGET_HELPER") == 'root:root 755'&&$(sha256 "$TARGET_HELPER") == "$HELPER_SHA" ]]||die EXISTING_HELPER_UNEXPECTED;else helper_stage="$TARGET_HELPER.stage.$$";install -o root -g root -m 0755 "$SOURCE_HELPER" "$helper_stage";[[ $(sha256 "$helper_stage") == "$HELPER_SHA" ]]||die STAGED_HELPER_HASH_MISMATCH;mv "$helper_stage" "$TARGET_HELPER";helper_stage='';installed_helper=1;fi
+if [[ -e "$TARGET_HELPER"||-L "$TARGET_HELPER" ]];then [[ -f "$TARGET_HELPER"&&! -L "$TARGET_HELPER"&&$(stat -c '%U:%G %a' "$TARGET_HELPER") == 'root:root 755' ]]||die EXISTING_HELPER_UNEXPECTED;existing_helper_sha=$(sha256 "$TARGET_HELPER");if [[ "$existing_helper_sha" == "$HELPER_SHA" ]];then :;elif [[ "$existing_helper_sha" == "$PRIOR_HELPER_SHA" ]];then upgraded_helper=1;install -d -o root -g root -m 0700 "$BACKUP_ROOT";if [[ -e "$PRIOR_BACKUP"||-L "$PRIOR_BACKUP" ]];then [[ -f "$PRIOR_BACKUP"&&! -L "$PRIOR_BACKUP"&&$(stat -c '%U:%G %a' "$PRIOR_BACKUP") == 'root:root 600'&&$(sha256 "$PRIOR_BACKUP") == "$PRIOR_HELPER_SHA" ]]||die PRIOR_BACKUP_INVALID;else install -o root -g root -m 0600 "$TARGET_HELPER" "$PRIOR_BACKUP";[[ $(sha256 "$PRIOR_BACKUP") == "$PRIOR_HELPER_SHA" ]]||die PRIOR_BACKUP_HASH_MISMATCH;fi;helper_stage="$TARGET_HELPER.stage.$$";install -o root -g root -m 0755 "$SOURCE_HELPER" "$helper_stage";[[ $(sha256 "$helper_stage") == "$HELPER_SHA" ]]||die STAGED_HELPER_HASH_MISMATCH;mv -f "$helper_stage" "$TARGET_HELPER";helper_stage='';installed_helper=1;else die EXISTING_HELPER_HASH_UNEXPECTED;fi;else helper_stage="$TARGET_HELPER.stage.$$";install -o root -g root -m 0755 "$SOURCE_HELPER" "$helper_stage";[[ $(sha256 "$helper_stage") == "$HELPER_SHA" ]]||die STAGED_HELPER_HASH_MISMATCH;mv "$helper_stage" "$TARGET_HELPER";helper_stage='';installed_helper=1;fi
 if [[ -e "$TARGET_SUDOERS"||-L "$TARGET_SUDOERS" ]];then [[ -f "$TARGET_SUDOERS"&&! -L "$TARGET_SUDOERS"&&$(stat -c '%U:%G %a' "$TARGET_SUDOERS") == 'root:root 440'&&$(sha256 "$TARGET_SUDOERS") == "$SUDOERS_SHA" ]]||die EXISTING_SUDOERS_UNEXPECTED;else sudoers_stage="$TARGET_SUDOERS.stage.$$";install -o root -g root -m 0440 "$SOURCE_SUDOERS" "$sudoers_stage";[[ $(sha256 "$sudoers_stage") == "$SUDOERS_SHA" ]]||die STAGED_SUDOERS_HASH_MISMATCH;visudo -cf "$sudoers_stage">/dev/null||die STAGED_SUDOERS_PARSE_FAILED;mv "$sudoers_stage" "$TARGET_SUDOERS";sudoers_stage='';installed_sudoers=1;fi
 visudo -cf /etc/sudoers>/dev/null||die GLOBAL_SUDOERS_POSTCHECK_FAILED
 [[ $(sha256 "$TARGET_HELPER") == "$HELPER_SHA"&&$(sha256 "$TARGET_SUDOERS") == "$SUDOERS_SHA" ]]||die POST_INSTALL_HASH_MISMATCH
-complete=1;echo "M083_HELPER_INSTALL=PASS RELEASE=M083-R05 HELPER_SHA=$HELPER_SHA SUDOERS_SHA=$SUDOERS_SHA COMMANDS=compare,preflight,apply,verify,rollback,status HELPER_EXECUTED=NO PRODUCTION_MUTATED=NO"
+complete=1;echo "M083_HELPER_INSTALL=PASS RELEASE=M083-R06 HELPER_SHA=$HELPER_SHA PRIOR_HELPER_SHA=$PRIOR_HELPER_SHA UPGRADED_R05=$upgraded_helper SUDOERS_SHA=$SUDOERS_SHA COMMANDS=compare,preflight,apply,verify,rollback,status HELPER_EXECUTED=NO PRODUCTION_MUTATED=NO"

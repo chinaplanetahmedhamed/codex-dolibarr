@@ -18,7 +18,12 @@ grep -Fq "readonly TARGET_DB_CONTAINER='vision_db'" "$helper"
 grep -Fq "readonly TARGET_DB_VOLUME='vision-os_mariadb_data'" "$helper"
 grep -Fq "readonly TARGET_DB_NAME='dolibarr_db'" "$helper"
 grep -Fq "readonly TARGET_HTTP='https://erp.visiontrading.biz'" "$helper"
-grep -Fq "readonly RELEASE='M083-R05'" "$helper"
+grep -Fq "readonly RELEASE='M083-R06'" "$helper"
+grep -Fq "readonly ARTIFACT_SHA='ad500e2a4c933bff8068b119784bc57d1da7bbdccea3adceab89c7ad94e3af6e'" "$helper"
+grep -Fq "readonly PRIOR_HELPER_SHA='72cadcb113e33fbf4aac3dd5d132780c12c259ff528773ad9f62165e95363cd6'" "$installer"
+grep -Fq 'readonly PRIOR_BACKUP="$BACKUP_ROOT/chinaplanetos-production-m083-staff-first.$PRIOR_HELPER_SHA.bak"' "$installer"
+grep -Fq '$(sha256 "$PRIOR_BACKUP") == "$PRIOR_HELPER_SHA"' "$installer"
+grep -Fq 'mv -f "$restore_stage" "$TARGET_HELPER"' "$installer"
 grep -Fq 'SCHEMA_PRESTATE_NOT_ABSENT' "$helper"
 grep -Fq 'create_db_backup' "$helper"
 grep -Fq 'rollback_schema_empty' "$helper"
@@ -33,4 +38,4 @@ grep -Fq 'stage_candidate;validate_restore_materials' "$helper"
 [[ $(wc -l<"$sudoers") -eq 6 ]]
 for command in compare preflight apply verify rollback status;do grep -Fxq "codex-deploy ALL=(root) NOPASSWD: /usr/local/sbin/chinaplanetos-production-m083-staff-first $command" "$sudoers";done
 if [[ ${M083_FINAL_PINS:-0} == 1 ]];then ! grep -Rq '__[A-Z_]*__' "$helper" "$installer";fi
-echo 'M083_RELEASE_CONTRACT=PASS TARGET=PRODUCTION RELEASE=M083-R05 COMMANDS=6 DB_RESTORE=FORBIDDEN EMERGENCY_ROLLBACK=RETAINED_AND_STAGED'
+echo 'M083_RELEASE_CONTRACT=PASS TARGET=PRODUCTION RELEASE=M083-R06 COMMANDS=6 DB_RESTORE=FORBIDDEN EMERGENCY_ROLLBACK=RETAINED_AND_STAGED'
