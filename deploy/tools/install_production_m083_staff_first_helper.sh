@@ -5,8 +5,8 @@ umask 077
 readonly SOURCE_ROOT='/home/codex-deploy/staging-inbox'
 readonly SOURCE_HELPER="$SOURCE_ROOT/chinaplanetos_production_m083_staff_first.sh"
 readonly SOURCE_SUDOERS="$SOURCE_ROOT/codex-deploy-production-m083-staff-first.sudoers"
-readonly HELPER_SHA='451926a5e6fb6ccd6ed56864f3f4a9d3e0f7a9f7da64ebd3c8988c08189be16c'
-readonly PRIOR_HELPER_SHA='8343a6a47983e706640422c76a41ac49aca73ecf8ea2102cef1e2756ebf38447'
+readonly HELPER_SHA='2d11f1e5183c6ff4dcc160a949710b31348786810b421f12d333ca7002702e8a'
+readonly PRIOR_HELPER_SHA='451926a5e6fb6ccd6ed56864f3f4a9d3e0f7a9f7da64ebd3c8988c08189be16c'
 readonly SUDOERS_SHA='03b11843b7f0e5780e02c4cf68b356c2c439cb2110c72d7b71cac8c4f7e76a91'
 readonly TARGET_HELPER='/usr/local/sbin/chinaplanetos-production-m083-staff-first'
 readonly TARGET_SUDOERS='/etc/sudoers.d/codex-deploy-production-m083-staff-first'

@@ -7,9 +7,9 @@
 
 ## Frozen pins
 
-- Artifact `m083-r08-staff-first-d21c0ca.tar.gz`: `afce15e8905bc1d6d4eaa69292edbbbbdc17e4b759f2bbc87f80582f9e8fd99d`
-- Restricted helper: `451926a5e6fb6ccd6ed56864f3f4a9d3e0f7a9f7da64ebd3c8988c08189be16c`
-- Root installer: `f2794589ea7fa67d5430bec1ce8f7cb5d6d8e00050c9cb7c0cc97c2279b4b58e`
+- Artifact `m083-r08-staff-first-d21c0ca.tar.gz`: `ab1309b48f16b36ea10cc8b463f8c6ba170eb5787169d63acf458d94b9ed5aa0`
+- Restricted helper: `2d11f1e5183c6ff4dcc160a949710b31348786810b421f12d333ca7002702e8a`
+- Root installer: `ba34ec9e8f41d91b27f0fab752a3de306956ea009f4fbefd414f1eb7d7aff58e`
 - Sudoers: `03b11843b7f0e5780e02c4cf68b356c2c439cb2110c72d7b71cac8c4f7e76a91`
 
 The normalized artifact contains exactly 67 regular files: 58 runtime files, six self-contained support files, and three release manifests. Every member has uid/gid 0, an empty owner/group name, mode derived only from source executability, and timestamp zero; the gzip header also has timestamp zero. It contains no configuration, credential, key, database dump, document, log, symlink, Dolibarr core file, or release control executable.
