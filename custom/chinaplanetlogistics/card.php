@@ -349,7 +349,7 @@ if ($is_modal) {
     if(!$is_external_customer) $cardCss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
     llxHeader('', $langs->trans('CPLShipmentCardTitle'), '', '', 0, 0, array(), $cardCss);
     if($is_external_customer) cpcc_portal_navigation($user, 'shipments');
-    else cpcc_admin_shell_open('shipments','Shipment Details / تفاصيل الشحنة','بيانات الحاوية والمواعيد والوقت الحر والمستندات','fa-ship',array('socid'=>(int)$object->fk_soc,'projectid'=>(int)$object->fk_project));
+    else cpcc_admin_shell_open('shipments',cpcc_ui_t('UIShipmentCardHeading'),cpcc_ui_t('UIShipmentCardSubtitle'),'fa-ship',array('socid'=>(int)$object->fk_soc,'projectid'=>(int)$object->fk_project));
 }
 
 $form = new Form($db);

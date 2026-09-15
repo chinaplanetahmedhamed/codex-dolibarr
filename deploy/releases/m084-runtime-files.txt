@@ -18,7 +18,10 @@ custom/chinaplanetcustomercenter/lib/portal.lib.php
 custom/chinaplanetcustomercenter/lib/ui.lib.php
 custom/chinaplanetcustomercenter/operation_report.php
 custom/chinaplanetcustomercenter/projects.php
+custom/chinaplanetlogistics/card.php
 custom/chinaplanetlogistics/css/shipment-list.css
+custom/chinaplanetlogistics/langs/ar_SA/chinaplanetlogistics.lang
+custom/chinaplanetlogistics/langs/en_US/chinaplanetlogistics.lang
 custom/chinaplanetlogistics/lib/shipment_customer.lib.php
 custom/chinaplanetlogistics/list.php
 custom/chinaplanetlogistics/reports.php

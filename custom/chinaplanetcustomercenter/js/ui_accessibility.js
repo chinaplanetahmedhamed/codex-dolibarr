@@ -5,6 +5,20 @@
   document.body.classList.add('cpcc-ui');
   var ar=/^ar\b/i.test(document.documentElement.lang), lang=new URL(location.href).searchParams.get('lang');
   var text=function(en,arabic){return ar?arabic:en;};
+  // Align OPEN menus after the nav has wrapped. A normal document width alone
+  // cannot detect a dropdown clipped by the viewport or the dashboard shell.
+  function alignOpenMenus(){
+   document.querySelectorAll('.cpad-nav-group.is-open .cpad-nav-dropdown').forEach(function(menu){
+    menu.style.transform='';
+    if(getComputedStyle(menu).position!=='absolute')return;
+    var nav=menu.closest('.cpad-nav').getBoundingClientRect(),box=menu.getBoundingClientRect();
+    var left=Math.max(12,nav.left),right=Math.min(innerWidth-12,nav.right),shift=0;
+    if(box.left<left)shift=left-box.left;
+    if(box.right+shift>right)shift=right-box.right;
+    menu.style.transform='translateX('+shift+'px)';
+   });
+  }
+  document.querySelectorAll('.cpad-nav-group-toggle').forEach(function(button){button.addEventListener('click',alignOpenMenus);});
   // All language propagation is same-origin navigation and GET filters only.
   // Do not modify POST destinations, tokens, account preferences or external URLs.
   if(['ar_SA','en_US'].indexOf(lang)!==-1){
@@ -19,7 +33,18 @@
    });
   }
   document.querySelectorAll('.cpcc-dashboard,.cpcc-admin-overview').forEach(function(e){e.dir=ar?'rtl':'ltr';});
+  document.querySelectorAll('#id-top ul.tmenu>li').forEach(function(item){
+   var icon=item.querySelector('a.tmenuimage'),label=item.querySelector('a.tmenulabel');
+   var name=label&&(label.textContent.trim()||label.getAttribute('aria-label')||(item.classList.contains('menuhider')?text('Toggle navigation','فتح أو إغلاق التنقل'):''));
+   if(icon&&label&&icon.href===label.href&&name){
+    item.classList.add('cpcc-icon-menu-item');icon.dataset.cpccOriginalTabindex=icon.getAttribute('tabindex')||'0';icon.setAttribute('aria-label',name);icon.title=name;
+   }
+  });
+  function syncNativeMenu(){document.querySelectorAll('.cpcc-icon-menu-item a.tmenuimage').forEach(function(icon){icon.setAttribute('tabindex',innerWidth<=1024?'0':icon.dataset.cpccOriginalTabindex);});}
+  syncNativeMenu();
   document.querySelectorAll('#id-top a').forEach(function(e){
+   var nativeLabel=e.querySelector('.mainmenuaspan');
+   if(nativeLabel && nativeLabel.textContent.trim())e.title=nativeLabel.textContent.trim();
    if(e.querySelector('.fa-print'))e.setAttribute('aria-label',text('Print page','طباعة الصفحة'));
    if(e.classList.contains('help'))e.setAttribute('aria-label',text('Help documentation','دليل المساعدة'));
   });
@@ -41,7 +66,7 @@
   });
   }
   focusScrollableData();
-  var resizeTimer;window.addEventListener('resize',function(){clearTimeout(resizeTimer);resizeTimer=setTimeout(focusScrollableData,100);});
+  var resizeTimer;window.addEventListener('resize',function(){clearTimeout(resizeTimer);resizeTimer=setTimeout(function(){focusScrollableData();alignOpenMenus();syncNativeMenu();},100);});
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 }());

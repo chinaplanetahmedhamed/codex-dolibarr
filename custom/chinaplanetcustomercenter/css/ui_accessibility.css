@@ -59,3 +59,18 @@ body.cpcc-ui {font-family:Arial,Tahoma,sans-serif;line-height:1.5}
 @media(prefers-reduced-motion:reduce){.cpcc-ui *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .cpcc-ui #id-top .login_block_elem>a:has(.fa-print),.cpcc-ui #id-top a.help{display:inline-flex;min-width:32px;min-height:32px;align-items:center;justify-content:center}
+/* M084 review round 2: reserve natural rows for the title and environment.
+ * An absolute badge cannot accommodate translated titles at tablet widths. */
+.cpcc-ui .cpad-head{display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;gap:4px;padding-inline:12px}
+.cpcc-ui .cpad-head h1{max-width:100%;overflow-wrap:anywhere}
+.cpcc-ui .cpad-environment{position:static;max-width:100%;margin:4px 0;justify-content:center;text-align:center}
+.cpcc-ui .cpad-environment span{min-width:0;overflow-wrap:anywhere}
+@media(max-width:1024px){
+ /* Paired label/icon links share one destination. The icon keeps the accessible
+  * name and tooltip; the strip scrolls internally at phone widths. */
+ .cpcc-ui #id-top nav{max-width:100%}
+ .cpcc-ui #id-top ul.tmenu{display:flex!important;flex-wrap:nowrap!important;align-items:center;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+ .cpcc-ui #id-top ul.tmenu>li{position:relative;float:none!important;flex:0 0 44px;width:44px!important;min-width:44px;max-width:none;padding:0;margin:0}
+ .cpcc-ui #id-top .tmenuend{display:none}
+ .cpcc-ui #id-top .cpcc-icon-menu-item a.tmenulabel{display:none!important}
+}
