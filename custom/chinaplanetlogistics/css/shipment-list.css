@@ -112,3 +112,22 @@
         width: 100%;
     }
 }
+/* M084: each mobile shipment keeps its status, ETA and action in one readable card. */
+@media(max-width:700px){
+ .cpl-shipment-list{min-width:0!important;width:100%;table-layout:auto}
+ .cpl-shipment-list thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .cpl-shipment-list tbody{display:grid;gap:14px;padding:8px}
+ .cpl-shipment-list tbody tr{display:flex;flex-direction:column;border:1px solid #b7d0df;border-radius:10px;padding:10px;background:#fff}
+ .cpl-shipment-list tbody td{height:auto!important;min-height:44px;display:grid;grid-template-columns:minmax(90px,.8fr) minmax(0,1.2fr);gap:10px;padding:8px 2px!important;text-align:start!important;white-space:normal!important;border:0!important;overflow-wrap:anywhere;font-size:14px}
+ .cpl-shipment-list td::before{content:attr(data-label);font-weight:700;color:#465d70}
+ .cpl-shipment-list td[data-column=ref]{order:-5}
+ .cpl-shipment-list td[data-column=customer]{order:-4}
+ .cpl-shipment-list td[data-column=status]{order:-3}
+ .cpl-shipment-list td[data-column=eta]{order:-2}
+ .cpl-shipment-list td[data-column=actions]{order:-1;display:flex;align-items:center;gap:12px}
+ .cpl-shipment-list td[data-column=actions] a{display:inline-flex;min-width:44px;min-height:44px;align-items:center;justify-content:center;background:#e6f1f7;border-radius:7px}
+ .cpl-shipment-list td[colspan]{display:block}
+ .cpl-shipment-list td[colspan]::before{content:none}
+ .cpl-shipment-list-wrap{overflow-x:visible!important}
+ .cpl-shipment-list .cpl-shipment-reference{min-width:0}
+}

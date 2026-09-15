@@ -54,17 +54,17 @@ $projectCss = array(
 );
 if ($is_external) $projectCss[] = '/custom/cpkanban/css/board.css?v=20260718-m010';
 else $projectCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
-llxHeader('', 'Projects / المشاريع', '', '', 0, 0,
+llxHeader('', cpcc_ui_t('UIProjects53e89'), '', '', 0, 0,
     $is_external ? array('/custom/cpkanban/js/board.js?v=20260718-m010') : array(),
     $projectCss);
 if($is_external) cpcc_portal_navigation($user, 'projects');
-else cpcc_admin_shell_open('portal','Projects / المشاريع','كل مشاريع العملاء والمشاريع النشطة في عرض واحد','fa-project-diagram',array('socid'=>$socid));
+else cpcc_admin_shell_open('portal',cpcc_ui_t('UIProjects53e89'),cpcc_ui_t('UICustomerProjectsAndActiveWorkInOneView86682'),'fa-project-diagram',array('socid'=>$socid));
 
 print '<main class="cpcc-dashboard cpcc-projects-page" dir="rtl">';
 print '<header class="cpcc-page-head"><div>';
 print '<span class="cpcc-eyebrow">CUSTOMER PROJECTS</span>';
-print '<h1>المشاريع / Projects</h1>';
-print '<p>تابع حالة مشاريعك وتواريخها وتفاصيلها ونسبة التقدم في مكان واحد. / Follow project status, dates, details, and progress in one place.</p>';
+print '<h1>' . dol_escape_htmltag(cpcc_ui_t('UIProjects53e89')) . '</h1>';
+print '<p>' . dol_escape_htmltag(cpcc_ui_t('UIFollowProjectStatusDatesDetailsAndProgressInOneP4d1bd')) . '</p>';
 print '</div></header>';
 print '<nav class="cpcc-project-view-cards" aria-label="Project views">';
 print '<a class="cpcc-project-view'.($statusFilter === 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($activeProjectsUrl).'"><span>المشاريع النشطة</span><strong>'.(int)$projectsActive.'</strong><small>Active projects</small></a>';
@@ -76,8 +76,16 @@ if ($is_external && $socid <= 0) {
 } else {
     // Browsing projects must never create or modify Kanban records.
     if (!$is_external) {
-        print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'" style="margin-bottom:12px;">';
-        print '<input type="text" class="flat" name="socid" value="'.dol_escape_htmltag((string)GETPOSTINT('socid')).'" placeholder="Customer ID filter">';
+        print '<form method="GET" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'" style="margin-bottom:12px;">';
+        print '<label for="cpcc-project-customer">'.dol_escape_htmltag(cpcc_ui_t('UISelectCustomer')).'</label> ';
+        print '<select id="cpcc-project-customer" name="socid"><option value="0">'.dol_escape_htmltag(cpcc_ui_t('UIAllCustomers')).'</option>';
+        $customerList = $db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (".getEntity('societe').") AND status=1 AND client IN (1,3) ORDER BY nom");
+        while ($customerList && ($customer = $db->fetch_object($customerList))) {
+            print '<option value="'.(int)$customer->rowid.'"'.((int)$customer->rowid === $socid ? ' selected' : '').'>'.dol_escape_htmltag($customer->nom).'</option>';
+        }
+        print '</select>';
+        if (!$customerList) print '<span class="error" role="alert">'.dol_escape_htmltag(cpcc_ui_t('UICustomerLoadFailed')).'</span>';
+        if (cpcc_ui_language_parameter() !== '') print '<input type="hidden" name="lang" value="'.dol_escape_htmltag(cpcc_ui_language_parameter()).'">';
         if ($statusFilter === 'active') print '<input type="hidden" name="status" value="active">';
         print ' <input type="submit" class="button" value="Filter">';
         print '</form>';
@@ -86,7 +94,7 @@ if ($is_external && $socid <= 0) {
             print '<input type="hidden" name="token" value="'.newToken().'">';
             print '<input type="hidden" name="socid" value="'.(int)$socid.'">';
             if ($statusFilter === 'active') print '<input type="hidden" name="status" value="active">';
-            print '<button class="button button-save" type="submit" name="action" value="syncprojectcards">Sync project cards / مزامنة بطاقات المشاريع</button></form>';
+            print '<button class="button button-save" type="submit" name="action" value="syncprojectcards">' . dol_escape_htmltag(cpcc_ui_t('UISyncProjectCardsa5d29')) . '</button></form>';
         }
     }
 
@@ -119,7 +127,7 @@ if ($is_external && $socid <= 0) {
     print '<table class="noborder centpercent">';
     print '<tr class="liste_titre">';
     if ($is_external) {
-        print '<th>المشروع / Project</th><th>الحالة / Status</th><th>التواريخ / Dates</th><th>التفاصيل / Details</th><th>التقدم / Progress</th>';
+        print '<th>' . dol_escape_htmltag(cpcc_ui_t('UIProjectf6f4d')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIStatusbae7d')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIDates842b7')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIDetailsdc3de')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIProgress1b902')) . '</th>';
     } else {
         print '<th>Project</th><th>Customer</th><th>Status</th><th>Dates</th><th>Tasks</th><th>Details</th><th>Kanban sync</th><th>Progress</th>';
     }
@@ -127,9 +135,9 @@ if ($is_external && $socid <= 0) {
 
     if (!$resql) {
         dol_syslog('M084 projects list query failed: '.$db->lasterror(), LOG_ERR);
-        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="error" role="alert">تعذر تحميل المشاريع. أعد المحاولة أو تواصل مع المسؤول. / Projects could not be loaded.</td></tr>';
+        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="error" role="alert">' . dol_escape_htmltag(cpcc_ui_t('UIProjectsCouldNotBeLoaded1f4d7')) . '</td></tr>';
     } elseif (empty($rows)) {
-        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="center opacitymedium">لا توجد مشاريع / No projects found.</td></tr>';
+        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="center opacitymedium">' . dol_escape_htmltag(cpcc_ui_t('UINoProjectsFoundca787')) . '</td></tr>';
     } else {
         foreach ($rows as $row) {
             $statusLabel = cpcc_project_status_label($row->status);
@@ -169,7 +177,7 @@ if ($is_external && $socid <= 0) {
             print '<strong><a'.$projectLinkClass.$projectLinkData.' href="'.dol_escape_htmltag($projectUrl).'">'.dol_escape_htmltag($row->ref).'</a></strong><br>';
             print dol_escape_htmltag($row->title ?: '');
             if (!$is_external && !empty($row->rowid) && $user->hasRight('projet', 'lire')) {
-                print '<br><a target="_blank" rel="noopener" href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int) $row->rowid.'">Vision Advanced / السجل المتقدم ↗</a>';
+                print '<br><a target="_blank" rel="noopener" href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int) $row->rowid.'">' . dol_escape_htmltag(cpcc_ui_t('UIVisionAdvanced5e123')) . '</a>';
             }
             print '</td>';
             if (!$is_external) print '<td>'.dol_escape_htmltag($row->customer_name ?: '-').'</td>';
@@ -185,7 +193,7 @@ if ($is_external && $socid <= 0) {
     print '</table>';
     if ($is_external) {
         print '<dialog id="cpk-card-dialog" class="cpk-card-dialog" aria-labelledby="cpk-card-dialog-title">';
-        print '<div class="cpk-dialog-head"><strong id="cpk-card-dialog-title">مركز متابعة المشروع / Project Command Center</strong><button type="button" class="cpk-dialog-close" aria-label="إغلاق تفاصيل المشروع">×</button></div>';
+        print '<div class="cpk-dialog-head"><strong id="cpk-card-dialog-title">' . dol_escape_htmltag(cpcc_ui_t('UIProjectCommandCenter54539')) . '</strong><button type="button" class="cpk-dialog-close" aria-label="إغلاق تفاصيل المشروع">×</button></div>';
         print '<iframe class="cpk-dialog-frame" title="تفاصيل بطاقة المشروع"></iframe></dialog></div>';
     }
 }

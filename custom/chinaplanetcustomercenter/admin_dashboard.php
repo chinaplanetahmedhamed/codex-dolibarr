@@ -144,25 +144,25 @@ $statusLabels = chinaplanetlogistics_status_map();
 $orderStatusLabels = array(-1=>'Canceled',0=>'Draft',1=>'Validated',2=>'In progress',3=>'Closed');
 
 $widgetLabels = array(
-    'kpi_customers'=>'Customers / العملاء',
-    'kpi_orders'=>'Active Orders / الطلبات النشطة',
-    'kpi_projects'=>'Active Projects / المشاريع النشطة',
-    'kpi_shipments'=>'Active Shipments / الشحنات النشطة',
-    'kpi_alerts'=>'Critical Alerts / التنبيهات الحرجة',
-    'kpi_tasks'=>'Active Kanban / مهام كانبان',
-    'attention_center'=>'Action Required / مطلوب إجراء',
-    'shipment_control'=>'Shipment Control / حالة الشحن',
-    'customer_finance'=>'Customer Funds by Currency / أموال العملاء حسب العملة',
-    'workflow'=>'Workflow / المشاريع والمهام',
-    'monthly_revenue'=>'Monthly Invoiced Amount / فواتير الشهر',
-    'live_shipments'=>'Live Shipments / الشحنات الحالية',
-    'recent_orders'=>'Recent Orders / أحدث الطلبات',
-    'recent_finance'=>'Recent Financial Activity / أحدث الحركات المالية',
-    'top_customers'=>'Top Customers / أهم العملاء',
-    'documents_center'=>'Documents Center / مركز المستندات',
-    'shipping_prices'=>'Shipping Prices / أسعار الشحن',
-    'shipping_orders'=>'Shipping Orders / طلبات الشحن',
-    'quick_access'=>'Quick Access / الوصول السريع',
+    'kpi_customers'=>cpcc_ui_t('UICustomers035ea'),
+    'kpi_orders'=>cpcc_ui_t('UIActiveOrdersc6aea'),
+    'kpi_projects'=>cpcc_ui_t('UIActiveProjects8eadc'),
+    'kpi_shipments'=>cpcc_ui_t('UIActiveShipments5c2bb'),
+    'kpi_alerts'=>cpcc_ui_t('UICriticalAlertsccd1d'),
+    'kpi_tasks'=>cpcc_ui_t('UIActiveKanbanea4cf'),
+    'attention_center'=>cpcc_ui_t('UIActionRequired4cd4f'),
+    'shipment_control'=>cpcc_ui_t('UIShipmentControl403aa'),
+    'customer_finance'=>cpcc_ui_t('UICustomerFundsByCurrency41e69'),
+    'workflow'=>cpcc_ui_t('UIWorkflowd7a48'),
+    'monthly_revenue'=>cpcc_ui_t('UIMonthlyInvoicedAmount2d154'),
+    'live_shipments'=>cpcc_ui_t('UILiveShipments9c12e'),
+    'recent_orders'=>cpcc_ui_t('UIRecentOrdersae649'),
+    'recent_finance'=>cpcc_ui_t('UIRecentFinancialActivity71c87'),
+    'top_customers'=>cpcc_ui_t('UITopCustomers87779'),
+    'documents_center'=>cpcc_ui_t('UIDocumentsCenter57dad'),
+    'shipping_prices'=>cpcc_ui_t('UIShippingPricesb7428'),
+    'shipping_orders'=>cpcc_ui_t('UIShippingOrders93ae0'),
+    'quick_access'=>cpcc_ui_t('UIQuickAccess85257'),
 );
 $savedLayout = array();
 $layoutTable = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.'cpcc_dashboard_layout')."'");
@@ -186,95 +186,76 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
   <?php cpcc_admin_shell_navigation('dashboard'); ?>
   <?php cpcc_admin_shell_header(); ?>
 
-  <div class="cpad-customize-toolbar">
-    <button type="button" id="cpad-customize" class="cpad-tool primary"><span class="fas fa-sliders-h"></span> Customize Dashboard / تخصيص اللوحة</button>
-    <button type="button" id="cpad-save-layout" class="cpad-tool success" hidden><span class="fas fa-save"></span> Save Layout / حفظ</button>
-    <button type="button" id="cpad-widget-library-button" class="cpad-tool" hidden><span class="fas fa-th"></span> Widget Library / البطاقات</button>
-    <button type="button" id="cpad-reset-layout" class="cpad-tool warn" hidden><span class="fas fa-undo"></span> Reset Default</button>
-    <button type="button" id="cpad-cancel-layout" class="cpad-tool" hidden>Cancel</button>
-    <span id="cpad-layout-message" class="cpad-layout-message" hidden></span>
-  </div>
-  <section class="cpad-work-start" aria-labelledby="cpad-work-start-title">
-    <div class="cpad-work-start-head"><div><span>DAILY WORK</span><h1 id="cpad-work-start-title">ابدأ العمل من هنا</h1><p>شاشات مبسطة للموظف؛ Dolibarr يحفظ السجلات في الخلفية.</p></div><a href="<?php echo dol_buildpath('/chinaplanetoperations/workspace.php',1); ?>">فتح مساحة العمل اليومية ←</a></div>
-    <div class="cpad-work-start-grid">
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=order',1); ?>"><span class="fas fa-shopping-cart"></span><b>طلب عميل</b><small>Customer order</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=sourcing',1); ?>"><span class="fas fa-search"></span><b>بحث عن منتج</b><small>Product sourcing</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=purchasing',1); ?>"><span class="fas fa-boxes"></span><b>شراء ومتابعة مورد</b><small>Purchasing</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=quality_control',1); ?>"><span class="fas fa-clipboard-check"></span><b>فحص جودة</b><small>Quality control</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b>حجز شحن</b><small>Shipping booking</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=customs',1); ?>"><span class="fas fa-file-contract"></span><b>جمارك ومستندات</b><small>Customs & documents</small></a>
-    </div>
-  </section>
   <div id="cpad-widget-grid" class="cpad-widget-grid" aria-live="polite"></div>
 
   <section class="cpad-kpis">
-    <div class="cpad-kpi" data-cpad-widget="kpi_customers" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-users"></span><b><?php echo $customers; ?></b><span>Customers / العملاء</span><small>Open customer center / فتح مركز العملاء</small></a></div>
-    <div class="cpad-kpi" data-cpad-widget="kpi_orders" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-shopping-cart"></span><b><?php echo $activeOrders; ?></b><span>Active Orders / الطلبات النشطة</span><small><?php echo $allOrders; ?> total · <?php echo $completedOrders; ?> completed</small></a></div>
-    <div class="cpad-kpi" data-cpad-widget="kpi_projects" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><span>Active Projects / المشاريع النشطة</span><small>Open operational projects / فتح المشاريع</small></a></div>
-    <div class="cpad-kpi" data-cpad-widget="kpi_shipments" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-ship"></span><b><?php echo $activeShipments; ?></b><span>Active Shipments / الشحنات النشطة</span><small><?php echo $shipTotal; ?> total shipments</small></a></div>
-    <div class="cpad-kpi danger" data-cpad-widget="kpi_alerts" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="cpad-kpi-icon fas fa-exclamation-triangle"></span><b><?php echo $critical; ?></b><span>Critical Alerts / تنبيهات حرجة</span><small>ETA or free-time risk / خطر وصول أو وقت حر</small></a></div>
-    <div class="cpad-kpi gold" data-cpad-widget="kpi_tasks" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-columns"></span><b><?php echo $cardsActive; ?></b><span>Active Kanban / مهام كانبان</span><small>Open operations board / فتح لوحة العمليات</small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_customers" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-users"></span><b><?php echo $customers; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomers035ea')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpenCustomerCentera4675')); ?></small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_orders" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-shopping-cart"></span><b><?php echo $activeOrders; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveOrdersc6aea')); ?></span><small><?php echo $allOrders; ?> total · <?php echo $completedOrders; ?> completed</small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_projects" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveProjects8eadc')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpenOperationalProjects76d61')); ?></small></a></div>
+    <div class="cpad-kpi" data-cpad-widget="kpi_shipments" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-ship"></span><b><?php echo $activeShipments; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveShipments5c2bb')); ?></span><small><?php echo $shipTotal; ?> total shipments</small></a></div>
+    <div class="cpad-kpi danger" data-cpad-widget="kpi_alerts" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="cpad-kpi-icon fas fa-exclamation-triangle"></span><b><?php echo $critical; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UICriticalAlertsccd1d')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIEtaOrFreeTimeRisk7d503')); ?></small></a></div>
+    <div class="cpad-kpi gold" data-cpad-widget="kpi_tasks" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-columns"></span><b><?php echo $cardsActive; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveKanbanea4cf')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpenOperationsBoard216d1')); ?></small></a></div>
   </section>
 
   <section class="cpad-panel cpad-attention" data-cpad-widget="attention_center" data-default-size="full">
-    <div class="cpad-title"><span>Action Required / مطلوب إجراء</span><small>ابدأ من هنا لمعالجة المخاطر الحالية</small></div>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIActionRequired4cd4f')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIReviewCurrentRisksAndRequiredActions782ad')); ?></small></div>
     <div class="cpad-attention-grid">
-      <a class="<?php echo $critical > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="fas fa-ship"></span><strong><?php echo $critical; ?></strong><b>Critical shipments / شحنات حرجة</b><small>Review ETA and free time</small></a>
-      <a class="<?php echo $overdueCount > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/compta/facture/list.php',1); ?>?search_status=1&search_datelimit_end=<?php echo date('Y-m-d'); ?>"><span class="fas fa-file-invoice-dollar"></span><strong><?php echo $overdueCount; ?></strong><b>Overdue invoices / فواتير متأخرة</b><small><?php echo $unpaidCount; ?> total unpaid</small></a>
-      <a class="<?php echo $shipmentsWithoutExportDocs > 0 ? 'is-warn' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1).'?status=missingdocs'; ?>"><span class="fas fa-file-export"></span><strong><?php echo $shipmentsWithoutExportDocs; ?></strong><b>Missing export docs / بدون مستندات تصدير</b><small>Active shipments requiring files</small></a>
-      <a class="is-info" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-tasks"></span><strong><?php echo $cardsActive; ?></strong><b>Open tasks / مهام مفتوحة</b><small>Continue internal operations</small></a>
+      <a class="<?php echo $critical > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="fas fa-ship"></span><strong><?php echo $critical; ?></strong><b><?php echo dol_escape_htmltag(cpcc_ui_t('UICriticalShipments132a7')); ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIReviewEtaAndFreeTime610c0')); ?></small></a>
+      <a class="<?php echo $overdueCount > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/compta/facture/list.php',1); ?>?search_status=1&search_datelimit_end=<?php echo date('Y-m-d'); ?>"><span class="fas fa-file-invoice-dollar"></span><strong><?php echo $overdueCount; ?></strong><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIOverdueInvoices747a2')); ?></b><small><?php echo $unpaidCount; ?> total unpaid</small></a>
+      <a class="<?php echo $shipmentsWithoutExportDocs > 0 ? 'is-warn' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1).'?status=missingdocs'; ?>"><span class="fas fa-file-export"></span><strong><?php echo $shipmentsWithoutExportDocs; ?></strong><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIMissingExportDocsa61f3')); ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveShipmentsRequiringFilesebb6d')); ?></small></a>
+      <a class="is-info" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-tasks"></span><strong><?php echo $cardsActive; ?></strong><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpenTasksef296')); ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIContinueInternalOperationsc51fb')); ?></small></a>
     </div>
   </section>
 
   <section class="cpad-panel cpad-shipping-orders" data-cpad-widget="shipping_orders" data-default-size="full">
-    <div class="cpad-title"><span>Shipping Orders / طلبات الشحن</span><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1); ?>">Open register / فتح السجل →</a></div>
-    <p class="cpad-shipping-orders-note">Customer booking operations — separate from ERP Sales Orders and linked shipments. / عمليات حجز العميل منفصلة عن طلبات البيع والشحنات المرتبطة.</p>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIShippingOrders93ae0')); ?></span><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1); ?>"><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpenRegister2e7cc')); ?></a></div>
+    <p class="cpad-shipping-orders-note"><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomerBookingOperationsSeparateFromErpSalesOrd9607c')); ?></p>
     <div class="cpad-shipping-order-metrics">
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=all',1); ?>"><b><?php echo (int)$shippingOrderStats['total_current']; ?></b><span>Total Current / الإجمالي الحالي</span></a>
-      <a class="active" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=active',1); ?>"><b><?php echo (int)$shippingOrderStats['active']; ?></b><span>Active / نشط</span></a>
-      <a class="confirmed" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=confirmed',1); ?>"><b><?php echo (int)$shippingOrderStats['confirmed']; ?></b><span>Confirmed / SO Received<br>مؤكد / تم استلام SO</span></a>
-      <a class="closed" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=closed',1); ?>"><b><?php echo (int)$shippingOrderStats['closed']; ?></b><span>Closed / مغلق</span></a>
-      <a class="cancelled" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=cancelled',1); ?>"><b><?php echo (int)$shippingOrderStats['cancelled']; ?></b><span>Cancelled / ملغي</span></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=all',1); ?>"><b><?php echo (int)$shippingOrderStats['total_current']; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UITotalCurrent622d7')); ?></span></a>
+      <a class="active" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=active',1); ?>"><b><?php echo (int)$shippingOrderStats['active']; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIActivea733b')); ?></span></a>
+      <a class="confirmed" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=confirmed',1); ?>"><b><?php echo (int)$shippingOrderStats['confirmed']; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIConfirmedShippingOrder')); ?></span></a>
+      <a class="closed" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=closed',1); ?>"><b><?php echo (int)$shippingOrderStats['closed']; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIClosed88d86')); ?></span></a>
+      <a class="cancelled" href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php?bucket=cancelled',1); ?>"><b><?php echo (int)$shippingOrderStats['cancelled']; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UICancelleda1bf9')); ?></span></a>
     </div>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="customer_finance" data-default-size="full">
-    <div class="cpad-title"><span>Customer Funds by Currency / أموال العملاء حسب العملة</span><small>لا يتم جمع العملات المختلفة معاً</small></div>
-    <?php if (empty($financialByCurrency)) { ?><div class="cpad-empty">No customer financial movements yet / لا توجد حركات مالية للعملاء.</div><?php } else { ?>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomerFundsByCurrency41e69')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption1')); ?></small></div>
+    <?php if (empty($financialByCurrency)) { ?><div class="cpad-empty"><?php echo dol_escape_htmltag(cpcc_ui_t('UINoCustomerFinancialMovementsYet01057')); ?></div><?php } else { ?>
     <div class="cpad-finance-grid">
       <?php foreach ($financialByCurrency as $code=>$totals) { ?>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1); ?>" class="cpad-finance-card">
-        <div><span><?php echo dol_escape_htmltag($code); ?></span><small>Customer wallet / محفظة العملاء</small></div>
-        <dl><div><dt>Received / مستلم</dt><dd><?php echo number_format($totals['received'],2); ?></dd></div><div><dt>Spent / مصروف</dt><dd><?php echo number_format($totals['spent'],2); ?></dd></div><div><dt>Available / متاح</dt><dd class="<?php echo $totals['available'] < 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['available'],2); ?></dd></div><div><dt>Required / مطلوب</dt><dd class="<?php echo $totals['required_funding'] > 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['required_funding'],2); ?></dd></div></dl>
+        <div><span><?php echo dol_escape_htmltag($code); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomerWalletea707')); ?></small></div>
+        <dl><div><dt><?php echo dol_escape_htmltag(cpcc_ui_t('UIReceived27548')); ?></dt><dd><?php echo number_format($totals['received'],2); ?></dd></div><div><dt><?php echo dol_escape_htmltag(cpcc_ui_t('UISpentc0d3c')); ?></dt><dd><?php echo number_format($totals['spent'],2); ?></dd></div><div><dt><?php echo dol_escape_htmltag(cpcc_ui_t('UIAvailable7c62a')); ?></dt><dd class="<?php echo $totals['available'] < 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['available'],2); ?></dd></div><div><dt><?php echo dol_escape_htmltag(cpcc_ui_t('UIRequiredeed6b')); ?></dt><dd class="<?php echo $totals['required_funding'] > 0 ? 'negative' : 'positive'; ?>"><?php echo number_format($totals['required_funding'],2); ?></dd></div></dl>
       </a>
       <?php } ?>
     </div><?php } ?>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="workflow" data-default-size="large">
-    <div class="cpad-title"><span>Operations Flow / تدفق العمليات</span><small>من الطلب حتى الإغلاق</small></div>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIOperationsFlow84245')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption2')); ?></small></div>
     <div class="cpad-flow">
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="fas fa-shopping-basket"></span><b><?php echo $activeOrders; ?></b><small>Active orders / طلبات نشطة</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><small>Active projects / مشاريع نشطة</small></a>
-      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b><?php echo $cardsActive; ?></b><small>Kanban tasks / مهام التشغيل</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-ship"></span><b><?php echo $activeShipments; ?></b><small>Live shipments / شحنات جارية</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><span class="fas fa-file-alt"></span><b><?php echo $exportDocuments; ?></b><small>Export documents / مستندات تصدير</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=completed',1); ?>"><span class="fas fa-check-circle"></span><b><?php echo $completedOrders; ?></b><small>Completed orders / طلبات مكتملة</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="fas fa-shopping-basket"></span><b><?php echo $activeOrders; ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveOrders4bc56')); ?></small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveProjectsf3619')); ?></small></a>
+      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b><?php echo $cardsActive; ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIKanbanTasksa1bb0')); ?></small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-ship"></span><b><?php echo $activeShipments; ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UILiveShipmentsd7216')); ?></small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><span class="fas fa-file-alt"></span><b><?php echo $exportDocuments; ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIExportDocuments6eb05')); ?></small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=completed',1); ?>"><span class="fas fa-check-circle"></span><b><?php echo $completedOrders; ?></b><small><?php echo dol_escape_htmltag(cpcc_ui_t('UICompletedOrdersb3feb')); ?></small></a>
     </div>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="shipment_control" data-default-size="large">
-    <div class="cpad-title"><span>Shipment Control / حالة الشحن</span><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>">All shipments / كل الشحنات →</a></div>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIShipmentControl403aa')); ?></span><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>"><?php echo dol_escape_htmltag(cpcc_ui_t('UIAllShipmentsd108e')); ?></a></div>
     <div class="cpad-status cpad-status-links">
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=intransit',1); ?>"><b><?php echo $inTransit; ?></b><span>In transit / في الطريق</span></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=arriving',1); ?>"><b><?php echo $arriving; ?></b><span>ETA within 14 days / وصول خلال 14 يوم</span></a>
-      <a class="gold" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=arrived',1); ?>"><b><?php echo $arrived; ?></b><span>Arrived / وصلت</span></a>
-      <a class="danger" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><b><?php echo $critical; ?></b><span>Critical alerts / تنبيهات</span></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=intransit',1); ?>"><b><?php echo $inTransit; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIInTransit63b0b')); ?></span></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=arriving',1); ?>"><b><?php echo $arriving; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIEtaWithin14Days980a9')); ?></span></a>
+      <a class="gold" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=arrived',1); ?>"><b><?php echo $arrived; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIArriveda22d6')); ?></span></a>
+      <a class="danger" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><b><?php echo $critical; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UICriticalAlerts08df4')); ?></span></a>
     </div>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="monthly_revenue" data-default-size="large">
-    <div class="cpad-title"><span>Monthly Invoiced Amount / الفواتير الشهرية</span><a href="<?php echo dol_buildpath('/compta/facture/list.php',1); ?>">All invoices / كل الفواتير →</a></div>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIMonthlyInvoicedAmount2d154')); ?></span><a href="<?php echo dol_buildpath('/compta/facture/list.php',1); ?>"><?php echo dol_escape_htmltag(cpcc_ui_t('UIAllInvoices656d6')); ?></a></div>
     <div class="cpad-bars">
       <?php foreach ($months as $month) { $height = $monthMax > 0 ? max(3, round($month['value']/$monthMax*100)) : 3; ?>
         <a class="cpad-bar" href="<?php echo dol_escape_htmltag($month['url']); ?>" style="--h:<?php echo $height; ?>%" title="<?php echo dol_escape_htmltag($month['label'].' '.number_format($month['value'],2).' '.$currency); ?>"><em><?php echo number_format($month['value'],0); ?></em><span><?php echo dol_escape_htmltag($month['label']); ?></span></a>
@@ -283,10 +264,10 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
   </section>
 
   <section class="cpad-panel" data-cpad-widget="live_shipments" data-default-size="large">
-    <div class="cpad-title"><span>Live Shipments / الشحنات الحالية</span><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>">Open live list / فتح القائمة →</a></div>
-    <?php if (empty($recentShipments)) { ?><div class="cpad-empty">No shipment records yet.</div><?php } else { ?>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UILiveShipments9c12e')); ?></span><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpenLiveList2dab6')); ?></a></div>
+    <?php if (empty($recentShipments)) { ?><div class="cpad-empty"><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption7')); ?></div><?php } else { ?>
     <div class="cpad-table-scroll"><table class="cpad-table">
-      <thead><tr><th>REF / CONTAINER</th><th>CUSTOMER</th><th>DESTINATION</th><th>ETA</th><th>STATUS</th></tr></thead>
+      <thead><tr><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardREFCONTAINER')); ?></th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCUSTOMER')); ?></th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardDESTINATION')); ?></th><th>ETA</th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardSTATUS')); ?></th></tr></thead>
       <tbody><?php foreach ($recentShipments as $shipment) { $late=!empty($shipment->date_eta)&&$shipment->date_eta<date('Y-m-d')&&(chinaplanetlogistics_status_in($shipment->fk_statut,'pre_sailing')||chinaplanetlogistics_status_in($shipment->fk_statut,'in_transit')); ?>
         <tr>
           <td><a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?id='.(int)$shipment->rowid,1); ?>"><?php echo dol_escape_htmltag($shipment->container_no ?: $shipment->ref); ?></a></td>
@@ -298,9 +279,9 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
   </section>
 
   <section class="cpad-panel" data-cpad-widget="recent_orders" data-default-size="large">
-    <div class="cpad-title"><span>Recent Orders / أحدث الطلبات</span><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=all',1); ?>">All orders / كل الطلبات →</a></div>
-    <?php if (empty($recentOrders)) { ?><div class="cpad-empty">No orders yet / لا توجد طلبات.</div><?php } else { ?>
-    <div class="cpad-table-scroll"><table class="cpad-table"><thead><tr><th>ORDER</th><th>CUSTOMER</th><th>DATE</th><th>TOTAL</th><th>STATUS</th></tr></thead><tbody>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIRecentOrdersae649')); ?></span><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=all',1); ?>"><?php echo dol_escape_htmltag(cpcc_ui_t('UIAllOrderse6909')); ?></a></div>
+    <?php if (empty($recentOrders)) { ?><div class="cpad-empty"><?php echo dol_escape_htmltag(cpcc_ui_t('UINoOrdersYet9f61f')); ?></div><?php } else { ?>
+    <div class="cpad-table-scroll"><table class="cpad-table"><thead><tr><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption9')); ?></th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCUSTOMER')); ?></th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption10')); ?></th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption11')); ?></th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardSTATUS')); ?></th></tr></thead><tbody>
       <?php foreach ($recentOrders as $order) { $orderCurrency=trim((string)$order->multicurrency_code); $orderAmount=$orderCurrency!==''&&(float)$order->multicurrency_total_ttc>0?(float)$order->multicurrency_total_ttc:(float)$order->total_ttc; if ($orderCurrency==='') $orderCurrency=$currency; ?>
       <tr><td><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/order.php?id='.(int)$order->rowid,1); ?>"><?php echo dol_escape_htmltag($order->ref); ?></a></td><td><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php?socid='.(int)$order->customer_id,1); ?>"><?php echo dol_escape_htmltag($order->customer ?: '—'); ?></a></td><td><?php echo dol_escape_htmltag(!empty($order->date_commande)?substr($order->date_commande,0,10):'—'); ?></td><td><?php echo dol_escape_htmltag(number_format($orderAmount,2).' '.$orderCurrency); ?></td><td><span class="cpad-badge"><?php echo dol_escape_htmltag($orderStatusLabels[(int)$order->fk_statut] ?? 'Unknown'); ?></span></td></tr>
       <?php } ?>
@@ -308,61 +289,81 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
   </section>
 
   <section class="cpad-panel" data-cpad-widget="recent_finance" data-default-size="large">
-    <div class="cpad-title"><span>Recent Financial Activity / أحدث الحركات المالية</span></div>
-    <?php if (empty($recentFinance)) { ?><div class="cpad-empty">No recent custom financial entries / لا توجد حركات مالية حديثة.</div><?php } else { ?>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIRecentFinancialActivity71c87')); ?></span></div>
+    <?php if (empty($recentFinance)) { ?><div class="cpad-empty"><?php echo dol_escape_htmltag(cpcc_ui_t('UINoRecentCustomFinancialEntries0f4fd')); ?></div><?php } else { ?>
     <div class="cpad-activity-list"><?php foreach ($recentFinance as $entry) { ?>
       <a href="<?php echo ($entry->fk_soc > 0) ? dol_buildpath('/chinaplanetcustomercenter/balance.php',1).'?socid='.(int)$entry->fk_soc : dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1); ?>"><span class="cpad-activity-icon <?php echo $entry->direction==='C'?'credit':'debit'; ?> fas <?php echo $entry->direction==='C'?'fa-arrow-down':'fa-arrow-up'; ?>"></span><span><b><?php echo dol_escape_htmltag($entry->customer ?: '—'); ?></b><small><?php echo dol_escape_htmltag($entry->description); ?></small></span><strong><?php echo $entry->direction==='C'?'+':'−'; ?> <?php echo dol_escape_htmltag(number_format($entry->amount,2).' '.$entry->currency_code); ?></strong><time><?php echo dol_escape_htmltag(substr($entry->entry_date,0,10)); ?></time></a>
     <?php } ?></div><?php } ?>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="top_customers" data-default-size="medium">
-    <div class="cpad-title"><span>Top Customers / أهم العملاء</span><small>حسب قيمة الفواتير</small></div>
-    <div class="cpad-ranking"><?php if (empty($topCustomers)) { ?><div class="cpad-empty">No customer activity yet.</div><?php } ?><?php foreach ($topCustomers as $customer) { ?>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UITopCustomers87779')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption3')); ?></small></div>
+    <div class="cpad-ranking"><?php if (empty($topCustomers)) { ?><div class="cpad-empty"><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption8')); ?></div><?php } ?><?php foreach ($topCustomers as $customer) { ?>
       <a class="cpad-rank" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php?socid='.(int)$customer->rowid,1); ?>"><span title="<?php echo dol_escape_htmltag($customer->nom); ?>"><?php echo dol_escape_htmltag($customer->nom); ?></span><div class="cpad-track"><div class="cpad-fill" style="--w:<?php echo cpadPct($customer->amount,$topMax); ?>%"></div></div><b><?php echo (int)$customer->invoice_count; ?></b></a>
     <?php } ?></div>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="documents_center" data-default-size="medium">
-    <div class="cpad-title"><span>Documents Center / مركز المستندات</span><small>Shipping & export files</small></div>
-    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><b><?php echo $exportDocuments; ?></b><span>Export documents / مستندات تصدير</span></a><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=missingdocs',1); ?>"><b><?php echo $shipmentsWithoutExportDocs; ?></b><span>Active shipments missing docs / شحنات بدون مستندات</span></a></div>
-    <div class="cpad-panel-actions"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-plus"></span> Create export document / إنشاء مستند</a></div>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIDocumentsCenter57dad')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption4')); ?></small></div>
+    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><b><?php echo $exportDocuments; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIExportDocuments6eb05')); ?></span></a><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=missingdocs',1); ?>"><b><?php echo $shipmentsWithoutExportDocs; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIActiveShipmentsMissingDocs0fb9e')); ?></span></a></div>
+    <div class="cpad-panel-actions"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-plus"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UICreateExportDocument9a4d1')); ?></a></div>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="shipping_prices" data-default-size="medium">
-    <div class="cpad-title"><span>Shipping Prices / أسعار الشحن</span><small>Live pricing data</small></div>
-    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><b><?php echo $publishedRates; ?></b><span>Published current rates / أسعار منشورة</span></a><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/admin/dashboard.php',1); ?>"><b><?php echo $shippingInquiries; ?></b><span>Saved inquiries / استعلامات محفوظة</span></a></div>
-    <div class="cpad-panel-actions"><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span> Search price / بحث عن سعر</a><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/admin/import.php',1); ?>"><span class="fas fa-file-import"></span> Import rates / استيراد</a></div>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIShippingPricesb7428')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption5')); ?></small></div>
+    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><b><?php echo $publishedRates; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIPublishedCurrentRatesa0b3b')); ?></span></a><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/admin/dashboard.php',1); ?>"><b><?php echo $shippingInquiries; ?></b><span><?php echo dol_escape_htmltag(cpcc_ui_t('UISavedInquiriesed0b0')); ?></span></a></div>
+    <div class="cpad-panel-actions"><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UISearchPrice91d5b')); ?></a><a href="<?php echo dol_buildpath('/chinaplanetshippingprices/admin/import.php',1); ?>"><span class="fas fa-file-import"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UIImportRates82b1c')); ?></a></div>
   </section>
 
   <section class="cpad-panel" data-cpad-widget="quick_access" data-default-size="full">
-    <div class="cpad-title"><span>Quick Actions / إجراءات سريعة</span><small>Vision System</small></div>
+    <div class="cpad-title"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickActionsc4081')); ?></span><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption6')); ?></small></div>
     <div class="cpad-quick-grid">
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/public_requests.php',1); ?>"><span class="fas fa-inbox"></span><b>Website Requests</b><small>طلبات الموقع</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?action=create',1); ?>"><span class="fas fa-plus-circle"></span><b>New Shipment</b><small>شحنة جديدة</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/index.php',1); ?>"><span class="fas fa-route"></span><b>Internal Operations</b><small>مركز العمليات الداخلي</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/sop/index.php',1); ?>"><span class="fas fa-book-open"></span><b>SOP Library</b><small>مكتبة إجراءات التشغيل</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b>New Shipping Booking</b><small>حجز شحن جديد</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/board.php',1); ?>"><span class="fas fa-tasks"></span><b>Internal Tasks</b><small>المهام الداخلية</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/operations.php',1); ?>"><span class="fas fa-project-diagram"></span><b>Customer Project Operations</b><small>عمليات مشاريع العملاء</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>"><span class="fas fa-wallet"></span><b>Financial Entry</b><small>حركة مالية</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-file-export"></span><b>Export Document</b><small>مستند تصدير</small></a>
-      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b>Operations Kanban</b><small>لوحة كانبان</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span><b>Shipping Price</b><small>سعر شحن</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="fas fa-user-tie"></span><b>Customer Center</b><small>مركز العملاء</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>"><span class="fas fa-list"></span><b>All Shipments</b><small>كل الشحنات</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/public_requests.php',1); ?>"><span class="fas fa-inbox"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickWebsiteRequests')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/card.php?action=create',1); ?>"><span class="fas fa-plus-circle"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickNewShipment')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/index.php',1); ?>"><span class="fas fa-route"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickInternalOperations')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/sop/index.php',1); ?>"><span class="fas fa-book-open"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickSOPLibrary')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickNewShippingBooking')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/board.php',1); ?>"><span class="fas fa-tasks"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickInternalTasks')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/operations.php',1); ?>"><span class="fas fa-project-diagram"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickCustomerProjectOperations')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>"><span class="fas fa-wallet"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickFinancialEntry')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-file-export"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickExportDocument')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickOperationsKanban')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickShippingPrice')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="fas fa-user-tie"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickCustomerCenter')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>"><span class="fas fa-list"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQuickAllShipments')); ?></b></a>
     </div>
   </section>
-  <aside id="cpad-widget-library" class="cpad-widget-library" hidden>
-    <div class="cpad-library-head"><div><strong>Widget Library</strong><small>إظهار وإخفاء بطاقات اللوحة</small></div><button type="button" id="cpad-widget-library-close" aria-label="Close">×</button></div>
+  <div class="cpad-customize-toolbar">
+    <button type="button" id="cpad-customize" class="cpad-tool primary"><span class="fas fa-sliders-h"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomizeDashboard388a2')); ?></button>
+    <button type="button" id="cpad-save-layout" class="cpad-tool success" hidden><span class="fas fa-save"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UISaveLayout3a511')); ?></button>
+    <button type="button" id="cpad-widget-library-button" class="cpad-tool" hidden><span class="fas fa-th"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UIWidgetLibrary977d0')); ?></button>
+    <button type="button" id="cpad-reset-layout" class="cpad-tool warn" hidden><span class="fas fa-undo"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UIResetDefaultc46b7')); ?></button>
+    <button type="button" id="cpad-cancel-layout" class="cpad-tool" hidden><?php echo dol_escape_htmltag(cpcc_ui_t('UICancel77dfd')); ?></button>
+    <span id="cpad-layout-message" class="cpad-layout-message" hidden></span>
+  </div>
+  <section class="cpad-work-start" aria-labelledby="cpad-work-start-title">
+    <div class="cpad-work-start-head"><div><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIDailyWork7915b')); ?></span><h2 id="cpad-work-start-title"><?php echo dol_escape_htmltag(cpcc_ui_t('UIStartDailyWork78031')); ?></h2><p><?php echo dol_escape_htmltag(cpcc_ui_t('UIChooseTheTaskYouNeedToWorkOnToday294bd')); ?></p></div><a href="<?php echo dol_buildpath('/chinaplanetoperations/workspace.php',1); ?>"><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpenDailyWorkspace71505')); ?></a></div>
+    <div class="cpad-work-start-grid">
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=order',1); ?>"><span class="fas fa-shopping-cart"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomerOrderc60ba')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=sourcing',1); ?>"><span class="fas fa-search"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIProductSourcing9224f')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=purchasing',1); ?>"><span class="fas fa-boxes"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIPurchasing6e3d5')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=quality_control',1); ?>"><span class="fas fa-clipboard-check"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIQualityControl3dad0')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UIShippingBooking138da')); ?></b></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=customs',1); ?>"><span class="fas fa-file-contract"></span><b><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomsAndDocuments2244d')); ?></b></a>
+    </div>
+  </section>
+  <dialog id="cpad-widget-library" class="cpad-widget-library" aria-labelledby="cpad-library-title">
+    <div class="cpad-library-head"><div><strong id="cpad-library-title"><?php echo dol_escape_htmltag(cpcc_ui_t('UIWidgetLibrary977d0')); ?></strong><small><?php echo dol_escape_htmltag(cpcc_ui_t('UIShowAndHideDashboardWidgets96363')); ?></small></div><button type="button" id="cpad-widget-library-close" aria-label="Close">×</button></div>
     <div id="cpad-widget-library-list" class="cpad-library-list"></div>
-  </aside>
+  </dialog>
   <script type="application/json" id="cpad-layout-data"><?php echo json_encode(array(
       'layout'=>$savedLayout,
       'labels'=>$widgetLabels,
+      'ui'=>array('move'=>cpcc_ui_t('UIMoveWidget'),'resize'=>cpcc_ui_t('UIResizeWidget'),'hide'=>cpcc_ui_t('UIHideWidget'),'saved'=>cpcc_ui_t('UILayoutSaved'),'small'=>cpcc_ui_t('UISizeSmall'),'medium'=>cpcc_ui_t('UISizeMedium'),'large'=>cpcc_ui_t('UISizeLarge'),'full'=>cpcc_ui_t('UISizeFull')),
       'token'=>currentToken(),
       'endpoint'=>dol_buildpath('/chinaplanetcustomercenter/ajax/dashboard_layout.php', 1),
   ), JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT); ?></script>
-  <div class="cpad-footnote">Customizable personal dashboard · Data refreshed on page load · Vision System</div>
+  <div class="cpad-footnote"><?php echo dol_escape_htmltag(cpcc_ui_t('UIDashboardCaption12')); ?></div>
 </div>
 <?php
 llxFooter();

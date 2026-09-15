@@ -40,14 +40,9 @@ class CplBilingualTranslate
 
 function cpl_bilingual_langs($primary)
 {
-    global $conf;
-    if (!class_exists('Translate')) return $primary;
-    $primaryCode = !empty($primary->defaultlang) ? (string) $primary->defaultlang : 'en_US';
-    $secondaryCode = preg_match('/^ar(?:_|$)/i', $primaryCode) ? 'en_US' : 'ar_SA';
-    $secondary = new Translate('', $conf);
-    $secondary->setDefaultLang($secondaryCode);
-    $secondary->loadLangs(array('main', 'chinaplanetlogistics@chinaplanetlogistics'));
-    return new CplBilingualTranslate($primary, $secondary);
+    // Presentation follows the chosen interface language; international acronyms
+    // remain in the existing translations. Keep the proxy class for legacy callers.
+    return $primary;
 }
 
 function cpl_text_limit($value, $length)

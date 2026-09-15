@@ -1,0 +1,61 @@
+/* M084 shared accessibility layer. Loaded only by custom module shells. */
+body.cpcc-ui {font-family:Arial,Tahoma,sans-serif;line-height:1.5}
+.cpcc-ui :is(.cpad-shell,.cpcc-dashboard,.cpl-command-center,.cpw-workspace,.cpcc-portal-shell) {font-family:Arial,Tahoma,sans-serif;font-size:15px;line-height:1.5}
+.cpcc-ui :is(button,input,select,textarea){font-family:inherit}
+.cpcc-ui :is(.cpad-nav-links a,.cpad-nav-group-toggle,.cpad-tool){font-family:inherit;font-size:14px;min-height:44px}
+.cpcc-ui .cpad-nav-links{flex-wrap:wrap}
+.cpcc-ui :is(.cpad-title,.cpad-table th,.cpad-table td,.cpad-legend div,.cpad-rank){font-size:14px;line-height:1.5}
+.cpcc-ui .cpad-shell small,.cpcc-ui .cpad-shell .cpad-footnote{font-size:13px;line-height:1.5}
+.cpcc-ui .cpad-shell{--muted:#adc8d9}
+.cpcc-ui :is(.cpad-empty,.cpad-footnote,.cpad-library-row small,.cpad-activity-list small,.cpad-activity-list time){color:#adc8d9}
+.cpcc-ui :is(.cpcc-card small,.cpcc-project-view small,.cpcc-document-card small,.cpcc-section-head p,.cpcc-export-meta span,.cpcc-gallery-empty small,.cpcc-admin-overview-grid small,.cpcc-admin-finance-grid small,.cpcc-admin-finance-grid dt,.cpad-work-start small,.cpw-launch-grid small){color:#465d70!important}
+.cpcc-ui :is(.placeholder,.select2-selection__placeholder){color:#526579!important;opacity:1}
+/* Keep branded dark header/button surfaces and their foreground together. */
+.cpcc-ui :is(.cpcc-table,.cpcc-export-table) th{background:#173e56!important;color:#fff!important}
+.cpcc-ui .cpcc-print-actions :is(a,button){background:#173e56;color:#fff!important;min-height:44px;font-size:15px}
+.cpcc-ui .cpcc-portal-nav a.active :is(b,small){color:#152535!important;opacity:1!important}
+.cpcc-ui a:focus-visible,.cpcc-ui button:focus-visible,.cpcc-ui [tabindex="0"]:focus-visible{outline:3px solid #087eb5;outline-offset:3px;box-shadow:0 0 0 5px #fff}
+.cpcc-ui .cpad-shell :is(a,button):focus-visible{outline-color:#ffbf47;box-shadow:0 0 0 5px #061a35}
+.cpcc-ui #id-top .tmenu a{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:5px 8px;box-sizing:border-box}
+.cpcc-ui #id-top .tmenu li{height:auto;min-height:44px}
+.cpcc-ui .cpad-context-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cpcc-ui .cpad-context-form select{max-width:100%;min-height:44px}
+.cpcc-ui :is(.cpad-section-content,.cpcc-dashboard) input:not([type=hidden]):not([type=checkbox]):not([type=radio]),.cpcc-ui :is(.cpad-section-content,.cpcc-dashboard) select{min-height:44px;max-width:100%}
+.cpcc-ui .cpad-widget-library{position:fixed;margin:auto;inset:0;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 40px);color:#eaf8ff}
+.cpcc-ui .cpad-widget-library::backdrop{background:rgba(0,12,28,.7)}
+.cpcc-ui .cpad-library-head button{min-width:44px;min-height:44px}
+.cpcc-ui .cpad-library-row b{font-size:14px}
+.cpcc-ui .cpad-widget-controls button{min-width:44px;min-height:44px}
+.cpcc-ui .cpad-shell.is-customizing [data-cpad-widget]{padding-top:62px}
+.cpcc-ui .cpad-shell.is-customizing .cpad-title{padding-right:9px}
+.cpcc-ui .cpad-work-start-head h2{margin:3px 0;color:#102a43;font-size:22px}
+.cpcc-ui .cpad-work-start{margin-top:18px}
+.cpcc-ui .cpad-customize-toolbar{position:static}
+.cpcc-ui :is(.cpcc-admin-overview,.cpcc-dashboard){direction:inherit}
+.cpcc-ui .cpad-bars{gap:14px;padding-top:40px;height:240px}
+.cpcc-ui .cpad-bar em{font-size:12px;top:-30px;white-space:normal;text-align:center;line-height:1.1}
+.cpcc-ui .cpad-bar span{font-size:12px}
+.cpcc-ui .cpad-table td{white-space:normal;overflow-wrap:anywhere}
+.cpcc-ui .cpad-title>a{font-size:13px}
+@media(max-width:760px){
+ .cpcc-ui .cpad-head{padding:2px 4px 8px;margin-bottom:8px}
+ .cpcc-ui .cpad-head p{font-size:12px;margin:3px 0}
+ .cpcc-ui .cpad-environment{position:static;display:flex;justify-content:center;font-size:12px;margin:4px 0}
+ .cpcc-ui .cpad-environment small{font-size:12px}
+ .cpcc-ui .cpad-head h1{font-size:20px;letter-spacing:0}
+ .cpcc-ui .cpad-attention-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .cpcc-ui .cpad-attention-grid a{padding:10px;min-height:124px}
+ .cpcc-ui .cpad-attention-grid small{display:none}
+ .cpcc-ui .cpad-attention-grid b{font-size:14px}
+ .cpcc-ui .cpad-title{flex-wrap:wrap}
+ .cpcc-ui .cpad-widget-controls{max-width:calc(100% - 10px)}
+ .cpcc-ui .cpad-work-start-grid{grid-template-columns:1fr 1fr}
+ .cpcc-ui .cpad-work-start-grid>a{grid-template-columns:1fr;text-align:center;justify-items:center}
+ .cpcc-ui .cpad-work-start-grid .fas{grid-row:auto}
+ .cpcc-ui .cpad-donut-row{grid-template-columns:1fr}
+ .cpcc-ui .cpad-activity-list>a{grid-template-columns:30px minmax(0,1fr)}
+ .cpcc-ui .cpad-activity-list strong{grid-column:2;white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){.cpcc-ui *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.cpcc-ui #id-top .login_block_elem>a:has(.fa-print),.cpcc-ui #id-top a.help{display:inline-flex;min-width:32px;min-height:32px;align-items:center;justify-content:center}

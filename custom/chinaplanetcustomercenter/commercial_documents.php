@@ -12,13 +12,13 @@ $socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
 $projectid = GETPOSTINT('projectid');
 $documents = $socid > 0 ? cpcc_export_documents($db, $socid, $projectid, 0, $isExternal) : array();
 
-llxHeader('', 'Commercial Documents / مستندات التصدير', '', '', 0, 0, array(), $isExternal?array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css'):array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
-if($isExternal) cpcc_portal_navigation($user, 'commercial_documents'); else cpcc_admin_shell_open('export','Commercial Documents / المستندات التجارية','المستندات المنشأة والمتاحة للعملاء','fa-file-export',array('socid'=>$socid,'projectid'=>$projectid));
+llxHeader('', cpcc_ui_t('UICommercialDocuments87a0b'), '', '', 0, 0, array(), $isExternal?array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css'):array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+if($isExternal) cpcc_portal_navigation($user, 'commercial_documents'); else cpcc_admin_shell_open('export',cpcc_ui_t('UICommercialDocuments87a0b'),'المستندات المنشأة والمتاحة للعملاء','fa-file-export',array('socid'=>$socid,'projectid'=>$projectid));
 ?>
 <main class="cpcc-dashboard" dir="rtl">
   <header class="cpcc-page-head"><div><span class="cpcc-eyebrow">EXPORT DOCUMENTS</span><h1>المستندات التجارية والتصديرية</h1><p>Commercial Invoice وPacking List والمستندات المرتبطة بالمشروع والشحنة.</p></div></header>
   <?php cpcc_portal_customer_selector($db,$user,$socid); ?>
-  <?php if ($socid <= 0) { ?><div class="warning">لا يوجد عميل محدد.</div>
+  <?php if ($socid <= 0) { ?><div class="warning"><?php echo dol_escape_htmltag(cpcc_ui_t('UISelectACustomerToViewRecordse2001')); ?></div>
   <?php } elseif (!cpcc_export_schema_ready($db)) { ?><div class="warning">جداول مستندات التصدير لم تُفعّل بعد.</div>
   <?php } elseif (empty($documents)) { ?><div class="cpcc-empty">لا توجد مستندات تجارية متاحة لهذا العميل.</div>
   <?php } else { ?><section class="cpcc-document-grid">
