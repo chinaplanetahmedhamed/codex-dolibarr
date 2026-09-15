@@ -62,7 +62,7 @@ else cpcc_admin_shell_open('portal', 'Invoice Details / تفاصيل الفات�
   <div class="cpcc-table-wrap"><table class="cpcc-table"><thead><tr><th>التاريخ / Date</th><th>المرجع / Reference</th><th>المبلغ / Amount</th></tr></thead><tbody>
   <?php if (empty($payments)) { ?><tr><td colspan="3">لا توجد دفعات مرتبطة / No linked payments.</td></tr><?php }
   foreach ($payments as $payment) { $amount=$invoice['currency']!==$currencyFallback&&$payment->multicurrency_amount!=0?$payment->multicurrency_amount:$payment->amount; ?>
-    <tr><td><?php echo dol_escape_htmltag(dol_print_date($payment->datep,'day')); ?></td><td><?php echo dol_escape_htmltag($payment->num_paiement?:$payment->ref); ?></td><td><?php echo cpcc_portal_money($amount).' '.dol_escape_htmltag($invoice['currency']); ?></td></tr>
+    <tr><td><?php echo dol_escape_htmltag(cpcc_portal_date($payment->datep,'day')); ?></td><td><?php echo dol_escape_htmltag($payment->num_paiement?:$payment->ref); ?></td><td><?php echo cpcc_portal_money($amount).' '.dol_escape_htmltag($invoice['currency']); ?></td></tr>
   <?php } ?></tbody></table></div>
 </main>
 <?php

@@ -7,7 +7,7 @@ require_once __DIR__.'/lib/financial.lib.php';
 cpcc_portal_require_access($user);
 $scope=cpcc_portal_user_scope($user);
 $isExternal=!empty($scope['is_external']);
-$socid=$scope['is_external']?(int)$scope['socid']:GETPOSTINT('socid');
+$socid=cpcc_portal_customer_scope_id($db,$user,GETPOSTINT('socid'));
 $currencyFallback=cpcc_financial_currency(!empty($conf->currency)?$conf->currency:'USD');
 $currency=cpcc_financial_currency(GETPOST('currency','alpha'), '');
 $view=GETPOST('view','alpha');
@@ -22,6 +22,7 @@ llxHeader('', 'Customer Statement / كشف الحساب', '', '', 0, 0, array(),
 if($isExternal) cpcc_portal_navigation($user,'balance'); else cpcc_admin_shell_open('portal','Customer Statement / كشف حساب العميل','كل الإيداعات والمصروفات والأرصدة حسب العملة','fa-file-invoice-dollar',array('socid'=>$socid));
 ?>
 <main class="cpcc-dashboard" dir="rtl"><header class="cpcc-page-head"><div><span class="cpcc-eyebrow">FINANCIAL STATEMENT</span><h1>كشف حساب العميل</h1><p>كل رصيد محسوب داخل عملته الأصلية.</p></div><?php if($isExternal){ ?><a class="cpcc-profile-shortcut" href="<?php echo dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/profile.php',1)); ?>"><span class="fas fa-user-circle" aria-hidden="true"></span><span>الملف الشخصي<small lang="en" dir="ltr">Profile</small></span></a><?php } ?></header>
+<?php cpcc_portal_customer_selector($db,$user,$socid); ?>
 <?php if ($socid<=0) { ?><div class="warning">لا يوجد عميل محدد.</div><?php } else { ?>
 <section class="cpcc-usd-total" aria-label="إجمالي الرصيد بالدولار">
 <div><span>Total Balance in USD</span><h2><?php echo cpcc_portal_money($usdTotal['total']); ?> <small>USD</small></h2><p>إجمالي الرصيد بالدولار الأمريكي</p></div>
@@ -30,7 +31,7 @@ if($isExternal) cpcc_portal_navigation($user,'balance'); else cpcc_admin_shell_o
 <span><b><?php echo dol_escape_htmltag($code); ?></b> <?php echo cpcc_portal_money($available); ?> <em>→</em> <?php echo cpcc_portal_money($usdValue); ?> USD<?php if($code!=='USD'){ ?><small>1 USD = <?php echo dol_escape_htmltag((string)$rate).' '.dol_escape_htmltag($code); ?></small><?php } ?></span>
 <?php } ?>
 <?php if(!empty($usdTotal['missing'])){ ?><span class="cpcc-rate-warning">غير مشمول لعدم وجود سعر تقييم: <?php echo dol_escape_htmltag(implode(', ',$usdTotal['missing'])); ?></span><?php } ?>
-<?php if($usdRateDate!==''){ ?><span class="cpcc-rate-date">تاريخ أسعار التقييم: <?php echo dol_escape_htmltag(dol_print_date($usdRateDate,'day')); ?></span><?php } ?>
+<?php if($usdRateDate!==''){ ?><span class="cpcc-rate-date">تاريخ أسعار التقييم: <?php echo dol_escape_htmltag(cpcc_portal_date($usdRateDate,'day')); ?></span><?php } ?>
 </div>
 </section>
 <div class="cpcc-balance-pills"><?php $scopeQuery=empty($scope['is_external'])?'socid='.(int)$socid.'&':''; foreach($summary as $code=>$totals){ ?><a class="<?php echo $currency===$code?'active':''; ?>" href="?<?php echo $scopeQuery; ?>currency=<?php echo urlencode($code); ?>"><b><?php echo dol_escape_htmltag($code); ?></b><span><?php echo cpcc_portal_money($totals['available']); ?></span></a><?php } ?><a href="?<?php echo rtrim($scopeQuery,'&'); ?>">كل العملات</a></div>
@@ -45,7 +46,7 @@ if($isExternal) cpcc_portal_navigation($user,'balance'); else cpcc_admin_shell_o
 <?php } ?>
 <div class="cpcc-table-wrap"><table class="cpcc-table statement"><thead><tr><th>التاريخ</th><th>نوع الحركة</th><th>الوصف / المرجع</th><th>مدين</th><th>دائن</th><th>الرصيد</th><th>العملة/التحويل</th></tr></thead><tbody>
 <?php if(empty($rows)){ ?><tr><td colspan="7">لا توجد حركات مطابقة.</td></tr><?php } ?>
-<?php foreach($rows as $row){ ?><tr><td><?php echo dol_escape_htmltag(dol_print_date($row['date'],'day')); ?></td><td><?php echo dol_escape_htmltag(cpcc_financial_type_label($row['type'])); ?></td><td><?php echo dol_escape_htmltag($row['description']); ?><?php if($row['reference']!==''){ ?><small><?php echo dol_escape_htmltag($row['reference']); ?></small><?php } ?></td><td class="money debit"><?php echo $row['direction']==='D'?cpcc_portal_money($row['amount']):'—'; ?></td><td class="money credit"><?php echo $row['direction']==='C'?cpcc_portal_money($row['amount']):'—'; ?></td><td class="money"><b><?php echo cpcc_portal_money($row['balance']); ?></b></td><td><b><?php echo dol_escape_htmltag($row['currency']); ?></b><?php if(!empty($row['exchange_rate'])){ ?><small>Rate: <?php echo dol_escape_htmltag((string)$row['exchange_rate']); ?></small><?php } ?><?php if(!empty($row['allocated_currency'])){ ?><small>Allocated: <?php echo cpcc_portal_money($row['allocated_amount']).' '.dol_escape_htmltag($row['allocated_currency']); ?></small><?php } ?></td></tr><?php } ?>
+<?php foreach($rows as $row){ ?><tr><td><?php echo dol_escape_htmltag(cpcc_portal_date($row['date'],'day')); ?></td><td><?php echo dol_escape_htmltag(cpcc_financial_type_label($row['type'])); ?></td><td><?php echo dol_escape_htmltag($row['description']); ?><?php if($row['reference']!==''){ ?><small><?php echo dol_escape_htmltag($row['reference']); ?></small><?php } ?></td><td class="money debit"><?php echo $row['direction']==='D'?cpcc_portal_money($row['amount']):'—'; ?></td><td class="money credit"><?php echo $row['direction']==='C'?cpcc_portal_money($row['amount']):'—'; ?></td><td class="money"><b><?php echo cpcc_portal_money($row['balance']); ?></b></td><td><b><?php echo dol_escape_htmltag($row['currency']); ?></b><?php if(!empty($row['exchange_rate'])){ ?><small>Rate: <?php echo dol_escape_htmltag((string)$row['exchange_rate']); ?></small><?php } ?><?php if(!empty($row['allocated_currency'])){ ?><small>Allocated: <?php echo cpcc_portal_money($row['allocated_amount']).' '.dol_escape_htmltag($row['allocated_currency']); ?></small><?php } ?></td></tr><?php } ?>
 </tbody></table></div>
 <p class="cpcc-note">إجمالي USD هو قيمة عرض فقط حسب أسعار التقييم الموضحة أعلاه؛ ولا يغيّر أرصدة العملات الأصلية أو حركات التحويل المسجلة.</p>
 <?php } ?></main><?php if(!$isExternal)cpcc_admin_shell_close();llxFooter();

@@ -29,6 +29,9 @@ class CplBilingualTranslate
     {
         $args = func_get_args();
         $primary = (string) call_user_func_array(array($this->primary, 'trans'), $args);
+        // Locale configuration is consumed by core formatters, not a bilingual label.
+        // Combining US and Arabic date masks prints the same date twice with reversed month/day.
+        if (strpos((string) $key, 'Format') === 0 || in_array($key, array('DIRECTION', 'SeparatorDecimal', 'SeparatorThousand'), true)) return $primary;
         $secondary = (string) call_user_func_array(array($this->secondary, 'trans'), $args);
         if ($secondary === '' || $secondary === (string) $key || $secondary === $primary) return $primary;
         return $primary.' / '.$secondary;

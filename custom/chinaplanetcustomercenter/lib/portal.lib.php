@@ -56,6 +56,35 @@ function cpcc_portal_scoped_url($path, $isExternal, $socid, $parameters = array(
     return !empty($parameters) ? $url.'?'.http_build_query($parameters) : $url;
 }
 
+/** Format database dates through Dolibarr's timestamp contract; invalid/empty dates stay empty. */
+function cpcc_portal_date($value, $format = 'day')
+{
+    global $db;
+    if ($value === null || $value === '') return '';
+    if (is_numeric($value)) $timestamp = (int) $value;
+    else {
+        $value = trim((string) $value);
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})(?: \d{2}:\d{2}:\d{2})?$/D', $value, $parts)
+            || !checkdate((int)$parts[2], (int)$parts[3], (int)$parts[1])) return '';
+        $timestamp = $db->jdate($value);
+    }
+    return $timestamp > 0 ? dol_print_date($timestamp, $format) : '';
+}
+
+/** Offer the existing customer scope on internal pages reached without a selected customer. */
+function cpcc_portal_customer_selector($db, $user, $socid)
+{
+    $scope = cpcc_portal_user_scope($user);
+    if (!empty($scope['is_external'])) return;
+    $res = $db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (".getEntity('societe').") AND status=1 AND client IN (1,3) ORDER BY nom");
+    print '<form method="GET" class="cpad-context-form"><label for="cpcc-customer-select">العميل / Customer</label> <select id="cpcc-customer-select" name="socid" required><option value="">اختر العميل / Select customer</option>';
+    while ($res && ($customer = $db->fetch_object($res))) {
+        print '<option value="'.(int)$customer->rowid.'"'.((int)$customer->rowid === (int)$socid ? ' selected' : '').'>'.dol_escape_htmltag($customer->nom).'</option>';
+    }
+    print '</select> <button class="button" type="submit">عرض / View</button></form>';
+    if (!$res) print '<div class="error" role="alert">تعذر تحميل العملاء / Customers could not be loaded.</div>';
+}
+
 /** Return a customer-portal asset URL with a content-based cache key. */
 function cpcc_portal_asset($path)
 {

@@ -103,8 +103,19 @@ if (cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_financial_entry')) {
 
 $months = array();
 for ($i = 6; $i >= 0; $i--) {
-    $key = date('Y-m', strtotime('-'.$i.' months'));
-    $months[$key] = array('label' => date('M', strtotime($key.'-01')), 'value' => 0);
+    $key = date('Y-m', strtotime('-'.$i.' months', strtotime(date('Y-m-01'))));
+    $monthStart = strtotime($key.'-01');
+    $monthQuery = http_build_query(array(
+        'search_status' => '1,2,3',
+        'search_date_startday' => 1,
+        'search_date_startmonth' => (int) date('m', $monthStart),
+        'search_date_startyear' => (int) date('Y', $monthStart),
+        'search_date_endday' => (int) date('t', $monthStart),
+        'search_date_endmonth' => (int) date('m', $monthStart),
+        'search_date_endyear' => (int) date('Y', $monthStart),
+    ));
+    $months[$key] = array('label' => date('M', $monthStart), 'value' => 0,
+        'url' => dol_buildpath('/compta/facture/list.php', 1).'?'.$monthQuery);
 }
 $resql = $db->query("SELECT DATE_FORMAT(datef,'%Y-%m') month_key, COALESCE(SUM(total_ttc),0) amount FROM ".MAIN_DB_PREFIX."facture WHERE entity = ".$entity." AND fk_statut > 0 AND datef >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 6 MONTH),'%Y-%m-01') GROUP BY month_key ORDER BY month_key");
 if ($resql) while ($obj = $db->fetch_object($resql)) if (isset($months[$obj->month_key])) $months[$obj->month_key]['value'] = (float) $obj->amount;
@@ -119,7 +130,7 @@ $p1 = $currencyTotal > 0 && isset($currencyRows[0]) ? round($currencyRows[0]['am
 $p2 = $currencyTotal > 0 && isset($currencyRows[1]) ? min(100, $p1 + round($currencyRows[1]['amount'] / $currencyTotal * 100)) : 67;
 
 $recentShipments = array();
-$sql = "SELECT l.rowid,l.ref,l.container_no,l.port_destination,l.date_eta,l.fk_statut,s.nom customer FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=l.fk_soc WHERE l.entity = ".$entity." ORDER BY COALESCE(l.date_eta,'2999-12-31') ASC,l.rowid DESC LIMIT 7";
+$sql = "SELECT l.rowid,l.ref,l.container_no,l.port_destination,l.date_eta,l.fk_statut,s.nom customer FROM ".MAIN_DB_PREFIX."chinaplanetlogistics l LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=l.fk_soc WHERE l.entity = ".$entity." AND l.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") ORDER BY COALESCE(l.date_eta,'2999-12-31') ASC,l.rowid DESC LIMIT 7";
 $resql = $db->query($sql);
 if ($resql) while ($obj = $db->fetch_object($resql)) $recentShipments[] = $obj;
 
@@ -246,7 +257,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="fas fa-shopping-basket"></span><b><?php echo $activeOrders; ?></b><small>Active orders / طلبات نشطة</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><small>Active projects / مشاريع نشطة</small></a>
       <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b><?php echo $cardsActive; ?></b><small>Kanban tasks / مهام التشغيل</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-ship"></span><b><?php echo $inTransit; ?></b><small>Live shipments / شحنات جارية</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-ship"></span><b><?php echo $activeShipments; ?></b><small>Live shipments / شحنات جارية</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><span class="fas fa-file-alt"></span><b><?php echo $exportDocuments; ?></b><small>Export documents / مستندات تصدير</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=completed',1); ?>"><span class="fas fa-check-circle"></span><b><?php echo $completedOrders; ?></b><small>Completed orders / طلبات مكتملة</small></a>
     </div>
@@ -263,10 +274,10 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
   </section>
 
   <section class="cpad-panel" data-cpad-widget="monthly_revenue" data-default-size="large">
-    <div class="cpad-title"><span>Monthly Invoiced Amount / الفواتير الشهرية</span><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/invoices.php',1); ?>">All invoices / كل الفواتير →</a></div>
+    <div class="cpad-title"><span>Monthly Invoiced Amount / الفواتير الشهرية</span><a href="<?php echo dol_buildpath('/compta/facture/list.php',1); ?>">All invoices / كل الفواتير →</a></div>
     <div class="cpad-bars">
       <?php foreach ($months as $month) { $height = $monthMax > 0 ? max(3, round($month['value']/$monthMax*100)) : 3; ?>
-        <a class="cpad-bar" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/invoices.php',1); ?>" style="--h:<?php echo $height; ?>%" title="<?php echo dol_escape_htmltag($month['label'].' '.number_format($month['value'],2).' '.$currency); ?>"><em><?php echo number_format($month['value'],0); ?></em><span><?php echo dol_escape_htmltag($month['label']); ?></span></a>
+        <a class="cpad-bar" href="<?php echo dol_escape_htmltag($month['url']); ?>" style="--h:<?php echo $height; ?>%" title="<?php echo dol_escape_htmltag($month['label'].' '.number_format($month['value'],2).' '.$currency); ?>"><em><?php echo number_format($month['value'],0); ?></em><span><?php echo dol_escape_htmltag($month['label']); ?></span></a>
       <?php } ?>
     </div>
   </section>
@@ -313,7 +324,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
 
   <section class="cpad-panel" data-cpad-widget="documents_center" data-default-size="medium">
     <div class="cpad-title"><span>Documents Center / مركز المستندات</span><small>Shipping & export files</small></div>
-    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><b><?php echo $exportDocuments; ?></b><span>Export documents / مستندات تصدير</span></a><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/documents.php',1); ?>"><b><?php echo $shipmentsWithoutExportDocs; ?></b><span>Active shipments missing docs / شحنات بدون مستندات</span></a></div>
+    <div class="cpad-mini-metrics"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><b><?php echo $exportDocuments; ?></b><span>Export documents / مستندات تصدير</span></a><a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=missingdocs',1); ?>"><b><?php echo $shipmentsWithoutExportDocs; ?></b><span>Active shipments missing docs / شحنات بدون مستندات</span></a></div>
     <div class="cpad-panel-actions"><a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-plus"></span> Create export document / إنشاء مستند</a></div>
   </section>
 
@@ -338,7 +349,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
       <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b>Operations Kanban</b><small>لوحة كانبان</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span><b>Shipping Price</b><small>سعر شحن</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="fas fa-user-tie"></span><b>Customer Center</b><small>مركز العملاء</small></a>
-      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-list"></span><b>All Shipments</b><small>كل الشحنات</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1); ?>"><span class="fas fa-list"></span><b>All Shipments</b><small>كل الشحنات</small></a>
     </div>
   </section>
   <aside id="cpad-widget-library" class="cpad-widget-library" hidden>

@@ -15,6 +15,7 @@ cpcc_portal_require_access($user);
 $scope = cpcc_portal_user_scope($user);
 $is_external = !empty($scope['is_external']);
 $socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
+if (!$is_external && GETPOSTINT('socid') > 0 && $socid <= 0) accessforbidden();
 $statusFilter = GETPOST('status', 'alpha') === 'active' ? 'active' : '';
 $action = GETPOST('action', 'aZ09');
 $canadmin = (!empty($user->admin) || $user->hasRight('chinaplanetcustomercenter', 'admin'));
@@ -32,8 +33,19 @@ $activeProjectsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/projects
 $allProjectsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/projects.php', $is_external, $socid);
 
 $syncSummary = null;
-if (!$is_external && $canadmin && $action === 'syncprojectcards') {
+if ($action === 'syncprojectcards') {
+    if ($is_external || !$canadmin) accessforbidden();
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Allow: POST');
+        exit('Project synchronization requires POST.');
+    }
+    $syncToken = GETPOST('token', 'alphanohtml');
+    if ($syncToken === '' || !hash_equals((string) currentToken(), (string) $syncToken)) accessforbidden();
     $syncSummary = cpcc_project_sync_existing_cards($db, $user, $socid);
+    setEventMessages('Kanban sync completed. Created: '.(int)$syncSummary['created'].', updated: '.(int)$syncSummary['updated'].', errors: '.(int)$syncSummary['errors'], null, !empty($syncSummary['errors']) ? 'errors' : 'mesgs');
+    header('Location: '.($statusFilter === 'active' ? $activeProjectsUrl : $allProjectsUrl), true, 303);
+    exit;
 }
 
 $projectCss = array(
@@ -62,62 +74,20 @@ print '</nav>';
 if ($is_external && $socid <= 0) {
     print '<div class="warning">No linked customer account was found for this portal user.</div>';
 } else {
-    $projectIds = array();
-    $syncScopeSql = "SELECT rowid FROM ".MAIN_DB_PREFIX."projet WHERE entity IN (".getEntity('project').")";
-    if ($socid > 0) {
-        $syncScopeSql .= " AND fk_soc = ".(int) $socid;
-    } elseif ($is_external) {
-        $syncScopeSql .= " AND fk_soc = ".(int) $socid;
-    }
-    if ($statusFilter === 'active') $syncScopeSql .= " AND fk_statut=1";
-    $syncScopeSql .= " ORDER BY rowid ASC";
-    $syncRes = $db->query($syncScopeSql);
-    if ($syncRes) {
-        while ($syncRow = $db->fetch_object($syncRes)) {
-            $projectIds[] = (int) $syncRow->rowid;
-        }
-    }
-
-    $autoSyncCreated = 0;
-    $autoSyncUpdated = 0;
-    $autoSyncSkipped = 0;
-    $autoSyncErrors = 0;
-    if (!$is_external) {
-        foreach ($projectIds as $projectId) {
-            $project = new Project($db);
-            if ($project->fetch($projectId) <= 0) {
-                $autoSyncErrors++;
-                continue;
-            }
-            $sync = cpcc_project_sync_kanban_card($db, $project, $user, 'modify');
-            if (!empty($sync['action']) && $sync['action'] === 'created') $autoSyncCreated++;
-            elseif (!empty($sync['action']) && $sync['action'] === 'updated') $autoSyncUpdated++;
-            else $autoSyncSkipped++;
-        }
-    }
-
-    if (!empty($syncSummary) && !$is_external) {
-        print '<div class="info">';
-        print 'Kanban sync completed. Created: '.(int) $syncSummary['created'].', updated: '.(int) $syncSummary['updated'].', skipped: '.(int) $syncSummary['skipped'].', errors: '.(int) $syncSummary['errors'];
-        if (!empty($syncSummary['details'])) {
-            print '<br>'.dol_escape_htmltag(implode(' | ', array_slice($syncSummary['details'], 0, 6)));
-        }
-        print '</div>';
-    } elseif (($autoSyncCreated || $autoSyncUpdated) && !$is_external) {
-        print '<div class="info">';
-        print 'Auto sync refreshed cards. Created: '.(int) $autoSyncCreated.', updated: '.(int) $autoSyncUpdated.', skipped: '.(int) $autoSyncSkipped.', errors: '.(int) $autoSyncErrors;
-        print '</div>';
-    }
-
+    // Browsing projects must never create or modify Kanban records.
     if (!$is_external) {
         print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'" style="margin-bottom:12px;">';
-        print '<input type="text" class="flat" name="socid" value="'.dol_escape_htmltag(GETPOSTINT('socid')).'" placeholder="Customer ID filter">';
+        print '<input type="text" class="flat" name="socid" value="'.dol_escape_htmltag((string)GETPOSTINT('socid')).'" placeholder="Customer ID filter">';
         if ($statusFilter === 'active') print '<input type="hidden" name="status" value="active">';
         print ' <input type="submit" class="button" value="Filter">';
-        if ($canadmin) {
-            print ' <button class="button button-save" type="submit" name="action" value="syncprojectcards">Sync project cards</button>';
-        }
         print '</form>';
+        if ($canadmin) {
+            print '<form method="POST" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'" style="margin-bottom:12px;">';
+            print '<input type="hidden" name="token" value="'.newToken().'">';
+            print '<input type="hidden" name="socid" value="'.(int)$socid.'">';
+            if ($statusFilter === 'active') print '<input type="hidden" name="status" value="active">';
+            print '<button class="button button-save" type="submit" name="action" value="syncprojectcards">Sync project cards / مزامنة بطاقات المشاريع</button></form>';
+        }
     }
 
     $sql = "SELECT p.rowid, p.ref, p.title, p.description, p.datec, p.dateo, p.datee, p.fk_statut as status, p.fk_soc, s.nom as customer_name, COALESCE(t.nb_tasks,0) as nb_tasks,";
@@ -155,15 +125,18 @@ if ($is_external && $socid <= 0) {
     }
     print '</tr>';
 
-    if (empty($rows)) {
+    if (!$resql) {
+        dol_syslog('M084 projects list query failed: '.$db->lasterror(), LOG_ERR);
+        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="error" role="alert">تعذر تحميل المشاريع. أعد المحاولة أو تواصل مع المسؤول. / Projects could not be loaded.</td></tr>';
+    } elseif (empty($rows)) {
         print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="center opacitymedium">لا توجد مشاريع / No projects found.</td></tr>';
     } else {
         foreach ($rows as $row) {
             $statusLabel = cpcc_project_status_label($row->status);
             $dateRange = array();
-            if (!empty($row->dateo)) $dateRange[] = 'Start '.dol_print_date($row->dateo, 'day');
-            if (!empty($row->datee)) $dateRange[] = 'End '.dol_print_date($row->datee, 'day');
-            if (empty($dateRange) && !empty($row->datec)) $dateRange[] = 'Created '.dol_print_date($row->datec, 'day');
+            if (!empty($row->dateo)) $dateRange[] = 'Start '.cpcc_portal_date($row->dateo, 'day');
+            if (!empty($row->datee)) $dateRange[] = 'End '.cpcc_portal_date($row->datee, 'day');
+            if (empty($dateRange) && !empty($row->datec)) $dateRange[] = 'Created '.cpcc_portal_date($row->datec, 'day');
             $taskCount = !empty($row->nb_tasks) ? (int) $row->nb_tasks : 0;
             $details = array();
             if (!empty($row->description)) $details[] = dol_trunc($row->description, 120);

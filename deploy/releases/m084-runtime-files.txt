@@ -1,0 +1,13 @@
+custom/chinaplanetcustomercenter/admin/operations.php
+custom/chinaplanetcustomercenter/admin_dashboard.php
+custom/chinaplanetcustomercenter/ajax/dashboard_layout.php
+custom/chinaplanetcustomercenter/balance.php
+custom/chinaplanetcustomercenter/commercial_documents.php
+custom/chinaplanetcustomercenter/export_document.php
+custom/chinaplanetcustomercenter/invoice.php
+custom/chinaplanetcustomercenter/invoices.php
+custom/chinaplanetcustomercenter/lib/portal.lib.php
+custom/chinaplanetcustomercenter/operation_report.php
+custom/chinaplanetcustomercenter/projects.php
+custom/chinaplanetlogistics/lib/shipment_customer.lib.php
+custom/chinaplanetlogistics/reports.php
