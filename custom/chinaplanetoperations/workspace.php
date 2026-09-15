@@ -208,10 +208,5 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
     <?php if ($canReadProjects) { ?><section class="cpo-panel cpw-section" id="customer-projects"><div class="cpo-panel-head"><h2>المشروعات</h2><a href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">مشروع جديد</a></div><?php foreach ($customerProjects as $project) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?id=<?php echo (int) $project['rowid']; ?>"><strong><?php echo $esc($project['ref']); ?></strong><span><?php echo $esc($project['title']); ?></span></a><?php } ?><?php if (!$customerProjects) { ?><div class="cpw-empty">لا توجد مشروعات.</div><?php } ?></section><?php } ?>
   </div>
   <?php } ?>
-
-  <section class="cpw-unavailable" aria-label="وظائف غير متصلة">
-    <strong>غير متصل في هذه المرحلة</strong>
-    <p>الحوالات والتخصيص ودفع المورد وCargoX وDHL وإرسال المستندات وبوابة العميل ليست جزءاً من Phase 1. لا توجد أزرار محاكاة تبدو كأنها حفظ أو إرسال حقيقي.</p>
-  </section>
 </main>
 <?php cpcc_admin_shell_close(); llxFooter(); $db->close(); ?>

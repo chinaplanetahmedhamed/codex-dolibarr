@@ -146,7 +146,6 @@ cpcc_admin_shell_open('workspace', $langs->trans($id ? 'EditOperation' : 'NewOpe
     <label class="cpo-field"><span><?php echo $langs->trans('CustomerVisibleNotes'); ?></span><textarea name="note_public"><?php echo dol_escape_htmltag($v('note_public')); ?></textarea></label>
   </div>
   <label class="cpo-check-option"><input type="checkbox" name="customer_visible" value="1"<?php echo $v('customer_visible') ? ' checked' : ''; ?>> <span><?php echo $langs->trans('AllowApprovedCustomerOutput'); ?> — لا ينشر أو يرسل شيئاً تلقائياً</span></label>
-  <div class="cpo-notice">الحوالات ودفع المورد وCargoX وDHL وإرسال المستندات غير متصلة من هذا النموذج.</div>
   <?php if (!$createReady) { ?><div class="cpo-notice cpo-notice-warning"><strong>الإنشاء متوقف بأمان.</strong> لوحة المهام أو عضوية الفرق غير جاهزة (<?php echo dol_escape_htmltag($taskBoardReady ? 'NO_ACTIVE_TEAM_MEMBERS' : $taskBoardReason); ?>). راجع إعداد لوحة المهام والفرق أولاً؛ لم يتم حفظ عملية ناقصة.</div><?php } ?>
   <div class="cpo-form-actions"><a class="button" href="../workspace.php<?php echo $selectedSocid ? '?view=customer&amp;socid='.(int) $selectedSocid : ''; ?>">إلغاء</a><button class="button button-save"<?php echo !$createReady ? ' disabled' : ''; ?>><?php echo $langs->trans('Save'); ?></button></div>
 </section>

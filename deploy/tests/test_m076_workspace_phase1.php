@@ -12,13 +12,16 @@ $checks = array(
     'customer lookup is entity scoped' => 'WHERE s.entity=".$entity." AND s.status=1 AND s.client>0',
     'customer operation drill-down is scoped' => "search(array('socid'=>\$socid))",
     'native order field matches current schema' => 'SELECT rowid,ref,fk_statut,total_ht,date_commande',
-    'prototype-only actions are called out' => 'الحوالات والتخصيص ودفع المورد وCargoX وDHL',
     'workspace never imports prototype assets' => 'daily-work-demo',
 );
 foreach ($checks as $label=>$needle) {
     $present = strpos($workspace, $needle) !== false;
     if ($label === 'workspace never imports prototype assets') $present = !$present;
     if (!$present) {fwrite(STDERR, "FAIL $label\n"); exit(1);}
+}
+if (strpos($workspace, 'cpw-unavailable') !== false) {
+    fwrite(STDERR, "FAIL prototype unavailable notice still present\n");
+    exit(1);
 }
 
 $editChecks = array(
