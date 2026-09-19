@@ -58,4 +58,35 @@ class ChinaPlanetOperations extends DolibarrApi
             throw new RestException(503, 'intake_service_unavailable');
         }
     }
+    /**
+     * Prepare a private catalogue PDF enquiry and prospect.
+     * @return array
+     * @url POST website-pdf-requests
+     */
+    public function websitePdfRequests() { return $this->pdfBoundary(true); }
+
+    /**
+     * Archive or request the exact immutable customer PDF.
+     * @return array
+     * @url POST website-pdf
+     */
+    public function websitePdf() { return $this->pdfBoundary(false); }
+
+    private function pdfBoundary($prepare)
+    {
+        $apiUser=DolibarrApiAccess::$user;
+        if (!$apiUser || !empty($apiUser->socid) || (!$apiUser->hasRight('chinaplanetoperations','website_intake_create') && empty($apiUser->admin))) throw new RestException(403,'Website intake permission required.');
+        $limit=$prepare?self::MAX_BODY_BYTES:8100000;
+        if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0)>$limit) throw new RestException(413,'request_too_large');
+        $raw=file_get_contents('php://input',false,null,0,$limit+1);
+        if($raw===false||strlen($raw)>$limit)throw new RestException(413,'request_too_large');
+        $input=json_decode($raw,true);if(!is_array($input))throw new RestException(400,'invalid_json');
+        require_once __DIR__.'/../../class/PublicRequestPdfService.class.php';
+        try {
+            $service=new PublicRequestPdfService($this->db);
+            return $prepare?$service->prepare($input,$apiUser):$service->execute($input,$apiUser);
+        } catch(PublicWebsiteRequestException $e) { throw new RestException($e->getHttpStatus(),$e->getPublicCode()); }
+        catch(Throwable $e) { dol_syslog('Catalogue PDF failed: '.get_class($e),LOG_ERR);throw new RestException(503,'pdf_service_unavailable'); }
+    }
+
 }

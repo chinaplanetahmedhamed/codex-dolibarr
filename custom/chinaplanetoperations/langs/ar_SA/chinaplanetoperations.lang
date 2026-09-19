@@ -610,3 +610,14 @@ InternalTaskActivity_task_label_definition_updated=تم تحديث تعريف ا
 InternalTaskMentionsRemoved=أزيلت بعض الإشارات المحفوظة لأن هؤلاء المستخدمين لم يعد مسموحًا لهم بالوصول إلى المهمة.
 InternalTaskChecklistCounter=قائمة التحقق: اكتمل __DONE__ من __TOTAL__
 InternalTaskCommentCounter=التعليقات: __COUNT__
+
+PublicCataloguePdf=ملف الكتالوج وسجل طلبات التحميل
+PublicPdfBackToEnquiry=العودة إلى الاستفسار
+PublicPdfNotAvailable=لم يتم تجهيز ملف لهذا الاستفسار.
+PublicPdfCreated=تاريخ الإنشاء
+PublicPdfDownloadRequests=طلبات التحميل
+PublicPdfLastRequest=آخر طلب تحميل
+PublicPdfProspectMatch=مطابقة العميل المحتمل
+PublicPdfCustomerCopyHelp=نسخة العميل المعروضة. بيانات المنتجات المسجلة في الاستفسار هي المرجع التجاري. طلب التحميل لا يؤكد حفظ الملف أو فتحه.
+PublicPdfDownloadCopy=تحميل نسخة العميل
+PublicPdfOpenProspect=فتح العميل المرتبط
