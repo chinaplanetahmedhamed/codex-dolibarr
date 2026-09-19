@@ -154,7 +154,7 @@ try {
     m003Assert(strpos($card, "define('CSRFCHECK_WITH_TOKEN', 1)") !== false && strpos($card, '$is_post') !== false, 'shipment state changes require POST and framework CSRF');
     m003Assert(strpos($card, "array('create', 'edit', 'confirm_delete')") !== false && strpos($card, 'csrfRequestMethod') !== false && strpos($card, "!== 'GET'") !== false, 'shipment read-only GET forms remain reachable while mutations require framework CSRF');
     m003Assert(strpos($card, "hasRight('chinaplanetlogistics', 'delete')") !== false, 'shipment deletion checks dedicated delete right');
-    m003Assert(strpos($documents, "define('CSRFCHECK_WITH_TOKEN', 1)") !== false && strpos($documents, "array('upload', 'rename', 'deletefile')") !== false, 'document mutations require POST and framework CSRF');
+    m003Assert(strpos($documents, "define('CSRFCHECK_WITH_TOKEN', 1)") !== false && preg_match("/in_array\\(\\\$action, array\\(\s*'upload',\s*'rename',\s*'deletefile'[^)]*\\), true\\) && !\\\$is_post/", $documents) === 1, 'document mutations require POST and framework CSRF');
     m003Assert(substr_count($documents, 't.entity=') >= 2 && strpos($download, 'cpcc_portal_authorized_shipment') !== false, 'document list and direct download enforce entity and shipment authorization');
     m003Assert(strpos($download, "if (!empty(\$scope['is_external'])) accessforbidden();") !== false, 'legacy files without customer-visibility evidence are denied externally');
     m003Assert(substr_count($object, 'AND entity = ".$this->activeEntity()') >= 2 && strpos($object, 'WHERE entity=".$this->activeEntity()') !== false, 'Logistics fetch/update/delete include active entity');
