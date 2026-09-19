@@ -701,3 +701,14 @@ QcStagePublished=تم النشر
 QcStepDone=مكتمل
 QcStepCurrent=قيد التنفيذ
 QcStepPending=قيد الانتظار
+
+PublicCataloguePdf=ملف الكتالوج وسجل طلبات التحميل
+PublicPdfBackToEnquiry=العودة إلى الاستفسار
+PublicPdfNotAvailable=لم يتم تجهيز ملف لهذا الاستفسار.
+PublicPdfCreated=تاريخ الإنشاء
+PublicPdfDownloadRequests=طلبات التحميل
+PublicPdfLastRequest=آخر طلب تحميل
+PublicPdfProspectMatch=مطابقة العميل المحتمل
+PublicPdfCustomerCopyHelp=نسخة العميل المعروضة. بيانات المنتجات المسجلة في الاستفسار هي المرجع التجاري. طلب التحميل لا يؤكد حفظ الملف أو فتحه.
+PublicPdfDownloadCopy=تحميل نسخة العميل
+PublicPdfOpenProspect=فتح العميل المرتبط

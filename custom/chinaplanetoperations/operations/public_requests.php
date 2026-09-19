@@ -271,6 +271,7 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
 
   <?php if($selected){ ?>
   <section class="cpo-form-section cpo-request-detail">
+    <p><a class="button" href="request_pdf.php?id=<?php echo (int)$selected['rowid']; ?>"><?php echo $langs->trans('PublicCataloguePdf'); ?></a></p>
     <header class="cpo-request-detail-head">
       <div>
         <span class="cpo-request-eyebrow"><?php echo $langs->trans('PublicRequestOverview'); ?></span>
