@@ -708,3 +708,14 @@ QcStagePublished=Published
 QcStepDone=Done
 QcStepCurrent=In Progress
 QcStepPending=Pending
+
+PublicCataloguePdf=Catalogue PDF and download activity
+PublicPdfBackToEnquiry=Back to enquiry
+PublicPdfNotAvailable=No PDF has been prepared for this enquiry.
+PublicPdfCreated=Created
+PublicPdfDownloadRequests=Download requests
+PublicPdfLastRequest=Last download request
+PublicPdfProspectMatch=Prospect matching
+PublicPdfCustomerCopyHelp=Customer-rendered copy. Use the enquiry product snapshot for verified commercial data. Download requests do not prove the file was saved or opened.
+PublicPdfDownloadCopy=Download customer copy
+PublicPdfOpenProspect=Open suggested prospect/customer

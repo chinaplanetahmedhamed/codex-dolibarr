@@ -257,6 +257,7 @@ llxHeader('', $langs->trans('PublicWebsiteRequests'), '', '', 0, 0, array(), $mo
 cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests'), $langs->trans('PublicWebsiteRequestsHelp'), 'fa-inbox');
 ?>
 <div class="cpo-public-requests">
+  <?php if (!$selected) { ?>
   <section class="cpo-panel cpo-request-filter-panel">
     <form method="get"><div class="cpo-filters">
       <label class="cpo-field"><span><?php echo $langs->trans('Status'); ?></span><select name="status"><option value=""><?php echo $langs->trans('All'); ?></option><?php foreach(PublicWebsiteRequestService::statuses() as $value){ ?><option value="<?php echo $value; ?>"<?php echo $status===$value?' selected':''; ?>><?php echo dol_escape_htmltag($value); ?></option><?php } ?></select></label>
@@ -268,9 +269,13 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
   <div class="div-table-responsive cpo-request-table-wrap"><table class="liste centpercent"><thead><tr><th><?php echo $langs->trans('Ref'); ?></th><th><?php echo $langs->trans('RequestType'); ?></th><th><?php echo $langs->trans('Contact'); ?></th><th><?php echo $langs->trans('Status'); ?></th><th><?php echo $langs->trans('Date'); ?></th></tr></thead><tbody>
   <?php foreach($rows as $row){ ?><tr<?php echo $id === (int) $row['rowid'] ? ' class="cpo-selected-row"' : ''; ?>><td><a href="?id=<?php echo (int) $row['rowid']; ?>"><?php echo dol_escape_htmltag($row['ref']); ?></a></td><td><?php echo dol_escape_htmltag($row['request_type']); ?></td><td><?php echo dol_escape_htmltag($row['contact_name'].($row['company_name']?' · '.$row['company_name']:'')); ?></td><td><span class="cpo-request-status"><?php echo dol_escape_htmltag($row['status']); ?></span></td><td><?php echo dol_escape_htmltag($row['date_creation']); ?></td></tr><?php } ?>
   </tbody></table></div>
+  <?php } else { ?>
+  <p><a class="cpo-request-back" href="public_requests.php"><?php echo $langs->trans('BackToList'); ?></a></p>
+  <?php } ?>
 
   <?php if($selected){ ?>
   <section class="cpo-form-section cpo-request-detail">
+    <p><a class="button" href="request_pdf.php?id=<?php echo (int)$selected['rowid']; ?>"><?php echo $langs->trans('PublicCataloguePdf'); ?></a></p>
     <header class="cpo-request-detail-head">
       <div>
         <span class="cpo-request-eyebrow"><?php echo $langs->trans('PublicRequestOverview'); ?></span>
