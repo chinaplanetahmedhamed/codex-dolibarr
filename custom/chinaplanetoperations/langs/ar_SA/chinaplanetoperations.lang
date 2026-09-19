@@ -711,4 +711,4 @@ PublicPdfLastRequest=آخر طلب تحميل
 PublicPdfProspectMatch=مطابقة العميل المحتمل
 PublicPdfCustomerCopyHelp=نسخة العميل المعروضة. بيانات المنتجات المسجلة في الاستفسار هي المرجع التجاري. طلب التحميل لا يؤكد حفظ الملف أو فتحه.
 PublicPdfDownloadCopy=تحميل نسخة العميل
-PublicPdfOpenProspect=فتح العميل المرتبط
+PublicPdfOpenProspect=فتح العميل المحتمل المقترح

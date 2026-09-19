@@ -33,10 +33,12 @@ class PublicWebsiteRequestService
     private $entity;
     private $hmacKey;
     private $rates;
+    private $allowPhoneOnlyCatalog;
 
-    public function __construct($db, $entity = null, $hmacKey = null, $rateService = null)
+    public function __construct($db, $entity = null, $hmacKey = null, $rateService = null, $allowPhoneOnlyCatalog = false)
     {
         $this->db = $db;
+        $this->allowPhoneOnlyCatalog = $allowPhoneOnlyCatalog === true;
         $this->entity = $entity === null ? (int) $GLOBALS['conf']->entity : (int) $entity;
         $configured = $hmacKey === null ? (string) getenv('CHINAPLANET_PUBLIC_REQUEST_HMAC_KEY') : (string) $hmacKey;
         if ($hmacKey === null && strlen($configured) < 32 && function_exists('getDolGlobalString')) {
@@ -198,7 +200,11 @@ class PublicWebsiteRequestService
         $sql = "UPDATE ".MAIN_DB_PREFIX."cpo_public_request SET contact_name='Anonymized',company_name=NULL,phone=NULL,email=NULL,country_code=NULL,party_json=NULL,contact_hmac=".$this->q(hash_hmac('sha256', 'anonymized', $this->hmacKey)).",fk_user_modif=".(int) $userId.",date_anonymized=".$this->q($this->now()).",date_modification=".$this->q($this->now())." WHERE entity=".$this->entity." AND status IN ('converted','disqualified','closed') AND date_anonymized IS NULL AND date_creation<DATE_SUB(NOW(),INTERVAL ".self::RETENTION_DAYS." DAY)";
         $res = $this->db->query($sql);
         if (!$res) throw new RuntimeException($this->db->lasterror());
-        return $this->db->affected_rows($res);
+        $count = $this->db->affected_rows($res);
+        // Retry cleanup for previously anonymized rows as well after interrupted runs.
+        require_once __DIR__.'/PublicRequestPdfService.class.php';
+        (new PublicRequestPdfService($this->db,$this->entity))->purgeAnonymizedCopies();
+        return $count;
     }
 
     private function normalize(array $input)
@@ -217,7 +223,7 @@ class PublicWebsiteRequestService
         );
         if ($contact['name'] === '' || ($contact['phone'] === '' && !filter_var($contact['email'], FILTER_VALIDATE_EMAIL))) throw new PublicWebsiteRequestException('invalid_contact', 422);
         if ($contact['email'] !== '' && !filter_var($contact['email'], FILTER_VALIDATE_EMAIL)) throw new PublicWebsiteRequestException('invalid_contact', 422);
-        if ($schemaVersion === self::CATALOG_CONTRACT_VERSION && (strlen($contact['name']) < 2 || strlen(preg_replace('/\D+/', '', $contact['phone'])) < 6 || !filter_var($contact['email'], FILTER_VALIDATE_EMAIL) || !$this->validCountryCode($contact['country_code']))) throw new PublicWebsiteRequestException('invalid_contact', 422);
+        if ($schemaVersion === self::CATALOG_CONTRACT_VERSION && (strlen($contact['name']) < 2 || strlen(preg_replace('/\D+/', '', $contact['phone'])) < 6 || ((!$this->allowPhoneOnlyCatalog || $contact['email'] !== '') && !filter_var($contact['email'], FILTER_VALIDATE_EMAIL)) || !$this->validCountryCode($contact['country_code']))) throw new PublicWebsiteRequestException('invalid_contact', 422);
         $detailsInput = isset($input['details']) && is_array($input['details']) ? $input['details'] : array();
         $details = $this->normalizeDetails($type, $detailsInput, $schemaVersion);
         $locale = strtolower($this->clean($input['locale'] ?? 'ar', 12));

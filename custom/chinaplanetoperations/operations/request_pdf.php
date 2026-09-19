@@ -26,7 +26,8 @@ else {
     foreach(array('PublicPdfCreated'=>$meta['created_at'],'Status'=>$meta['status'],'PublicPdfDownloadRequests'=>$meta['download_requests'],'PublicPdfLastRequest'=>$meta['last_download_requested_at'] ?: '—','PublicPdfProspectMatch'=>$meta['prospect_match'],'SHA-256'=>$meta['sha256'] ?: '—') as $label=>$value) print '<tr><td>'.dol_escape_htmltag($langs->trans($label)).'</td><td>'.dol_escape_htmltag((string)$value).'</td></tr>';
     print '</table><p>'.$langs->trans('PublicPdfCustomerCopyHelp').'</p>';
     if ($meta['status']==='archived') print '<a class="butAction" href="?id='.(int)$id.'&amp;download=yes">'.$langs->trans('PublicPdfDownloadCopy').'</a>';
-    if (!empty($record['request']['fk_soc'])) print '<p><a href="'.DOL_URL_ROOT.'/societe/card.php?socid='.(int)$record['request']['fk_soc'].'">'.$langs->trans('PublicPdfOpenProspect').'</a></p>';
+    $linkedSoc=(int)($record['request']['fk_soc'] ?: ($meta['suggested_socid'] ?? 0));
+    if ($linkedSoc) print '<p><a href="'.DOL_URL_ROOT.'/societe/card.php?socid='.$linkedSoc.'">'.$langs->trans('PublicPdfOpenProspect').'</a></p>';
     print '</div>';
 }
 llxFooter();$db->close();

@@ -718,4 +718,4 @@ PublicPdfLastRequest=Last download request
 PublicPdfProspectMatch=Prospect matching
 PublicPdfCustomerCopyHelp=Customer-rendered copy. Use the enquiry product snapshot for verified commercial data. Download requests do not prove the file was saved or opened.
 PublicPdfDownloadCopy=Download customer copy
-PublicPdfOpenProspect=Open linked prospect/customer
+PublicPdfOpenProspect=Open suggested prospect/customer

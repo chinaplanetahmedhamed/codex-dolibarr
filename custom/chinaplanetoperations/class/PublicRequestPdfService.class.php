@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/PublicWebsiteRequestService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
+require_once DOL_DOCUMENT_ROOT.'/contact/class/contact.class.php';
 
 /** Private, immutable customer PDF copies. No publication or customer login is granted. */
 class PublicRequestPdfService
@@ -28,16 +29,18 @@ class PublicRequestPdfService
         $input['contact']['phone'] = $phone;
         // One lock per entity serializes prospect matching and duplicate request preparation.
         return $this->locked('prepare', function() use ($input,$user) {
-            $intake = new PublicWebsiteRequestService($this->db,$this->entity,$this->key);
+            $intake = new PublicWebsiteRequestService($this->db,$this->entity,$this->key,null,true);
             $result = $intake->create($input,$user);
             $row = $intake->get($result['id']);
             if (!$row || !empty($row['date_anonymized'])) $this->fail('request_not_found',404);
             $ref = $row['ref'];
             return $this->locked($ref, function() use ($row,$ref,$result,$input,$user) {
+                $live=$this->byReference($ref);
+                if (!$live || !empty($live['date_anonymized'])) $this->fail('request_not_found',404);
                 $meta = $this->metadata($ref);
                 if (!$meta) {
                     $link = $this->linkProspect($row,$user);
-                    $meta = array('reference'=>$ref,'created_at'=>gmdate('c'),'status'=>'awaiting_pdf','sha256'=>null,'bytes'=>0,'download_requests'=>0,'last_download_requested_at'=>null,'prospect_match'=>$link,'source'=>'catalogue_pdf','document_kind'=>'customer_rendered_copy');
+                    $meta = array('reference'=>$ref,'created_at'=>gmdate('c'),'status'=>'awaiting_pdf','sha256'=>null,'bytes'=>0,'download_requests'=>0,'last_download_requested_at'=>null,'prospect_match'=>$link['status'],'suggested_socid'=>$link['socid'],'source'=>'catalogue_pdf','document_kind'=>'customer_rendered_copy');
                     $this->write($this->directory($ref).'/snapshot.json', json_encode($input,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
                     $this->saveMetadata($ref,$meta);
                 }
@@ -56,6 +59,8 @@ class PublicRequestPdfService
         $row = $this->byReference($ref);
         if (!$row || !empty($row['date_anonymized'])) $this->fail('request_not_found',404);
         return $this->locked($ref,function() use ($ref,$input,$user) {
+            $live=$this->byReference($ref);
+            if (!$live || !empty($live['date_anonymized'])) $this->fail('request_not_found',404);
             $meta = $this->metadata($ref);
             if (!$meta) $this->fail('pdf_not_prepared',409);
             $path = $this->directory($ref).'/order.pdf';
@@ -80,6 +85,23 @@ class PublicRequestPdfService
             return array('reference'=>$ref,'sha256'=>$meta['sha256'],'pdf'=>base64_encode($bytes));
         });
     }
+    /** Follow the existing enquiry retention decision; retain native CRM parties separately. */
+    public function purgeAnonymizedCopies()
+    {
+        $res=$this->db->query("SELECT ref FROM ".MAIN_DB_PREFIX."cpo_public_request WHERE entity=".$this->entity." AND date_anonymized IS NOT NULL AND integration_source='chinaplanet-main-website' AND request_type='catalog_order'");
+        if (!$res) $this->fail('pdf_storage_unavailable',503);
+        while ($row=$this->db->fetch_array($res)) {
+            $ref=$row['ref'];$directory=$this->directory($ref);
+            if (!is_dir($directory)) continue;
+            $this->locked($ref,function() use ($directory) {
+                if (is_link($directory)) $this->fail('pdf_storage_unavailable',503);
+                foreach(array('order.pdf','snapshot.json','metadata.json','events.ndjson') as $name) {
+                    $path=$directory.'/'.$name;
+                    if (is_link($path) || (file_exists($path) && (!is_file($path) || !unlink($path)))) $this->fail('pdf_storage_unavailable',503);
+                }
+            });
+        }
+    }
     public function staffRecord($id)
     {
         $row=(new PublicWebsiteRequestService($this->db,$this->entity,$this->key))->get($id);
@@ -102,7 +124,7 @@ class PublicRequestPdfService
     }
     private function linkProspect(array $row,$user)
     {
-        if (!empty($row['fk_soc'])) return 'linked';
+        if (!empty($row['fk_soc'])) return array('status'=>'staff_linked','socid'=>(int)$row['fk_soc']);
         // Matching only links internal records. It never authenticates a visitor or exposes a match.
         $phone=preg_replace('/\D/','',$row['phone']);$email=strtolower(trim($row['email'] ?? ''));
         $conditions=array();
@@ -115,7 +137,7 @@ class PublicRequestPdfService
         $res=$this->db->query("SELECT DISTINCT s.rowid FROM ".MAIN_DB_PREFIX."societe s LEFT JOIN ".MAIN_DB_PREFIX."socpeople sp ON sp.fk_soc=s.rowid AND sp.statut=1 WHERE s.entity=".$this->entity." AND s.status=1 AND (".implode(' OR ',$conditions).") LIMIT 3");
         if (!$res) $this->fail('prospect_unavailable',503);
         $matches=array();while($obj=$this->db->fetch_object($res))$matches[]=(int)$obj->rowid;
-        if (count($matches)>1) return 'ambiguous_staff_review';
+        if (count($matches)>1) return array('status'=>'ambiguous_staff_review','socid'=>0);
         $this->db->begin();
         try {
             if ($matches) { $socid=$matches[0];$state='existing'; }
@@ -128,9 +150,16 @@ class PublicRequestPdfService
                 $soc->note_private='Unverified website prospect from PDF enquiry '.$row['ref'].'. Staff review required.';
                 // No outgoing notifications or automatic downstream workflows on anonymous intake.
                 $socid=$soc->create($user,1);if($socid<=0)$this->fail('prospect_unavailable',503);$state='new_prospect';
+                $contact=new Contact($this->db);$contact->socid=(int)$socid;
+                $contact->lastname=$row['contact_name'];$contact->email=$email;$contact->phone_pro=$row['phone'];$contact->statut=1;
+                if($contact->create($user,1)<=0)$this->fail('prospect_contact_unavailable',503);
             }
-            if (!$this->db->query("UPDATE ".MAIN_DB_PREFIX."cpo_public_request SET fk_soc=".(int)$socid." WHERE entity=".$this->entity." AND rowid=".(int)$row['rowid']." AND fk_soc IS NULL")) $this->fail('prospect_unavailable',503);
-            $this->db->commit();return $state;
+            // Anonymous identity is a suggestion, never a completed staff qualification.
+            // Keeping fk_soc/fk_socpeople empty preserves the native V2 review and quote gates.
+            $event=json_encode(array('socid'=>(int)$socid,'match_method'=>$state),JSON_UNESCAPED_SLASHES);
+            $sql="INSERT INTO ".MAIN_DB_PREFIX."cpo_public_request_event(entity,fk_request,event_type,state_from,state_to,metadata_json,customer_visible,fk_user_creat,date_creation) VALUES(".$this->entity.",".(int)$row['rowid'].",'pdf_prospect_suggested','received','received','".$this->db->escape($event)."',0,".(int)$user->id.",'".$this->db->idate(dol_now())."')";
+            if(!$this->db->query($sql))$this->fail('prospect_unavailable',503);
+            $this->db->commit();return array('status'=>$state,'socid'=>(int)$socid);
         } catch(Throwable $e) { $this->db->rollback();throw $e; }
     }
     private function byReference($ref)

@@ -1,24 +1,33 @@
 # Customer PDF enquiry capture — M085
 
-Status: local implementation verified; ERP runtime baseline and coordinated release pending.
+Status: exact deployed baseline matched; corrected local acceptance passed; staging installation and runtime acceptance pending. No live website or ERP application change has been made.
 
-## Behavior
-Customers browse and calculate freely. Download focuses the contact form; name, international WhatsApp, destination and privacy consent are required, email/company optional. Submission recalculates the catalogue snapshot on the server, prepares a Dolibarr enquiry/prospect, renders the existing approved pages, and archives a raster-only PDF before requesting its download. The customer and ERP receive the same bytes. No confirmed order, invoice, account or outgoing email is created.
+## Customer and staff workflow
+Customers browse and calculate freely. Download focuses the contact form; name, international WhatsApp, destination and privacy consent are required, email/company optional. Submission recalculates the catalogue snapshot on the server, prepares a Dolibarr enquiry/prospect, renders the approved pages, and archives a raster-only PDF before requesting download. The customer and ERP receive identical bytes. No confirmed order, invoice, account or outgoing email is created.
 
-An in-session receipt survives reload and failed image/upload/download attempts. Identical retries reuse their request and immutable document; quantity/contact/container/language changes get a fresh reference. Activity means download_requested, not proof of saving/opening the file. File capabilities expire after seven days, grant no other record access, and are transmitted only in POST bodies. Private ERP documents remain subject to staff/entity authorization.
+Native prospect/contact creation is a suggestion, recorded privately. The enquiry remains new/received with no fk_soc or fk_socpeople until staff qualify it through the existing V2 workflow. Ambiguous matches remain unresolved. Existing CRM records are not overwritten; ordinary V2 intake still requires email. No Customer Center/mobile publication occurs.
 
-## Architecture
-React → same-origin Node → restricted Dolibarr intake. Existing CMS signed plan validation is reused. Browser sends only JPEG page renders; Node creates the PDF, so arbitrary PDF scripts/attachments are not accepted. The authoritative server product snapshot is stored separately from the customer-rendered copy. 6 MB file / 60-page caps, same-origin checks, rate limits, no-store responses and bounded payloads apply. No browser ERP credential, supplier/cost data, public attachment URL or database migration.
+The session receipt survives reload and failed image/upload/download attempts. Retries reuse the request and immutable document; changed selection/contact/container/language creates a fresh reference. Activity is download_requested, not proof of opening/saving. Capabilities expire after seven days; renewal preserves the original request key and consent timestamp. Consent older than30days requires a fresh explicit choice. The existing enquiry anonymizer also purges the four new private artifacts, including retry cleanup of previously anonymized rows.
 
-## Verified locally, 2026-09-19
-- Lint, 79 server tests, 75 UI/unit tests and production build passed.
-- Eight browser cases passed: AR/EN/FR desktop/phone; nine-page large order with long names/incomplete packing; failed-image retry and stale quantity guard.
-- Native Dolibarr 23.0.3 / PHP 8.4 isolated database: real API submission, native prospect, persisted enquiry and protected attachment. Downloaded PDF equals staff-downloaded ERP copy; reload persists.
-- Real browser error cases: image failure, archive succeeded but download response failed, retry, reload, changed-quantity new reference.
-- Native negative tests: wrong capability, cross entity, traversal, anonymized request and pre-archive download denied; immutable archive resubmission retains original bytes. Customer and no-access staff UI cannot read the attachment.
-- No live enquiry or production business data was written. CMS calculation/catalog responses were fixtures for native local end-to-end tests; public product photos were real.
+## Exact runtime compatibility
+Ahmed supplied read-only staging and production fingerprints on2026-09-19. All eight baseline files match source1f4e2dbdc49e813bf0c268d8f9461ad04711b426 on codex/m074-qc-field-report-composite. New worktree codex/m085-pdf-v2 preserves that cumulative baseline; the older main-based PR50 is superseded and must not deploy. Lifecycle/quotation source is unchanged.
 
-## Release dependency / boundary
-Do not merge/deploy this caller before the ERP receiver is ready. Production ERP is cumulatively deployed and its checked-out main branch is not a complete runtime manifest. An unmerged M068/M074 receiver variant enforces required email and reviewed contact qualification. Its current presence must be determined before release; if present, the candidate needs a bounded compatibility correction and repeat native acceptance. Do not overwrite its intake/lifecycle/UI with older main files. A reviewed read-only baseline script is included in the ERP branch. Current restricted SSH sudo surface contains no M085 release helper.
+Staging PHP8.2.32 allows22M POST; production PHP8.2.7 allows8M. The6,000,000bytePDF becomes8,000,000base64characters plus a small fixed JSON envelope, within8MiB. The gateway permits up to16,010,000 response bytes to accommodate Restler slash-escaped JSON, while decodedPDF remains capped at6MB. Other ERP response limits are unchanged.
 
-Rollback website first, then only the accepted scoped ERP changes. Preserve all new enquiry/prospect/document records. Customer Center/mobile publication contracts, product prices, variants and packing remain unchanged.
+## Acceptance evidence
+-157 application tests:80server and77UI/unit; lint and production build pass.
+-Updated native Dolibarr23.0.3/PHP8.4 isolated database exercises strictV2, optionalemail only dedicated receiver, native prospect/contact, staff qualification, idempotency/newversion, immutable archive/hash, denied tokens/entities/traversal/anonymized requests, and physical artifact cleanup.
+-English desktop and Arabicphone browser submissions preserve identical customer/staffPDFs, reload and repeat download. Staff/noaccess/externalcustomer permission cases verified. Native references WEB-20260919-121338-BF476A and WEB-20260919-121413-0520C5.
+-Image failure, successful archive followed by failed download, retry/reload and quantityversion tests pass. Earlier eight browser PDF layout cases cover AR/EN/FR desktop/phone and9page largeorder; reviewed visually.
+-Independent Security and QA reviews identified and verified correction of retention, expiry and max-response edges. Separate staging release review covers descriptor-based file IO, disabled redirects and unhealthy-container rollback recovery.
+-Local evidence is under /Users/mac/Documents/wordpress/outputs/b2b-pdf-leads. CMS catalogue/plan responses are synthetic; native ERP persistence, sessions and actual photo requests are real. These are not staging/production acceptance.
+
+## Release procedure and limits
+Fixed staging-only helper embeds eight committed candidate files and expected predecessor hashes; unchanged APIshim/lifecycle/quotation hashes are prerequisites. It refuses drift, unexpected resources, symlinks and replay. No migrations, module configuration, container restarts, proxy/DNS changes, document/business-data writes are performed by deployment. It verifies existing V2 schema and HMAC readiness without printing values.
+
+Root installation grants only preflight/apply/verify/rollback/status for this immutable staging candidate. It does not apply code. Apply backs up scoped code with ownership/mode and hashes, atomically writes it, and restores on failed checks. Interrupted APPLYING state can be rolled back. Recovery retains all business records and documents. Newly needed French language directory may remain empty after rollback. Synthetic release tests cover drift, replay, corrupt backup, failure rollback, interrupted recovery, symlinks and directory-swap safety.
+
+The restricted account has noM085helper; a checksum-verified root installation is required before autonomous staging execution. No generic/root/Docker privileges are granted. ERP receiver must pass staging/native UI acceptance before the website caller is merged/deployed. Production promotion remains a separate final gate after staging; rollback website first, then only scoped ERP code. All products/prices/variants/packing remain unchanged.
+
+## Final local review closure
+Independent Security/DevOps source review: PASS; independent QA/customer workflow review: PASS. Ten deployment fault tests pass. Expired-success browser recovery preserved native enquiry WEB-20260919-122445-6F3F24. Initial local attempt hit bundled Node24.19 undici assertion; rerun under Node23.11 passed. Node22/PHP8.2 staging acceptance remains explicitly pending. Root installer must execute a SHA-verified copy in a fresh root-owned0700directory using Python isolated mode, never execute the mutable upload directly.
