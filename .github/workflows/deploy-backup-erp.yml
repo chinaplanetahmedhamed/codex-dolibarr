@@ -11,6 +11,7 @@ on:
           - m043-c02
           - m045-r01
           - m085-r01
+          - m085-ref-r01
         default: m043-c02
       confirmation:
         description: Type the exact confirmation for the selected release
@@ -321,6 +322,62 @@ jobs:
         run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
 
       - name: Apply the embedded eight-file release with backup
+        id: apply
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply"
+
+      - name: Verify staging receiver
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify"
+
+      - name: Restore prior code if post-apply verification fails
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER rollback"
+
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  deploy-m085-ref:
+    if: ${{ inputs.release == 'm085-ref-r01' }}
+    name: Deploy one-file M085 enquiry navigation correction to staging
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 15
+    env:
+      DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-m085-ref-staging
+      HELPER_SHA: 971c9276c2223c12319356f3229fd9efba487f099804e4b1a6dc916ca5de067d
+    steps:
+      - name: Require the exact M085 staging request
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m085-pdf-v2'
+          test "$CONFIRMATION" = 'DEPLOY_M085_REF_R01_TO_BACKUP_ERP'
+
+      - name: Configure existing restricted staging SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Verify the immutable installed helper
+        run: |
+          set -Eeuo pipefail
+          identity=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$DEPLOY_HELPER'")
+          test "${identity%% *}" = "$HELPER_SHA"
+          owner=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "stat -c '%u:%g:%a:%F' '$DEPLOY_HELPER'")
+          test "$owner" = '0:0:755:regular file'
+
+      - name: Preflight staging without application writes
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
+
+      - name: Apply the embedded one-file correction with backup
         id: apply
         run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply"
 
