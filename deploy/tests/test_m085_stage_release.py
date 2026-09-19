@@ -71,6 +71,21 @@ class ReleaseTest(unittest.TestCase):
   with patch.object(m,'command',return_value=raw):
    with self.assertRaisesRegex(RuntimeError,'CONTAINER_NOT_HEALTHY'):m.inspect(m.CONTAINER)
    self.assertEqual(m.inspect(m.CONTAINER,False),([],{}))
+ def test_exact_volume_owner_and_mode(self):
+  from types import SimpleNamespace
+  path=self.root/'ownership-check';path.mkdir()
+  with patch.object(Path,'lstat',return_value=SimpleNamespace(st_uid=33,st_gid=33,st_mode=0o40755)):
+   m.check_directory(path,33,33,0o755)
+   with self.assertRaisesRegex(RuntimeError,'DIRECTORY_OWNERSHIP_MISMATCH'):m.check_directory(path,0,0,0o755)
+  for info in [SimpleNamespace(st_uid=33,st_gid=33,st_mode=0o40777),SimpleNamespace(st_uid=33,st_gid=0,st_mode=0o40755),SimpleNamespace(st_uid=33,st_gid=33,st_mode=0o120755)]:
+   with patch.object(Path,'lstat',return_value=info):
+    with self.assertRaisesRegex(RuntimeError,'DIRECTORY_OWNERSHIP_MISMATCH'):m.check_directory(path,33,33,0o755)
+ def test_exact_state_owner_and_mode(self):
+  from types import SimpleNamespace
+  with patch.object(Path,'lstat',return_value=SimpleNamespace(st_uid=0,st_gid=0,st_mode=0o40700)):
+   m.check_directory(m.STATE,0,0,0o700)
+  with patch.object(Path,'lstat',return_value=SimpleNamespace(st_uid=0,st_gid=0,st_mode=0o40755)):
+   with self.assertRaisesRegex(RuntimeError,'DIRECTORY_OWNERSHIP_MISMATCH'):m.check_directory(m.STATE,0,0,0o700)
  def test_replay_refused(self):
   self.run_action('apply')
   with self.assertRaisesRegex(RuntimeError,'REPLAY_REFUSED'):self.run_action('apply')

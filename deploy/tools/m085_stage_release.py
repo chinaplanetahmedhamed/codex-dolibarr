@@ -7,6 +7,8 @@ import fcntl
 import hashlib
 import json
 import os
+import pwd
+import grp
 import secrets
 from pathlib import Path
 import shutil
@@ -136,6 +138,12 @@ def php(code):
     return command([DOCKER, 'exec', '-i', '--user', 'www-data', CONTAINER, 'php', '-d', 'display_errors=0', '-r', code])
 
 
+def check_directory(path,uid,gid,mode):
+    info=path.lstat()
+    if not stat.S_ISDIR(info.st_mode) or (info.st_uid,info.st_gid,stat.S_IMODE(info.st_mode)) != (uid,gid,mode):
+        fail('DIRECTORY_OWNERSHIP_MISMATCH:'+path.name)
+
+
 def environment(require_healthy=True):
     mounts, ports = inspect(CONTAINER,require_healthy)
     matches = [m for m in mounts if m.get('Destination') == '/var/www/html/custom']
@@ -146,9 +154,12 @@ def environment(require_healthy=True):
     _, mailports = inspect('erp-staging-mailpit-1',require_healthy)
     if mailports.get('1025/tcp') != [{'HostIp':'127.0.0.1','HostPort':'11025'}] or mailports.get('8025/tcp') != [{'HostIp':'127.0.0.1','HostPort':'18025'}]:
         fail('MAILPIT_PORT_MISMATCH')
-    for path in (ROOT.parent, STATE):
-        if path.is_symlink() or not path.is_dir() or path.stat().st_uid != 0 or path.stat().st_mode & 0o022:
-            fail('ROOT_OWNERSHIP_MISMATCH')
+    # Root stat supplied by Ahmed: application volume www-data:www-data 0755;
+    # private deployment state root:root 0700. Neither directory is mutated here.
+    web_uid=pwd.getpwnam('www-data').pw_uid
+    web_gid=grp.getgrnam('www-data').gr_gid
+    check_directory(ROOT.parent,web_uid,web_gid,0o755)
+    check_directory(STATE,0,0,0o700)
     if shutil.disk_usage(ROOT).free < 100_000_000:
         fail('INSUFFICIENT_SPACE')
     if php('echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;').decode() != '8.2':
