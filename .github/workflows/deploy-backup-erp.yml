@@ -1,10 +1,10 @@
-name: Deploy pinned release to backup-erp
+name: Deploy pinned ERP release
 
 on:
   workflow_dispatch:
     inputs:
       release:
-        description: Approved staging release
+        description: Approved release; production requires its exact confirmation
         required: true
         type: choice
         options:
@@ -12,6 +12,7 @@ on:
           - m045-r01
           - m085-r01
           - m085-ref-r01
+          - m085-production-p01
         default: m043-c02
       confirmation:
         description: Type the exact confirmation for the selected release
@@ -382,6 +383,62 @@ jobs:
         run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply"
 
       - name: Verify staging receiver
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify"
+
+      - name: Restore prior code if post-apply verification fails
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER rollback"
+
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  deploy-m085-production:
+    if: ${{ inputs.release == 'm085-production-p01' }}
+    name: Deploy staging-accepted M085 PDF and enquiry navigation to production
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    env:
+      DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-m085-production
+      HELPER_SHA: 2ee4df2182edb27c650239aa18b73e076af40fbc1f965a720ef0e21fa5e4a059
+    steps:
+      - name: Require the exact M085 production request
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = 'refs/heads/codex/m085-pdf-v2'
+          test "$CONFIRMATION" = 'DEPLOY_M085_P01_TO_PRODUCTION'
+
+      - name: Configure existing restricted production SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+      - name: Verify the immutable installed helper
+        run: |
+          set -Eeuo pipefail
+          identity=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum '$DEPLOY_HELPER'")
+          test "${identity%% *}" = "$HELPER_SHA"
+          owner=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "stat -c '%u:%g:%a:%F' '$DEPLOY_HELPER'")
+          test "$owner" = '0:0:755:regular file'
+
+      - name: Preflight production and require exact staged candidate without application writes
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
+
+      - name: Apply the embedded eight-file production release with backup
+        id: apply
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply"
+
+      - name: Verify production receiver
         run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify"
 
       - name: Restore prior code if post-apply verification fails
