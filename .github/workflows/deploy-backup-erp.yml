@@ -401,7 +401,7 @@ jobs:
     timeout-minutes: 15
     env:
       DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-m085-production
-      HELPER_SHA: 2ee4df2182edb27c650239aa18b73e076af40fbc1f965a720ef0e21fa5e4a059
+      HELPER_SHA: c34e2562d154df2ba44592e182609e74efb0984ac8506589a6a55f8df867da58
     steps:
       - name: Require the exact M085 production request
         env:

@@ -26,7 +26,7 @@ class IsolationTest(unittest.TestCase):
   self.assertEqual(set(payload['files']),set(builder.FILES));self.assertEqual(len(payload['files']),8)
   self.assertEqual(engine.CONTAINER,'vision_erp');self.assertEqual(engine.VOLUME,'vision-os_dolibarr_custom')
   self.assertEqual(str(engine.HELPER),'/usr/local/sbin/chinaplanetos-m085-production')
-  self.assertEqual(builder.sha(code),'2ee4df2182edb27c650239aa18b73e076af40fbc1f965a720ef0e21fa5e4a059')
+  self.assertEqual(builder.sha(code),'c34e2562d154df2ba44592e182609e74efb0984ac8506589a6a55f8df867da58')
  def test_staging_container_identity_rejected(self):
   raw=(json.dumps({'Running':True})+'|[]|{}|erp-staging').encode()
   with patch.object(engine,'command',return_value=raw):
@@ -40,9 +40,38 @@ class IsolationTest(unittest.TestCase):
   self.assertEqual(len(paths),8);self.assertTrue(all('/erp-staging_erp-staging_custom/' in p for p in paths))
   with patch.object(engine,'PAYLOAD',payload),patch.object(engine,'read',return_value=b'drift'):
    with self.assertRaisesRegex(RuntimeError,'STAGING_CANDIDATE_MISMATCH'):engine.staging_candidate()
- def test_health_is_fixed_container_localhost_and_fails_closed(self):
+ def test_health_uses_fixed_container_socket(self):
   with patch.object(engine,'php',return_value=b'M085_LOGIN_OK') as php:
-   engine.health();self.assertIn("'http://127.0.0.1/'",php.call_args.args[0]);self.assertIn("'follow_location'=>0",php.call_args.args[0])
+   engine.health();self.assertIn("fsockopen('127.0.0.1',80,",php.call_args.args[0]);self.assertNotIn('file_get_contents',php.call_args.args[0])
   with patch.object(engine,'php',return_value=b''):
    with self.assertRaisesRegex(RuntimeError,'LOGIN_HEALTH_FAILED'):engine.health()
+ def test_real_php_health_with_url_fopen_disabled(self):
+  import http.server,threading,subprocess
+  source={}
+  with patch.object(engine,'php',side_effect=lambda code:source.update(code=code) or b'M085_LOGIN_OK'):engine.health()
+  for status,body,expected in [(200,b'<title>Dolibarr</title><input type="password">',0),(302,b'Dolibarr type="password"',15),(503,b'Dolibarr type="password"',15),(200,b'Welcome',15),(200,b'x'*1000000+b'Dolibarr type="password"',15)]:
+   observed=[]
+   class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+     observed.append((self.path,self.headers.get('Host'),self.headers.get('X-Forwarded-Proto')))
+     self.send_response(status);self.end_headers()
+     try:self.wfile.write(body)
+     except (BrokenPipeError,ConnectionResetError):pass
+    def log_message(self,*args):pass
+   server=http.server.HTTPServer(('127.0.0.1',0),Handler);thread=threading.Thread(target=server.handle_request);thread.start()
+   try:
+    php=source['code'].replace("fsockopen('127.0.0.1',80,",f"fsockopen('127.0.0.1',{server.server_port},")
+    result=subprocess.run(['php','-d','allow_url_fopen=0','-r',php],capture_output=True,timeout=20)
+    self.assertEqual(result.returncode,expected,result.stderr)
+    self.assertEqual(observed,[('/', 'erp.visiontrading.biz','https')])
+    if expected==0:self.assertEqual(result.stdout,b'M085_LOGIN_OK')
+   finally:thread.join(timeout=2);server.server_close()
+ def test_health_patch_preserves_application_payload(self):
+  import ast
+  patcher=load('health_patch',ROOT/'tools/patch_m085_production_health.py')
+  previous=builder.blob('dae2205','deploy/tools/build_m085_production_release.py').decode()
+  previous_module=types.ModuleType('previous');exec(compile(previous,'previous-builder','exec'),previous_module.__dict__)
+  before,oldpayload=previous_module.build()
+  self.assertEqual(patcher.transform(before),code);self.assertEqual(oldpayload,payload)
+  with self.assertRaisesRegex(RuntimeError,'PREDECESSOR_MISMATCH'):patcher.transform(before+b'\n')
 if __name__=='__main__':unittest.main()

@@ -41,8 +41,8 @@ def build():
  start=source.index("    if ports.get('80/tcp')")
  end=source.index('    check_directory(STATE,0,0,0o700)',start)
  old=source[start:end]
- replace(old,"""    # Production HTTP health is checked inside the fixed container, not through
-    # a guessed host port. Both root and the web service are trusted volume owners.
+ replace(old,"""    # Production identity is checked against the fixed container and volume.
+    # Both root and the web service are trusted volume owners.
     info=ROOT.parent.lstat()
     owners={(0,0),(pwd.getpwnam('www-data').pw_uid,grp.getgrnam('www-data').gr_gid)}
     if not stat.S_ISDIR(info.st_mode) or (info.st_uid,info.st_gid) not in owners or stat.S_IMODE(info.st_mode)!=0o755:
@@ -51,11 +51,18 @@ def build():
  replace("PAYLOAD.get('release') != 'M085-R01'","PAYLOAD.get('release') != 'M085-P01'")
  start=source.index('def health():');end=source.index('\ndef preflight(',start)
  replace(source[start:end],'''def health():
-    # Fixed localhost within the already-validated production container. No redirect.
-    code = r\'''$ctx=stream_context_create(array('http'=>array('timeout'=>15,'follow_location'=>0)));
-$body=@file_get_contents('http://127.0.0.1/',false,$ctx);
-$status=isset($http_response_header[0])?$http_response_header[0]:'';
-if(!preg_match('~^HTTP/\\S+ 200 ~',$status)||$body===false||strpos($body,'Dolibarr')===false||strpos($body,'type="password"')===false)exit(15);
+    # Fixed loopback HTTP within the validated container. Socket IO works with
+    # allow_url_fopen disabled; no redirects, external hosts or PHP setting changes.
+    code = r\'''$socket=@fsockopen('127.0.0.1',80,$errno,$error,10);
+if(!$socket)exit(15);
+stream_set_timeout($socket,15);
+$request="GET / HTTP/1.0\\r\\nHost: erp.visiontrading.biz\\r\\nX-Forwarded-Proto: https\\r\\nConnection: close\\r\\n\\r\\n";
+if(fwrite($socket,$request)!==strlen($request)){fclose($socket);exit(15);}
+$response=stream_get_contents($socket,1000000);$meta=stream_get_meta_data($socket);fclose($socket);
+$split=$response===false?false:strpos($response,"\\r\\n\\r\\n");
+if($response===false||!empty($meta['timed_out'])||$split===false||!preg_match('~^HTTP/\\S+ 200 ~',$response))exit(15);
+$body=substr($response,$split+4);
+if(strpos($body,'Dolibarr')===false||strpos($body,'type="password"')===false)exit(15);
 echo 'M085_LOGIN_OK';\'''
     if php(code).strip()!=b'M085_LOGIN_OK':fail('LOGIN_HEALTH_FAILED')
 
