@@ -201,6 +201,7 @@ class CpccMcpCustomerAdvance extends McpTool
             global $mysoc;
             $taxes = getTaxesFromId($data['vat_rate'], $customer, $mysoc, 0);
             if (!empty($taxes['localtax1']) || !empty($taxes['localtax2'])) throw new CpccAdvanceInputException('This local-tax configuration requires the native invoice workflow.');
+            if (!empty($taxes['npr']) || !empty($taxes['code'])) throw new CpccAdvanceInputException('Coded or non-recoverable VAT requires the native invoice workflow.');
             $productId = getDolGlobalInt('INVOICE_PRODUCTID_DEPOSIT');
             if ($productId) {
                 $products = $this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'product WHERE rowid='.$productId.' AND entity='.(int) $this->conf->entity.' AND fk_product_type=1');

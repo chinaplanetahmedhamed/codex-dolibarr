@@ -58,6 +58,12 @@ foreach (array(
     'oversize reference'=>array('receipt_reference'=>str_repeat('X',51))
 ) as $label=>$changes) deniedReceipt($mcp,freshReceipt($base,$changes),$label);
 $missing=freshReceipt($base);unset($missing['vat_rate']);deniedReceipt($mcp,$missing,'VAT cannot be silently defaulted');
+foreach(array(array(47,'M088CODE',0),array(48,'',1)) as $specialTax){
+    check((bool)$db->query("INSERT INTO ".MAIN_DB_PREFIX."c_tva(fk_pays,taux,code,recuperableonly,active,entity) VALUES(115,".$specialTax[0].",'".$specialTax[1]."',".$specialTax[2].",1,1)"),'create isolated special VAT fixture');
+    $specialTaxId=$db->last_insert_id(MAIN_DB_PREFIX.'c_tva');
+    try { deniedReceipt($mcp,freshReceipt($base,array('vat_rate'=>$specialTax[0])),'unsupported coded/NPR VAT fails closed'); }
+    finally { $db->query('DELETE FROM '.MAIN_DB_PREFIX.'c_tva WHERE rowid='.(int)$specialTaxId); }
+}
 $mcp=asUser(2);deniedReceipt($mcp,freshReceipt($base),'read-denied internal user');
 check(isset($mcp->executeTool('get_customer_advance_options',array('customer_id'=>101))['error']),'read-denied options');
 $mcp=asUser(3);deniedReceipt($mcp,freshReceipt($base),'external user even with admin flag');
