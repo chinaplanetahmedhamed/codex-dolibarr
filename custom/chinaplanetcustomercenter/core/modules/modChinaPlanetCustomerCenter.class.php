@@ -12,7 +12,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 98;
         $this->description = 'ChinaPlanet Customer Center';
-        $this->version = '2.3.2';
+        $this->version = '2.5.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'project';
@@ -48,6 +48,11 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->rights[4][1] = 'Manage columns and onboarding';
         $this->rights[4][3] = 0;
         $this->rights[4][4] = 'admin';
+
+        $this->rights[5][0] = 500206;
+        $this->rights[5][1] = 'Preview and send customer section emails';
+        $this->rights[5][3] = 0;
+        $this->rights[5][4] = 'email_write';
 
         $this->menu = array();
         $r = 0;
@@ -257,6 +262,33 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             if ($result <= 0) {
                 return $result;
             }
+        }
+
+        require_once DOL_DOCUMENT_ROOT.'/core/class/extrafields.class.php';
+        $extraFields = new ExtraFields($this->db);
+        if ($extraFields->addExtraField(
+            'cpcc_public_note',
+            'Customer-visible payment note / ملاحظة دفع ظاهرة للعميل',
+            'text',
+            500,
+            '',
+            'paiement',
+            0,
+            0,
+            '',
+            '',
+            1,
+            '',
+            '1',
+            'Shown in the Customer Center. Never copy private payment notes into this field automatically.',
+            '',
+            (int) $GLOBALS['conf']->entity,
+            '',
+            '1',
+            0,
+            0
+        ) < 0) {
+            return -1;
         }
 
         return $this->_init(array(), $options);
