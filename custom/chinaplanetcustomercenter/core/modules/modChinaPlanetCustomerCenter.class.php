@@ -23,7 +23,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->phpmin = array(7, 2);
         $this->need_dolibarr_version = array(23, 0);
         $this->module_parts = array(
-            'hooks' => array('main', 'index', 'ordercard', 'shippingcard', 'projectcard'),
+            'hooks' => array('main', 'index', 'ordercard', 'shippingcard', 'projectcard', 'aimcp'),
             'triggers' => 1,
         );
         $this->rights = array();

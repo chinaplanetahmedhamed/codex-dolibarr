@@ -1,6 +1,16 @@
 <?php
 class ActionsChinaplanetcustomercenter
 {
+    public $db;
+    public $results = array();
+
+    public function addMcpTools($parameters, &$object, &$action, $hookmanager)
+    {
+        require_once __DIR__.'/../../class/mcpcustomeradvance.class.php';
+        $this->results = array('chinaplanetcustomercenter' => array(new CpccMcpCustomerAdvance($parameters['db'], $parameters['user'], $parameters['conf'])));
+        return 0;
+    }
+
     public function __construct($db)
     {
         $this->db = $db;
