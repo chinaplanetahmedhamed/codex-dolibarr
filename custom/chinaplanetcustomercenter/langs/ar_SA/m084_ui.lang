@@ -290,3 +290,5 @@ UIProjectsSyncPostRequired=مزامنة المشروعات تتطلب إرسال
 UIShipmentCardHeading=تفاصيل الشحنة
 UIShipmentCardSubtitle=بيانات الحاوية والمواعيد والوقت الحر والمستندات
 UIProjectsKanbanLabel=كانبان
+UIBackToToday=العودة إلى اليوم
+UIOperationRegisterPrinciple=عملية واحدة · مسؤول واحد · إجراء تالٍ واحد

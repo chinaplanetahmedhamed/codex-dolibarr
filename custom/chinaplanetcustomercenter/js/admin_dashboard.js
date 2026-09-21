@@ -58,9 +58,9 @@
     function widgetControls(widget) {
         var controls = document.createElement('div');
         controls.className = 'cpad-widget-controls';
-        controls.innerHTML = '<button type="button" class="cpad-drag-handle" title="Drag or use arrow keys / اسحب أو استخدم الأسهم" aria-label="Move widget">↕</button>' +
-            '<button type="button" class="cpad-resize-widget" title="Resize / تغيير الحجم" aria-label="Resize widget">↔</button>' +
-            '<button type="button" class="cpad-hide-widget" title="Hide / إخفاء" aria-label="Hide widget">×</button>';
+        controls.innerHTML = '<button type="button" class="cpad-drag-handle" title="Drag or use arrow keys" aria-label="Move widget">↕</button>' +
+            '<button type="button" class="cpad-resize-widget" title="Resize" aria-label="Resize widget">↔</button>' +
+            '<button type="button" class="cpad-hide-widget" title="Hide" aria-label="Hide widget">×</button>';
         ['move','resize','hide'].forEach(function(key,index){
             var button=controls.children[index];button.setAttribute('aria-label',ui[key] || button.getAttribute('aria-label'));button.title=ui[key] || button.title;
         });

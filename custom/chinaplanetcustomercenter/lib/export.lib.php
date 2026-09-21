@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ui.lib.php';
 
 function cpcc_export_schema_ready($db)
 {
@@ -10,13 +11,13 @@ function cpcc_export_schema_ready($db)
 function cpcc_export_type_label($type)
 {
     $labels = array(
-        'commercial_invoice' => 'Commercial Invoice / فاتورة تجارية',
-        'packing_list' => 'Packing List / قائمة تعبئة',
-        'bill_of_lading' => 'Bill of Lading / بوليصة شحن',
-        'cargox' => 'CargoX Document / مستند CargoX',
-        'certificate_origin' => 'Certificate of Origin / شهادة منشأ',
-        'inspection' => 'Inspection Document / مستند فحص',
-        'other' => 'Other Export Document / مستند آخر',
+        'commercial_invoice' => cpcc_ui_english_label('Commercial Invoice', 'Commercial Invoice / فاتورة تجارية'),
+        'packing_list' => cpcc_ui_english_label('Packing List', 'Packing List / قائمة تعبئة'),
+        'bill_of_lading' => cpcc_ui_english_label('Bill of Lading', 'Bill of Lading / بوليصة شحن'),
+        'cargox' => cpcc_ui_english_label('CargoX Document', 'CargoX Document / مستند CargoX'),
+        'certificate_origin' => cpcc_ui_english_label('Certificate of Origin', 'Certificate of Origin / شهادة منشأ'),
+        'inspection' => cpcc_ui_english_label('Inspection Document', 'Inspection Document / مستند فحص'),
+        'other' => cpcc_ui_english_label('Other Export Document', 'Other Export Document / مستند آخر'),
     );
     return isset($labels[$type]) ? $labels[$type] : $type;
 }

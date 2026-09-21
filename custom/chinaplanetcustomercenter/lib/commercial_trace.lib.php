@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ui.lib.php';
 
 /** Customer-safe native quotation rows, always scoped to one customer. */
 function cpcc_customer_quotations($db, $socid, $currencyFallback, $projectid = 0)
@@ -38,12 +39,12 @@ function cpcc_customer_quotations($db, $socid, $currencyFallback, $projectid = 0
 function cpcc_customer_quotation_status($status)
 {
     $labels = array(
-        1=>'معتمد / Validated',
-        2=>'موقّع / Signed',
-        3=>'غير موقّع / Not signed',
-        4=>'مفوّت / Billed',
+        1=>cpcc_ui_english_label('Validated', 'معتمد / Validated'),
+        2=>cpcc_ui_english_label('Signed', 'موقّع / Signed'),
+        3=>cpcc_ui_english_label('Not signed', 'غير موقّع / Not signed'),
+        4=>cpcc_ui_english_label('Billed', 'مفوّت / Billed'),
     );
-    return isset($labels[(int) $status]) ? $labels[(int) $status] : 'معتمد / Validated';
+    return isset($labels[(int) $status]) ? $labels[(int) $status] : cpcc_ui_english_label('Validated', 'معتمد / Validated');
 }
 
 /** Native links from one quotation to customer-visible orders. */

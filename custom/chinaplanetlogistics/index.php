@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../chinaplanetcustomercenter/lib/ui.lib.php';
 /**
  * Customer Dashboard for China Planet Logistics
  * External user detection: $user->socid > 0 means external user (Dolibarr standard)
@@ -55,8 +56,8 @@ if (!function_exists('cpl_color')) {
 
 llxHeader('', 'China Planet Logistics - Dashboard', '', '', 0, 0, array(), $is_external ? array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css') : array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
 
-if ($is_external) { cpcc_portal_navigation($user,'shipments'); print load_fiche_titre('Logistics Dashboard / لوحة تحكم الشحن', '', 'ship'); }
-else cpcc_admin_shell_open('shipping', 'Shipping Center / مركز الشحن', 'التتبع وقائمة الشحنات وأسعار الشحن من نقطة تشغيل واحدة', 'fa-ship', array('socid'=>$socid));
+if ($is_external) { cpcc_portal_navigation($user,'shipments'); print load_fiche_titre(cpcc_ui_english_label('Logistics Dashboard', 'Logistics Dashboard / لوحة تحكم الشحن'), '', 'ship'); }
+else cpcc_admin_shell_open('shipping', cpcc_ui_english_label('Shipping Center', 'Shipping Center / مركز الشحن'), cpcc_ui_english_label('Tracking, shipment records and shipping prices in one place.', 'التتبع وقائمة الشحنات وأسعار الشحن من نقطة تشغيل واحدة'), 'fa-ship', array('socid'=>$socid));
 
 $today = date('Y-m-d');
 
@@ -91,29 +92,29 @@ print '<style>
 </style>';
 
 if (!$is_external) {
-    print '<section class="cpl-center-launch" aria-label="Shipping operations / عمليات مركز الشحن">';
-    print '<a href="#tracking-overview"><span class="fas fa-map-marked-alt" aria-hidden="true"></span><div><b>Tracking Dashboard / لوحة التتبع</b><small>مواعيد الوصول والوقت الحر والتنبيهات</small></div></a>';
-    print '<a href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).'"><span class="fas fa-list" aria-hidden="true"></span><div><b>Shipments / الشحنات</b><small>البحث وفتح وإدارة سجلات الشحن</small></div></a>';
-    print '<a href="'.dol_buildpath('/chinaplanetshippingprices/index.php',1).'"><span class="fas fa-search-dollar" aria-hidden="true"></span><div><b>Shipping Prices / أسعار الشحن</b><small>البحث في الأسعار والمسارات والخدمات</small></div></a>';
-    if (cpo_can($user, 'read')) print '<a href="'.dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1).'"><span class="fas fa-clipboard-list" aria-hidden="true"></span><div><b>Shipping Orders / طلبات الشحن</b><small>طلبات الحجز، تأكيد الناقل، وربط الشحنات</small></div></a>';
+    print cpcc_ui_english_label('<section class="cpl-center-launch" aria-label="Shipping operations">', '<section class="cpl-center-launch" aria-label="Shipping operations / عمليات مركز الشحن">');
+    print cpcc_ui_english_label('<a href="#tracking-overview"><span class="fas fa-map-marked-alt" aria-hidden="true"></span><div><b>Tracking Dashboard</b><small>Arrival dates, free time and alerts</small></div></a>', '<a href="#tracking-overview"><span class="fas fa-map-marked-alt" aria-hidden="true"></span><div><b>Tracking Dashboard / لوحة التتبع</b><small>مواعيد الوصول والوقت الحر والتنبيهات</small></div></a>');
+    print '<a href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).cpcc_ui_english_label('"><span class="fas fa-list" aria-hidden="true"></span><div><b>Shipments</b><small>Search, open and manage shipment records</small></div></a>', '"><span class="fas fa-list" aria-hidden="true"></span><div><b>Shipments / الشحنات</b><small>البحث وفتح وإدارة سجلات الشحن</small></div></a>');
+    print '<a href="'.dol_buildpath('/chinaplanetshippingprices/index.php',1).cpcc_ui_english_label('"><span class="fas fa-search-dollar" aria-hidden="true"></span><div><b>Shipping Prices</b><small>Search prices, routes and services</small></div></a>', '"><span class="fas fa-search-dollar" aria-hidden="true"></span><div><b>Shipping Prices / أسعار الشحن</b><small>البحث في الأسعار والمسارات والخدمات</small></div></a>');
+    if (cpo_can($user, 'read')) print '<a href="'.dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1).cpcc_ui_english_label('"><span class="fas fa-clipboard-list" aria-hidden="true"></span><div><b>Shipping Orders</b><small>Booking requests, carrier confirmation and shipment links</small></div></a>', '"><span class="fas fa-clipboard-list" aria-hidden="true"></span><div><b>Shipping Orders / طلبات الشحن</b><small>طلبات الحجز، تأكيد الناقل، وربط الشحنات</small></div></a>');
     print '</section>';
 }
 
 // --- CONTAINER STATUS ---
-print '<div class="cpl-section-head" id="tracking-overview"><div class="cpl-section-title">Container Status / حالة الحاويات</div><a class="cpl-show-all" href="'.dol_buildpath('/chinaplanetlogistics/list.php',1).($socid>0?'?socid='.(int)$socid:'').'">عرض كل الشحنات / Show all shipments</a></div>';
+print cpcc_ui_english_label('<div class="cpl-section-head" id="tracking-overview"><div class="cpl-section-title">Container Status</div><a class="cpl-show-all" href="', '<div class="cpl-section-head" id="tracking-overview"><div class="cpl-section-title">Container Status / حالة الحاويات</div><a class="cpl-show-all" href="').dol_buildpath('/chinaplanetlogistics/list.php',1).($socid>0?'?socid='.(int)$socid:'').cpcc_ui_english_label('">Show all shipments</a></div>', '">عرض كل الشحنات / Show all shipments</a></div>');
 print '<div class="cpl-grid">';
 $filterBase=dol_buildpath('/chinaplanetlogistics/list.php',1).'?'.($socid>0?'socid='.(int)$socid.'&':'');
-print '<a class="cpl-card" href="'.$filterBase.'status=intransit" style="background:linear-gradient(135deg,#34495e,#2c3e50);"><div class="num">'.$c_intransit.'</div><div class="lbl">In Transit / في البحر</div></a>';
-print '<a class="cpl-card" href="'.$filterBase.'status=arriving" style="background:linear-gradient(135deg,#177b42,#23a85b);"><div class="num">'.$c_arr14.'</div><div class="lbl">Arriving &lt; 14d / وصول خلال 14 يوم</div></a>';
-print '<a class="cpl-card" href="'.$filterBase.'status=arrived" style="background:linear-gradient(135deg,#176c9d,#258bc2);"><div class="num">'.$c_arrived.'</div><div class="lbl">Arrived / وصلت</div></a>';
-print '<a class="cpl-card" href="'.$filterBase.'status=critical" style="background:linear-gradient(135deg,#a92d22,#d53b2e);"><div class="num">'.$ft_critical.'</div><div class="lbl">FT Critical (&lt;7d) / وقت حر حرج</div></a>';
+print '<a class="cpl-card" href="'.$filterBase.'status=intransit" style="background:linear-gradient(135deg,#34495e,#2c3e50);"><div class="num">'.$c_intransit.cpcc_ui_english_label('</div><div class="lbl">In Transit</div></a>', '</div><div class="lbl">In Transit / في البحر</div></a>');
+print '<a class="cpl-card" href="'.$filterBase.'status=arriving" style="background:linear-gradient(135deg,#177b42,#23a85b);"><div class="num">'.$c_arr14.cpcc_ui_english_label('</div><div class="lbl">Arriving &lt; 14d</div></a>', '</div><div class="lbl">Arriving &lt; 14d / وصول خلال 14 يوم</div></a>');
+print '<a class="cpl-card" href="'.$filterBase.'status=arrived" style="background:linear-gradient(135deg,#176c9d,#258bc2);"><div class="num">'.$c_arrived.cpcc_ui_english_label('</div><div class="lbl">Arrived</div></a>', '</div><div class="lbl">Arrived / وصلت</div></a>');
+print '<a class="cpl-card" href="'.$filterBase.'status=critical" style="background:linear-gradient(135deg,#a92d22,#d53b2e);"><div class="num">'.$ft_critical.cpcc_ui_english_label('</div><div class="lbl">FT Critical (&lt;7d)</div></a>', '</div><div class="lbl">FT Critical (&lt;7d) / وقت حر حرج</div></a>');
 print '</div>';
 
 // --- RECENT SHIPMENTS ---
-print '<div class="cpl-section-title">Recent Shipments / آخر الشحنات</div>';
+print cpcc_ui_english_label('<div class="cpl-section-title">Recent Shipments</div>', '<div class="cpl-section-title">Recent Shipments / آخر الشحنات</div>');
 print '<div class="div-table-responsive">';
 print '<table class="liste centpercent">';
-print '<tr class="liste_titre"><th>Container No / الحاوية</th><th>Customer / العميل</th><th>ETA / الوصول</th><th class="center">Arrival / الوصول</th><th class="center">Free Time / الوقت الحر</th><th>Status / الحالة</th></tr>';
+print cpcc_ui_english_label('<tr class="liste_titre"><th>Container No</th><th>Customer</th><th>ETA</th><th class="center">Arrival</th><th class="center">Free Time</th><th>Status</th></tr>', '<tr class="liste_titre"><th>Container No / الحاوية</th><th>Customer / العميل</th><th>ETA / الوصول</th><th class="center">Arrival / الوصول</th><th class="center">Free Time / الوقت الحر</th><th>Status / الحالة</th></tr>');
 
 $sql_shp = "SELECT t.rowid,t.container_no,t.date_eta,t.freetime_end,t.fk_statut,s.nom customer_name FROM ".MAIN_DB_PREFIX."chinaplanetlogistics t LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=t.fk_soc WHERE t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
 if ($is_external) $sql_shp .= " AND t.customer_visible=1";
@@ -139,7 +140,7 @@ if ($res_shp && $db->num_rows($res_shp) > 0) {
         print '</tr>';
     }
 } else {
-    print '<tr class="oddeven"><td colspan="6" class="center opacitymedium">No shipments found / لا توجد شحنات.</td></tr>';
+    print cpcc_ui_english_label('<tr class="oddeven"><td colspan="6" class="center opacitymedium">No shipments found</td></tr>', '<tr class="oddeven"><td colspan="6" class="center opacitymedium">No shipments found / لا توجد شحنات.</td></tr>');
 }
 print '</table></div>';
 

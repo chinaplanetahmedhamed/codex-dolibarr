@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../chinaplanetcustomercenter/lib/ui.lib.php';
 /**
  * China Planet Kanban - Card page (view / create / edit / delete).
  * Internal staff: full edit. Customers: read-only, internal notes/files hidden,
@@ -63,7 +64,7 @@ if ($action == 'add' && $canwrite) {
     if ($r > 0) {
         if (!empty($_FILES['cover_image']['name'])) {
             $upload = CpKanbanAsset::storeCover($db, $object, $user, $_FILES['cover_image']);
-            setEventMessages($upload['ok'] ? 'تم حفظ صورة الغلاف.' : $upload['error'], null, $upload['ok'] ? 'mesgs' : 'errors');
+            setEventMessages($upload['ok'] ? cpcc_ui_english_label('Cover image saved.', 'تم حفظ صورة الغلاف.') : cpkanban_upload_error_label($upload['error']), null, $upload['ok'] ? 'mesgs' : 'errors');
         }
         header('Location: '.$_SERVER['PHP_SELF'].'?id='.$r); exit;
     }
@@ -87,7 +88,7 @@ if ($action == 'update' && $canwrite && $id > 0) {
         CpKanbanAsset::syncCard($db, $object, $user);
         if (!empty($_FILES['cover_image']['name'])) {
             $upload = CpKanbanAsset::storeCover($db, $object, $user, $_FILES['cover_image']);
-            setEventMessages($upload['ok'] ? 'تم تحديث صورة الغلاف.' : $upload['error'], null, $upload['ok'] ? 'mesgs' : 'errors');
+            setEventMessages($upload['ok'] ? cpcc_ui_english_label('Cover image updated.', 'تم تحديث صورة الغلاف.') : cpkanban_upload_error_label($upload['error']), null, $upload['ok'] ? 'mesgs' : 'errors');
         }
         header('Location: '.$_SERVER['PHP_SELF'].'?id='.$id); exit;
     }
@@ -120,38 +121,38 @@ if ($is_modal) {
 } else {
     $cardCss = array('/custom/cpkanban/css/board.css?v=20260718-m010');
     if (!$is_external) { $cardCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'); $cardCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'); }
-    llxHeader('', 'Project Card / بطاقة المشروع', '', '', 0, 0, array('/custom/cpkanban/js/shipment-link.js'), $cardCss);
+    llxHeader('', cpcc_ui_english_label('Project Card', 'Project Card / بطاقة المشروع'), '', '', 0, 0, array('/custom/cpkanban/js/shipment-link.js'), $cardCss);
     if ($is_external) cpcc_portal_navigation($user, 'dashboard');
-    else cpcc_admin_shell_open('operations','Kanban Card / بطاقة العمليات','تفاصيل بطاقة العمل الداخلية وحالتها','fa-columns',array('socid'=>(int)GETPOSTINT('socid')));
+    else cpcc_admin_shell_open('operations',cpcc_ui_english_label('Kanban Card', 'Kanban Card / بطاقة العمليات'),cpcc_ui_english_label('Internal task card details and status.', 'تفاصيل بطاقة العمل الداخلية وحالتها'),'fa-columns',array('socid'=>(int)GETPOSTINT('socid')));
 }
 
 /*
  * CREATE FORM (internal)
  */
 if ($action == 'create' && $canwrite) {
-    print load_fiche_titre('بطاقة جديدة', '', 'project');
+    print load_fiche_titre(cpcc_ui_english_label('New card', 'بطاقة جديدة'), '', 'project');
     print '<form method="POST" enctype="multipart/form-data" action="'.$_SERVER['PHP_SELF'].'">';
     print '<input type="hidden" name="token" value="'.newToken().'">';
     print '<input type="hidden" name="action" value="add">';
     print '<table class="border centpercent">';
-    print '<tr><td class="titlefieldcreate">العميل</td><td>';
-    print $form->select_company(GETPOST('fk_soc','int'), 'fk_soc', '', 'اختر العميل', 0, 0, null, 0, 'minwidth300');
+    print cpcc_ui_english_label('<tr><td class="titlefieldcreate">Customer</td><td>', '<tr><td class="titlefieldcreate">العميل</td><td>');
+    print $form->select_company(GETPOST('fk_soc','int'), 'fk_soc', '', cpcc_ui_english_label('Select customer', 'اختر العميل'), 0, 0, null, 0, 'minwidth300');
     print '</td></tr>';
-    print '<tr><td>العمود</td><td><select name="fk_column" class="flat">';
-    foreach ($columns as $col) print '<option value="'.(int)$col->rowid.'">'.dol_escape_htmltag($col->label).'</option>';
+    print cpcc_ui_english_label('<tr><td>Column</td><td><select name="fk_column" class="flat">', '<tr><td>العمود</td><td><select name="fk_column" class="flat">');
+    foreach ($columns as $col) print '<option value="'.(int)$col->rowid.'">'.dol_escape_htmltag(cpcc_ui_english_label(isset($col->label_en) && trim((string) $col->label_en) !== '' ? $col->label_en : $col->label, $col->label)).'</option>';
     print '</select></td></tr>';
-    print '<tr><td>العنوان</td><td><input type="text" name="title" class="flat minwidth300" required></td></tr>';
-    print '<tr><td>الوصف</td><td><textarea name="description" class="flat quatrevingtpercent" rows="3"></textarea></td></tr>';
-    print '<tr><td>الأولوية</td><td><select name="priority" class="flat"><option value="high">عالية</option><option value="med" selected>متوسطة</option><option value="low">منخفضة</option></select></td></tr>';
-    print '<tr><td>نسبة التقدّم</td><td><input type="number" name="progress" class="flat" min="0" max="100" value="0"> %</td></tr>';
-    print '<tr><td>مرئي للعميل</td><td><input type="checkbox" name="cust_visible" value="1" checked></td></tr>';
-    print '<tr><td>رقم الشحنة المرتبطة (rowid)</td><td><input type="number" name="fk_shipment" class="flat" placeholder="اختياري"></td></tr>';
-    print '<tr><td>ملاحظة عامة (يراها العميل)</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>';
-    print '<tr><td>ملاحظة داخلية (للفريق فقط)</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>';
-    print '<tr><td>صورة الغلاف</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — حتى 5MB</span></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Title</td><td><input type="text" name="title" class="flat minwidth300" required></td></tr>', '<tr><td>العنوان</td><td><input type="text" name="title" class="flat minwidth300" required></td></tr>');
+    print cpcc_ui_english_label('<tr><td>Description</td><td><textarea name="description" class="flat quatrevingtpercent" rows="3"></textarea></td></tr>', '<tr><td>الوصف</td><td><textarea name="description" class="flat quatrevingtpercent" rows="3"></textarea></td></tr>');
+    print cpcc_ui_english_label('<tr><td>Priority</td><td><select name="priority" class="flat"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></td></tr>', '<tr><td>الأولوية</td><td><select name="priority" class="flat"><option value="high">عالية</option><option value="med" selected>متوسطة</option><option value="low">منخفضة</option></select></td></tr>');
+    print cpcc_ui_english_label('<tr><td>Progress</td><td><input type="number" name="progress" class="flat" min="0" max="100" value="0"> %</td></tr>', '<tr><td>نسبة التقدّم</td><td><input type="number" name="progress" class="flat" min="0" max="100" value="0"> %</td></tr>');
+    print cpcc_ui_english_label('<tr><td>Customer visible</td><td><input type="checkbox" name="cust_visible" value="1" checked></td></tr>', '<tr><td>مرئي للعميل</td><td><input type="checkbox" name="cust_visible" value="1" checked></td></tr>');
+    print cpcc_ui_english_label('<tr><td>Linked shipment ID (rowid)</td><td><input type="number" name="fk_shipment" class="flat" placeholder="Optional"></td></tr>', '<tr><td>رقم الشحنة المرتبطة (rowid)</td><td><input type="number" name="fk_shipment" class="flat" placeholder="اختياري"></td></tr>');
+    print cpcc_ui_english_label('<tr><td>Public note (visible to customer)</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>', '<tr><td>ملاحظة عامة (يراها العميل)</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>');
+    print cpcc_ui_english_label('<tr><td>Internal note (staff only)</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>', '<tr><td>ملاحظة داخلية (للفريق فقط)</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2"></textarea></td></tr>');
+    print cpcc_ui_english_label('<tr><td>Cover image</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — up to 5 MB</span></td></tr>', '<tr><td>صورة الغلاف</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — حتى 5MB</span></td></tr>');
     print '</table>';
-    print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="حفظ"> ';
-    print '<a class="button button-cancel" href="'.$boardurl.'">إلغاء</a></div>';
+    print cpcc_ui_english_label('<div class="center" style="margin-top:14px"><input type="submit" class="button" value="Save"> ', '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="حفظ"> ');
+    print '<a class="button button-cancel" href="'.$boardurl.cpcc_ui_english_label('">Cancel</a></div>', '">إلغاء</a></div>');
     print '</form>';
     if (!$is_external) cpcc_admin_shell_close();
     llxFooter();
@@ -163,7 +164,7 @@ if ($action == 'create' && $canwrite) {
  */
 $fetchSoc = $is_external ? $socid : 0;
 $r = $externalViewPrefetched ? 1 : $object->fetch($id, $fetchSoc);
-if ($r <= 0) { http_response_code(403); print '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'; if ($is_modal) print '</body></html>'; else { if (!$is_external) cpcc_admin_shell_close(); llxFooter(); } exit; }
+if ($r <= 0) { http_response_code(403); print cpcc_ui_english_label('<div class="warning">The card does not exist or you do not have permission to view it.</div>', '<div class="warning">البطاقة غير موجودة أو لا تملك صلاحية عرضها.</div>'); if ($is_modal) print '</body></html>'; else { if (!$is_external) cpcc_admin_shell_close(); llxFooter(); } exit; }
 
 $displayColumnId = (int) $object->fk_column;
 if ($is_external) {
@@ -171,7 +172,7 @@ if ($is_external) {
     $displayColumnId = cpkanban_customer_visible_column_id($displayColumnId, $visibleColumns, $columns);
     if ($displayColumnId <= 0) {
         http_response_code(403);
-        print '<div class="warning">هذه البطاقة غير منشورة في مركز العميل.</div>';
+        print cpcc_ui_english_label('<div class="warning">This card is not published in the Customer Center.</div>', '<div class="warning">هذه البطاقة غير منشورة في مركز العميل.</div>');
         if ($is_modal) print '</body></html>'; else llxFooter();
         $db->close();
         exit;
@@ -188,21 +189,21 @@ $coverSql .= " ORDER BY rowid DESC LIMIT 1";
 $coverRes = $db->query($coverSql);
 if ($coverRes && ($coverRow = $db->fetch_object($coverRes))) $coverAssetId = (int)$coverRow->rowid;
 
-print '<div class="cpk-detail-shell" dir="rtl">';
-if (!$is_modal) print '<a class="cpk-action-link" href="'.$boardurl.'">← العودة إلى مركز العميل</a>';
+print '<div class="cpk-detail-shell" dir="'.cpcc_ui_english_label('ltr', 'rtl').'">';
+if (!$is_modal) print '<a class="cpk-action-link" href="'.$boardurl.cpcc_ui_english_label('">Back to Customer Center →</a>', '">← العودة إلى مركز العميل</a>');
 if ($coverAssetId > 0) {
     $coverUrl = dol_buildpath('/cpkanban/cover.php', 1).'?id='.$coverAssetId;
-    print '<div class="cpk-detail-cover"><img src="'.dol_escape_htmltag($coverUrl).'" alt="صورة غلاف المشروع" loading="eager"></div>';
+    print '<div class="cpk-detail-cover"><img src="'.dol_escape_htmltag($coverUrl).cpcc_ui_english_label('" alt="Project cover image" loading="eager"></div>', '" alt="صورة غلاف المشروع" loading="eager"></div>');
 }
 print load_fiche_titre(dol_escape_htmltag($object->title), '', 'project');
 
 if (!$is_modal) {
 print '<div class="cpk-action-row">';
-print '<a class="cpk-action-link" href="'.$boardurl.'">🗂️ لوحة المشاريع</a>';
-print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetlogistics/index.php', 1).'">🚢 الشحنات</a>';
-print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/invoices.php', 1).'">🧾 الفواتير والرصيد</a>';
-print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/orders.php', 1).'">📦 الطلبيات</a>';
-if (!empty($object->fk_project)) print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int)$object->fk_project.'">📋 تفاصيل المشروع</a>';
+print '<a class="cpk-action-link" href="'.$boardurl.cpcc_ui_english_label('">🗂️ Project board</a>', '">🗂️ لوحة المشاريع</a>');
+print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetlogistics/index.php', 1).cpcc_ui_english_label('">🚢 Shipments</a>', '">🚢 الشحنات</a>');
+print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/invoices.php', 1).cpcc_ui_english_label('">🧾 Invoices and balance</a>', '">🧾 الفواتير والرصيد</a>');
+print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/orders.php', 1).cpcc_ui_english_label('">📦 Orders</a>', '">📦 الطلبيات</a>');
+if (!empty($object->fk_project)) print '<a class="cpk-action-link" href="'.dol_buildpath('/chinaplanetcustomercenter/project.php', 1).'?id='.(int)$object->fk_project.cpcc_ui_english_label('">📋 Project details</a>', '">📋 تفاصيل المشروع</a>');
 print '</div>';
 }
 
@@ -212,19 +213,19 @@ if ($is_external) {
 } else {
 print '<div class="cpk-detail-card">';
 print '<table class="border centpercent">';
-print '<tr><td class="titlefield">المرجع</td><td>'.dol_escape_htmltag($object->ref).'</td></tr>';
+print cpcc_ui_english_label('<tr><td class="titlefield">Reference</td><td>', '<tr><td class="titlefield">المرجع</td><td>').dol_escape_htmltag($object->ref).'</td></tr>';
 if (!$is_external) {
-    print '<tr><td>العميل</td><td>';
+    print cpcc_ui_english_label('<tr><td>Customer</td><td>', '<tr><td>العميل</td><td>');
     $soc = new Societe($db); $soc->fetch($object->fk_soc);
     print $soc->getNomUrl(1).'</td></tr>';
 }
-print '<tr><td>الحالة (العمود)</td><td>';
-if ($colObj) print '<span style="background:'.dol_escape_htmltag($colObj->color).';color:#fff;padding:3px 12px;border-radius:8px;font-weight:700">'.dol_escape_htmltag($colObj->label).'</span>';
+print cpcc_ui_english_label('<tr><td>Status (column)</td><td>', '<tr><td>الحالة (العمود)</td><td>');
+if ($colObj) print '<span style="background:'.dol_escape_htmltag($colObj->color).';color:#fff;padding:3px 12px;border-radius:8px;font-weight:700">'.dol_escape_htmltag(cpcc_ui_english_label(isset($colObj->label_en) && trim((string) $colObj->label_en) !== '' ? $colObj->label_en : $colObj->label, $colObj->label)).'</span>';
 print '</td></tr>';
-print '<tr><td>الأولوية</td><td><span class="cpk-tag '.$pri['cls'].'">'.$pri['label'].'</span></td></tr>';
-print '<tr><td>نسبة التقدّم</td><td><b style="color:#D4A017">'.(int)$object->progress.'%</b></td></tr>';
-if (!empty($object->description)) print '<tr><td>الوصف</td><td>'.nl2br(dol_escape_htmltag($object->description)).'</td></tr>';
-if (!empty($object->date_deadline)) print '<tr><td>الموعد النهائي</td><td>'.dol_print_date($object->date_deadline, 'day').'</td></tr>';
+print cpcc_ui_english_label('<tr><td>Priority</td><td><span class="cpk-tag ', '<tr><td>الأولوية</td><td><span class="cpk-tag ').$pri['cls'].'">'.$pri['label'].'</span></td></tr>';
+print cpcc_ui_english_label('<tr><td>Progress</td><td><b style="color:#D4A017">', '<tr><td>نسبة التقدّم</td><td><b style="color:#D4A017">').(int)$object->progress.'%</b></td></tr>';
+if (!empty($object->description)) print cpcc_ui_english_label('<tr><td>Description</td><td>', '<tr><td>الوصف</td><td>').nl2br(dol_escape_htmltag($object->description)).'</td></tr>';
+if (!empty($object->date_deadline)) print cpcc_ui_english_label('<tr><td>Deadline</td><td>', '<tr><td>الموعد النهائي</td><td>').dol_print_date($object->date_deadline, 'day').'</td></tr>';
 
 // ---------- Embedded shipment summary (the "mix" approach) ----------
 $ship = $object->getShipmentSummary($fetchSoc);
@@ -232,38 +233,38 @@ if ($ship) {
     $eta_days = cpkanban_days_until($ship->date_eta);
     $ft_days  = cpkanban_days_until($ship->freetime_end);
     $fulltrack = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?id='.(int)$ship->rowid.($is_modal ? '&modal=1' : '');
-    print '<tr><td>الشحنة المرتبطة</td><td>';
-    print '<a class="cpk-shipment-link" href="'.$fulltrack.'" aria-label="عرض تفاصيل الشحنة '.dol_escape_htmltag($ship->container_no ? $ship->container_no : $ship->ref).'">';
+    print cpcc_ui_english_label('<tr><td>Linked shipment</td><td>', '<tr><td>الشحنة المرتبطة</td><td>');
+    print '<a class="cpk-shipment-link" href="'.$fulltrack.cpcc_ui_english_label('" aria-label="View shipment details ', '" aria-label="عرض تفاصيل الشحنة ').dol_escape_htmltag($ship->container_no ? $ship->container_no : $ship->ref).'">';
     print '<div class="cpk-shipment-box">';
     print '<div style="font-weight:800;font-family:Cairo,sans-serif;margin-bottom:8px">🚢 '.dol_escape_htmltag($ship->container_no ? $ship->container_no : $ship->ref).'</div>';
     print '<div class="cpk-count-grid">';
-    print '<div class="cpk-count-box" style="background:'.cpkanban_countdown_color($eta_days).'"><b>'.($eta_days === null ? '-' : ($eta_days < 0 ? 'وصلت' : $eta_days)).'</b><span>أيام حتى الوصول</span></div>';
-    print '<div class="cpk-count-box" style="background:'.cpkanban_countdown_color($ft_days).'"><b>'.($ft_days === null ? '-' : $ft_days).'</b><span>أيام الوقت الحر المتبقية</span></div>';
+    print '<div class="cpk-count-box" style="background:'.cpkanban_countdown_color($eta_days).'"><b>'.($eta_days === null ? '-' : ($eta_days < 0 ? cpcc_ui_english_label('Arrived', 'وصلت') : $eta_days)).cpcc_ui_english_label('</b><span>Days until arrival</span></div>', '</b><span>أيام حتى الوصول</span></div>');
+    print '<div class="cpk-count-box" style="background:'.cpkanban_countdown_color($ft_days).'"><b>'.($ft_days === null ? '-' : $ft_days).cpcc_ui_english_label('</b><span>Free time days remaining</span></div>', '</b><span>أيام الوقت الحر المتبقية</span></div>');
     print '</div>';
-    print '<div style="margin-top:8px;font-size:13px">الحالة: '.cpkanban_shipment_status($ship->fk_statut).' • السفينة: '.dol_escape_htmltag($ship->vessel_name ? $ship->vessel_name : '-').'</div>';
-    print '<div class="cpk-shipment-cta">عرض صفحة تتبع الحاوية الكاملة ←</div>';
+    print cpcc_ui_english_label('<div style="margin-top:8px;font-size:13px">Status: ', '<div style="margin-top:8px;font-size:13px">الحالة: ').cpkanban_shipment_status($ship->fk_statut).cpcc_ui_english_label(' • Vessel: ', ' • السفينة: ').dol_escape_htmltag($ship->vessel_name ? $ship->vessel_name : '-').'</div>';
+    print cpcc_ui_english_label('<div class="cpk-shipment-cta">Open full container tracking →</div>', '<div class="cpk-shipment-cta">عرض صفحة تتبع الحاوية الكاملة ←</div>');
     print '</div></a></td></tr>';
 }
 
 // ---------- Public note (always) ----------
 if (!empty($object->note_public)) {
-    print '<tr><td>ملاحظة</td><td><div class="cpk-info-box">'.nl2br(dol_escape_htmltag($object->note_public)).'</div></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Note</td><td><div class="cpk-info-box">', '<tr><td>ملاحظة</td><td><div class="cpk-info-box">').nl2br(dol_escape_htmltag($object->note_public)).'</div></td></tr>';
 }
 
 // ---------- Private note + internal info (internal staff ONLY) ----------
 if (!$is_external) {
     if (!empty($object->note_private)) {
-        print '<tr><td>ملاحظة داخلية</td><td><div class="cpk-private">🔒 '.nl2br(dol_escape_htmltag($object->note_private)).'</div></td></tr>';
+        print cpcc_ui_english_label('<tr><td>Internal note</td><td><div class="cpk-private">🔒 ', '<tr><td>ملاحظة داخلية</td><td><div class="cpk-private">🔒 ').nl2br(dol_escape_htmltag($object->note_private)).'</div></td></tr>';
     }
-    print '<tr><td>مرئي للعميل؟</td><td>'.($object->cust_visible ? 'نعم' : 'لا').'</td></tr>';
+    print cpcc_ui_english_label('<tr><td>Customer visible?</td><td>', '<tr><td>مرئي للعميل؟</td><td>').($object->cust_visible ? cpcc_ui_english_label('Yes', 'نعم') : cpcc_ui_english_label('No', 'لا')).'</td></tr>';
 }
 
 // ---------- Activity log ----------
 $logs = $is_external ? array() : $object->getLogs(0);
 if (!empty($logs)) {
-    print '<tr><td>سجل الحركة</td><td>';
+    print cpcc_ui_english_label('<tr><td>Activity log</td><td>', '<tr><td>سجل الحركة</td><td>');
     foreach ($logs as $lg) {
-        $who = $is_external ? ($lg->public_actor ?? 'فريق كوكب الصين') : trim(($lg->firstname ?? '').' '.($lg->lastname ?? ''));
+        $who = $is_external ? ($lg->public_actor ?? cpcc_ui_english_label('China Planet team', 'فريق كوكب الصين')) : trim(($lg->firstname ?? '').' '.($lg->lastname ?? ''));
         print '<div style="border-bottom:1px solid #f0f0f0;padding:5px 0;font-size:13px">'.dol_print_date($db->jdate($lg->date_action), 'dayhour').' — '.dol_escape_htmltag($lg->note ? $lg->note : $lg->action_type).($who ? ' ('.dol_escape_htmltag($who).')' : '').'</div>';
     }
     print '</td></tr>';
@@ -274,9 +275,9 @@ print '</div>';
 // ---------- Action buttons (internal) ----------
 if ($canwrite) {
     print '<div class="tabsAction">';
-    print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=edit">✏️ تحرير</a>';
+    print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.cpcc_ui_english_label('&action=edit">✏️ Edit</a>', '&action=edit">✏️ تحرير</a>');
     if ($user->hasRight('cpkanban','delete') || $user->hasRight('chinaplanetcustomercenter','delete') || !empty($user->admin)) {
-        print '<a class="butActionDelete" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete&token='.newToken().'">🗑️ حذف</a>';
+        print '<a class="butActionDelete" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'&action=confirm_delete&token='.newToken().cpcc_ui_english_label('">🗑️ Delete</a>', '">🗑️ حذف</a>');
     }
     print '</div>';
 }
@@ -291,23 +292,23 @@ if ($action == 'edit' && $canwrite) {
     print '<input type="hidden" name="token" value="'.newToken().'">';
     print '<input type="hidden" name="action" value="update">';
     print '<table class="border centpercent">';
-    print '<tr><td class="titlefield">العمود</td><td><select name="fk_column" class="flat">';
-    foreach ($columns as $col) { $sel = ($col->rowid == $object->fk_column) ? ' selected' : ''; print '<option value="'.(int)$col->rowid.'"'.$sel.'>'.dol_escape_htmltag($col->label).'</option>'; }
+    print cpcc_ui_english_label('<tr><td class="titlefield">Column</td><td><select name="fk_column" class="flat">', '<tr><td class="titlefield">العمود</td><td><select name="fk_column" class="flat">');
+    foreach ($columns as $col) { $sel = ($col->rowid == $object->fk_column) ? ' selected' : ''; print '<option value="'.(int)$col->rowid.'"'.$sel.'>'.dol_escape_htmltag(cpcc_ui_english_label(isset($col->label_en) && trim((string) $col->label_en) !== '' ? $col->label_en : $col->label, $col->label)).'</option>'; }
     print '</select></td></tr>';
-    print '<tr><td>العميل (socid)</td><td><input type="number" name="fk_soc" class="flat" value="'.(int)$object->fk_soc.'"></td></tr>';
-    print '<tr><td>العنوان</td><td><input type="text" name="title" class="flat minwidth300" value="'.dol_escape_htmltag($object->title).'"></td></tr>';
-    print '<tr><td>الوصف</td><td><textarea name="description" class="flat quatrevingtpercent" rows="3">'.dol_escape_htmltag($object->description).'</textarea></td></tr>';
-    print '<tr><td>الأولوية</td><td><select name="priority" class="flat">';
-    foreach (array('high'=>'عالية','med'=>'متوسطة','low'=>'منخفضة') as $k=>$v) { $sel=($object->priority==$k)?' selected':''; print '<option value="'.$k.'"'.$sel.'>'.$v.'</option>'; }
+    print cpcc_ui_english_label('<tr><td>Customer ID (socid)</td><td><input type="number" name="fk_soc" class="flat" value="', '<tr><td>العميل (socid)</td><td><input type="number" name="fk_soc" class="flat" value="').(int)$object->fk_soc.'"></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Title</td><td><input type="text" name="title" class="flat minwidth300" value="', '<tr><td>العنوان</td><td><input type="text" name="title" class="flat minwidth300" value="').dol_escape_htmltag($object->title).'"></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Description</td><td><textarea name="description" class="flat quatrevingtpercent" rows="3">', '<tr><td>الوصف</td><td><textarea name="description" class="flat quatrevingtpercent" rows="3">').dol_escape_htmltag($object->description).'</textarea></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Priority</td><td><select name="priority" class="flat">', '<tr><td>الأولوية</td><td><select name="priority" class="flat">');
+    foreach (array('high'=>cpcc_ui_english_label('High', 'عالية'),'med'=>cpcc_ui_english_label('Medium', 'متوسطة'),'low'=>cpcc_ui_english_label('Low', 'منخفضة')) as $k=>$v) { $sel=($object->priority==$k)?' selected':''; print '<option value="'.$k.'"'.$sel.'>'.$v.'</option>'; }
     print '</select></td></tr>';
-    print '<tr><td>نسبة التقدّم</td><td><input type="number" name="progress" class="flat" min="0" max="100" value="'.(int)$object->progress.'"> %</td></tr>';
-    print '<tr><td>مرئي للعميل</td><td><input type="checkbox" name="cust_visible" value="1" '.($object->cust_visible?'checked':'').'></td></tr>';
-    print '<tr><td>رقم الشحنة المرتبطة</td><td><input type="number" name="fk_shipment" class="flat" value="'.($object->fk_shipment?(int)$object->fk_shipment:'').'"></td></tr>';
-    print '<tr><td>ملاحظة عامة</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2">'.dol_escape_htmltag($object->note_public).'</textarea></td></tr>';
-    print '<tr><td>ملاحظة داخلية</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2">'.dol_escape_htmltag($object->note_private).'</textarea></td></tr>';
-    print '<tr><td>استبدال صورة الغلاف</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — حتى 5MB</span></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Progress</td><td><input type="number" name="progress" class="flat" min="0" max="100" value="', '<tr><td>نسبة التقدّم</td><td><input type="number" name="progress" class="flat" min="0" max="100" value="').(int)$object->progress.'"> %</td></tr>';
+    print cpcc_ui_english_label('<tr><td>Customer visible</td><td><input type="checkbox" name="cust_visible" value="1" ', '<tr><td>مرئي للعميل</td><td><input type="checkbox" name="cust_visible" value="1" ').($object->cust_visible?'checked':'').'></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Linked shipment ID</td><td><input type="number" name="fk_shipment" class="flat" value="', '<tr><td>رقم الشحنة المرتبطة</td><td><input type="number" name="fk_shipment" class="flat" value="').($object->fk_shipment?(int)$object->fk_shipment:'').'"></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Public note</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2">', '<tr><td>ملاحظة عامة</td><td><textarea name="note_public" class="flat quatrevingtpercent" rows="2">').dol_escape_htmltag($object->note_public).'</textarea></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Internal note</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2">', '<tr><td>ملاحظة داخلية</td><td><textarea name="note_private" class="flat quatrevingtpercent" rows="2">').dol_escape_htmltag($object->note_private).'</textarea></td></tr>';
+    print cpcc_ui_english_label('<tr><td>Replace cover image</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — up to 5 MB</span></td></tr>', '<tr><td>استبدال صورة الغلاف</td><td><input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp"> <span class="opacitymedium">JPG / PNG / WebP — حتى 5MB</span></td></tr>');
     print '</table>';
-    print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="حفظ التعديلات"> <a class="button button-cancel" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'">إلغاء</a></div>';
+    print cpcc_ui_english_label('<div class="center" style="margin-top:14px"><input type="submit" class="button" value="Save changes"> <a class="button button-cancel" href="', '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="حفظ التعديلات"> <a class="button button-cancel" href="').$_SERVER['PHP_SELF'].'?id='.$id.cpcc_ui_english_label('">Cancel</a></div>', '">إلغاء</a></div>');
     print '</form>';
 }
 

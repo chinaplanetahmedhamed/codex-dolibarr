@@ -281,3 +281,77 @@
 .cpo-billing-host{padding-bottom:0}.cpo-billing-workflow{border-top:4px solid var(--blue);box-shadow:0 8px 22px rgba(13,27,62,.08)}.cpo-billing-workflow .cpo-panel-head p{margin:5px 0 0;color:var(--muted)}.cpo-billing-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;padding:0;list-style:none}.cpo-billing-steps li{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid var(--border);background:#f8fafc}.cpo-billing-steps li>strong{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#e5eaf0;color:#667085}.cpo-billing-steps li.done{border-color:#9bd5bb;background:#effaf5}.cpo-billing-steps li.done>strong{background:var(--green);color:#fff}.cpo-billing-steps span,.cpo-billing-steps small{display:block}.cpo-billing-steps span{font-size:13px;font-weight:800}.cpo-billing-steps small{margin-top:3px;color:var(--muted);font-size:12px;font-weight:500}.cpo-billing-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:15px}.cpo-billing-summary div{padding:11px;border:1px solid var(--border);background:#f8fafc}.cpo-billing-summary span,.cpo-billing-summary strong{display:block}.cpo-billing-summary span{font-size:12px;color:var(--muted)}.cpo-billing-summary strong{margin-top:4px;font-size:16px;color:#0d1b3e}.cpo-billing-actions{display:flex;gap:8px;flex-wrap:wrap}.cpo-billing-actions form{margin:0}.cpo-billing-payment{margin-top:15px;padding-top:15px;border-top:1px solid var(--border)}.cpo-billing-payment>.cpo-field{margin:10px 0}.cpo-billing-payment .button{margin-top:10px}.cpad-section-content .cpo-billing-steps li,.cpad-section-content .cpo-billing-summary div{color:#172033}.cpad-section-content .cpo-billing-steps small,.cpad-section-content .cpo-billing-summary span{color:#526173}
 @media(max-width:900px){.cpo-billing-steps,.cpo-billing-summary{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.cpo-billing-steps,.cpo-billing-summary{grid-template-columns:1fr}.cpo-billing-actions,.cpo-billing-actions form,.cpo-billing-actions .button,.cpo-billing-payment .button{width:100%}}
+
+/* Guided form: keep readable ink on the white sections inside the dark shell. */
+.cpad-section-content .cpo-guided-page{--muted:#46566c;--border:#bdc9d8;font-size:16px;line-height:1.6}
+.cpad-section-content .cpo-guided-page .cpo-form-section{padding:22px}
+.cpad-section-content .cpo-guided-page .cpo-context-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.cpad-section-content .cpo-guided-page .cpo-field{min-width:0;gap:8px}
+.cpad-section-content .cpo-guided-page .cpo-field>span,
+.cpad-section-content .cpo-guided-page .cpo-field>label{font-size:15px;font-weight:700;line-height:1.6}
+.cpad-section-content .cpo-guided-page .cpo-field input,
+.cpad-section-content .cpo-guided-page .cpo-field select,
+.cpad-section-content .cpo-guided-page .cpo-field textarea{font:inherit;font-size:16px;min-width:0;max-width:100%;min-height:46px;border-color:#8797ac;line-height:1.6}
+.cpad-section-content .cpo-guided-page input::placeholder,
+.cpad-section-content .cpo-guided-page textarea::placeholder{color:#586579;opacity:1}
+.cpcc-ui .cpad-section-content .cpo-guided-page small,
+.cpad-section-content .cpo-guided-page .opacitymedium{color:#46566c;font-size:14px;line-height:1.7;opacity:1}
+.cpad-section-content .cpo-guided-page .cpo-form-section h2{font-size:20px;line-height:1.5}
+.cpad-section-content .cpo-guided-page .cpo-service-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr));gap:14px}
+.cpad-section-content .cpo-guided-page .cpo-service-grid strong{font-size:16px;line-height:1.6}
+.cpad-section-content .cpo-guided-page .cpo-service-grid a{background:#f8fafc;padding:18px}
+.cpad-section-content .cpo-guided-page .cpo-notice{color:#594409!important;font-size:15px;line-height:1.8}
+.cpad-section-content .cpo-guided-page .cpo-notice p{margin:6px 0 0}
+.cpad-section-content .cpo-guided-page .cpo-eyebrow{font-size:14px;letter-spacing:0}
+.cpad-section-content .cpo-guided-page .cpo-hero p{font-size:15px}
+.cpad-section-content .cpo-guided-page .cpo-check-option{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.8;margin-top:20px}
+.cpad-section-content .cpo-guided-page .cpo-check-option input{flex:none;margin-top:7px}
+.cpad-section-content .cpo-guided-page .button{font-size:15px;line-height:1.5;min-height:44px;white-space:normal;text-align:center}
+@media(max-width:900px){.cpad-section-content .cpo-guided-page .cpo-context-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.cpad-section-content .cpo-guided-page{padding:8px}.cpad-section-content .cpo-guided-page .cpo-form-section{padding:16px}.cpad-section-content .cpo-guided-page .cpo-hero{padding:18px}.cpad-section-content .cpo-guided-page .cpo-form-actions{flex-wrap:wrap}.cpad-section-content .cpo-guided-page .cpo-form-actions>*{flex:1}}
+
+.cpad-section-content .cpo-guided-page .cpo-change-service{margin-top:14px}
+.cpad-section-content .cpo-guided-page .cpo-order-control a[hidden]{display:none!important}
+.cpad-section-content .cpo-guided-page .cpo-native-order-list{font-size:14px;line-height:1.7;text-decoration:underline;color:#164d85}
+/* Customer operation cards are light surfaces inside the workspace shell. */
+.cpcc-ui #customer-operations .cpw-action-card{color:#172033}
+.cpcc-ui #customer-operations .cpw-action-main h3,.cpcc-ui #customer-operations .cpw-next strong{color:#172033;font-size:16px;line-height:1.6}
+.cpcc-ui #customer-operations .cpw-action-main p{color:#354c66!important;font-size:14px;line-height:1.7}
+.cpcc-ui #customer-operations .cpw-next small,.cpcc-ui #customer-operations .cpw-next span{color:#46566c;font-size:14px;line-height:1.7}
+.cpcc-ui #customer-operations .cpw-chip{font-size:13px;line-height:1.5;color:#174eae}
+.cpcc-ui .cpw-task-card{color:#172033}
+.cpcc-ui .cpw-task-card p{color:#46566c!important;font-size:14px;line-height:1.7}
+.cpcc-ui .cpw-task-card dt{color:#46566c;font-size:14px;line-height:1.6}
+.cpcc-ui .cpw-task-card dd,.cpcc-ui .cpw-task-card .cpw-card-top>span{color:#172033;font-size:16px;line-height:1.6}
+.cpcc-ui .cpw-task-card .cpw-card-top>.cpw-chip{color:#174eae;font-size:13px}
+/* Workspace phone layout: keep section titles, tabs and section links readable. */
+.cpcc-ui .cpo-register-page .cpo-table :is(th,td){font-size:14px;line-height:1.6}
+.cpcc-ui .cpo-register-page,.cpcc-ui .cpo-register-page .cpo-table a{scroll-margin-top:90px}
+.cpcc-ui .cpo-register-page .cpo-field>span{font-size:15px}
+.cpcc-ui .cpo-register-page :is(input,select){font-size:16px}
+.cpcc-ui .cpo-register-page .cpo-actions{display:flex;flex-wrap:wrap;gap:10px}
+.cpcc-ui .cpo-register-page .cpo-actions .button{display:inline-flex;align-items:center;justify-content:center;min-height:44px;font-size:15px;margin:0}
+@media(max-width:700px){
+ .cpcc-ui .cpo-register-page .div-table-responsive{overflow:visible}
+ .cpcc-ui .cpo-register-page .cpo-table,.cpcc-ui .cpo-register-page .cpo-table tbody{display:block;width:100%;min-width:0}
+ .cpcc-ui .cpo-register-page .cpo-table thead{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .cpcc-ui .cpo-register-page .cpo-table tbody tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;margin-bottom:16px;border:1px solid #b8c8da;border-radius:12px;background:#fff;color:#172033}
+ .cpcc-ui .cpo-register-page .cpo-table tbody tr.cpo-overdue{border-inline-start:4px solid #b42318;background:#fff8f7;box-shadow:none}
+ .cpcc-ui .cpo-register-page .cpo-table td{display:block;min-width:0;padding:0;border:0;font-size:16px;line-height:1.6;color:#172033!important;white-space:normal;overflow-wrap:anywhere}
+ .cpcc-ui .cpo-register-page .cpo-table td:nth-child(1),.cpcc-ui .cpo-register-page .cpo-table td:nth-child(2),.cpcc-ui .cpo-register-page .cpo-table td:nth-child(6),.cpcc-ui .cpo-register-page .cpo-table td:nth-child(7){grid-column:1/-1}
+ .cpcc-ui .cpo-register-page .cpo-table td::before{content:attr(data-label);display:block;margin-bottom:3px;font-size:14px;font-weight:700;line-height:1.5;color:#46566c}
+ .cpcc-ui .cpo-register-page .cpo-table td:nth-child(2){font-weight:700}
+ .cpcc-ui .cpad-section-content .cpo-register-page .cpo-table td a{display:inline-flex;align-items:center;min-height:44px;color:#07579a!important;font-size:16px}
+ .cpcc-ui .cpo-register-page .cpo-table td a strong{color:inherit!important}
+ .cpcc-ui .cpo-register-page .cpo-table .cpo-badge{font-size:14px;line-height:1.5;white-space:normal;color:#174eae;background:#eaf2ff}
+}
+@media(max-width:700px){
+ .cpad-section-shell:has(.cpw-page)>.cpad-section-heading{flex-direction:column;justify-content:center;text-align:center;gap:8px}
+ .cpad-section-shell:has(.cpw-page)>.cpad-section-heading>div{min-width:0;max-width:100%}
+ .cpw-page .cpw-tabs{flex-wrap:wrap;justify-content:center;overflow:visible}
+ .cpw-page .cpw-tabs a{flex:1 1 130px;min-width:0;white-space:normal;text-align:center;padding:8px 12px;font-size:16px;line-height:1.5}
+ .cpw-page .cpw-tabs a span{flex-shrink:0}
+ .cpw-page .cpw-section .cpo-panel-head{flex-wrap:wrap;align-items:center;gap:8px 12px}
+ .cpw-page .cpw-section .cpo-panel-head>div{flex:1 1 180px;min-width:0}
+ .cpw-page .cpw-section .cpo-panel-head>a{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:44px;padding:4px 6px;font-family:inherit;font-size:16px;font-weight:700;line-height:1.5;white-space:nowrap}
+}

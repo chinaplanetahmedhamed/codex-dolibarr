@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../chinaplanetcustomercenter/lib/ui.lib.php';
 /**
  * Customer Shipment List for China Planet Logistics
  * External user detection: $user->socid > 0 means external user (Dolibarr standard)
@@ -71,18 +72,18 @@ if ($canwrite) {
     $newbtn = '<a class="butActionNew" href="'.dol_buildpath('/chinaplanetlogistics/card.php?action=create', 1).'"><span class="fa fa-plus-circle valignmiddle btnTitle-icon"></span></a>';
 }
 
-if (!$is_external) cpcc_admin_shell_open('shipments', cpcc_ui_t('UIShipmentListdd06d'), 'البحث في الحاويات وبوالص الشحن ومواعيد الوصول', 'fa-list', array('socid'=>$socid));
+if (!$is_external) cpcc_admin_shell_open('shipments', cpcc_ui_t('UIShipmentListdd06d'), cpcc_ui_english_label('Search containers, bills of lading and arrival dates.', 'البحث في الحاويات وبوالص الشحن ومواعيد الوصول'), 'fa-list', array('socid'=>$socid));
 
-print '<main class="cpcc-dashboard cpcc-shipments-page" dir="rtl">';
+print '<main class="cpcc-dashboard cpcc-shipments-page" dir="'.cpcc_ui_english_label('ltr', 'rtl').'">';
 print '<header class="cpcc-page-head"><div>';
 print '<span class="cpcc-eyebrow">SHIPMENT TRACKING</span>';
 print '<h1>' . dol_escape_htmltag(cpcc_ui_t('UIShipments7a70b')) . '</h1>';
 print '<p>' . dol_escape_htmltag(cpcc_ui_t('UITrackShipmentStatusArrivalDatesAndFreeTimeInOneP94b9f')) . '</p>';
 print '</div></header>';
 print '<form class="cpl-shipment-filter-form" method="GET" action="'.$_SERVER["PHP_SELF"].'">';
-print '<div class="cpl-filter-grid" aria-label="Shipment filters / فلاتر الشحنات">';
-print '<label><span>' . dol_escape_htmltag(cpcc_ui_t('UIContainere6443')) . '</span><input type="text" class="flat" name="search_container" value="'.dol_escape_htmltag($search_container).'" placeholder="رقم الحاوية / Container number"></label>';
-print '<label><span>' . dol_escape_htmltag(cpcc_ui_t('UIBlcde78')) . '</span><input type="text" class="flat" name="search_bl" value="'.dol_escape_htmltag($search_bl).'" placeholder="رقم البوليصة / BL number"></label>';
+print cpcc_ui_english_label('<div class="cpl-filter-grid" aria-label="Shipment filters">', '<div class="cpl-filter-grid" aria-label="Shipment filters / فلاتر الشحنات">');
+print '<label><span>' . dol_escape_htmltag(cpcc_ui_t('UIContainere6443')) . '</span><input type="text" class="flat" name="search_container" value="'.dol_escape_htmltag($search_container).cpcc_ui_english_label('" placeholder="Container number"></label>', '" placeholder="رقم الحاوية / Container number"></label>');
+print '<label><span>' . dol_escape_htmltag(cpcc_ui_t('UIBlcde78')) . '</span><input type="text" class="flat" name="search_bl" value="'.dol_escape_htmltag($search_bl).cpcc_ui_english_label('" placeholder="BL number"></label>', '" placeholder="رقم البوليصة / BL number"></label>');
 print '<label><span>' . dol_escape_htmltag(cpcc_ui_t('UIStatusbae7d')) . '</span>'.Form::selectarray('status', array(
     '' => cpcc_ui_t('UIAllStatuses64051'),
     'active' => cpcc_ui_t('UIActivea733b'),
@@ -95,7 +96,7 @@ print '<label><span>' . dol_escape_htmltag(cpcc_ui_t('UIStatusbae7d')) . '</span
 if (!$is_external) print '<label><span>' . dol_escape_htmltag(cpcc_ui_t('UICustomer0e857')) . '</span>'.Form::selectarray('socid',$customerOptions,$socid,cpcc_ui_t('UIAllCustomers3a1ca'),0,0,cpcc_ui_t('UIAriaLabelCustomerFiltera3ed3'),0,0,0,'','',1).'</label>';
 print '<button type="submit" class="button cpl-filter-submit"><span class="fas fa-search" aria-hidden="true"></span>' . dol_escape_htmltag(cpcc_ui_t('UISearchbce06')) . '</button>';
 print '</div>';
-print '<div class="div-table-responsive cpl-shipment-list-wrap" tabindex="0" aria-label="Shipment results / نتائج الشحنات">';
+print cpcc_ui_english_label('<div class="div-table-responsive cpl-shipment-list-wrap" tabindex="0" aria-label="Shipment results">', '<div class="div-table-responsive cpl-shipment-list-wrap" tabindex="0" aria-label="Shipment results / نتائج الشحنات">');
 print '<table class="tagtable liste cpl-shipment-list">';
 
 print '<thead><tr class="liste_titre">';

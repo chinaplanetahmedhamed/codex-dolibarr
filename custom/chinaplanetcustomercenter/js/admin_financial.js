@@ -6,7 +6,7 @@
     if(!type||!output)return;
     function update(){
       var credit=type.value==='customer_receipt'||type.value==='opening_balance';
-      output.textContent=credit?'دائن / Credit (+)':'مدين / Debit (−)';
+      output.textContent=credit?'Credit (+)':'Debit (−)';
       output.className='cpcc-direction '+(credit?'credit':'debit');
     }
     type.addEventListener('change',update);update();

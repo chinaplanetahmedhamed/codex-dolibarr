@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lib/ui.lib.php';
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
@@ -38,9 +39,9 @@ if (!$isExternal) {
 }
 llxHeader('', 'Invoice '.$invoice['ref'], '', '', 0, 0, array(), $css);
 if ($isExternal) cpcc_portal_navigation($user, 'invoices');
-else cpcc_admin_shell_open('portal', cpcc_ui_t('UIInvoiceDetails397a6'), 'بنود الفاتورة والمدفوع والمتبقي', 'fa-file-invoice-dollar', array('socid'=>$socid));
+else cpcc_admin_shell_open('portal', cpcc_ui_t('UIInvoiceDetails397a6'), cpcc_ui_english_label('Invoice lines, paid amount and remaining balance.', 'بنود الفاتورة والمدفوع والمتبقي'), 'fa-file-invoice-dollar', array('socid'=>$socid));
 ?>
-<main class="cpcc-dashboard" dir="rtl">
+<main class="cpcc-dashboard" dir="<?php echo cpcc_ui_english_label('ltr', 'rtl'); ?>">
   <header class="cpcc-page-head"><div><span class="cpcc-eyebrow"><?php echo dol_escape_htmltag($invoice['ref']); ?></span><h1><?php echo dol_escape_htmltag(cpcc_ui_t('UIInvoiceDetails397a6')); ?></h1><p><?php echo dol_escape_htmltag($invoice['project_ref'].' '.$invoice['project_title']); ?></p></div></header>
   <section class="cpcc-financial-cards">
     <div class="cpcc-card invoices"><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIGrossTotalfa70e')); ?></span><strong><?php echo cpcc_portal_money($invoice['total']).' '.dol_escape_htmltag($invoice['currency']); ?></strong></div>
@@ -52,7 +53,7 @@ else cpcc_admin_shell_open('portal', cpcc_ui_t('UIInvoiceDetails397a6'), 'بنو
   <?php foreach ($lines as $line) { $multi=$invoice['currency']!==$currencyFallback; $price=$multi&&$line->multicurrency_subprice!=0?$line->multicurrency_subprice:$line->subprice; $total=$multi&&$line->multicurrency_total_ht!=0?$line->multicurrency_total_ht:$line->total_ht; ?>
     <tr><td><?php echo dol_escape_htmltag($line->description); ?></td><td><?php echo cpcc_portal_money($line->qty); ?></td><td><?php echo cpcc_portal_money($price); ?></td><td><?php echo cpcc_portal_money($total).' '.dol_escape_htmltag($invoice['currency']); ?></td></tr>
   <?php } ?></tbody></table></div>
-  <section class="cpcc-section-head"><div><h2><?php echo dol_escape_htmltag(cpcc_ui_t('UIAppliedCustomerCreditd0128')); ?></h2><p>دفعات مقدمة حوّلها Dolibarr إلى رصيد واستُخدمت في هذه الفاتورة.</p></div></section>
+  <section class="cpcc-section-head"><div><h2><?php echo dol_escape_htmltag(cpcc_ui_t('UIAppliedCustomerCreditd0128')); ?></h2><p><?php echo cpcc_ui_english_label('Deposits converted by Dolibarr into credit and applied to this invoice.', 'دفعات مقدمة حوّلها Dolibarr إلى رصيد واستُخدمت في هذه الفاتورة.'); ?></p></div></section>
   <div class="cpcc-table-wrap"><table class="cpcc-table"><thead><tr><th><?php echo dol_escape_htmltag(cpcc_ui_t('UISource6da13')); ?></th><th><?php echo dol_escape_htmltag(cpcc_ui_t('UIAmount43dc8')); ?></th></tr></thead><tbody>
   <?php if (empty($appliedCredits)) { ?><tr><td colspan="2"><?php echo dol_escape_htmltag(cpcc_ui_t('UINoCustomerCreditApplied88983')); ?></td></tr><?php }
   foreach ($appliedCredits as $credit) { ?>

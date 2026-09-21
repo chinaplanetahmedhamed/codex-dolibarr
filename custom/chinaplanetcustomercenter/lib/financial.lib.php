@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ui.lib.php';
 
 function cpcc_financial_schema_ready($db)
 {
@@ -73,25 +74,25 @@ function cpcc_financial_total_usd($summary, $overrides = array())
 function cpcc_financial_type_label($type)
 {
     $labels = array(
-        'customer_receipt' => 'Customer payment / دفعة العميل',
-        'opening_balance' => 'Opening balance / رصيد افتتاحي',
-        'supplier_payment' => 'Supplier payment / دفعة مورد',
-        'shipping' => 'Shipping / شحن',
-        'commission' => 'Commission / عمولة',
+        'customer_receipt' => cpcc_ui_english_label('Customer payment', 'Customer payment / دفعة العميل'),
+        'opening_balance' => cpcc_ui_english_label('Opening balance', 'Opening balance / رصيد افتتاحي'),
+        'supplier_payment' => cpcc_ui_english_label('Supplier payment', 'Supplier payment / دفعة مورد'),
+        'shipping' => cpcc_ui_english_label('Shipping', 'Shipping / شحن'),
+        'commission' => cpcc_ui_english_label('Commission', 'Commission / عمولة'),
         'cargox' => 'CargoX',
         'dhl' => 'DHL',
-        'inspection' => 'Inspection / فحص',
-        'service' => 'Service charge / خدمة',
-        'invoice_allocation' => 'Invoice paid from customer funds / سداد فاتورة من رصيد العميل',
-        'other' => 'Other expense / مصروف آخر',
-        'fx_out' => 'Currency conversion out / تحويل صادر',
-        'fx_in' => 'Currency conversion in / تحويل وارد',
-        'adjustment' => 'Adjustment / تسوية',
-        'native_payment' => 'Vision System customer payment / دفعة مسجلة',
-        'native_deposit_receipt' => 'Customer deposit received / إيداع عميل مستلم',
-        'native_invoice_receipt' => 'Customer invoice payment received / دفعة فاتورة مستلمة',
-        'native_invoice_allocation' => 'Payment allocated to invoice / تخصيص دفعة للفاتورة',
-        'native_credit_allocation' => 'Customer credit allocated to invoice / تخصيص رصيد العميل للفاتورة',
+        'inspection' => cpcc_ui_english_label('Inspection', 'Inspection / فحص'),
+        'service' => cpcc_ui_english_label('Service charge', 'Service charge / خدمة'),
+        'invoice_allocation' => cpcc_ui_english_label('Invoice paid from customer funds', 'Invoice paid from customer funds / سداد فاتورة من رصيد العميل'),
+        'other' => cpcc_ui_english_label('Other expense', 'Other expense / مصروف آخر'),
+        'fx_out' => cpcc_ui_english_label('Currency conversion out', 'Currency conversion out / تحويل صادر'),
+        'fx_in' => cpcc_ui_english_label('Currency conversion in', 'Currency conversion in / تحويل وارد'),
+        'adjustment' => cpcc_ui_english_label('Adjustment', 'Adjustment / تسوية'),
+        'native_payment' => cpcc_ui_english_label('Vision System customer payment', 'Vision System customer payment / دفعة مسجلة'),
+        'native_deposit_receipt' => cpcc_ui_english_label('Customer deposit received', 'Customer deposit received / إيداع عميل مستلم'),
+        'native_invoice_receipt' => cpcc_ui_english_label('Customer invoice payment received', 'Customer invoice payment received / دفعة فاتورة مستلمة'),
+        'native_invoice_allocation' => cpcc_ui_english_label('Payment allocated to invoice', 'Payment allocated to invoice / تخصيص دفعة للفاتورة'),
+        'native_credit_allocation' => cpcc_ui_english_label('Customer credit allocated to invoice', 'Customer credit allocated to invoice / تخصيص رصيد العميل للفاتورة'),
     );
     return isset($labels[$type]) ? $labels[$type] : $type;
 }

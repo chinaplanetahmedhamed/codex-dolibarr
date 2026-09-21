@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/ui.lib.php';
+cpcc_ui_initialize_language();
 /**
  * Shared internal ChinaPlanet operations shell.
  *
@@ -34,7 +35,14 @@ if (!function_exists('cpcc_admin_shell_asset')) {
 if (!function_exists('cpcc_admin_shell_navigation')) {
     function cpcc_admin_shell_navigation($active = '', $context = array())
     {
+        global $user;
         cpcc_ui_assets();
+        cpcc_ui_language_controls();
+        // A stable home destination, independent of browser history or customer context.
+        $onToday = basename($_SERVER['SCRIPT_NAME'] ?? '') === 'workspace.php' && in_array(GETPOST('view', 'aZ09'), array('', 'manager'), true);
+        if (!$onToday && !empty($user->id) && empty($user->socid) && (!empty($user->admin) || $user->hasRight('chinaplanetoperations', 'read'))) {
+            print '<a class="cpad-mobile-home" href="'.dol_escape_htmltag(cpcc_admin_shell_url('/chinaplanetoperations/workspace.php')).'"><span class="fas fa-home" aria-hidden="true"></span> '.dol_escape_htmltag(cpcc_ui_t('UIBackToToday')).'</a>';
+        }
         $items = array(
             'workspace'=>array('/chinaplanetoperations/workspace.php', 'fa-compass', cpcc_ui_t('UIWorkspace4ca0a'), cpcc_ui_t('UIToday24345')),
             'dashboard'=>array('/chinaplanetcustomercenter/admin_dashboard.php', 'fa-chart-line', cpcc_ui_t('UIDashboardd87f4'), cpcc_ui_t('UIHome70f8b')),

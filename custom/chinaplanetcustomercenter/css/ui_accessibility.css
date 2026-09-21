@@ -65,12 +65,38 @@ body.cpcc-ui {font-family:Arial,Tahoma,sans-serif;line-height:1.5}
 .cpcc-ui .cpad-head h1{max-width:100%;overflow-wrap:anywhere}
 .cpcc-ui .cpad-environment{position:static;max-width:100%;margin:4px 0;justify-content:center;text-align:center}
 .cpcc-ui .cpad-environment span{min-width:0;overflow-wrap:anywhere}
-@media(max-width:1024px){
  /* Paired label/icon links share one destination. The icon keeps the accessible
   * name and tooltip; the strip scrolls internally at phone widths. */
- .cpcc-ui #id-top nav{max-width:100%}
- .cpcc-ui #id-top ul.tmenu{display:flex!important;flex-wrap:nowrap!important;align-items:center;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
- .cpcc-ui #id-top ul.tmenu>li{position:relative;float:none!important;flex:0 0 44px;width:44px!important;min-width:44px;max-width:none;padding:0;margin:0}
- .cpcc-ui #id-top .tmenuend{display:none}
- .cpcc-ui #id-top .cpcc-icon-menu-item a.tmenulabel{display:none!important}
+ .cpcc-ui.cpcc-native-compact #id-top nav{max-width:100%}
+ .cpcc-ui.cpcc-native-compact #id-top ul.tmenu{display:flex!important;flex-wrap:nowrap!important;align-items:center;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+ .cpcc-ui.cpcc-native-compact #id-top ul.tmenu>li{position:relative;float:none!important;flex:0 0 44px;width:44px!important;min-width:44px;max-width:none;padding:0;margin:0}
+ .cpcc-ui.cpcc-native-compact #id-top .tmenuend{display:none}
+ .cpcc-ui.cpcc-native-compact #id-top .cpcc-icon-menu-item a.tmenulabel{display:none!important}
+
+/* A native menu entry without a paired icon keeps a fully readable text target. */
+.cpcc-ui.cpcc-native-compact #id-top ul.tmenu>li.cpcc-text-menu-item{flex:0 0 auto;width:auto!important;min-width:44px}
+.cpcc-ui.cpcc-native-compact #id-top .cpcc-text-menu-item a.tmenulabel{display:flex!important;align-items:center;min-height:44px;padding-inline:12px;font-size:14px;width:auto;white-space:nowrap;text-overflow:clip}
+.cpcc-ui.cpcc-native-compact #id-top .cpcc-text-menu-item .mainmenuaspan{font-size:14px;max-width:none;white-space:nowrap;text-overflow:clip}
+
+/* Keyboard and touch details from the scoped Web Interface Guidelines review. */
+.cpcc-ui .cpcc-skip-link{position:fixed;inset-block-start:64px;inset-inline-start:12px;z-index:10000;padding:12px 18px;background:#fff;color:#102a43;font-size:16px;font-weight:700;transform:translateY(-220px);border:2px solid #087eb5;border-radius:6px}
+.cpcc-ui .cpcc-skip-link:focus{transform:none}
+.cpcc-ui :is(.cpo-guided-page,.cpw-page,#cpad-customize,#customer-operations){scroll-margin-top:90px}
+.cpcc-ui .cpo-guided-page :is(input,select,textarea):focus-visible{outline:3px solid #087eb5;outline-offset:3px;box-shadow:0 0 0 5px #fff}
+.cpcc-ui .cpo-guided-page :is(input,select,textarea){scroll-margin-top:90px}
+.cpcc-ui :is(.cpo-guided-page,.cpw-page) :is(h1,h2,h3){text-wrap:balance;overflow-wrap:anywhere}
+.cpcc-ui #customer-operations .cpw-action-main{min-width:0}
+.cpcc-ui #customer-operations .cpw-action-main h3{overflow-wrap:anywhere}
+.cpcc-ui :is(.cpo-guided-page,.cpw-page) :is(button,a),.cpcc-ui .cpad-tool{touch-action:manipulation;-webkit-tap-highlight-color:rgba(8,126,181,.25)}
+.cpcc-ui #cpad-widget-library{overscroll-behavior:contain}
+.cpcc-ui .cpad-mobile-home{display:none}
+@media(max-width:760px){
+ .cpcc-ui .cpad-mobile-home{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;margin:0 0 10px;padding:8px 12px;border:1px solid #45b9df;border-radius:8px;background:#123d64;color:#fff;font-size:16px;font-weight:700;line-height:1.5;text-decoration:none}
+ .cpcc-ui .cpad-mobile-home:hover{background:#195381;color:#fff}
 }
+
+/* The native selector leaves future interface languages visible but unavailable. */
+.cpcc-ui .cpad-language-control{display:flex;justify-content:flex-end;margin:0 0 12px;direction:ltr}
+.cpcc-ui .cpad-language-control select{font:inherit;font-size:16px;font-weight:600;line-height:1.5;min-height:44px;width:150px;max-width:100%;padding:8px 12px;border:1px solid #85b9e7;border-radius:8px;background-color:#e6f1ff;color:#064b85;cursor:pointer}
+.cpcc-ui .cpad-language-control select:focus-visible{outline:3px solid #5fddff;outline-offset:3px}
+@media(max-width:760px){.cpcc-ui .cpad-language-control{justify-content:center}}

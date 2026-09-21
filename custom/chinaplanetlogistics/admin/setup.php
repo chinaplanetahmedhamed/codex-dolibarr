@@ -11,7 +11,7 @@ $action = GETPOST('action', 'alpha');
 $backtopage = GETPOST('backtopage', 'restricthtml');
 
 llxHeader('', 'China Planet Logistics Setup', '', '', 0, 0, array(), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('tracking','Logistics Settings / إعدادات الشحن','روابط إعداد ومراجعة وحدة الشحن','fa-cog');
+cpcc_admin_shell_open('tracking','Logistics Settings','Shipping module setup and review links.','fa-cog');
 
 $linkback = '<a href="'.($backtopage ? $backtopage : DOL_URL_ROOT.'/admin/modules.php?restore_lastsearch_values=1').'">'.$langs->trans("BackToModuleList").'</a>';
 print load_fiche_titre('China Planet Logistics - Setup', $linkback, 'title_setup');

@@ -290,3 +290,5 @@ UIProjectsSyncPostRequired=Project synchronization requires POST.
 UIShipmentCardHeading=Shipment Details
 UIShipmentCardSubtitle=Container details, dates, free time and documents
 UIProjectsKanbanLabel=Kanban
+UIBackToToday=Back to Today
+UIOperationRegisterPrinciple=One operation · One owner · One next action

@@ -29,7 +29,7 @@ if($action==='save_usd_rates'){
 }
 
 llxHeader('', 'ChinaPlanet Customer Center Setup', '', '', 0, 0, array(), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('dashboard','System Settings / إعدادات النظام','أسعار التقييم وروابط إدارة مركز العملاء','fa-cog');
+cpcc_admin_shell_open('dashboard','System Settings','Balance valuation rates and Customer Center administration links.','fa-cog');
 
 print load_fiche_titre('ChinaPlanet Customer Center', '', 'title_setup');
 print '<div class="info">';
@@ -44,14 +44,14 @@ print '</div>';
 print '<form method="POST" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'">';
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="action" value="save_usd_rates">';
-print load_fiche_titre('Total Balance in USD — أسعار تقييم الرصيد', '', 'money-bill-alt');
-print '<div class="info">تُستخدم هذه الأسعار لعرض إجمالي أرصدة العميل بالدولار فقط. لا تغيّر العملات أو القيود الأصلية.</div>';
+print load_fiche_titre('Total Balance in USD — valuation rates', '', 'money-bill-alt');
+print '<div class="info">These rates only display customer balances in USD. They do not change original currencies or entries.</div>';
 print '<div class="div-table-responsive"><table class="noborder centpercent">';
-print '<tr class="liste_titre"><th>العملة</th><th>سعر التقييم</th></tr>';
+print '<tr class="liste_titre"><th>Currency</th><th>Valuation rate</th></tr>';
 print '<tr><td>RMB</td><td>1 USD = <input required name="usd_units_rmb" value="'.dol_escape_htmltag(getDolGlobalString('CHINAPLANETCUSTOMERCENTER_USD_UNITS_RMB')).'"> RMB</td></tr>';
 print '<tr><td>EGP</td><td>1 USD = <input required name="usd_units_egp" value="'.dol_escape_htmltag(getDolGlobalString('CHINAPLANETCUSTOMERCENTER_USD_UNITS_EGP')).'"> EGP</td></tr>';
-print '<tr><td>تاريخ التقييم</td><td><input required type="date" name="usd_rate_date" value="'.dol_escape_htmltag(getDolGlobalString('CHINAPLANETCUSTOMERCENTER_USD_RATE_DATE')).'"></td></tr>';
-print '</table></div><div class="center"><button class="button button-save" type="submit">حفظ أسعار التقييم</button></div></form>';
+print '<tr><td>Valuation date</td><td><input required type="date" name="usd_rate_date" value="'.dol_escape_htmltag(getDolGlobalString('CHINAPLANETCUSTOMERCENTER_USD_RATE_DATE')).'"></td></tr>';
+print '</table></div><div class="center"><button class="button button-save" type="submit">Save valuation rates</button></div></form>';
 
 cpcc_admin_shell_close();
 llxFooter();

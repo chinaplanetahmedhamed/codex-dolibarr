@@ -17,17 +17,37 @@ $action = GETPOST('action', 'aZ09');
 $operation = $id ? $service->get($id) : null;
 if ($id && !$operation) accessforbidden();
 $type = $operation['service_type'] ?? GETPOST('service_type', 'alphanohtml');
-if (!in_array($type, OperationsService::serviceTypes(), true)) $type = 'general';
+$hasSelectedService = in_array($type, OperationsService::serviceTypes(), true);
+$showServiceChooser = !$id && $action !== 'save' && !$hasSelectedService;
+if (!$hasSelectedService) $type = 'general';
+$orderProductFields = array('product_summary','quantity','target_price','order_value','currency');
+$hasSupplierField = in_array('supplier', OperationsService::serviceFields($type), true);
 $selectedSocid = $operation ? (int) $operation['fk_soc'] : (GETPOSTINT('fk_soc') ?: GETPOSTINT('socid'));
-$operationCreateUrl = dol_buildpath('/custom/chinaplanetoperations/operations/edit.php', 1).'?service_type='.rawurlencode($type);
+$uiLanguage = cpcc_ui_language();
+$operationCreateUrl = dol_buildpath('/custom/chinaplanetoperations/operations/edit.php', 1).'?service_type='.rawurlencode($type).'&lang='.rawurlencode($uiLanguage);
 $newCustomerUrl = DOL_URL_ROOT.'/societe/card.php?action=create&client=1&backtopage='.rawurlencode($operationCreateUrl);
 $customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client', 'voir') ? '' : ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'societe_commerciaux csc WHERE csc.fk_soc=s.rowid AND csc.fk_user='.(int) $user->id.')';
+$chooseServiceUrl = 'edit.php?lang='.rawurlencode($uiLanguage).($selectedSocid ? '&fk_soc='.(int) $selectedSocid : '');
+$supplierReturnUrl = $id ? dol_buildpath('/custom/chinaplanetoperations/operations/edit.php', 1).'?id='.(int) $id.'&lang='.rawurlencode($uiLanguage) : $operationCreateUrl;
+if ($selectedSocid) $supplierReturnUrl .= '&fk_soc='.(int) $selectedSocid;
+$newSupplierUrl = DOL_URL_ROOT.'/societe/card.php?action=create&fournisseur=1&backtopage='.rawurlencode($supplierReturnUrl);
+$suppliers = array();
+if ($hasSupplierField) {
+    // Mirror native third-party list visibility, including supplier-only and sales-rep restrictions.
+    $supplierReadSql = !empty($user->admin) || $user->hasRight('fournisseur', 'lire') ? '' : ' AND s.client<>0';
+    $res = $db->query("SELECT s.rowid,s.nom FROM ".MAIN_DB_PREFIX."societe s WHERE s.entity=".(int) $conf->entity." AND s.status=1 AND s.fournisseur=1".$supplierReadSql.$customerAccessSql." ORDER BY s.nom");
+    while ($res && ($o = $db->fetch_object($res))) $suppliers[(int) $o->rowid] = $o->nom;
+}
+$existingSupplierId = (int) ($operation['service_data']['supplier_id'] ?? 0);
+$existingSupplierName = (string) ($operation['service_data']['supplier'] ?? '');
+$preserveExistingSupplier = $operation && $existingSupplierName !== '' && (!$existingSupplierId || !isset($suppliers[$existingSupplierId]));
 
-$companies = array(0=>'— اختر العميل أولاً —');
+
+$companies = array(0=>$langs->trans('GuidedChooseCustomer'));
 $res = $db->query("SELECT s.rowid,s.nom FROM ".MAIN_DB_PREFIX."societe s WHERE s.entity=".(int) $conf->entity." AND s.status=1 AND s.client>0".$customerAccessSql." ORDER BY s.nom LIMIT 1000");
 while ($res && ($o = $db->fetch_object($res))) $companies[(int) $o->rowid] = $o->nom;
 if ($operation && (!isset($companies[(int) $operation['fk_soc']]) || (int) $operation['fk_soc'] <= 0)) accessforbidden();
-$users = array(0=>'— غير مسند —');
+$users = array(0=>$langs->trans('GuidedChooseOwner'));
 $res = $db->query("SELECT rowid,login,firstname,lastname FROM ".MAIN_DB_PREFIX."user WHERE entity=".(int) $conf->entity." AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login");
 while ($res && ($o = $db->fetch_object($res))) $users[(int) $o->rowid] = trim($o->firstname.' '.$o->lastname) ?: $o->login;
 $assignableUserIds = array_keys($users);
@@ -41,6 +61,14 @@ while ($res && ($o = $db->fetch_object($res))) {
 $taskMigration = new InternalTaskMigration($db);
 $taskBoardReady = $taskMigration->isReady(true);
 $taskBoardReason = $taskBoardReady ? 'READY' : $taskMigration->readinessReason();
+// Match the task service's existing entity-specific prerequisite before enabling Save.
+if ($taskBoardReady) {
+    $taskStages = new InternalTaskStageService($db, $user, (int) $conf->entity);
+    if (!$taskStages->systemStage('todo')) {
+        $taskBoardReady = false;
+        $taskBoardReason = 'CURRENT_ENTITY_STAGE_MISSING';
+    }
+}
 $createReady = $taskBoardReady && !empty($teams);
 $selectedTeamId = 0;
 if ($id > 0) {
@@ -66,9 +94,26 @@ $requestHash = GETPOST('request_hash', 'alphanohtml');
 if ($requestHash === '') $requestHash = hash('sha256', (string) session_id().':'.(int) $user->id.':'.$csrfToken.':operation-create');
 
 if ($action === 'save') try {
-    $serviceData = array();
+    // Existing section values survive when the guided form does not offer that field.
+    $serviceData = $operation['service_data'] ?? array();
     $postedServiceData = GETPOST('service_data', 'array');
-    foreach (OperationsService::serviceFields($type) as $field) $serviceData[$field] = trim((string) ($postedServiceData[$field] ?? ''));
+    foreach (OperationsService::serviceFields($type) as $field) {
+        if ($field === 'supplier' || ($type === 'order' && in_array($field, $orderProductFields, true))) continue;
+        if (isset($postedServiceData[$field]) && is_scalar($postedServiceData[$field])) $serviceData[$field] = trim((string) $postedServiceData[$field]);
+        elseif (!$operation) $serviceData[$field] = '';
+    }
+    if ($hasSupplierField) {
+        $supplierChoice = GETPOST('supplier_id', 'alphanohtml');
+        if ($supplierChoice === '' && $operation) $supplierChoice = $preserveExistingSupplier ? 'existing' : (string) $existingSupplierId;
+        if ($supplierChoice === 'existing' && $preserveExistingSupplier) {
+            // Keep old free text or an unavailable historical supplier without inventing a new identity.
+        } elseif ($supplierChoice === '' || $supplierChoice === '0') {
+            $serviceData['supplier'] = ''; unset($serviceData['supplier_id']);
+        } elseif (ctype_digit($supplierChoice) && isset($suppliers[(int) $supplierChoice])) {
+            $serviceData['supplier_id'] = (string) (int) $supplierChoice;
+            $serviceData['supplier'] = $suppliers[(int) $supplierChoice];
+        } else throw new RuntimeException($langs->trans('GuidedSupplierInvalid'));
+    }
     $requestedProjectId = GETPOSTINT('fk_project');
     $requestedOrderId = GETPOSTINT('fk_commande');
     if ($id <= 0 && !$canReadProjects && $requestedProjectId > 0) throw new RuntimeException('Project link requires native project permission.');
@@ -95,7 +140,7 @@ if ($action === 'save') try {
     if (!$data['fk_user_assign']) throw new RuntimeException('Operation owner is required.');
     if (!$data['next_action']) throw new RuntimeException('Next action is required.');
     if ($id) $service->update($id, $data, (int) $user->id); else $id = $service->create($data, (int) $user->id);
-    header('Location:view.php?id='.$id); exit;
+    header('Location:view.php?id='.$id.'&lang='.rawurlencode($uiLanguage)); exit;
 } catch (Throwable $e) {
     $db->rollback(); setEventMessages($e->getMessage(), null, 'errors');
 }
@@ -104,61 +149,94 @@ $v = function ($key, $default='') use ($operation, $selectedSocid) {
     return $operation[$key] ?? $default;
 };
 $sd = $operation['service_data'] ?? array();
-$renderField = function ($field) use ($langs, $sd) {
+$renderField = function ($field) use ($langs, $sd, $type, $orderProductFields, $suppliers, $existingSupplierId, $existingSupplierName, $preserveExistingSupplier, $canCreateCustomers, $newSupplierUrl, $supplierReturnUrl) {
+    if ($type === 'order' && in_array($field, $orderProductFields, true)) return;
+    if ($field === 'supplier') { ?>
+    <div class="cpo-field"><label for="cpo-supplier"><?php echo dol_escape_htmltag($langs->trans('Field_supplier')); ?></label><select id="cpo-supplier" name="supplier_id"><option value="0"><?php echo dol_escape_htmltag($langs->trans('GuidedOptional')); ?></option><?php if ($preserveExistingSupplier) { ?><option value="existing" selected><?php echo dol_escape_htmltag($langs->trans('GuidedExistingSupplier', $existingSupplierName)); ?></option><?php } ?><?php foreach ($suppliers as $supplierId=>$supplierName) { ?><option value="<?php echo $supplierId; ?>"<?php echo !$preserveExistingSupplier && $supplierId === $existingSupplierId ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($supplierName); ?></option><?php } ?></select><small><?php echo dol_escape_htmltag($langs->trans('GuidedSupplierHelp')); ?></small><?php if ($canCreateCustomers) { ?><a class="button" target="_blank" rel="noopener" href="<?php echo dol_escape_htmltag($newSupplierUrl); ?>"><?php echo dol_escape_htmltag($langs->trans('GuidedAddSupplier')); ?></a><?php } ?><button type="button" class="button" id="cpo-refresh-suppliers" data-url="<?php echo dol_escape_htmltag($supplierReturnUrl); ?>"><?php echo dol_escape_htmltag($langs->trans('GuidedRefreshSuppliers')); ?></button><small id="cpo-supplier-refresh-status" role="status"><?php echo dol_escape_htmltag($langs->trans('GuidedRefreshSupplierHelp')); ?></small></div>
+    <?php return; }
     $value=$sd[$field]??''; $options=OperationsService::fieldOptions($field); ?>
     <label class="cpo-field"><span><?php echo $langs->trans('Field_'.$field); ?></span><?php if ($options) { ?><select name="service_data[<?php echo $field; ?>]"><option value="">—</option><?php foreach ($options as $option) { ?><option value="<?php echo dol_escape_htmltag($option); ?>"<?php echo $value === $option ? ' selected' : ''; ?>><?php echo dol_escape_htmltag(ucwords(str_replace('_',' ',$option))); ?></option><?php } ?></select><?php } elseif (in_array($field, array('customer_requirements','customer_warnings','findings','advice','product_details','customer_notes','cargo_summary','evidence_summary','resolution','contact_links'), true)) { ?><textarea name="service_data[<?php echo $field; ?>]"><?php echo dol_escape_htmltag($value); ?></textarea><?php } else { ?><input name="service_data[<?php echo $field; ?>]" value="<?php echo dol_escape_htmltag($value); ?>"><?php } ?></label><?php
 };
 $morecss=array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
-llxHeader('', $langs->trans($id ? 'EditOperation' : 'NewOperation'), '', '', 0, 0, array(), $morecss);
-cpcc_admin_shell_open('workspace', $langs->trans($id ? 'EditOperation' : 'NewOperation'), $langs->trans('OperationsRegisterHelp'), 'fa-route');
+$pageTitle = $showServiceChooser ? $langs->trans('ChooseService') : $langs->trans($id ? 'EditOperation' : 'NewOperation').' · '.$langs->trans('Svc_'.$type);
+llxHeader('', $pageTitle, '', '', 0, 0, array(), $morecss);
+cpcc_admin_shell_open('workspace', $pageTitle, $langs->trans('OperationsRegisterHelp'), 'fa-route');
 ?>
-<main class="cpo-page"><section class="cpo-hero"><div><span class="cpo-eyebrow">GUIDED OPERATION FORM</span><h1><?php echo $langs->trans($id?'EditOperation':'NewOperation'); ?></h1><p><?php echo $id?dol_escape_htmltag($operation['ref']):$langs->trans('ChooseServiceHelp'); ?></p></div><a class="button" href="<?php echo $id?'view.php?id='.$id:'index.php'; ?>"><?php echo $langs->trans('Back'); ?></a></section>
-<?php if(!$id&&$action!=='save'){ ?><section class="cpo-form-section"><h2><?php echo $langs->trans('ChooseService'); ?></h2><div class="cpo-service-grid"><?php foreach(OperationsService::serviceTypes() as $code){ ?><a href="?service_type=<?php echo $code; ?>"><strong><?php echo $langs->trans('Svc_'.$code); ?></strong><small><?php echo $langs->trans('SvcHelp_'.$code); ?></small></a><?php } ?></div></section><?php } ?>
-<form method="post" id="cpo-guided-operation-form">
+<main class="cpo-page cpo-guided-page"><section class="cpo-hero"><div><span class="cpo-eyebrow"><?php echo dol_escape_htmltag($langs->trans('GuidedForm')); ?></span><h1><?php echo dol_escape_htmltag($pageTitle); ?></h1><p><?php echo $id?dol_escape_htmltag($operation['ref']):$langs->trans($showServiceChooser?'ChooseServiceHelp':'GuidedDedicatedHelp'); ?></p></div><a class="button" href="<?php echo dol_escape_htmltag($id ? 'view.php?id='.$id.'&lang='.rawurlencode($uiLanguage) : cpcc_admin_shell_url('/chinaplanetoperations/workspace.php')); ?>"><?php echo $id ? $langs->trans('GuidedBack') : cpcc_ui_t('UIBackToToday'); ?></a></section>
+<?php if($showServiceChooser){ ?><section class="cpo-form-section"><h2><?php echo $langs->trans('ChooseService'); ?></h2><div class="cpo-service-grid"><?php foreach(OperationsService::serviceTypes() as $code){ ?><a href="?service_type=<?php echo $code; ?>&amp;lang=<?php echo rawurlencode($uiLanguage); ?><?php echo $selectedSocid ? '&amp;fk_soc='.(int) $selectedSocid : ''; ?>"><strong><?php echo $langs->trans('Svc_'.$code); ?></strong><small><?php echo $langs->trans('SvcHelp_'.$code); ?></small></a><?php } ?></div></section><?php } else { ?>
+<?php if (!$id) { ?><a class="button cpo-change-service" href="<?php echo dol_escape_htmltag($chooseServiceUrl); ?>"><?php echo dol_escape_htmltag($langs->trans('GuidedChangeService')); ?></a><?php } ?>
+<form method="post" id="cpo-guided-operation-form" autocomplete="off">
+  <input type="hidden" name="lang" value="<?php echo dol_escape_htmltag($uiLanguage); ?>">
   <input type="hidden" name="token" value="<?php echo dol_escape_htmltag($csrfToken); ?>">
   <input type="hidden" name="request_hash" value="<?php echo dol_escape_htmltag($requestHash); ?>">
   <input type="hidden" name="action" value="save">
   <input type="hidden" name="id" value="<?php echo (int) $id; ?>">
   <input type="hidden" name="service_type" value="<?php echo dol_escape_htmltag($type); ?>">
   <section class="cpo-form-section">
-    <h2>١. العميل والمسؤول · <?php echo $langs->trans('Svc_'.$type); ?></h2>
-    <p class="opacitymedium">اختر العميل أولاً؛ بعدها تظهر مشروعاته وطلباته وشحناته فقط.</p>
+    <h2><?php echo dol_escape_htmltag($langs->trans('GuidedCustomerOwner')); ?> · <?php echo $langs->trans('Svc_'.$type); ?></h2>
+    <p class="opacitymedium"><?php echo dol_escape_htmltag($langs->trans('GuidedCustomerHelp')); ?></p>
     <div class="cpo-context-grid">
-      <div class="cpo-field cpo-customer-control"><span><?php echo $langs->trans('Customer'); ?> *</span><select required id="cpo-customer" name="fk_soc"><?php foreach ($companies as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_soc') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select><?php if (!$id && $canCreateCustomers) { ?><a class="button cpo-new-customer" href="<?php echo dol_escape_htmltag($newCustomerUrl); ?>"><span class="fas fa-user-plus" aria-hidden="true"></span> إضافة عميل جديد في النظام</a><small>يُحفظ العميل في سجل العملاء الأصلي، ثم يعود هنا محدداً تلقائياً.</small><?php } ?></div>
-      <label class="cpo-field"><span><?php echo $langs->trans('Title'); ?> *</span><input required name="title" value="<?php echo dol_escape_htmltag($v('title')); ?>" placeholder="مثال: LOCAL TEST - متابعة طلبية وتجهيز الشحن"></label>
-      <label class="cpo-field"><span><?php echo $langs->trans('Owner'); ?> *</span><select required id="cpo-owner" name="fk_user_assign"><?php foreach ($users as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_user_assign') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select></label>
-      <label class="cpo-field"><span>فريق مهام العملية *</span><select required id="cpo-team" name="fk_usergroup"<?php echo !$teams ? ' disabled' : ''; ?>><option value="">— اختر فريق المسؤول —</option><?php foreach ($teams as $team) { ?><option value="<?php echo $team['id']; ?>" data-members="<?php echo dol_escape_htmltag(implode(',', $team['members'])); ?>"<?php echo $selectedTeamId === (int) $team['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($team['label']); ?></option><?php } ?></select><small>تظهر الفرق التي لديها أعضاء داخليون نشطون فقط.</small></label>
+      <div class="cpo-field cpo-customer-control"><label for="cpo-customer"><?php echo $langs->trans('Customer'); ?> *</label><select required id="cpo-customer" name="fk_soc"><?php foreach ($companies as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_soc') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select><?php if (!$id && $canCreateCustomers) { ?><a class="button cpo-new-customer" href="<?php echo dol_escape_htmltag($newCustomerUrl); ?>"><span class="fas fa-user-plus" aria-hidden="true"></span> <?php echo dol_escape_htmltag($langs->trans('GuidedNewCustomer')); ?></a><small><?php echo dol_escape_htmltag($langs->trans('GuidedNewCustomerHelp')); ?></small><?php } ?></div>
+    <?php if ($canReadOrders) { ?><div class="cpo-field cpo-order-control"><label for="cpo-order"><?php echo $langs->trans('GuidedOrder'); ?></label><select id="cpo-order" name="fk_commande"><option value="0"><?php echo dol_escape_htmltag($langs->trans('GuidedOptional')); ?></option><?php foreach ($orders as $order) { ?><option value="<?php echo $order['id']; ?>" data-socid="<?php echo $order['socid']; ?>"<?php echo (int) $v('fk_commande') === $order['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($order['label']); ?></option><?php } ?></select><small><?php echo dol_escape_htmltag($langs->trans('GuidedNativeOrderHelp')); ?></small><a id="cpo-native-order" class="button" target="_blank" rel="noopener" data-base="<?php echo dol_escape_htmltag(DOL_URL_ROOT.'/commande/card.php'); ?>" href="<?php echo dol_escape_htmltag(DOL_URL_ROOT.'/commande/card.php?id='.(int) $v('fk_commande').'&lang='.rawurlencode($uiLanguage)); ?>"<?php echo !(int) $v('fk_commande') ? ' hidden' : ''; ?>><?php echo dol_escape_htmltag($langs->trans('GuidedOpenNativeOrder')); ?></a><a class="cpo-native-order-list" target="_blank" rel="noopener" href="<?php echo dol_escape_htmltag(DOL_URL_ROOT.'/commande/list.php?lang='.rawurlencode($uiLanguage)); ?>"><?php echo dol_escape_htmltag($langs->trans('GuidedNativeOrderList')); ?></a></div><?php } ?>
+      <label class="cpo-field"><span><?php echo $langs->trans('GuidedOperationTitle'); ?> *</span><input required name="title" value="<?php echo dol_escape_htmltag($v('title')); ?>" placeholder="<?php echo dol_escape_htmltag($langs->trans('GuidedTitleExample')); ?>"></label>
+      <label class="cpo-field"><span><?php echo dol_escape_htmltag($langs->trans('GuidedTeam')); ?> *</span><select required id="cpo-team" name="fk_usergroup"<?php echo !$teams ? ' disabled' : ''; ?>><option value=""><?php echo dol_escape_htmltag($langs->trans('GuidedChooseTeam')); ?></option><?php foreach ($teams as $team) { ?><option value="<?php echo $team['id']; ?>" data-members="<?php echo dol_escape_htmltag(implode(',', $team['members'])); ?>"<?php echo $selectedTeamId === (int) $team['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($team['label']); ?></option><?php } ?></select><small><?php echo dol_escape_htmltag($langs->trans('GuidedTeamHelp')); ?></small></label>
+      <label class="cpo-field"><span><?php echo $langs->trans('Owner'); ?> *</span><select required id="cpo-owner" name="fk_user_assign"><?php foreach ($users as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_user_assign') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select><small><?php echo dol_escape_htmltag($langs->trans('GuidedOwnerHelp')); ?></small></label>
       <label class="cpo-field"><span><?php echo $langs->trans('Priority'); ?></span><select name="priority"><?php foreach (array('urgent','high','normal','low') as $p) { ?><option value="<?php echo $p; ?>"<?php echo $v('priority','normal') === $p ? ' selected' : ''; ?>><?php echo $langs->trans('Priority_'.$p); ?></option><?php } ?></select></label>
       <?php if ($id) { ?><label class="cpo-field"><span><?php echo $langs->trans('Stage'); ?></span><select name="stage"><?php foreach (OperationsService::stages() as $s=>$progress) { ?><option value="<?php echo $s; ?>"<?php echo $v('stage') === $s ? ' selected' : ''; ?>><?php echo $langs->trans('Stage_'.$s); ?></option><?php } ?></select></label><?php } ?>
-      <label class="cpo-field"><span><?php echo $langs->trans('WaitingOn'); ?></span><select name="waiting_on"><?php foreach (array('internal','customer','supplier','factory','forwarder','customs','none') as $w) { ?><option value="<?php echo $w; ?>"<?php echo $v('waiting_on','internal') === $w ? ' selected' : ''; ?>><?php echo $langs->trans('Party_'.$w); ?></option><?php } ?></select></label>
-      <label class="cpo-field"><span><?php echo $langs->trans('NextAction'); ?> *</span><input required name="next_action" value="<?php echo dol_escape_htmltag($v('next_action')); ?>" placeholder="فعل واحد واضح يجب تنفيذه بعد ذلك"></label>
+      <label class="cpo-field"><span><?php echo $langs->trans('GuidedWaitingOn'); ?></span><select name="waiting_on"><?php foreach (array('internal','customer','supplier','factory','forwarder','customs','none') as $w) { ?><option value="<?php echo $w; ?>"<?php echo $v('waiting_on','internal') === $w ? ' selected' : ''; ?>><?php echo $langs->trans('Party_'.$w); ?></option><?php } ?></select><small><?php echo dol_escape_htmltag($langs->trans('GuidedWaitingHelp')); ?></small></label>
+      <label class="cpo-field"><span><?php echo $langs->trans('NextAction'); ?> *</span><input required name="next_action" value="<?php echo dol_escape_htmltag($v('next_action')); ?>" placeholder="<?php echo dol_escape_htmltag($langs->trans('GuidedNextActionExample')); ?>"></label>
       <label class="cpo-field"><span><?php echo $langs->trans('Deadline'); ?></span><input type="datetime-local" name="date_deadline" value="<?php echo $v('date_deadline') ? date('Y-m-d\TH:i', strtotime($v('date_deadline'))) : ''; ?>"></label>
     </div>
   </section>
 <?php if($type==='shipping_booking'){ ?><section class="cpo-form-section"><h2><?php echo $langs->trans('BookingRequestInformation'); ?></h2><p class="opacitymedium"><?php echo $langs->trans('BookingRequestInformationHelp'); ?></p><div class="cpo-context-grid"><?php foreach(OperationsService::bookingRequestFields() as $field)$renderField($field); ?></div></section><?php if($id){ ?><section class="cpo-form-section cpo-forwarder-confirmation"><h2><?php echo $langs->trans('ForwarderConfirmationInformation'); ?></h2><div class="cpo-notice"><?php echo $langs->trans('ForwarderConfirmationHelp'); ?></div><div class="cpo-context-grid"><?php foreach(OperationsService::bookingConfirmationFields() as $field)$renderField($field); ?></div></section><?php } ?><?php }else{ ?><section class="cpo-form-section"><h2><?php echo $langs->trans('ServiceDetails'); ?></h2><div class="cpo-context-grid"><?php foreach(OperationsService::serviceFields($type) as $field)$renderField($field); ?></div></section><?php } ?>
 <section class="cpo-form-section">
-  <h2>٣. الربط والملاحظات</h2>
+  <h2><?php echo dol_escape_htmltag($langs->trans('GuidedLinksNotes')); ?></h2>
   <div class="cpo-context-grid">
-    <?php if ($canReadProjects) { ?><label class="cpo-field"><span><?php echo $langs->trans('DolibarrProjectId'); ?></span><select id="cpo-project" name="fk_project"><option value="0">— اختياري —</option><?php foreach ($projects as $project) { ?><option value="<?php echo $project['id']; ?>" data-socid="<?php echo $project['socid']; ?>"<?php echo (int) $v('fk_project') === $project['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($project['label']); ?></option><?php } ?></select></label><?php } ?>
-    <?php if ($canReadOrders) { ?><label class="cpo-field"><span><?php echo $langs->trans('DolibarrOrderId'); ?></span><select id="cpo-order" name="fk_commande"><option value="0">— اختياري —</option><?php foreach ($orders as $order) { ?><option value="<?php echo $order['id']; ?>" data-socid="<?php echo $order['socid']; ?>"<?php echo (int) $v('fk_commande') === $order['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($order['label']); ?></option><?php } ?></select></label><?php } ?>
-    <label class="cpo-field"><span><?php echo $langs->trans('Shipment'); ?></span><select id="cpo-shipment" name="fk_shipment"><option value="0">— لا تنشئ حالة شحن وهمية —</option><?php foreach ($shipments as $shipment) { ?><option value="<?php echo $shipment['id']; ?>" data-socid="<?php echo $shipment['socid']; ?>" data-projectid="<?php echo $shipment['projectid']; ?>"<?php echo (int) $v('fk_shipment') === $shipment['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($shipment['label']); ?></option><?php } ?></select><small>تظهر فقط الشحنات التابعة للعميل، ويجب أن يتطابق المشروع عند اختياره.</small></label>
+    <?php if ($canReadProjects) { ?><label class="cpo-field"><span><?php echo $langs->trans('GuidedProject'); ?></span><select id="cpo-project" name="fk_project"><option value="0"><?php echo dol_escape_htmltag($langs->trans('GuidedOptional')); ?></option><?php foreach ($projects as $project) { ?><option value="<?php echo $project['id']; ?>" data-socid="<?php echo $project['socid']; ?>"<?php echo (int) $v('fk_project') === $project['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($project['label']); ?></option><?php } ?></select></label><?php } ?>
+    <label class="cpo-field"><span><?php echo $langs->trans('GuidedShipment'); ?></span><select id="cpo-shipment" name="fk_shipment"><option value="0"><?php echo dol_escape_htmltag($langs->trans('GuidedNoShipment')); ?></option><?php foreach ($shipments as $shipment) { ?><option value="<?php echo $shipment['id']; ?>" data-socid="<?php echo $shipment['socid']; ?>" data-projectid="<?php echo $shipment['projectid']; ?>"<?php echo (int) $v('fk_shipment') === $shipment['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($shipment['label']); ?></option><?php } ?></select><small><?php echo dol_escape_htmltag($langs->trans('GuidedShipmentHelp')); ?></small></label>
     <label class="cpo-field"><span><?php echo $langs->trans('InternalNotes'); ?></span><textarea name="note_private"><?php echo dol_escape_htmltag($v('note_private')); ?></textarea></label>
     <label class="cpo-field"><span><?php echo $langs->trans('CustomerVisibleNotes'); ?></span><textarea name="note_public"><?php echo dol_escape_htmltag($v('note_public')); ?></textarea></label>
   </div>
-  <label class="cpo-check-option"><input type="checkbox" name="customer_visible" value="1"<?php echo $v('customer_visible') ? ' checked' : ''; ?>> <span><?php echo $langs->trans('AllowApprovedCustomerOutput'); ?> — لا ينشر أو يرسل شيئاً تلقائياً</span></label>
-  <div class="cpo-notice">الحوالات ودفع المورد وCargoX وDHL وإرسال المستندات غير متصلة من هذا النموذج.</div>
-  <?php if (!$createReady) { ?><div class="cpo-notice cpo-notice-warning"><strong>الإنشاء متوقف بأمان.</strong> لوحة المهام أو عضوية الفرق غير جاهزة (<?php echo dol_escape_htmltag($taskBoardReady ? 'NO_ACTIVE_TEAM_MEMBERS' : $taskBoardReason); ?>). راجع إعداد لوحة المهام والفرق أولاً؛ لم يتم حفظ عملية ناقصة.</div><?php } ?>
-  <div class="cpo-form-actions"><a class="button" href="../workspace.php<?php echo $selectedSocid ? '?view=customer&amp;socid='.(int) $selectedSocid : ''; ?>">إلغاء</a><button class="button button-save"<?php echo !$createReady ? ' disabled' : ''; ?>><?php echo $langs->trans('Save'); ?></button></div>
+  <label class="cpo-check-option"><input type="checkbox" name="customer_visible" value="1"<?php echo $v('customer_visible') ? ' checked' : ''; ?>> <span><?php echo $langs->trans('AllowApprovedCustomerOutput'); ?> — <?php echo dol_escape_htmltag($langs->trans('GuidedVisibilityHelp')); ?></span></label>
+  <div class="cpo-notice"><?php echo dol_escape_htmltag($langs->trans('GuidedWorkflowHelp')); ?></div>
+  <?php if (!$createReady) { ?><div class="cpo-notice cpo-notice-warning" role="status"><strong><?php echo dol_escape_htmltag($langs->trans('GuidedReadinessTitle')); ?></strong><p><?php echo dol_escape_htmltag($langs->trans($taskBoardReady ? 'GuidedNoTeamHelp' : 'GuidedBoardNotReady')); ?></p></div><?php } ?>
+  <div class="cpo-form-actions"><a class="button" href="../workspace.php<?php echo $selectedSocid ? '?view=customer&amp;socid='.(int) $selectedSocid : ''; ?>"><?php echo dol_escape_htmltag($langs->trans('GuidedCancel')); ?></a><button class="button button-save"<?php echo !$createReady ? ' disabled' : ''; ?>><?php echo $langs->trans('GuidedSave'); ?></button></div>
 </section>
 </form>
 <script>
 (function(){
   var customer=document.getElementById('cpo-customer'),project=document.getElementById('cpo-project'),order=document.getElementById('cpo-order'),shipment=document.getElementById('cpo-shipment'),team=document.getElementById('cpo-team'),owner=document.getElementById('cpo-owner');
-  function filter(select,socid){if(!select)return;Array.prototype.forEach.call(select.options,function(option){if(!option.value){option.hidden=false;return;}var matches=String(option.dataset.socid||'')===String(socid);option.hidden=!matches;if(!matches&&option.selected)select.value='0';});}
-  function refresh(){var socid=customer?customer.value:'0';filter(project,socid);filter(order,socid);filter(shipment,socid);if(shipment&&project){Array.prototype.forEach.call(shipment.options,function(option){if(!option.value||option.hidden)return;var projectid=option.dataset.projectid||'0';option.disabled=project.value!=='0'&&projectid!=='0'&&projectid!==project.value;});if(shipment.selectedOptions[0]&&shipment.selectedOptions[0].disabled)shipment.value='0';}}
-  function refreshOwners(){if(!team||!owner)return;var selected=team.selectedOptions[0],members=selected?String(selected.dataset.members||'').split(','):[];Array.prototype.forEach.call(owner.options,function(option){if(!option.value){option.hidden=false;return;}option.hidden=members.indexOf(option.value)<0;if(option.hidden&&option.selected)owner.value='0';});}
-  if(customer)customer.addEventListener('change',refresh);if(project)project.addEventListener('change',refresh);if(team)team.addEventListener('change',refreshOwners);refresh();refreshOwners();
+  function filter(select,socid){if(!select)return;Array.prototype.forEach.call(select.options,function(option){if(!option.value||option.value==='0'){option.hidden=false;return;}var matches=String(option.dataset.socid||'')===String(socid);option.hidden=!matches;if(!matches&&option.selected)select.value='0';});}
+  function refreshOrderLink(){var link=document.getElementById('cpo-native-order');if(!link||!order)return;var selected=order.selectedOptions[0];link.hidden=!selected||selected.hidden||order.value==='0';if(!link.hidden)link.href=link.dataset.base+'?id='+encodeURIComponent(order.value)+'&lang='+encodeURIComponent(<?php echo json_encode($uiLanguage); ?>);}
+  function refresh(){var socid=customer?customer.value:'0';filter(project,socid);filter(order,socid);refreshOrderLink();filter(shipment,socid);if(shipment&&project){Array.prototype.forEach.call(shipment.options,function(option){if(!option.value||option.value==='0'||option.hidden)return;var projectid=option.dataset.projectid||'0';option.disabled=project.value!=='0'&&projectid!=='0'&&projectid!==project.value;});if(shipment.selectedOptions[0]&&shipment.selectedOptions[0].disabled)shipment.value='0';}}
+  function refreshOwners(){if(!team||!owner)return;var selected=team.selectedOptions[0],members=selected?String(selected.dataset.members||'').split(','):[];Array.prototype.forEach.call(owner.options,function(option){if(!option.value||option.value==='0'){option.hidden=false;return;}option.hidden=members.indexOf(option.value)<0;if(option.hidden&&option.selected)owner.value='0';});}
+  var refreshSuppliers=document.getElementById('cpo-refresh-suppliers');
+  if(refreshSuppliers)refreshSuppliers.addEventListener('click',async function(){
+    var select=document.getElementById('cpo-supplier'),status=document.getElementById('cpo-supplier-refresh-status'),selected=select.value;
+    refreshSuppliers.disabled=true;refreshSuppliers.setAttribute('aria-busy','true');status.textContent=<?php echo json_encode($langs->trans('GuidedRefreshingSuppliers')); ?>;
+    try {
+      var response=await fetch(refreshSuppliers.dataset.url,{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok)throw new Error('Supplier refresh failed');
+      var doc=new DOMParser().parseFromString(await response.text(),'text/html'),fresh=doc.getElementById('cpo-supplier');
+      if(!fresh)throw new Error('Supplier form unavailable');
+      select.replaceChildren.apply(select,Array.prototype.map.call(fresh.options,function(option){return document.importNode(option,true);}));
+      if(Array.prototype.some.call(select.options,function(option){return option.value===selected;}))select.value=selected;
+      var freshToken=doc.querySelector('#cpo-guided-operation-form input[name="token"]'),currentToken=document.querySelector('#cpo-guided-operation-form input[name="token"]');
+      if(freshToken&&currentToken)currentToken.value=freshToken.value;
+      status.textContent=<?php echo json_encode($langs->trans('GuidedSuppliersRefreshed')); ?>;
+    } catch(error) {status.textContent=<?php echo json_encode($langs->trans('GuidedSuppliersRefreshFailed')); ?>;}
+    finally {refreshSuppliers.disabled=false;refreshSuppliers.removeAttribute('aria-busy');}
+  });
+  if(order)order.addEventListener('change',refreshOrderLink);if(customer)customer.addEventListener('change',refresh);if(project)project.addEventListener('change',refresh);if(team)team.addEventListener('change',refreshOwners);refresh();refreshOwners();
+  // Protect this form's unsaved input, including while native supplier/order tabs are open.
+  var form=document.getElementById('cpo-guided-operation-form'),submitting=false;
+  function formValues(){var values=[];new FormData(form).forEach(function(value,key){if(key!=='token'&&key!=='request_hash')values.push([key,String(value)]);});return JSON.stringify(values);}
+  var originalValues=formValues();
+  form.addEventListener('submit',function(){submitting=true;});
+  window.addEventListener('beforeunload',function(event){if(!submitting&&formValues()!==originalValues){event.preventDefault();event.returnValue='';}});
+
 })();
 </script>
+<?php } ?>
 </main>
 <?php cpcc_admin_shell_close(); llxFooter(); $db->close(); ?>

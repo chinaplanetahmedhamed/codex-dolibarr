@@ -5,6 +5,8 @@
     document.addEventListener("DOMContentLoaded", function () {
         var wrap = document.querySelector(".cpk-wrap, .cpk-project-modal-host");
         if (!wrap) return;
+        var internalEnglish = !!document.querySelector('[data-interface-language="en_US"]');
+        function ui(english, existing) { return internalEnglish ? english : existing; }
 
         var canWrite = wrap.getAttribute("data-canwrite") === "1";
         if (!canWrite) { setupCustomerCardDialog(wrap); return; }
@@ -75,12 +77,12 @@
                         }
                     }
                     refreshCounts();
-                    toast("✓ تم نقل البطاقة وتحديث التقدّم");
+                    toast(ui("✓ Card moved and progress updated", "✓ تم نقل البطاقة وتحديث التقدّم"));
                 } else {
-                    toast("تعذّر نقل البطاقة: " + (data ? data.message : "خطأ"), true);
+                    toast(ui("Unable to move the card: ", "تعذّر نقل البطاقة: ") + (data ? data.message : ui("Error", "خطأ")), true);
                 }
             })
-            .catch(function () { toast("خطأ في الاتصال", true); });
+            .catch(function () { toast(ui("Connection error", "خطأ في الاتصال"), true); });
         }
 
         function refreshCounts() {
@@ -92,7 +94,7 @@
                 if (n === 0 && cardsBox && !cardsBox.querySelector(".cpk-empty")) {
                     var d = document.createElement("div");
                     d.className = "cpk-empty";
-                    d.textContent = "لا توجد بطاقات";
+                    d.textContent = ui("No cards", "لا توجد بطاقات");
                     cardsBox.appendChild(d);
                 }
             });

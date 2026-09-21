@@ -26,15 +26,15 @@ if($project){
 }
 
 llxHeader('', cpcc_ui_t('UIOperationsCenterb1cb3'), '', '', 0, 0, array(), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/operations.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('operations', cpcc_ui_t('UIOperationsCenterb1cb3'), 'متابعة دورة الطلب من التمويل ودفع المورد حتى الشحن والإغلاق', 'fa-route', array('socid'=>$socid,'projectid'=>$projectid));
+cpcc_admin_shell_open('operations', cpcc_ui_t('UIOperationsCenterb1cb3'), 'Track orders from funding and supplier payment through shipping and closure.', 'fa-route', array('socid'=>$socid,'projectid'=>$projectid));
 ?>
 <main class="cpcc-dashboard" dir="rtl">
 <form method="get" class="cpad-context-form"><div class="cpad-context-fields">
-<label><span><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomer0e857')); ?></span><?php echo Form::selectarray('socid',$customerOptions,$socid,'ابحث باسم العميل',0,0,'',0,0,0,'','minwidth300',1); ?></label>
+<label><span><?php echo dol_escape_htmltag(cpcc_ui_t('UICustomer0e857')); ?></span><?php echo Form::selectarray('socid',$customerOptions,$socid,'Search by customer name',0,0,'',0,0,0,'','minwidth300',1); ?></label>
 <label><span><?php echo dol_escape_htmltag(cpcc_ui_t('UIProjectf6f4d')); ?></span><?php echo Form::selectarray('projectid',$projectOptions,$projectid,cpcc_ui_t('UISelectProjectb4b37'),0,0,'',0,0,0,'','minwidth300',1); ?></label>
 <button class="button" type="submit"><?php echo dol_escape_htmltag(cpcc_ui_t('UIOpencf9b7')); ?></button>
 </div></form>
-<?php if(!$project){ ?><div class="info">اختر العميل ثم المشروع لمراجعة دورة العمل الكاملة.</div><?php }else{ ?>
+<?php if(!$project){ ?><div class="info">Choose a customer, then a project to review the full workflow.</div><?php }else{ ?>
 <header class="cpcc-page-head"><div><span class="cpcc-eyebrow"><?php echo dol_escape_htmltag($project->ref); ?></span><h1><?php echo dol_escape_htmltag($project->title); ?></h1><p><?php echo dol_escape_htmltag($project->description); ?></p></div></header>
 <div class="cpcc-lifecycle-note"><span class="fas fa-sync-alt"></span><?php echo dol_escape_htmltag(cpcc_ui_t('UIStatusIsCalculatedAutomaticallyFromLinkedRecords12945')); ?></div>
 <section class="cpcc-lifecycle"><?php foreach($lifecycle as $stage){ ?><div class="cpcc-stage <?php echo $stage['done']?'done':''; ?>" title="<?php echo dol_escape_htmltag($stage['rule']); ?>" tabindex="0"><b><?php echo dol_escape_htmltag($stage['label']); ?></b><small><?php echo dol_escape_htmltag($stage['en']); ?></small></div><?php } ?></section>

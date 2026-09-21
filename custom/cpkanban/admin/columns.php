@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../../chinaplanetcustomercenter/lib/ui.lib.php';
 /**
  * China Planet Kanban - Admin: manage columns.
  * Add / edit / reorder / recolor / toggle customer-visibility / activate.
@@ -31,7 +32,7 @@ if ($action == 'add' && ($user->hasRight('cpkanban','admin') || $user->admin)) {
     $col->cust_visible = GETPOST('cust_visible', 'int') ? 1 : 0;
     $col->auto_progress= (GETPOST('auto_progress','int') !== '') ? GETPOST('auto_progress','int') : null;
     $col->active       = 1;
-    if ($col->create($user) > 0) setEventMessages('تمت إضافة العمود', null, 'mesgs');
+    if ($col->create($user) > 0) setEventMessages('Column added', null, 'mesgs');
     else setEventMessages($col->error, null, 'errors');
     header('Location: '.$_SERVER['PHP_SELF']); exit;
 }
@@ -46,7 +47,7 @@ if ($action == 'update' && $id > 0) {
     $col->cust_visible = GETPOST('cust_visible', 'int') ? 1 : 0;
     $col->auto_progress= (GETPOST('auto_progress','int') !== '') ? GETPOST('auto_progress','int') : null;
     $col->active       = GETPOST('active', 'int') ? 1 : 0;
-    if ($col->update($user) > 0) setEventMessages('تم تحديث العمود', null, 'mesgs');
+    if ($col->update($user) > 0) setEventMessages('Column updated', null, 'mesgs');
     else setEventMessages($col->error, null, 'errors');
     header('Location: '.$_SERVER['PHP_SELF']); exit;
 }
@@ -55,21 +56,21 @@ if ($action == 'confirm_delete' && $id > 0) {
     $col = new CpKanbanColumn($db);
     $col->fetch($id);
     $r = $col->delete($user);
-    if ($r > 0) setEventMessages('تم حذف العمود', null, 'mesgs');
-    elseif ($r === 0) setEventMessages('لا يمكن حذف عمود يحتوي بطاقات. انقل البطاقات أولاً أو ألغِ تفعيل العمود.', null, 'warnings');
+    if ($r > 0) setEventMessages('Column deleted', null, 'mesgs');
+    elseif ($r === 0) setEventMessages('A column containing cards cannot be deleted. Move the cards first or deactivate the column.', null, 'warnings');
     else setEventMessages($col->error, null, 'errors');
     header('Location: '.$_SERVER['PHP_SELF']); exit;
 }
 
-llxHeader('', 'إدارة الأعمدة', '', '', 0, 0, array(), array('/custom/cpkanban/css/board.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('operations','Kanban Columns / أعمدة كانبان','ترتيب مراحل العمل والرؤية والصلاحيات','fa-columns');
-print load_fiche_titre('إدارة أعمدة لوحة المشاريع', '', 'project');
+llxHeader('', 'Manage columns', '', '', 0, 0, array(), array('/custom/cpkanban/css/board.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
+cpcc_admin_shell_open('operations','Kanban Columns','Workflow stage order, visibility and permissions.','fa-columns');
+print load_fiche_titre('Manage project board columns', '', 'project');
 
 $cols = CpKanbanColumn::getAll($db, false, false); // all, including inactive
 
-print '<div dir="rtl">';
+print '<div dir="ltr">';
 print '<table class="liste centpercent"><tr class="liste_titre">';
-print '<th>الترتيب</th><th>الكود</th><th>الاسم (عربي)</th><th>English</th><th>اللون</th><th>تقدّم تلقائي</th><th>مرئي للعميل</th><th>نشط</th><th></th></tr>';
+print '<th>Position</th><th>Code</th><th>Arabic name</th><th>English</th><th>Color</th><th>Automatic progress</th><th>Customer visible</th><th>Active</th><th></th></tr>';
 
 foreach ($cols as $c) {
     print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
@@ -85,27 +86,27 @@ foreach ($cols as $c) {
     print '<td><input type="number" name="auto_progress" class="flat width50" min="0" max="100" value="'.($c->auto_progress!==null?(int)$c->auto_progress:'').'"></td>';
     print '<td class="center"><input type="checkbox" name="cust_visible" value="1" '.($c->cust_visible?'checked':'').'></td>';
     print '<td class="center"><input type="checkbox" name="active" value="1" '.($c->active?'checked':'').'></td>';
-    print '<td><input type="submit" class="button small" value="حفظ"> ';
-    print '<a class="button small button-cancel" href="'.$_SERVER['PHP_SELF'].'?action=confirm_delete&id='.(int)$c->rowid.'&token='.newToken().'" onclick="return confirm(\'حذف هذا العمود؟\')">حذف</a></td>';
+    print '<td><input type="submit" class="button small" value="Save"> ';
+    print '<a class="button small button-cancel" href="'.$_SERVER['PHP_SELF'].'?action=confirm_delete&id='.(int)$c->rowid.'&token='.newToken().'" onclick="return confirm(\'Delete this column?\')">Delete</a></td>';
     print '</tr></form>';
 }
 print '</table>';
 
 // Add new column
-print '<br><h3>إضافة عمود جديد</h3>';
+print '<br><h3>Add a column</h3>';
 print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="action" value="add">';
 print '<table class="border centpercent">';
-print '<tr><td class="titlefield">الكود (إنجليزي بدون مسافات)</td><td><input type="text" name="code" class="flat" required></td></tr>';
-print '<tr><td>الاسم (عربي)</td><td><input type="text" name="label" class="flat" required></td></tr>';
+print '<tr><td class="titlefield">Code (English, no spaces)</td><td><input type="text" name="code" class="flat" required></td></tr>';
+print '<tr><td>Arabic name</td><td><input type="text" name="label" class="flat" required></td></tr>';
 print '<tr><td>English</td><td><input type="text" name="label_en" class="flat"></td></tr>';
-print '<tr><td>اللون</td><td><input type="color" name="color" value="#2980b9"></td></tr>';
-print '<tr><td>الترتيب</td><td><input type="number" name="position" class="flat" value="50"></td></tr>';
-print '<tr><td>تقدّم تلقائي %</td><td><input type="number" name="auto_progress" class="flat" min="0" max="100" placeholder="اختياري"></td></tr>';
-print '<tr><td>مرئي للعميل</td><td><input type="checkbox" name="cust_visible" value="1" checked></td></tr>';
+print '<tr><td>Color</td><td><input type="color" name="color" value="#2980b9"></td></tr>';
+print '<tr><td>Position</td><td><input type="number" name="position" class="flat" value="50"></td></tr>';
+print '<tr><td>Automatic progress %</td><td><input type="number" name="auto_progress" class="flat" min="0" max="100" placeholder="Optional"></td></tr>';
+print '<tr><td>Customer visible</td><td><input type="checkbox" name="cust_visible" value="1" checked></td></tr>';
 print '</table>';
-print '<div class="center" style="margin-top:12px"><input type="submit" class="button" value="إضافة العمود"></div>';
+print '<div class="center" style="margin-top:12px"><input type="submit" class="button" value="Add column"></div>';
 print '</form>';
 print '</div>';
 
