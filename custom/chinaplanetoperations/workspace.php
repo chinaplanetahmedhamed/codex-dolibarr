@@ -84,9 +84,9 @@ if ($view === 'customer') {
     if ($canReadShipments) $customerShipments = $rows($db, "SELECT rowid,ref,container_no,bl_no,date_eta,fk_statut,customer_visible FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
 }
 
-$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
+$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'), cpo_asset('/custom/chinaplanetoperations/css/task_experience.css'));
 llxHeader('', $view === 'my' ? $langs->trans('WsToday') : 'مساحة عمل كوكب الصين', '', '', 0, 0, array(), $morecss);
-cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : 'مساحة عمل كوكب الصين', '', 'fa-compass');
+cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : 'مساحة عمل كوكب الصين', '', 'fa-compass',array('flat'=>in_array($view,array('my','manager'),true)));
 ?>
 <main class="cpo-page cpw-page" dir="<?php echo $view === 'my' && !$workspaceArabic ? 'ltr' : 'rtl'; ?>">
   <section class="cpw-hero">

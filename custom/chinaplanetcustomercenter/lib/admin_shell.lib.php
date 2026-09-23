@@ -58,6 +58,7 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
             $primaryKeys = array('workspace', 'tasks');
             $groups = array();
             $items['tasks'][2] = 'My tasks / مهامي';
+            $items['workspace'][2] = $items['workspace'][3] = 'My day / يومي';
         }
 
         // Older shipping pages still pass their former section key. Keep those
@@ -126,14 +127,15 @@ if (!function_exists('cpcc_admin_shell_header')) {
 if (!function_exists('cpcc_admin_shell_open')) {
     function cpcc_admin_shell_open($active, $title, $subtitle = '', $icon = 'fa-layer-group', $context = array())
     {
-        print '<div class="cpad-shell cpad-section-shell">';
+        $flat=!empty($context['flat']);
+        print '<div class="cpad-shell cpad-section-shell'.($flat?' cpad-flat-page':'').'">';
         cpcc_admin_shell_navigation($active, $context);
-        cpcc_admin_shell_header(true);
-        print '<section class="cpad-section-heading">';
+        if (!$flat) cpcc_admin_shell_header(true);
+        if (!$flat) { print '<section class="cpad-section-heading">';
         print '<div class="cpad-section-icon"><span class="fas '.dol_escape_htmltag($icon).'"></span></div>';
         print '<div><h2>'.dol_escape_htmltag($title).'</h2>';
         if ($subtitle !== '') print '<p>'.dol_escape_htmltag($subtitle).'</p>';
-        print '</div></section>';
+        print '</div></section>'; }
         print '<div class="cpad-section-content">';
     }
 }
