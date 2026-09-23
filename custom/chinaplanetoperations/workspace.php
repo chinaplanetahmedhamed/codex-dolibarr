@@ -3,6 +3,7 @@ require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/class/OperationsService.class.php';
 require_once __DIR__.'/class/InternalTaskService.class.php';
+require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 if (!cpo_can($user, 'read') && !cpo_task_can_open($db, $user)) accessforbidden();
@@ -19,6 +20,8 @@ $canCreateOperation = cpo_can($user, 'operation_write');
 $canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
 $canReadOrders = !empty($user->admin) || $user->hasRight('commande', 'lire');
 $canReadProjects = !empty($user->admin) || $user->hasRight('projet', 'all', 'lire');
+$canReadShipments = !empty($user->admin) || $user->hasRight('chinaplanetlogistics', 'read');
+$canWriteShipments = !empty($user->admin) || $user->hasRight('chinaplanetlogistics', 'write');
 $customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client', 'voir') ? '' : ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'societe_commerciaux csc WHERE csc.fk_soc=s.rowid AND csc.fk_user='.(int) $user->id.')';
 $view = GETPOST('view', 'aZ09');
 if (!in_array($view, array('manager', 'my', 'customers', 'customer'), true)) $view = 'my';
@@ -52,17 +55,23 @@ $myOpenTasks = array_values(array_filter($myTasks, static function ($task) {
     return empty($task['date_archived']) && !in_array((string) $task['status'], array('done', 'cancelled', 'deleted'), true);
 }));
 
-$customers = !$canReadCustomers || !in_array($view, array('manager','customers'), true) ? array() : $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".
+$shipmentCountSql = $canReadShipments ? ',COUNT(DISTINCT l.rowid) shipment_count' : ',0 shipment_count';
+$shipmentJoinSql = $canReadShipments ? " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.entity=s.entity AND l.fk_soc=s.rowid" : '';
+$customerSortSql = $canReadShipments ? 'MAX(COALESCE(l.tms,o.tms,s.tms))' : 'MAX(COALESCE(o.tms,s.tms))';
+$customers = !$canReadCustomers || !in_array($view, array('manager','customers'), true) ? array() : $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".$shipmentCountSql.
     " FROM ".MAIN_DB_PREFIX."societe s".
     " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.entity=s.entity AND o.fk_soc=s.rowid AND o.status=1".
     " LEFT JOIN ".MAIN_DB_PREFIX."socpeople c ON c.entity=s.entity AND c.fk_soc=s.rowid AND c.statut=1".
+    $shipmentJoinSql.
     " WHERE s.entity=".$entity." AND s.status=1 AND s.client>0".$customerAccessSql.
-    " GROUP BY s.rowid,s.nom,s.code_client ORDER BY MAX(COALESCE(o.tms,s.tms)) DESC,s.nom LIMIT 100");
+    " GROUP BY s.rowid,s.nom,s.code_client ORDER BY ".$customerSortSql." DESC,s.nom LIMIT 100");
 
 $customer = null;
 $customerOperations = array();
 $customerOrders = array();
 $customerProjects = array();
+$customerShipments = array();
+$shipmentStatuses = chinaplanetlogistics_status_map();
 if ($view === 'customer') {
     $socid = GETPOSTINT('socid');
     $res = $db->query("SELECT s.rowid,s.nom,s.code_client,s.address,s.town,s.phone,s.email FROM ".MAIN_DB_PREFIX."societe s WHERE s.entity=".$entity." AND s.status=1 AND s.client>0 AND s.rowid=".(int) $socid.$customerAccessSql." LIMIT 1");
@@ -72,6 +81,7 @@ if ($view === 'customer') {
     $customerOperations = $operationsService->search(array('socid'=>$socid));
     if ($canReadOrders) $customerOrders = $rows($db, "SELECT rowid,ref,fk_statut,total_ht,date_commande FROM ".MAIN_DB_PREFIX."commande WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
     if ($canReadProjects) $customerProjects = $rows($db, "SELECT rowid,ref,title,fk_statut FROM ".MAIN_DB_PREFIX."projet WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
+    if ($canReadShipments) $customerShipments = $rows($db, "SELECT rowid,ref,container_no,bl_no,date_eta,fk_statut,customer_visible FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
 }
 
 $morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
@@ -98,6 +108,20 @@ cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : '
     <?php if ($taskAuth->canOpenBoard()) { ?><a<?php echo $view === 'my' ? ' class="active" aria-current="page"' : ''; ?> href="?view=my"><?php echo $esc($langs->trans('WsToday')); ?> <span><?php echo count($myOpenTasks); ?></span></a><?php } ?>
     <?php if ($canReadCustomers) { ?><a<?php echo in_array($view, array('customers','customer'), true) ? ' class="active" aria-current="page"' : ''; ?> href="?view=customers">العملاء والعمليات</a><?php } ?>
   </nav>
+
+  <?php if ($canCreateOperation && in_array($view, array('manager', 'my'), true)) { ?>
+  <section class="cpw-launch" aria-labelledby="cpw-launch-title">
+    <div class="cpw-launch-head"><div><span>START HERE</span><h2 id="cpw-launch-title">ابدأ عملاً جديداً</h2><p>اختر نوع العمل؛ ستفتح شاشة China Planet OS الموجّهة مع الاحتفاظ بالسجل الأصلي في الخلفية.</p></div><a href="operations/index.php">سجل العمليات ←</a></div>
+    <div class="cpw-launch-grid">
+      <a href="operations/edit.php?service_type=order"><span class="fas fa-shopping-cart" aria-hidden="true"></span><strong>طلب عميل</strong><small>Customer order</small></a>
+      <a href="operations/edit.php?service_type=sourcing"><span class="fas fa-search" aria-hidden="true"></span><strong>بحث عن منتج</strong><small>Product sourcing</small></a>
+      <a href="operations/edit.php?service_type=purchasing"><span class="fas fa-boxes" aria-hidden="true"></span><strong>شراء ومتابعة مورد</strong><small>Purchasing</small></a>
+      <a href="operations/edit.php?service_type=quality_control"><span class="fas fa-clipboard-check" aria-hidden="true"></span><strong>فحص جودة</strong><small>Quality control</small></a>
+      <a href="operations/edit.php?service_type=shipping_booking"><span class="fas fa-ship" aria-hidden="true"></span><strong>حجز ومتابعة شحن</strong><small>Shipping booking</small></a>
+      <a href="operations/edit.php?service_type=customs"><span class="fas fa-file-contract" aria-hidden="true"></span><strong>جمارك ومستندات</strong><small>Customs & documents</small></a>
+    </div>
+  </section>
+  <?php } ?>
 
   <?php if ($view === 'manager') {
       $attention = array_values(array_filter($allOperations, static function ($op) use ($isDone, $isOverdue) {
@@ -127,7 +151,7 @@ cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : '
   <?php if ($canReadCustomers) { ?><section class="cpo-panel cpw-section">
     <div class="cpo-panel-head"><div><h2>أحدث العملاء والعمليات</h2><p>ابدأ من الشركة، ثم افتح العمل المرتبط بها.</p></div><a href="?view=customers">كل العملاء</a></div>
     <div class="cpw-customer-grid">
-      <?php foreach (array_slice($customers, 0, 8) as $row) { ?><a href="?view=customer&amp;socid=<?php echo (int) $row['rowid']; ?>"><strong><?php echo $esc($row['nom']); ?></strong><span><?php echo (int) $row['operation_count']; ?> عمليات · <?php echo (int) $row['contact_count']; ?> جهات اتصال</span><b>فتح ملف العميل ←</b></a><?php } ?>
+      <?php foreach (array_slice($customers, 0, 8) as $row) { ?><a href="?view=customer&amp;socid=<?php echo (int) $row['rowid']; ?>"><strong><?php echo $esc($row['nom']); ?></strong><span><?php echo (int) $row['operation_count']; ?> عمليات<?php echo $canReadShipments ? ' · '.(int) $row['shipment_count'].' شحنات' : ''; ?> · <?php echo (int) $row['contact_count']; ?> جهات اتصال</span><b>فتح ملف العميل ←</b></a><?php } ?>
     </div>
   </section><?php } ?>
   <?php } elseif ($view === 'my') { ?>
@@ -157,17 +181,18 @@ cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : '
   <section class="cpo-panel cpw-section">
     <div class="cpo-panel-head"><div><h2>العملاء والعمليات</h2><p>شركة العميل هي نقطة البداية، والأسماء هنا من Vision-China Planet OS.</p></div><a class="button" href="<?php echo DOL_URL_ROOT; ?>/societe/card.php?action=create&amp;type=c">إضافة عميل</a></div>
     <div class="cpw-customer-grid">
-      <?php foreach ($customers as $row) { ?><a href="?view=customer&amp;socid=<?php echo (int) $row['rowid']; ?>"><strong><?php echo $esc($row['nom']); ?></strong><span><?php echo $esc($row['code_client'] ?: 'دون كود'); ?> · <?php echo (int) $row['operation_count']; ?> عمليات · <?php echo (int) $row['contact_count']; ?> جهات اتصال</span><b>فتح ملف العميل ←</b></a><?php } ?>
+      <?php foreach ($customers as $row) { ?><a href="?view=customer&amp;socid=<?php echo (int) $row['rowid']; ?>"><strong><?php echo $esc($row['nom']); ?></strong><span><?php echo $esc($row['code_client'] ?: 'دون كود'); ?> · <?php echo (int) $row['operation_count']; ?> عمليات<?php echo $canReadShipments ? ' · '.(int) $row['shipment_count'].' شحنات' : ''; ?> · <?php echo (int) $row['contact_count']; ?> جهات اتصال</span><b>فتح ملف العميل ←</b></a><?php } ?>
       <?php if (!$customers) { ?><div class="cpw-empty">لا توجد شركات مسجلة كعملاء في هذا الكيان.</div><?php } ?>
     </div>
   </section>
   <?php } else { ?>
   <section class="cpw-customer-head">
     <div><span class="cpw-chip"><?php echo $esc($customer['code_client'] ?: 'عميل'); ?></span><h2><?php echo $esc($customer['nom']); ?></h2><p><?php echo $esc(implode(' · ', array_filter(array($customer['town'], $customer['phone'], $customer['email'])))); ?></p></div>
-    <div class="cpw-card-actions"><a class="button" href="<?php echo DOL_URL_ROOT; ?>/societe/card.php?socid=<?php echo (int) $customer['rowid']; ?>">السجل الأصلي</a><?php if ($canCreateOperation) { ?><a class="button button-save" href="operations/edit.php?fk_soc=<?php echo (int) $customer['rowid']; ?>">عملية جديدة لهذا العميل</a><?php } ?></div>
+    <div class="cpw-card-actions"><a class="button" href="<?php echo DOL_URL_ROOT; ?>/societe/card.php?socid=<?php echo (int) $customer['rowid']; ?>">السجل الأصلي</a><?php if ($canWriteShipments) { ?><a class="button" href="<?php echo DOL_URL_ROOT; ?>/custom/chinaplanetlogistics/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">شحنة جديدة لهذا العميل</a><?php } ?><?php if ($canCreateOperation) { ?><a class="button button-save" href="operations/edit.php?fk_soc=<?php echo (int) $customer['rowid']; ?>">عملية جديدة لهذا العميل</a><?php } ?></div>
   </section>
   <section class="cpw-summary" aria-label="ملخص العميل">
     <a href="#customer-operations"><small>العمليات</small><strong><?php echo count($customerOperations); ?></strong><span>الخدمات والمتابعات</span></a>
+    <?php if ($canReadShipments) { ?><a href="#customer-shipments"><small>الشحنات</small><strong><?php echo count($customerShipments); ?></strong><span>التتبع والحالة الحالية</span></a><?php } ?>
     <?php if ($canReadOrders) { ?><a href="#customer-orders"><small>طلبات البيع</small><strong><?php echo count($customerOrders); ?></strong><span>السجلات الأصلية</span></a><?php } ?>
     <?php if ($canReadProjects) { ?><a href="#customer-projects"><small>المشروعات</small><strong><?php echo count($customerProjects); ?></strong><span>السجلات الأصلية</span></a><?php } ?>
   </section>
@@ -178,15 +203,15 @@ cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : '
       <?php if (!$customerOperations) { ?><div class="cpw-empty">لا توجد عملية مرتبطة بهذا العميل بعد.</div><?php } ?>
     </div>
   </section>
+  <?php if ($canReadShipments) { ?><section class="cpo-panel cpw-section" id="customer-shipments">
+    <div class="cpo-panel-head"><div><h2>شحنات العميل</h2><p>كل شحنة مرتبطة بهذا العميل وتظهر في مركز الشحن.</p></div><a href="<?php echo DOL_URL_ROOT; ?>/custom/chinaplanetlogistics/list.php?socid=<?php echo (int) $customer['rowid']; ?>">فتح مركز الشحن</a></div>
+    <?php foreach ($customerShipments as $shipment) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/custom/chinaplanetlogistics/card.php?id=<?php echo (int) $shipment['rowid']; ?>"><strong><?php echo $esc($shipment['ref']); ?></strong><span><?php echo $esc($shipment['container_no'] ?: 'رقم الحاوية قيد الانتظار'); ?> · <?php echo $esc($shipmentStatuses[(int) $shipment['fk_statut']] ?? 'حالة غير معروفة'); ?> · <?php echo $shipment['date_eta'] ? 'ETA '.$esc($shipment['date_eta']) : 'ETA غير محدد'; ?> · <?php echo !empty($shipment['customer_visible']) ? 'ظاهر للعميل' : 'داخلي'; ?></span></a><?php } ?>
+    <?php if (!$customerShipments) { ?><div class="cpw-empty">لا توجد شحنات مرتبطة بهذا العميل.</div><?php } ?>
+  </section><?php } ?>
   <div class="cpw-two-columns">
     <?php if ($canReadOrders) { ?><section class="cpo-panel cpw-section" id="customer-orders"><div class="cpo-panel-head"><h2>طلبات البيع</h2><a href="<?php echo DOL_URL_ROOT; ?>/commande/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">طلب جديد</a></div><?php foreach ($customerOrders as $order) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/commande/card.php?id=<?php echo (int) $order['rowid']; ?>"><strong><?php echo $esc($order['ref']); ?></strong><span><?php echo price((float) $order['total_ht']); ?> · <?php echo $esc($order['date_commande'] ?: 'دون تاريخ'); ?></span></a><?php } ?><?php if (!$customerOrders) { ?><div class="cpw-empty">لا توجد طلبات بيع.</div><?php } ?></section><?php } ?>
     <?php if ($canReadProjects) { ?><section class="cpo-panel cpw-section" id="customer-projects"><div class="cpo-panel-head"><h2>المشروعات</h2><a href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?action=create&amp;socid=<?php echo (int) $customer['rowid']; ?>">مشروع جديد</a></div><?php foreach ($customerProjects as $project) { ?><a class="cpw-native-row" href="<?php echo DOL_URL_ROOT; ?>/projet/card.php?id=<?php echo (int) $project['rowid']; ?>"><strong><?php echo $esc($project['ref']); ?></strong><span><?php echo $esc($project['title']); ?></span></a><?php } ?><?php if (!$customerProjects) { ?><div class="cpw-empty">لا توجد مشروعات.</div><?php } ?></section><?php } ?>
   </div>
   <?php } ?>
-
-  <?php if ($view !== 'my') { ?><section class="cpw-unavailable" aria-label="وظائف غير متصلة">
-    <strong>غير متصل في هذه المرحلة</strong>
-    <p>الحوالات والتخصيص ودفع المورد وCargoX وDHL وإرسال المستندات وبوابة العميل ليست جزءاً من Phase 1. لا توجد أزرار محاكاة تبدو كأنها حفظ أو إرسال حقيقي.</p>
-  </section><?php } ?>
 </main>
 <?php cpcc_admin_shell_close(); llxFooter(); $db->close(); ?>
