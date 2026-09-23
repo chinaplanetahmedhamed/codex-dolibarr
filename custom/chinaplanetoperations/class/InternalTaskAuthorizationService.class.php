@@ -124,6 +124,19 @@ class InternalTaskAuthorizationService
         return $this->hasRight('task_manage_team') && $this->hasTeamGrant((int) $task['fk_usergroup']);
     }
 
+    public function canCreateOwnTask($teamId)
+    {
+        return $this->hasRight('task_read_own') && $this->hasRight('task_update_own')
+            && $this->isActiveTeamMember($this->actorId(), (int) $teamId);
+    }
+
+    public function canEditOwnInstructions(array $task)
+    {
+        return $this->canUpdateOwnTask($task)
+            && (int) $task['fk_user_creat'] === $this->actorId()
+            && empty($task['fk_operation']);
+    }
+
     public function canUseTaskFiles(array $task, $write = false, $history = false)
     {
         if (!$this->taskEntityValid($task) || (string) $task['status'] === 'deleted' || !$this->hasRight('task_upload_own')) return false;

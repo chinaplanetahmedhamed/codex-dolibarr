@@ -5,20 +5,23 @@ require_once __DIR__.'/class/OperationsService.class.php';
 require_once __DIR__.'/class/InternalTaskService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
-cpo_require($user, 'read');
+if (!cpo_can($user, 'read') && !cpo_task_can_open($db, $user)) accessforbidden();
+header('Cache-Control: private, no-store');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
+$workspaceArabic = strpos($langs->defaultlang, 'ar') === 0;
 $entity = (int) $conf->entity;
 $operationsService = new OperationsService($db);
 $taskService = new InternalTaskService($db, $user, $entity);
 $taskAuth = $taskService->authorization();
-$canManage = !empty($user->admin) || cpo_can($user, 'operation_write');
+$canManage = !empty($user->admin);
+$canReadOperations = cpo_can($user, 'read');
 $canCreateOperation = cpo_can($user, 'operation_write');
 $canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
 $canReadOrders = !empty($user->admin) || $user->hasRight('commande', 'lire');
 $canReadProjects = !empty($user->admin) || $user->hasRight('projet', 'all', 'lire');
 $customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client', 'voir') ? '' : ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'societe_commerciaux csc WHERE csc.fk_soc=s.rowid AND csc.fk_user='.(int) $user->id.')';
 $view = GETPOST('view', 'aZ09');
-if (!in_array($view, array('manager', 'my', 'customers', 'customer'), true)) $view = $canManage ? 'manager' : 'my';
+if (!in_array($view, array('manager', 'my', 'customers', 'customer'), true)) $view = 'my';
 if (!$canManage && $view === 'manager') $view = 'my';
 if (!$canReadCustomers && in_array($view, array('customers', 'customer'), true)) accessforbidden();
 
@@ -36,20 +39,20 @@ $userLabel = static function (array $row) {
 $isDone = static function ($stage) { return in_array((string) $stage, array('completed', 'cancelled'), true); };
 $isOverdue = static function ($date, $done = false) { return !$done && $date && strtotime((string) $date) < time(); };
 
-$operationStats = $operationsService->stats($user);
-$allOperations = $canManage ? $operationsService->search() : array();
+$operationStats = $canManage && $view === 'manager' ? $operationsService->stats($user) : array();
+$allOperations = $canManage && $view === 'manager' ? $operationsService->search() : array();
 $myTasks = array();
 $taskError = '';
 try {
     if ($taskAuth->canOpenBoard()) $myTasks = $taskService->listTasks(array('view'=>'my'));
 } catch (Throwable $e) {
-    $taskError = 'لوحة المهام غير جاهزة الآن. افتح سجل العمليات أو اطلب من المدير مراجعة إعداد الفريق.';
+    $taskError = $langs->trans('WsTaskNotReady');
 }
 $myOpenTasks = array_values(array_filter($myTasks, static function ($task) {
     return empty($task['date_archived']) && !in_array((string) $task['status'], array('done', 'cancelled', 'deleted'), true);
 }));
 
-$customers = !$canReadCustomers ? array() : $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".
+$customers = !$canReadCustomers || !in_array($view, array('manager','customers'), true) ? array() : $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".
     " FROM ".MAIN_DB_PREFIX."societe s".
     " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.entity=s.entity AND o.fk_soc=s.rowid AND o.status=1".
     " LEFT JOIN ".MAIN_DB_PREFIX."socpeople c ON c.entity=s.entity AND c.fk_soc=s.rowid AND c.statut=1".
@@ -72,25 +75,27 @@ if ($view === 'customer') {
 }
 
 $morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
-llxHeader('', 'مساحة عمل كوكب الصين', '', '', 0, 0, array(), $morecss);
-cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'طلب واحد ← مسؤول واحد ← إجراء تالٍ واحد', 'fa-compass');
+llxHeader('', $view === 'my' ? $langs->trans('WsToday') : 'مساحة عمل كوكب الصين', '', '', 0, 0, array(), $morecss);
+cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : 'مساحة عمل كوكب الصين', '', 'fa-compass');
 ?>
-<main class="cpo-page cpw-page" dir="rtl">
+<main class="cpo-page cpw-page" dir="<?php echo $view === 'my' && !$workspaceArabic ? 'ltr' : 'rtl'; ?>">
   <section class="cpw-hero">
     <div>
       <span class="cpo-eyebrow">CHINA PLANET · LIVE VISION-CHINA PLANET OS WORKSPACE</span>
-      <h1><?php echo $view === 'my' ? 'عملي اليوم' : ($view === 'customer' ? $esc($customer['nom']) : ($view === 'customers' ? 'العملاء والعمليات' : 'لوحة المدير')); ?></h1>
-      <p><?php echo $view === 'my' ? 'المهام المسموحة لك فقط، مرتبة حسب الحالة والأولوية والموعد.' : ($view === 'customer' ? 'كل العمليات والمشروعات وطلبات البيع المرتبطة بهذه الشركة في Vision-China Planet OS.' : 'قرارات اليوم من السجلات الحقيقية، دون بيانات تجريبية أو نظام موازٍ.'); ?></p>
+      <h1><?php echo $view === 'my' ? $esc($langs->trans('WsToday')) : ($view === 'customer' ? $esc($customer['nom']) : ($view === 'customers' ? 'العملاء والعمليات' : 'لوحة المدير')); ?></h1>
+      <p><?php echo $view === 'my' ? $esc($langs->trans('WsMyHelp')) : ($view === 'customer' ? 'كل العمليات والمشروعات وطلبات البيع المرتبطة بهذه الشركة في Vision-China Planet OS.' : 'قرارات اليوم من السجلات الحقيقية، دون بيانات تجريبية أو نظام موازٍ.'); ?></p>
     </div>
     <div class="cpw-hero-actions">
       <?php if ($canCreateOperation) { ?><a class="button button-save" href="operations/edit.php<?php echo $customer ? '?fk_soc='.(int) $customer['rowid'] : ''; ?>"><span class="fas fa-plus"></span> عملية جديدة</a><?php } ?>
-      <a class="button" href="operations/index.php"><span class="fas fa-list"></span> سجل العمليات</a>
+      <?php if ($canReadOperations) { ?><a class="button" href="operations/index.php"><span class="fas fa-list"></span> سجل العمليات</a><?php } ?>
+      <?php if ($taskAuth->canOpenBoard()) { ?><a class="button" href="tasks/board.php?view=my"><?php echo $esc($langs->trans('InternalTaskView_my')); ?></a><?php } ?>
+      <?php if ($taskService->ownTaskTeams()) { ?><a class="button button-save" href="tasks/board.php?view=my&amp;new=1"><?php echo $esc($langs->trans('AddTask')); ?></a><?php } ?>
     </div>
   </section>
 
   <nav class="cpw-tabs" aria-label="مساحة العمل">
     <?php if ($canManage) { ?><a<?php echo $view === 'manager' ? ' class="active" aria-current="page"' : ''; ?> href="?view=manager">لوحة المدير</a><?php } ?>
-    <?php if ($taskAuth->canOpenBoard()) { ?><a<?php echo $view === 'my' ? ' class="active" aria-current="page"' : ''; ?> href="?view=my">عملي اليوم <span><?php echo count($myOpenTasks); ?></span></a><?php } ?>
+    <?php if ($taskAuth->canOpenBoard()) { ?><a<?php echo $view === 'my' ? ' class="active" aria-current="page"' : ''; ?> href="?view=my"><?php echo $esc($langs->trans('WsToday')); ?> <span><?php echo count($myOpenTasks); ?></span></a><?php } ?>
     <?php if ($canReadCustomers) { ?><a<?php echo in_array($view, array('customers','customer'), true) ? ' class="active" aria-current="page"' : ''; ?> href="?view=customers">العملاء والعمليات</a><?php } ?>
   </nav>
 
@@ -127,25 +132,25 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
   </section><?php } ?>
   <?php } elseif ($view === 'my') { ?>
   <?php if ($taskError) { ?><div class="cpo-notice"><?php echo $esc($taskError); ?></div><?php } ?>
-  <section class="cpw-summary" aria-label="ملخص مهامي">
-    <a href="#my-work"><small>مفتوحة</small><strong><?php echo count($myOpenTasks); ?></strong><span>كل المهام المسموحة لك</span></a>
-    <a class="warn" href="#my-work"><small>بانتظار طرف</small><strong><?php echo count(array_filter($myOpenTasks, static function ($task) { return $task['status'] === 'waiting'; })); ?></strong><span>سبب وموعد المتابعة</span></a>
-    <a href="#my-work"><small>للمراجعة</small><strong><?php echo count(array_filter($myOpenTasks, static function ($task) { return $task['status'] === 'review'; })); ?></strong><span>تحتاج قرار المسؤول</span></a>
-    <a href="#my-work"><small>متأخرة</small><strong><?php echo count(array_filter($myOpenTasks, static function ($task) use ($isOverdue) { return $isOverdue($task['date_deadline']); })); ?></strong><span>ابدأ بالأقدم</span></a>
+  <section class="cpw-summary" aria-label="<?php echo $esc($langs->trans('WsMySummary')); ?>">
+    <a href="#my-work"><small><?php echo $esc($langs->trans('WsOpen')); ?></small><strong><?php echo count($myOpenTasks); ?></strong><span><?php echo $esc($langs->trans('WsAuthorizedTasks')); ?></span></a>
+    <a class="warn" href="#my-work"><small><?php echo $esc($langs->trans('WsWaitingParty')); ?></small><strong><?php echo count(array_filter($myOpenTasks, static function ($task) { return $task['status'] === 'waiting'; })); ?></strong><span><?php echo $esc($langs->trans('WsWaitingHelp')); ?></span></a>
+    <a href="#my-work"><small><?php echo $esc($langs->trans('WsForReview')); ?></small><strong><?php echo count(array_filter($myOpenTasks, static function ($task) { return $task['status'] === 'review'; })); ?></strong><span><?php echo $esc($langs->trans('WsReviewHelp')); ?></span></a>
+    <a href="#my-work"><small><?php echo $esc($langs->trans('WsOverdue')); ?></small><strong><?php echo count(array_filter($myOpenTasks, static function ($task) use ($isOverdue) { return $isOverdue($task['date_deadline']); })); ?></strong><span><?php echo $esc($langs->trans('WsOldestFirst')); ?></span></a>
   </section>
   <section class="cpo-panel cpw-section" id="my-work">
-    <div class="cpo-panel-head"><div><h2>ما الذي أفعله الآن؟</h2><p>كل بطاقة توضح العميل، العملية، المسؤول، الموعد، وسبب الانتظار.</p></div><a href="tasks/board.php?view=my">لوحة المهام الكاملة</a></div>
+    <div class="cpo-panel-head"><div><h2><?php echo $esc($langs->trans('WsWhatNext')); ?></h2><p><?php echo $esc($langs->trans('WsMyTaskCardsHelp')); ?></p></div><a href="tasks/board.php?view=my"><?php echo $esc($langs->trans('WsFullTaskBoard')); ?></a></div>
     <div class="cpw-task-grid">
       <?php foreach ($myOpenTasks as $task) { $overdue=$isOverdue($task['date_deadline']); ?>
       <article class="cpw-task-card priority-<?php echo $esc($task['priority']); ?><?php echo $overdue ? ' overdue' : ''; ?>">
-        <div class="cpw-card-top"><span class="cpw-chip"><?php echo $esc($task['stage_label_ar'] ?: $task['status']); ?></span><span><?php echo $esc($task['priority']); ?></span></div>
+        <div class="cpw-card-top"><span class="cpw-chip"><?php echo $esc($task[$workspaceArabic ? 'stage_label_ar' : 'stage_label_en'] ?: $langs->trans('TaskStatus_'.$task['status'])); ?></span><span><?php echo $esc($langs->trans('Priority_'.$task['priority'])); ?></span></div>
         <h3><?php echo $esc($task['title']); ?></h3>
-        <p><?php echo $esc($task['operation_ref'] ? $task['operation_ref'].' · '.$task['operation_title'] : 'مهمة داخلية'); ?></p>
-        <dl><div><dt>المسؤول</dt><dd><?php echo $esc($userLabel($task)); ?></dd></div><div><dt>الموعد</dt><dd><?php echo $overdue ? 'متأخر · ' : ''; ?><?php echo $esc($task['date_deadline'] ?: 'لم يحدد'); ?></dd></div><?php if ($task['status'] === 'waiting') { ?><div><dt>بانتظار</dt><dd><?php echo $esc(($task['waiting_on'] ?: 'طرف خارجي').' — '.($task['waiting_reason'] ?: 'لم يسجل السبب')); ?></dd></div><?php } ?></dl>
-        <div class="cpw-card-actions"><a class="button button-save" href="tasks/card.php?id=<?php echo (int) $task['rowid']; ?>">سجل التقدم أو النتيجة</a><?php if (!empty($task['fk_operation'])) { ?><a class="button" href="operations/view.php?id=<?php echo (int) $task['fk_operation']; ?>">العملية</a><?php } ?></div>
+        <p><?php echo $esc($canReadOperations && $task['operation_ref'] ? $task['operation_ref'].' · '.$task['operation_title'] : $langs->trans('WsInternalTask')); ?></p>
+        <dl><div><dt><?php echo $esc($langs->trans('WsOwner')); ?></dt><dd><?php echo $esc($userLabel($task)); ?></dd></div><div><dt><?php echo $esc($langs->trans('WsDeadline')); ?></dt><dd><?php echo $overdue ? $langs->trans('WsOverduePrefix').' ' : ''; ?><?php echo $esc($task['date_deadline'] ?: $langs->trans('WsNotSet')); ?></dd></div><?php if ($task['status'] === 'waiting') { ?><div><dt><?php echo $esc($langs->trans('WsWaiting')); ?></dt><dd><?php echo $esc(($task['waiting_on'] ? (in_array($task['waiting_on'], InternalTaskService::waitingParties(), true) ? $langs->trans($task['waiting_on'] === 'other' ? 'WsOtherParty' : 'Party_'.$task['waiting_on']) : $task['waiting_on']) : $langs->trans('WsExternalParty')).' — '.($task['waiting_reason'] ?: $langs->trans('WsNoReason'))); ?></dd></div><?php } ?></dl>
+        <div class="cpw-card-actions"><a class="button button-save" href="tasks/card.php?id=<?php echo (int) $task['rowid']; ?>"><?php echo $esc($langs->trans('WsRecordProgress')); ?></a><?php if ($canReadOperations && !empty($task['fk_operation'])) { ?><a class="button" href="operations/view.php?id=<?php echo (int) $task['fk_operation']; ?>"><?php echo $esc($langs->trans('WsOperation')); ?></a><?php } ?></div>
       </article>
       <?php } ?>
-      <?php if (!$myOpenTasks && !$taskError) { ?><div class="cpw-empty">لا توجد مهام مفتوحة مسندة إليك ضمن فرقك الحالية.</div><?php } ?>
+      <?php if (!$myOpenTasks && !$taskError) { ?><div class="cpw-empty"><?php echo $esc($langs->trans('WsNoMyTasks')); ?></div><?php } ?>
     </div>
   </section>
   <?php } elseif ($view === 'customers') { ?>
@@ -179,9 +184,9 @@ cpcc_admin_shell_open('workspace', 'مساحة عمل كوكب الصين', 'ط�
   </div>
   <?php } ?>
 
-  <section class="cpw-unavailable" aria-label="وظائف غير متصلة">
+  <?php if ($view !== 'my') { ?><section class="cpw-unavailable" aria-label="وظائف غير متصلة">
     <strong>غير متصل في هذه المرحلة</strong>
     <p>الحوالات والتخصيص ودفع المورد وCargoX وDHL وإرسال المستندات وبوابة العميل ليست جزءاً من Phase 1. لا توجد أزرار محاكاة تبدو كأنها حفظ أو إرسال حقيقي.</p>
-  </section>
+  </section><?php } ?>
 </main>
 <?php cpcc_admin_shell_close(); llxFooter(); $db->close(); ?>

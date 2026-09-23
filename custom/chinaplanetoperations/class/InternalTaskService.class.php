@@ -146,10 +146,15 @@ class InternalTaskService
             $teamId = 0;
             $assigneeId = 0;
         } else {
-            if (!$this->validTeam($teamId)) throw new RuntimeException('A valid primary team is required.');
             if (!$this->auth->isAdministrator() && (!$this->auth->hasRight('task_manage_team') || !$this->auth->hasTeamGrant($teamId))) {
-                throw new InternalTaskAccessException('Task access denied.');
+                if ($generated || !$this->auth->canCreateOwnTask($teamId)
+                    || ($assigneeId > 0 && $assigneeId !== $this->auth->actorId())
+                    || !empty($data['fk_operation'])) {
+                    throw new InternalTaskAccessException('Task access denied.');
+                }
+                $assigneeId = $this->auth->actorId();
             }
+            if (!$this->validTeam($teamId)) throw new RuntimeException('A valid primary team is required.');
             if ($assigneeId > 0 && !$this->auth->isActiveTeamMember($assigneeId, $teamId)) throw new RuntimeException('Assignee must be an active team member.');
         }
         $operationId = !empty($data['fk_operation']) ? (int) $data['fk_operation'] : 0;
@@ -210,10 +215,18 @@ class InternalTaskService
         $this->beginTransaction();
         try {
             $task = $this->getTask($taskId, true);
-            if (!$task || !$this->auth->canManageTask($task)) throw new InternalTaskAccessException('Task access denied.');
+            if (!$task || (!$this->auth->canManageTask($task) && !$this->auth->canEditOwnInstructions($task))) throw new InternalTaskAccessException('Task access denied.');
+            $manager = $this->auth->canManageTask($task);
+            if (!$manager) {
+                foreach (array('fk_usergroup', 'fk_user_assign') as $field) {
+                    if (isset($data[$field]) && (int) $data[$field] !== (int) $task[$field]) throw new InternalTaskAccessException('Task access denied.');
+                    $data[$field] = (int) $task[$field];
+                }
+                if (!empty($data['fk_operation'])) throw new InternalTaskAccessException('Task access denied.');
+            }
             $teamId = !empty($data['fk_usergroup']) ? (int) $data['fk_usergroup'] : (int) $task['fk_usergroup'];
             if (!$this->validTeam($teamId)) throw new RuntimeException('A valid primary team is required.');
-            if (!$this->auth->isAdministrator() && !$this->auth->hasTeamGrant($teamId)) throw new InternalTaskAccessException('Task access denied.');
+            if ($manager && !$this->auth->isAdministrator() && !$this->auth->hasTeamGrant($teamId)) throw new InternalTaskAccessException('Task access denied.');
             $assigneeId = !empty($data['fk_user_assign']) ? (int) $data['fk_user_assign'] : 0;
             if ($assigneeId > 0 && !$this->auth->isActiveTeamMember($assigneeId, $teamId)) throw new RuntimeException('Assignee must be an active team member.');
             $title = $this->boundedText(isset($data['title']) ? $data['title'] : $task['title'], 255, true);
@@ -450,6 +463,15 @@ class InternalTaskService
             $sql .= ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'cpo_task_team_manager tm WHERE tm.entity=g.entity AND tm.fk_usergroup=g.rowid AND tm.fk_user='.$this->auth->actorId().' AND tm.status=1)';
         }
         $sql .= ' ORDER BY g.nom,g.rowid';
+        return $this->rows($sql);
+    }
+
+    public function ownTaskTeams()
+    {
+        if (!$this->auth->hasRight('task_read_own') || !$this->auth->hasRight('task_update_own')) return array();
+        $sql = 'SELECT DISTINCT g.rowid,g.nom FROM '.MAIN_DB_PREFIX.'usergroup g';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_usergroup=g.rowid AND gu.entity=g.entity';
+        $sql .= ' WHERE g.entity='.$this->entity.' AND gu.fk_user='.$this->auth->actorId().' ORDER BY g.nom,g.rowid';
         return $this->rows($sql);
     }
 
