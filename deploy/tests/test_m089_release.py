@@ -14,10 +14,11 @@ import unittest
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[2]
+VARIANT = os.environ.get('M089_RELEASE_VARIANT', 'm089-c02-r2')
 
 
 def load(env):
-    spec = importlib.util.spec_from_file_location('m089_' + env, REPO / 'deploy/releases/m089-c02-r2' / (env + '.py'))
+    spec = importlib.util.spec_from_file_location('m089_' + env, REPO / 'deploy/releases' / VARIANT / (env + '.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -28,7 +29,7 @@ class Integrity(unittest.TestCase):
         for env in ('staging', 'production'):
             m = load(env)
             m.validate_payload()
-            self.assertEqual(len(m.PAYLOAD['files']), 10)
+            self.assertEqual(len(m.PAYLOAD['files']), 11 if VARIANT == 'm089-c02-r3' else 10)
             self.assertEqual(len(m.PAYLOAD['prerequisites']), 12)
             for name, item in m.PAYLOAD['files'].items():
                 source = 'custom/' + name

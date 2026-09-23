@@ -11,6 +11,7 @@ on:
           - m043-c02
           - m045-r01
           - m089-c02-r2
+          - m089-c02-r3
         default: m043-c02
       confirmation:
         description: Type the exact confirmation for the selected release
@@ -305,6 +306,70 @@ jobs:
           git merge-base --is-ancestor "$RUNTIME_COMMIT" HEAD
           test "$(sha256sum deploy/releases/m089-c02-r2/staging.py | awk '{print $1}')" = "$HELPER_SHA"
           python3 deploy/tests/test_m089_release.py
+      - name: Configure restricted SSH
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify fixed root-owned helper
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          actual=$(ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "stat -c '%U:%G:%a' '$DEPLOY_HELPER' && sha256sum '$DEPLOY_HELPER'")
+          test "$(printf '%s\n' "$actual" | head -1)" = 'root:root:755'
+          test "$(printf '%s\n' "$actual" | tail -1 | awk '{print $1}')" = "$HELPER_SHA"
+      - name: Compare and preflight pinned files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER compare"
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER preflight"
+      - name: Apply with scoped backup and automatic rollback
+        id: apply
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER apply"
+      - name: Verify deployed bytes and health
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER verify && sudo -n $DEPLOY_HELPER status"
+      - name: Restore prior code on post-apply verification failure
+        if: ${{ failure() && steps.apply.outcome == 'success' }}
+        run: ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n $DEPLOY_HELPER rollback"
+      - name: Remove transient SSH material
+        if: ${{ always() }}
+        run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  deploy_m089_r3:
+    if: ${{ inputs.release == 'm089-c02-r3' }}
+    name: Deploy pinned M089 personal worker dashboard to backup-erp
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 15
+    env:
+      DEPLOY_HELPER: /usr/local/sbin/chinaplanetos-m089-c02-r3-staging
+      HELPER_SHA: 4ae963686a85390bb98ce18cf8004929a29e2227c0e25a5b9ab739a6b9f1ca75
+      RUNTIME_COMMIT: b793819793791ef4dc35ff93b1e8a70d44451e01
+    steps:
+      - name: Require approved release confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = 'DEPLOY_M089_C02_R3_TO_STAGING'
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify immutable payload and recovery tests
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git merge-base --is-ancestor "$RUNTIME_COMMIT" HEAD
+          test "$(sha256sum deploy/releases/m089-c02-r3/staging.py | awk '{print $1}')" = "$HELPER_SHA"
+          M089_RELEASE_VARIANT=m089-c02-r3 python3 deploy/tests/test_m089_release.py
+          php deploy/tests/test_m089_kanban_access.php
       - name: Configure restricted SSH
         shell: bash
         env:
