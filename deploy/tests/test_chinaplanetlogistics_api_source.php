@@ -22,10 +22,13 @@ try {
     $assert(strpos($descriptor, "'api'") !== false, 'modChinaPlanetLogistics must declare api module part');
 
     // Class & inheritance contract
-    // Dolibarr 23 dispatches /chinaplanetlogistics through ucwords(endpoint),
-    // without an Api-suffix fallback (which was added in Dolibarr 24).
-    $routeClass = ucwords('chinaplanetlogistics');
-    $assert(strpos($api, 'class '.$routeClass.' extends DolibarrApi') !== false, 'Class must match the Dolibarr 23 endpoint dispatcher');
+    // Dolibarr 23 strips the api suffix for the module file, then dispatches
+    // the full /chinaplanetlogisticsapi endpoint class. The suffix also avoids
+    // PHP's case-insensitive collision with the ChinaPlanetLogistics model.
+    $routeClass = 'ChinaplanetlogisticsApi';
+    $assert(strcasecmp($routeClass, ucwords('chinaplanetlogisticsapi')) === 0, 'Class must match the Dolibarr 23 endpoint dispatcher');
+    $assert(strpos($api, 'class '.$routeClass.' extends DolibarrApi') !== false, 'API class must be declared');
+    $assert(strcasecmp($routeClass, 'ChinaPlanetLogistics') !== 0, 'API class must not collide with the shipment model');
 
     // Endpoints contract
     $assert(strpos($api, '@url GET shipments') !== false, 'GET shipments endpoint must be declared');
