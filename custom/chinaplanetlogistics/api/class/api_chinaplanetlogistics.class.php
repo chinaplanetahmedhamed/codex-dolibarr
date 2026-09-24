@@ -12,7 +12,7 @@ require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib
  * @access protected
  * @class DolibarrApiAccess {@requires user,external}
  */
-class ChinaplanetlogisticsApi extends DolibarrApi
+class Chinaplanetlogistics extends DolibarrApi
 {
     const MAX_UPLOAD_BYTES = 209715200; // 200 MB matching staff upload policy
 

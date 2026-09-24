@@ -22,7 +22,10 @@ try {
     $assert(strpos($descriptor, "'api'") !== false, 'modChinaPlanetLogistics must declare api module part');
 
     // Class & inheritance contract
-    $assert(strpos($api, 'class ChinaplanetlogisticsApi extends DolibarrApi') !== false, 'Class must be ChinaplanetlogisticsApi extending DolibarrApi');
+    // Dolibarr 23 dispatches /chinaplanetlogistics through ucwords(endpoint),
+    // without an Api-suffix fallback (which was added in Dolibarr 24).
+    $routeClass = ucwords('chinaplanetlogistics');
+    $assert(strpos($api, 'class '.$routeClass.' extends DolibarrApi') !== false, 'Class must match the Dolibarr 23 endpoint dispatcher');
 
     // Endpoints contract
     $assert(strpos($api, '@url GET shipments') !== false, 'GET shipments endpoint must be declared');
