@@ -43,7 +43,8 @@ class modChinaPlanetLogistics extends DolibarrModules
 
         // Module parts
         $this->module_parts = array(
-            'hooks' => array('main', 'index', 'ordercard', 'shippingcard', 'projectcard'),
+            'api'    => 1,
+            'hooks'  => array('main', 'index', 'ordercard', 'shippingcard', 'projectcard'),
             'boxes'  => 1,
         );
 
