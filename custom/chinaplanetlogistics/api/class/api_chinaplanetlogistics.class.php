@@ -36,12 +36,16 @@ class ChinaplanetlogisticsApi extends DolibarrApi
     public function listShipments($query = '', $socid = 0, $limit = 50)
     {
         $user = DolibarrApiAccess::$user;
-        if (!$user || (!$user->hasRight('chinaplanetlogistics', 'read') && empty($user->admin))) {
+        if (!$user || !empty($user->socid) || (!$user->hasRight('chinaplanetlogistics', 'read') && empty($user->admin))) {
             throw new RestException(403, 'Permission denied: read access required for logistics shipments');
         }
 
         $limit = min(max((int) $limit, 1), 100);
-        $entity = !empty($user->entity) ? (int) $user->entity : 1;
+        global $conf;
+        $entity = !empty($conf->entity) ? (int) $conf->entity : 0;
+        if ($entity <= 0) {
+            throw new RestException(500, 'Active entity is unavailable');
+        }
 
         $sql = "SELECT s.rowid AS id, s.ref, s.fk_soc, c.nom AS socname, s.booking_no, s.voyage_no, s.vessel_name,";
         $sql .= " s.port_loading AS origin_port, s.port_destination AS destination_port, s.container_no,";
@@ -65,7 +69,8 @@ class ChinaplanetlogisticsApi extends DolibarrApi
 
         $resql = $this->db->query($sql);
         if (!$resql) {
-            throw new RestException(500, 'Database query failed: '.$this->db->lasterror());
+            dol_syslog('ChinaPlanetLogistics API shipment list query failed: '.$this->db->lasterror(), LOG_ERR);
+            throw new RestException(500, 'Could not load shipments');
         }
 
         $items = array();
@@ -103,7 +108,7 @@ class ChinaplanetlogisticsApi extends DolibarrApi
     public function getShipment($id)
     {
         $user = DolibarrApiAccess::$user;
-        if (!$user || (!$user->hasRight('chinaplanetlogistics', 'read') && empty($user->admin))) {
+        if (!$user || !empty($user->socid) || (!$user->hasRight('chinaplanetlogistics', 'read') && empty($user->admin))) {
             throw new RestException(403, 'Permission denied: read access required for logistics shipments');
         }
 
@@ -146,17 +151,17 @@ class ChinaplanetlogisticsApi extends DolibarrApi
      * @param string $filecontent         Base64 encoded file content
      * @param string $fileencoding        Encoding (must be 'base64')
      * @param string $ref                 Optional reference fallback if id is not passed in URL
-     * @param int    $publish_to_customer Whether to publish the document to the customer portal (default 1)
+     * @param int    $publish_to_customer Whether to publish the document to the customer portal (default 0)
      * @param int    $overwrite           Overwrite existing file with same name (default 1)
      * @return array Upload result
      *
      * @url POST shipments/{id}/documents
      * @url POST upload
      */
-    public function uploadDocument($id = '', $filename = '', $filecontent = '', $fileencoding = 'base64', $ref = '', $publish_to_customer = 1, $overwrite = 1)
+    public function uploadDocument($id = '', $filename = '', $filecontent = '', $fileencoding = 'base64', $ref = '', $publish_to_customer = 0, $overwrite = 1)
     {
         $user = DolibarrApiAccess::$user;
-        if (!$user || (!$user->hasRight('chinaplanetlogistics', 'write') && empty($user->admin))) {
+        if (!$user || !empty($user->socid) || (!$user->hasRight('chinaplanetlogistics', 'write') && empty($user->admin))) {
             throw new RestException(403, 'Permission denied: write access required to upload shipment documents');
         }
 
@@ -209,6 +214,14 @@ class ChinaplanetlogisticsApi extends DolibarrApi
             throw new RestException(413, 'File size exceeds maximum staff allowance (200 MB)');
         }
 
+        $extension = strtolower(pathinfo($safeName, PATHINFO_EXTENSION));
+        $policy = cpcc_portal_shipment_file_policy();
+        $mime = strtolower((string) (new finfo(FILEINFO_MIME_TYPE))->buffer($content));
+        $allowedMimes = isset($policy[$extension]) ? array_map('strtolower', $policy[$extension]) : array();
+        if ($mime === '' || !in_array($mime, $allowedMimes, true)) {
+            throw new RestException(400, 'File content does not match its type');
+        }
+
         // Target storage directory: DOL_DATA_ROOT/chinaplanetlogistics/ship-{$id}
         $moduleRoot = DOL_DATA_ROOT.'/chinaplanetlogistics';
         if (!is_dir($moduleRoot) && !dol_mkdir($moduleRoot)) {
@@ -255,6 +268,8 @@ class ChinaplanetlogisticsApi extends DolibarrApi
             if (!empty($pubRes['ok'])) {
                 $published = true;
                 $publicationId = (int) ($pubRes['id'] ?? 0);
+            } else {
+                throw new RestException(500, 'File saved but customer publication failed');
             }
         }
 
