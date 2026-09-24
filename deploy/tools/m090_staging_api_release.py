@@ -92,8 +92,9 @@ def current(path):
 def check_runtime():
     if not ROOT.is_dir() or ROOT.is_symlink():
         fail('STAGING_ROOT')
-    if ROOT.stat().st_uid != 0:
-        fail('STAGING_ROOT_OWNER')
+    root_info = ROOT.stat()
+    if (root_info.st_uid, root_info.st_gid, stat.S_IMODE(root_info.st_mode)) != (33, 33, 0o755):
+        fail('STAGING_ROOT_METADATA')
     running = run('docker', 'inspect', '--format', '{{.State.Running}}', CONTAINER)
     if running != 'true':
         fail('STAGING_CONTAINER')
