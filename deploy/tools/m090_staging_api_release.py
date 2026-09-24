@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 HOST = 'srv1011043'
 CONTAINER = 'erp-staging-dolibarr-1'
 ROOT = Path('/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data')
-ARTIFACT = Path('/home/codex-deploy/staging-inbox/chinaplanetlogistics-api-0de9653.tar.gz')
-ARTIFACT_SHA = 'a3406d9fdfecd74ace4225d9d00fd3365af7767cb5ff86e3d625334e8f5be8e5'
-COMMIT = '0de9653'
+ARTIFACT = Path('/home/codex-deploy/staging-inbox/chinaplanetlogistics-api-abbc485.tar.gz')
+ARTIFACT_SHA = '4a1e25ceeb54f7bd3d7e7961ec649e9ce81173acb47396303891f100b3367374'
+COMMIT = 'abbc485'
 STATE_DIR = Path('/root/chinaplanetos-m090-staging')
 TARGETS = (
     'chinaplanetlogistics/class/api_chinaplanetlogistics.class.php',
@@ -170,7 +170,7 @@ def runtime_check(expected):
         run('docker', 'exec', CONTAINER, 'php', '-l', '/var/www/html/custom/' + relative)
     if http_status('/') not in (200, 302):
         fail('ERP_HEALTH')
-    if http_status('/api/index.php/chinaplanetlogistics/shipments') not in (401, 403):
+    if http_status('/api/index.php/chinaplanetlogisticsapi/shipments') not in (401, 403):
         fail('CPL_API_HTTP')
 
 
