@@ -41,9 +41,41 @@
         async function move(taskId,columnId,beforeId){if(busy)return;busy=true;try{var result=await post('move',{column:Number(columnId),before:Number(beforeId||0)},token,{version:version,task_id:taskId});version=result.board.version;var card=board.querySelector('[data-task-id="'+taskId+'"]'),list=board.querySelector('[data-stage-id="'+columnId+'"] .cpo-task-list'),before=beforeId?list.querySelector('[data-task-id="'+beforeId+'"]'):null;list.insertBefore(card,before);board.querySelectorAll('[data-stage-id]').forEach(function(column){column.querySelector('header>span').textContent=column.querySelectorAll('.cpo-task-card').length;});if(live)live.textContent=result.message;return true;}catch(e){if(live)live.textContent=e.message;moveDialog.querySelector('output').textContent=e.message;return false;}finally{busy=false;}}
         board.querySelectorAll('[data-personal-move]').forEach(function(b){b.onclick=function(){moveTask=Number(b.dataset.personalMove);moveDialog.querySelector('select').value=b.closest('[data-stage-id]').dataset.stageId;moveDialog.showModal();};});
         moveDialog.querySelector('form').onsubmit=async function(e){e.preventDefault();if(await move(moveTask,moveDialog.querySelector('select').value))moveDialog.close();};
-        var dragging=null;
-        board.querySelectorAll('.cpo-task-card').forEach(function(card){card.addEventListener('dragstart',function(event){if(busy){event.preventDefault();return;}dragging=card;card.classList.add('cpt-dragging');event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',card.dataset.taskId);});card.addEventListener('dragend',function(){card.classList.remove('cpt-dragging');dragging=null;board.querySelectorAll('.cpt-drop-target').forEach(function(n){n.classList.remove('cpt-drop-target');});});var handle=card.querySelector('.cpo-drag-handle');if(handle)handle.onclick=function(){card.querySelector('[data-personal-move]').click();};});
-        board.querySelectorAll('[data-stage-id]').forEach(function(column){column.addEventListener('dragover',function(e){if(!dragging||busy)return;e.preventDefault();e.dataTransfer.dropEffect='move';board.querySelectorAll('.cpt-drop-target').forEach(function(n){n.classList.remove('cpt-drop-target');});column.classList.add('cpt-drop-target');var list=column.querySelector('.cpo-task-list'),r=list.getBoundingClientRect();if(e.clientY>r.bottom-45)list.scrollTop+=12;else if(e.clientY<r.top+45)list.scrollTop-=12;});column.addEventListener('drop',function(e){if(!dragging)return;e.preventDefault();var target=e.target.closest('.cpo-task-card');if(target===dragging)return;var before=target?target.dataset.taskId:0;move(dragging.dataset.taskId,column.dataset.stageId,before);column.classList.remove('cpt-drop-target');});});
+        function clearTarget(){board.querySelectorAll('.cpt-drop-target').forEach(function(node){node.classList.remove('cpt-drop-target');});}
+        board.querySelectorAll('.cpo-task-card').forEach(function(card){
+          var handle=card.querySelector('.cpo-drag-handle');
+          if(!handle)return;
+          handle.onclick=function(){card.querySelector('[data-personal-move]').click();};
+          window.cpKanbanPointer(card,{
+            handle:'.cpo-drag-handle',
+            disabled:function(){return busy;},
+            move:function(event,target){
+              clearTarget();
+              var column=target&&target.closest('[data-stage-id]');
+              if(column&&board.contains(column)){
+                column.classList.add('cpt-drop-target');
+                var list=column.querySelector('.cpo-task-list'),bounds=list.getBoundingClientRect();
+                if(event.clientY<bounds.top+40)list.scrollTop-=12;
+                else if(event.clientY>bounds.bottom-40)list.scrollTop+=12;
+              }
+              var bounds=board.getBoundingClientRect();
+              if(event.clientX<bounds.left+40)board.scrollLeft-=14;
+              else if(event.clientX>bounds.right-40)board.scrollLeft+=14;
+            },
+            drop:function(event,target){
+              var column=target&&target.closest('[data-stage-id]');
+              if(!column||!board.contains(column))return;
+              var at=target.closest('.cpo-task-card'),before=0;
+              if(at===card)return;
+              if(at){
+                if(event.clientY<at.getBoundingClientRect().top+at.getBoundingClientRect().height/2)before=Number(at.dataset.taskId);
+                else {var next=at.nextElementSibling;while(next===card)next=next.nextElementSibling;before=next?Number(next.dataset.taskId):0;}
+              }
+              move(Number(card.dataset.taskId),Number(column.dataset.stageId),before);
+            },
+            end:clearTarget
+          });
+        });
       }
     }
     document.querySelectorAll('[data-close-dialog]').forEach(function(b){b.onclick=function(){b.closest('dialog').close();};});

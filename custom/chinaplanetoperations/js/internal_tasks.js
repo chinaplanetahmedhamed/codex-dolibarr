@@ -130,8 +130,20 @@
     moveDialog.addEventListener('close',function(){if(moveTrigger)moveTrigger.focus();});
     moveForm.addEventListener('submit',function(event){if(!moveForm.checkValidity())return;event.preventDefault();var id=moveForm.elements.task_id.value;sessionStorage.setItem('cpo-task-focus-id',id);postForm(moveForm,function(){moveDialog.close();window.location.reload();});});
     if(board&&page&&page.dataset.adminDrag==='1'){
-      var dragged=null;var dragAllowed=[];[].slice.call(board.querySelectorAll('.cpo-task-card[draggable]')).forEach(function(card){var handle=card.querySelector('.cpo-drag-handle');if(handle){handle.addEventListener('pointerdown',function(){card.dataset.dragReady='1';});handle.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();var moveButton=card.querySelector('[data-move-task]');if(moveButton)moveButton.click();}});}card.addEventListener('dragstart',function(event){if(card.dataset.dragReady!=='1'){event.preventDefault();return;}dragged=card;var moveButton=card.querySelector('[data-move-task]');try{dragAllowed=JSON.parse(moveButton?moveButton.dataset.moveTargets:'[]');}catch(ignoreDragTargets){dragAllowed=[];}var ids=dragAllowed.map(function(target){return String(target.id);});[].slice.call(board.querySelectorAll('[data-stage-id]')).forEach(function(column){column.classList.toggle('is-drop-target',ids.indexOf(column.dataset.stageId)!==-1);});event.dataTransfer.effectAllowed='move';});card.addEventListener('dragend',function(){card.dataset.dragReady='';dragged=null;[].slice.call(board.querySelectorAll('.is-drop-target')).forEach(function(column){column.classList.remove('is-drop-target');});});});
-      [].slice.call(board.querySelectorAll('[data-stage-id]')).forEach(function(column){column.addEventListener('dragover',function(event){if(column.classList.contains('is-drop-target')){event.preventDefault();event.dataTransfer.dropEffect='move';}});column.addEventListener('drop',function(event){event.preventDefault();if(!dragged||!column.classList.contains('is-drop-target'))return;var button=dragged.querySelector('[data-move-task]');openMove(button.dataset.moveTask,button.dataset.moveVersion,button.dataset.moveStatus,dragAllowed,column.dataset.stageId,dragged.querySelector('.cpo-drag-handle'));});});
+      [].slice.call(board.querySelectorAll('.cpo-task-card')).forEach(function(card){
+        var handle=card.querySelector('.cpo-drag-handle'),button=card.querySelector('[data-move-task]');
+        if(!handle||!button)return;
+        var allowed=[];
+        handle.addEventListener('click',function(){button.click();});
+        handle.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();button.click();}});
+        window.cpKanbanPointer(card,{
+          handle:'.cpo-drag-handle',
+          start:function(){try{allowed=JSON.parse(button.dataset.moveTargets||'[]');}catch(ignoreTargets){allowed=[];}var ids=allowed.map(function(target){return String(target.id);});[].slice.call(board.querySelectorAll('[data-stage-id]')).forEach(function(column){column.classList.toggle('is-drop-target',ids.indexOf(column.dataset.stageId)!==-1);});},
+          move:function(event,target){var column=target&&target.closest('[data-stage-id]');if(column&&board.contains(column)){var list=column.querySelector('.cpo-task-list'),bounds=list.getBoundingClientRect();if(event.clientY<bounds.top+40)list.scrollTop-=12;else if(event.clientY>bounds.bottom-40)list.scrollTop+=12;}var bounds=board.getBoundingClientRect();if(event.clientX<bounds.left+40)board.scrollLeft-=14;else if(event.clientX>bounds.right-40)board.scrollLeft+=14;},
+          drop:function(event,target){var column=target&&target.closest('[data-stage-id]');if(column&&board.contains(column)&&column.classList.contains('is-drop-target'))openMove(button.dataset.moveTask,button.dataset.moveVersion,button.dataset.moveStatus,allowed,column.dataset.stageId,handle);},
+          end:function(){[].slice.call(board.querySelectorAll('.is-drop-target')).forEach(function(column){column.classList.remove('is-drop-target');});}
+        });
+      });
     }
   }
   window.addEventListener('pageshow',function(){var focusId=sessionStorage.getItem('cpo-task-focus-id');if(focusId){var card=document.getElementById('cpo-task-'+focusId);if(card){var focusable=card.querySelector('a,button');if(focusable)focusable.focus();}sessionStorage.removeItem('cpo-task-focus-id');}});
