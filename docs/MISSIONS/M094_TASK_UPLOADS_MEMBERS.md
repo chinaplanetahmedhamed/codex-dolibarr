@@ -11,3 +11,7 @@ Release includes the prepared M093 controls/identity update in one artifact over
 ## Release status — 2026-09-26
 
 DEPLOYED; authenticated production browser acceptance remains pending stable ERP window control. M093/M094 shipped in M094; M095 shipped separately. See dated production-release evidence. Local authenticated workflows, runtime regression and release rollback tests passed.
+
+## C01 - Standard Office metadata upload rejection, 2026-09-27
+
+Ahmed reported 7621.xlsx rejected with HTTP 422 after M094. Continue the existing bounded live upload repair authorization. Reproduced a validation defect: standard OPC core-properties relationship is rejected because its namespace includes package. Permit only that exact standard metadata relation; retain external-link, macro, embedded-object, unsafe-path, DTD, decompression and size checks. Add allowlisted localized rejection messages without exposing arbitrary exceptions. No schema, permission, quota, record or infrastructure-policy change. Exact Moaz file and production error-log correlation remain unverified; root GUI session input currently unavailable.

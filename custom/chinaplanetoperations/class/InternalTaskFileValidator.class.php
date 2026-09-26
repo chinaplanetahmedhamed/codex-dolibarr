@@ -37,7 +37,10 @@ class InternalTaskFileValidator
                 if (substr($name, -5) === '.rels' && $reader->localName === 'Relationship') {
                     if (strtolower((string)$reader->getAttribute('TargetMode')) === 'external') throw new RuntimeException('External Office relationships are not allowed.');
                     $type = strtolower((string)$reader->getAttribute('Type'));
-                    if (strpos($type, 'oleobject') !== false || strpos($type, 'package') !== false || strpos($type, 'attachedtemplate') !== false) throw new RuntimeException('Embedded Office relationships are not allowed.');
+                    // Core properties use the OPC "package" namespace too. They
+                    // are ordinary document metadata, not an embedded package.
+                    $coreProperties = $type === 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties';
+                    if (strpos($type, 'oleobject') !== false || (strpos($type, 'package') !== false && !$coreProperties) || strpos($type, 'attachedtemplate') !== false) throw new RuntimeException('Embedded Office relationships are not allowed.');
                 }
             }
             if (!$rootSeen || libxml_get_errors()) throw new RuntimeException('Invalid Office XML.');
@@ -45,6 +48,29 @@ class InternalTaskFileValidator
         } finally {
             $reader->close(); libxml_clear_errors(); libxml_use_internal_errors($previous);
         }
+    }
+
+    /** Only known validation failures may become user-facing messages. */
+    public static function errorTranslationKey(Throwable $error)
+    {
+        $keys = array(
+            'External Office relationships are not allowed.' => 'InternalTaskOfficeExternalLinks',
+            'Embedded Office relationships are not allowed.' => 'InternalTaskOfficeEmbeddedContent',
+            'Active Office content is not allowed.' => 'InternalTaskOfficeEmbeddedContent',
+            'Unexpected Office package part.' => 'InternalTaskOfficeUnsupportedContent',
+            'Invalid Office XML.' => 'InternalTaskOfficeInvalid',
+            'Invalid Office file.' => 'InternalTaskOfficeInvalid',
+            'Invalid Office package prefix.' => 'InternalTaskOfficeInvalid',
+            'Invalid Office package ending.' => 'InternalTaskOfficeInvalid',
+            'Office content type mismatch.' => 'InternalTaskOfficeInvalid',
+            'Office root part mismatch.' => 'InternalTaskOfficeInvalid',
+            'Office archive is too large.' => 'InternalTaskOfficeExpandedLimit',
+            'Unsafe Office archive.' => 'InternalTaskOfficeArchiveUnsafe',
+            'Double or hidden file extensions are not allowed.' => 'InternalTaskFileNameInvalid',
+            'Unsafe file name.' => 'InternalTaskFileNameInvalid',
+            'Task file quota exceeded.' => 'InternalTaskFileQuota',
+        );
+        return $keys[$error->getMessage()] ?? 'InternalTaskValidationError';
     }
 
     public static function pdf($path, $size)
