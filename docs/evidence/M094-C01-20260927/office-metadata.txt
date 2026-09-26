@@ -1,0 +1,47 @@
+PASS 1 standard xlsx metadata accepted without changing file
+PASS 2 standard docx metadata accepted without changing file
+PASS 3 Embedded Office relationships are not allowed.
+PASS 4 Embedded Office relationships are not allowed.
+PASS 5 Embedded Office relationships are not allowed.
+PASS 6 External Office relationships are not allowed.
+PASS 7 Embedded Office relationships are not allowed.
+PASS 8 Unsafe Office XML.
+PASS 9 Invalid Office XML.
+PASS 10 Active Office content is not allowed.
+PASS 11 Unsafe Office archive.
+PASS 12 Unsafe Office archive.
+PASS 13 unknown error details stay private
+PASS 14 allowlisted error category InternalTaskOfficeExternalLinks
+PASS 15 allowlisted error category InternalTaskOfficeEmbeddedContent
+PASS 16 allowlisted error category InternalTaskOfficeUnsupportedContent
+PASS 17 allowlisted error category InternalTaskOfficeInvalid
+PASS 18 allowlisted error category InternalTaskOfficeExpandedLimit
+PASS 19 allowlisted error category InternalTaskOfficeArchiveUnsafe
+PASS 20 allowlisted error category InternalTaskFileNameInvalid
+PASS 21 allowlisted error category InternalTaskFileQuota
+PASS 22 en_US InternalTaskOfficeExternalLinks translated
+PASS 23 en_US InternalTaskOfficeEmbeddedContent translated
+PASS 24 en_US InternalTaskOfficeUnsupportedContent translated
+PASS 25 en_US InternalTaskOfficeInvalid translated
+PASS 26 en_US InternalTaskOfficeExpandedLimit translated
+PASS 27 en_US InternalTaskOfficeArchiveUnsafe translated
+PASS 28 en_US InternalTaskFileNameInvalid translated
+PASS 29 en_US InternalTaskFileQuota translated
+PASS 30 ar_SA InternalTaskOfficeExternalLinks translated
+PASS 31 ar_SA InternalTaskOfficeEmbeddedContent translated
+PASS 32 ar_SA InternalTaskOfficeUnsupportedContent translated
+PASS 33 ar_SA InternalTaskOfficeInvalid translated
+PASS 34 ar_SA InternalTaskOfficeExpandedLimit translated
+PASS 35 ar_SA InternalTaskOfficeArchiveUnsafe translated
+PASS 36 ar_SA InternalTaskFileNameInvalid translated
+PASS 37 ar_SA InternalTaskFileQuota translated
+PASS 38 zh_CN InternalTaskOfficeExternalLinks translated
+PASS 39 zh_CN InternalTaskOfficeEmbeddedContent translated
+PASS 40 zh_CN InternalTaskOfficeUnsupportedContent translated
+PASS 41 zh_CN InternalTaskOfficeInvalid translated
+PASS 42 zh_CN InternalTaskOfficeExpandedLimit translated
+PASS 43 zh_CN InternalTaskOfficeArchiveUnsafe translated
+PASS 44 zh_CN InternalTaskFileNameInvalid translated
+PASS 45 zh_CN InternalTaskFileQuota translated
+PASS 46 200 MB per-file limit retained
+M094_OFFICE_METADATA=PASS ASSERTIONS=46

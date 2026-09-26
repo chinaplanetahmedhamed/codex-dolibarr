@@ -1,0 +1,28 @@
+{
+  "baseline_commit": "11cc7173348d1409b56c5206f4cc74fc36052f77",
+  "before": {
+    "production": {
+      "chinaplanetoperations/class/InternalTaskFileValidator.class.php": "c0cdb977b97a7b6e4cfc355ace82f6a9d077771769ee84411948cdeb2763ac88",
+      "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "8de3f51b13db434cdeee79763483ed75d76ccac00e1ad63f8adef109925d7ded",
+      "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "6027964f8e9914dfd1569ef752a23d60ddfb3e380b9f7d4f6c56947b9e82e036",
+      "chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang": "b18c4ad3142ca78db417994b468015781fbace5b706100e80406021cba242011",
+      "chinaplanetoperations/tasks/asset.php": "bf1e4c9eab091e97e6e0f85c3baee02d023878fa3bcc14dfaeae133adf6c5212"
+    }
+  },
+  "files": {
+    "chinaplanetoperations/class/InternalTaskFileValidator.class.php": "8d7747a50dbf641a2c46951b55568abd561c33e3c71ec315cca094f5e03217c9",
+    "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "e991cd00d1e6f78e0832c33abfe7b12e8e9d3f497f6b8a018e22a3b3c57a86c5",
+    "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "fad4a670c02a21ab0ab83e113616d9d974154e065e95c119d8d57f250c089543",
+    "chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang": "43eb2e3b219776107a9e4f7aa9012a49ed566c1be59e363c4cf5263304c14826",
+    "chinaplanetoperations/tasks/asset.php": "9cb1897e116557c44f5216b4ab00abc799cdd33775aa593c285daaa5add94bc8"
+  },
+  "payload_sha256": "31572e5f574f1e49907d1fa40bff9ab40d489763e9d84f48148627fc375df72a",
+  "prerequisites": {
+    "chinaplanetoperations/class/InternalTaskAssetService.class.php": "4381384bdcb6fdff03b4f327fabb8edde1d1f2c86f95147a573faf9f0d6d8831",
+    "chinaplanetoperations/class/InternalTaskAuthorizationService.class.php": "96e0be10b5934a88dd81d387d03a03308986f3f88c92342083f0ff3e7a373f97",
+    "chinaplanetoperations/class/InternalTaskService.class.php": "e50ea740f7e671378a60f1b09d3717918b5ad33d0867c048559237042e50117a",
+    "chinaplanetoperations/tasks/.htaccess": "3c59ee5d7fa9a95af0d8f31fd5b23790d42f42512a5ec623657406e08c4ae15c"
+  },
+  "release": "M094-C01",
+  "source_commit": "1c2a99ebc7c32872d18dbd15ea72511690254399"
+}

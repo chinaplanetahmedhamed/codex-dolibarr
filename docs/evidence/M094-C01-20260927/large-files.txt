@@ -1,0 +1,8 @@
+PASS 200 MB text accepted
+PASS 200 MB plus one byte rejected
+PASS 200 MB PDF accepted with bounded scanning
+PASS escaped active PDF name spanning scan boundary rejected
+PASS large Office XML accepted without DOM memory expansion
+PASS Office DTD rejected by streaming validation
+PASS validation peak PHP memory below 96 MB
+M094_LARGE_FILES=PASS PEAK_BYTES=6291456
