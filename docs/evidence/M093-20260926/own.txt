@@ -1,0 +1,31 @@
+PASS own creation forces actor assignment and creator
+PASS same request creates exactly one task
+PASS changed replay rejected
+PASS worker cannot select team or all views
+PASS creation teams contain memberships only
+PASS worker cannot enumerate other team members
+PASS forged creation scope {"fk_user_assign":3}
+PASS forged creation scope {"fk_usergroup":2}
+PASS forged creation scope {"fk_usergroup":3}
+PASS forged creation scope {"fk_operation":100}
+PASS read-only worker cannot create
+PASS inactive worker cannot create
+PASS external user cannot create
+PASS cross-entity worker cannot create
+PASS same-team colleague cannot read personal task
+PASS forged all view cannot list colleague task
+PASS self-created instructions persist after fresh service reload
+PASS forged edit scope {"fk_user_assign":3}
+PASS forged edit scope {"fk_user_assign":0}
+PASS forged edit scope {"fk_usergroup":2}
+PASS forged edit scope {"fk_usergroup":0}
+PASS forged edit scope {"fk_operation":100}
+PASS colleague cannot edit
+PASS stale edit rejected
+PASS worker cannot edit manager-created instructions
+PASS worker can still start manager-assigned task
+PASS worker can still report progress
+PASS manager instruction editing retained
+PASS membership revocation denies own edit
+PASS membership revocation denies creation
+M089_OWN_TASKS=PASS TASK_ID=172 ASSIGNED_ID=173

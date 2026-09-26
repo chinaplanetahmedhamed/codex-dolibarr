@@ -1,0 +1,18 @@
+PASS M059 migration is idempotent and preserves existing tasks
+PASS M059 readiness includes exact internal-task rights
+PASS exact protected stage set is seeded
+PASS administrator defaults to All Tasks
+PASS no-grant supervisor defaults to Team Tasks
+PASS worker defaults to My Tasks
+PASS administrator sees Done as a direct target from To Do
+PASS administrator can move an incomplete card directly to Done
+PASS new task starts in protected To Do stage
+PASS admin moves a task into a custom work stage
+PASS stage activity retains immutable source and target codes after rename
+PASS in-use custom stage cannot be deactivated
+PASS future cancellation retains the real current stage
+PASS future soft delete retains the real stage evidence
+PASS unused custom stage can be deactivated
+PASS protected system stage cannot be deactivated
+PASS pre-M059 terminal task maps only to explicit non-historical fallback
+M059_RUNTIME=PASS

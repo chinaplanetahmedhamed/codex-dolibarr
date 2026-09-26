@@ -159,17 +159,37 @@ class InternalTaskAuthorizationService
         return $this->hasRight('task_manage_team') && $this->hasTeamGrant((int) $task['fk_usergroup']);
     }
 
+    public function canControlTask(array $task)
+    {
+        return $this->canReadTask($task) && ($this->canManageTask($task)
+            || ($this->isOwnTask($task) && $this->hasRight('task_update_own')
+                && (int)$task['fk_user_creat'] === $this->actorId() && empty($task['fk_operation'])));
+    }
+
+    public function canEditTask(array $task)
+    {
+        return empty($task['date_archived']) && $this->canControlTask($task);
+    }
+
+    public function canRestoreTrash(array $task)
+    {
+        if ((string)$task['status'] !== 'deleted') return false;
+        $original=$task; $original['status']='cancelled';
+        return $this->canControlTask($original) && ($this->canManageTask($original)
+            || (int)$task['fk_user_modif'] === $this->actorId());
+    }
+
     public function canCancelTask(array $task)
     {
         return empty($task['date_archived'])
             && in_array((string)$task['status'],array('todo','in_progress','waiting','review'),true)
-            && ($this->canArchiveTask($task) || $this->canEditOwnInstructions($task));
+            && $this->canControlTask($task);
     }
 
     public function canRestoreCancelledTask(array $task)
     {
         if (empty($task['date_archived']) || (string)$task['status'] !== 'cancelled') return false;
-        if ($this->canArchiveTask($task)) return true;
+        if ($this->canManageTask($task)) return true;
         return $this->canReadTask($task) && $this->isOwnTask($task) && $this->hasRight('task_update_own')
             && (int)$task['fk_user_creat'] === $this->actorId() && empty($task['fk_operation'])
             && (int)$task['fk_user_modif'] === $this->actorId();

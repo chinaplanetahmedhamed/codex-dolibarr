@@ -1,6 +1,7 @@
 <?php
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/task_experience.lib.php';
 require_once __DIR__.'/class/OperationsService.class.php';
 require_once __DIR__.'/class/InternalTaskService.class.php';
 require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
@@ -171,7 +172,7 @@ cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : '
         <div class="cpw-card-top"><span class="cpw-chip"><?php echo $esc($task[$workspaceArabic ? 'stage_label_ar' : 'stage_label_en'] ?: $langs->trans('TaskStatus_'.$task['status'])); ?></span><span><?php echo $esc($langs->trans('Priority_'.$task['priority'])); ?></span></div>
         <h3><?php echo $esc($task['title']); ?></h3>
         <p><?php echo $esc($canReadOperations && $task['operation_ref'] ? $task['operation_ref'].' · '.$task['operation_title'] : $langs->trans('WsInternalTask')); ?></p>
-        <dl><div><dt><?php echo $esc($langs->trans('WsOwner')); ?></dt><dd><?php echo $esc($userLabel($task)); ?></dd></div><div><dt><?php echo $esc($langs->trans('WsDeadline')); ?></dt><dd><?php echo $overdue ? $langs->trans('WsOverduePrefix').' ' : ''; ?><?php echo $esc($task['date_deadline'] ?: $langs->trans('WsNotSet')); ?></dd></div><?php if ($task['status'] === 'waiting') { ?><div><dt><?php echo $esc($langs->trans('WsWaiting')); ?></dt><dd><?php echo $esc(($task['waiting_on'] ? (in_array($task['waiting_on'], InternalTaskService::waitingParties(), true) ? $langs->trans($task['waiting_on'] === 'other' ? 'WsOtherParty' : 'Party_'.$task['waiting_on']) : $task['waiting_on']) : $langs->trans('WsExternalParty')).' — '.($task['waiting_reason'] ?: $langs->trans('WsNoReason'))); ?></dd></div><?php } ?></dl>
+        <dl><div><dt><?php echo $esc($langs->trans('CPTCreatedBy')); ?></dt><dd><?php echo $esc(cpo_task_person_name($task,'creator')); ?></dd></div><div><dt><?php echo $esc($langs->trans('CPTAssignedTo')); ?></dt><dd><?php echo $esc($userLabel($task)); ?></dd></div><div><dt><?php echo $esc($langs->trans('WsDeadline')); ?></dt><dd><?php echo $overdue ? $langs->trans('WsOverduePrefix').' ' : ''; ?><?php echo $esc($task['date_deadline'] ?: $langs->trans('WsNotSet')); ?></dd></div><?php if ($task['status'] === 'waiting') { ?><div><dt><?php echo $esc($langs->trans('WsWaiting')); ?></dt><dd><?php echo $esc(($task['waiting_on'] ? (in_array($task['waiting_on'], InternalTaskService::waitingParties(), true) ? $langs->trans($task['waiting_on'] === 'other' ? 'WsOtherParty' : 'Party_'.$task['waiting_on']) : $task['waiting_on']) : $langs->trans('WsExternalParty')).' — '.($task['waiting_reason'] ?: $langs->trans('WsNoReason'))); ?></dd></div><?php } ?></dl>
         <div class="cpw-card-actions"><a class="button button-save" href="tasks/card.php?id=<?php echo (int) $task['rowid']; ?>"><?php echo $esc($langs->trans('WsRecordProgress')); ?></a><?php if ($canReadOperations && !empty($task['fk_operation'])) { ?><a class="button" href="operations/view.php?id=<?php echo (int) $task['fk_operation']; ?>"><?php echo $esc($langs->trans('WsOperation')); ?></a><?php } ?></div>
       </article>
       <?php } ?>

@@ -211,12 +211,67 @@ class InternalTaskService
         }
     }
 
+    public function renameTask($taskId, $expectedVersion, $title)
+    {
+        $title=$this->boundedText($title,255,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canEditTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $this->cas('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET title='.$this->q($title).',fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_renamed',$title,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+
+    public function trashTask($taskId, $expectedVersion, $reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canControlTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $snapshot=json_encode(array('status'=>$task['status'],'date_archived'=>$task['date_archived'],'fk_user_modif'=>$task['fk_user_modif']),JSON_UNESCAPED_UNICODE);
+            $this->cas('UPDATE '.MAIN_DB_PREFIX."cpo_task SET status='deleted',date_archived=COALESCE(date_archived,".$this->q($this->now()).'),fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            // Recovery metadata stays out of operation activity feeds.
+            $this->log(0,(int)$taskId,'task_trash_snapshot',$snapshot,$this->auth->actorId());
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_deleted',$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+
+    public function listTrash()
+    {
+        $this->ensureReady();$this->auth->requireBoard();
+        return $this->rows($this->taskProjectionSql().' WHERE t.entity='.$this->entity." AND t.status='deleted' AND ".$this->auth->readableSql('t').' ORDER BY t.date_archived DESC,t.rowid DESC LIMIT 500');
+    }
+
+    public function restoreTrash($taskId, $expectedVersion, $reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true,true);
+            if(!$task || !$this->auth->canRestoreTrash($task))throw new InternalTaskAccessException('Task access denied.');
+            $rows=$this->rows('SELECT message FROM '.MAIN_DB_PREFIX.'cpo_activity WHERE entity='.$this->entity.' AND fk_task='.(int)$taskId." AND action_code='task_trash_snapshot' ORDER BY rowid DESC LIMIT 1");
+            $original=$rows?json_decode($rows[0]['message'],true):null;
+            // Legacy soft deletion has no snapshot: recover to Archive, never guess an active state.
+            if(!$original)$original=array('status'=>'cancelled','date_archived'=>$task['date_archived'],'fk_user_modif'=>$task['fk_user_modif']);
+            if(!in_array($original['status']??'',array('todo','in_progress','waiting','review','done','cancelled'),true))throw new RuntimeException('Invalid task recovery state.');
+            $archive=$this->dateOrNull($original['date_archived']??null);
+            $modifier=(int)($original['fk_user_modif']??0);
+            $this->cas('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET status='.$this->q($original['status']).',date_archived='.$archive.',fk_user_modif='.($modifier?:'NULL').',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_restored',$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+
     public function updateTask($taskId, $expectedVersion, array $data)
     {
         $this->beginTransaction();
         try {
             $task = $this->getTask($taskId, true);
-            if (!$task || (!$this->auth->canManageTask($task) && !$this->auth->canEditOwnInstructions($task))) throw new InternalTaskAccessException('Task access denied.');
+            if (!$task || !$this->auth->canEditTask($task)) throw new InternalTaskAccessException('Task access denied.');
             $manager = $this->auth->canManageTask($task);
             if (!$manager) {
                 foreach (array('fk_usergroup', 'fk_user_assign') as $field) {
@@ -451,7 +506,7 @@ class InternalTaskService
         $task = $this->requireReadableTask($taskId);
         $sql = 'SELECT a.rowid,a.action_code,a.message,a.fk_user,a.date_action,u.login FROM '.MAIN_DB_PREFIX.'cpo_activity a';
         $sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=a.fk_user AND u.entity=a.entity';
-        $sql .= ' WHERE a.entity='.$this->entity.' AND a.fk_task='.(int) $task['rowid']." AND a.action_code<>'task_create_request'";
+        $sql .= ' WHERE a.entity='.$this->entity.' AND a.fk_task='.(int) $task['rowid']." AND a.action_code NOT IN ('task_create_request','task_trash_snapshot')";
         $sql .= ' ORDER BY a.date_action DESC,a.rowid DESC LIMIT 200';
         return $this->rows($sql);
     }
@@ -586,7 +641,7 @@ class InternalTaskService
 
     private function taskProjectionSql()
     {
-        return 'SELECT t.*,s.code stage_code,s.behavior stage_behavior,s.color stage_color,s.position stage_position,s.active stage_active,s.label_en stage_label_en,s.label_ar stage_label_ar,s.label_zh stage_label_zh,o.ref operation_ref,o.title operation_title,u.login owner_login,u.firstname owner_firstname,u.lastname owner_lastname,g.nom team_name,'
+        return 'SELECT t.*,s.code stage_code,s.behavior stage_behavior,s.color stage_color,s.position stage_position,s.active stage_active,s.label_en stage_label_en,s.label_ar stage_label_ar,s.label_zh stage_label_zh,o.ref operation_ref,o.title operation_title,u.login owner_login,u.firstname owner_firstname,u.lastname owner_lastname,g.nom team_name,creator.login creator_login,creator.firstname creator_firstname,creator.lastname creator_lastname,'
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX."cpo_task_asset ac WHERE ac.entity=t.entity AND ac.fk_task=t.rowid AND ac.status='active') asset_count,"
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_comment cc WHERE cc.entity=t.entity AND cc.fk_task=t.rowid) comment_count,'
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_checklist ci WHERE ci.entity=t.entity AND ci.fk_task=t.rowid AND ci.active=1) checklist_count,'
@@ -596,7 +651,8 @@ class InternalTaskService
             .' FROM '.MAIN_DB_PREFIX.'cpo_task t'
             .' INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_stage s ON s.rowid=t.fk_stage AND s.entity=t.entity'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'cpo_operation o ON o.rowid=t.fk_operation AND o.entity=t.entity'
-            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND u.entity=t.entity AND u.statut=1 AND COALESCE(u.fk_soc,0)=0'
+            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND u.entity=t.entity AND COALESCE(u.fk_soc,0)=0'
+            .' LEFT JOIN '.MAIN_DB_PREFIX.'user creator ON creator.rowid=t.fk_user_creat AND (creator.entity=t.entity OR (creator.entity=0 AND creator.admin=1)) AND COALESCE(creator.fk_soc,0)=0'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=t.fk_usergroup AND g.entity=t.entity';
     }
 

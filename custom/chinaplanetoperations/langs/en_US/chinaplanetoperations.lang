@@ -792,3 +792,15 @@ CPTAgendaLink=Agenda
 CPTCancelArchiveHelp=Cancelling moves this task to Archive and removes it from active work and Agenda. Its history and files are kept.
 CPTKeepTask=Keep task
 CPTConfirmCancel=Cancel and archive
+
+CPTCreatedBy=Created by
+CPTAssignedTo=Assigned to
+CPTRenameTask=Rename task
+CPTDeleteTask=Delete task
+CPTTrash=Trash
+CPTTrashHelp=This task will move to Trash and disappear from active work and Agenda. Its files and history are kept, and it can be restored.
+CPTMoveToTrash=Move to Trash
+CPTRestoreTrash=Restore task
+CPTTrashEmpty=No deleted tasks.
+CPTTrashIntro=Deleted tasks you can access. Restore a task to return it to its previous state.
+InternalTaskActivity_task_renamed=Task renamed

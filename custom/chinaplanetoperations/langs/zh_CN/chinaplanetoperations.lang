@@ -723,3 +723,15 @@ CPTAgendaLink=日程
 CPTCancelArchiveHelp=取消后任务将移至归档，并从当前工作和日程中移除。历史记录和文件将保留。
 CPTKeepTask=保留任务
 CPTConfirmCancel=取消并归档
+
+CPTCreatedBy=创建人
+CPTAssignedTo=负责人
+CPTRenameTask=重命名任务
+CPTDeleteTask=删除任务
+CPTTrash=回收站
+CPTTrashHelp=任务将移至回收站并从当前工作和日程中移除。文件与历史记录会保留，任务可以恢复。
+CPTMoveToTrash=移至回收站
+CPTRestoreTrash=恢复任务
+CPTTrashEmpty=没有已删除的任务。
+CPTTrashIntro=您有权查看的已删除任务。恢复任务将还原其先前状态。
+InternalTaskActivity_task_renamed=任务已重命名

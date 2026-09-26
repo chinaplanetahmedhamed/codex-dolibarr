@@ -25,3 +25,22 @@ function cpo_experience_assets()
     echo '<script defer src="'.dol_escape_htmltag(cpo_asset('/custom/chinaplanetoperations/js/task_experience.js')).'"></script>';
     echo '<template id="cpt-messages" data-saving="'.dol_escape_htmltag($langs->trans('CPTSaving')).'" data-uploading="'.dol_escape_htmltag($langs->trans('InternalTaskUploading')).'" data-failed="'.dol_escape_htmltag($langs->trans('CPTSaveFailed')).'" data-saved="'.dol_escape_htmltag($langs->trans('TaskUpdated')).'" data-move="'.dol_escape_htmltag($langs->trans('InternalTaskMoveToMenu')).'" data-upload-failed="'.dol_escape_htmltag($langs->trans('CPTUploadRetry')).'" data-column="'.dol_escape_htmltag($langs->trans('CPTColumnName')).'" data-remove="'.dol_escape_htmltag($langs->trans('Remove')).'"></template>';
 }
+
+/** Display task responsibility without exposing account metadata or cross-entity identities. */
+function cpo_task_person_name(array $task,$prefix)
+{
+    global $langs;
+    $name=trim(($task[$prefix.'_firstname']??'').' '.($task[$prefix.'_lastname']??''));
+    if($name==='')$name=(string)($task[$prefix.'_login']??'');
+    if($name==='')$name=$langs->trans($prefix==='owner'&&empty($task['fk_user_assign'])?'Unassigned':'InternalTaskFormerUser');
+    return $name;
+}
+function cpo_task_people(array $task)
+{
+    global $langs;
+    echo '<dl class="cpt-task-people">';
+    foreach(array('creator'=>'CPTCreatedBy','owner'=>'CPTAssignedTo') as $prefix=>$label){
+        echo '<div><dt>'.dol_escape_htmltag($langs->trans($label)).'</dt><dd><bdi dir="auto">'.dol_escape_htmltag(cpo_task_person_name($task,$prefix)).'</bdi></dd></div>';
+    }
+    echo '</dl>';
+}

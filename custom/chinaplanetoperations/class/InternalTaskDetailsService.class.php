@@ -32,7 +32,7 @@ class InternalTaskDetailsService
         if(!$ids)return $out;
         $r=$this->must('SELECT fk_task,payload FROM '.MAIN_DB_PREFIX.'cpo_task_details WHERE entity='.$this->entity.' AND fk_task IN ('.implode(',',$ids).')');while($row=$this->db->fetch_object($r))$out[(int)$row->fk_task]=json_decode($row->payload,true);return $out;
     }
-    public function canEdit(array $task){return empty($task['date_archived'])&&($this->auth->canManageTask($task)||$this->auth->canEditOwnInstructions($task));}
+    public function canEdit(array $task){return $this->auth->canEditTask($task);}
     public function save($id,$version,array $data,$createHash=null)
     {
         return $this->saveInternal($id,$version,$data,$createHash);

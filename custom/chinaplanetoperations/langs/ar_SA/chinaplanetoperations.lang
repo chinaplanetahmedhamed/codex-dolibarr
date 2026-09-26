@@ -785,3 +785,15 @@ CPTAgendaLink=الأجندة
 CPTCancelArchiveHelp=إلغاء المهمة ينقلها إلى الأرشيف ويخفيها من العمل النشط والأجندة، مع الاحتفاظ بسجلها وملفاتها.
 CPTKeepTask=الاحتفاظ بالمهمة
 CPTConfirmCancel=إلغاء وأرشفة
+
+CPTCreatedBy=أنشأها
+CPTAssignedTo=مكلّف بها
+CPTRenameTask=إعادة تسمية المهمة
+CPTDeleteTask=حذف المهمة
+CPTTrash=سلة المهملات
+CPTTrashHelp=ستنقل المهمة إلى سلة المهملات وتختفي من العمل النشط والأجندة. سيُحتفظ بملفاتها وسجلها ويمكن استعادتها.
+CPTMoveToTrash=نقل إلى سلة المهملات
+CPTRestoreTrash=استعادة المهمة
+CPTTrashEmpty=لا توجد مهام محذوفة.
+CPTTrashIntro=المهام المحذوفة المتاحة لك. استعد المهمة لإعادتها إلى حالتها السابقة.
+InternalTaskActivity_task_renamed=أُعيدت تسمية المهمة

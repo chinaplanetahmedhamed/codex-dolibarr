@@ -27,6 +27,14 @@
     document.querySelectorAll('[data-task-details-form]').forEach(function(form){form.addEventListener('submit',async function(event){event.preventDefault();var editor=form.querySelector('[data-details-editor]'),status=form.querySelector('output'),submit=form.querySelector('[type="submit"]');submit.disabled=true;status.textContent=ui.saving;try{var deadline=editor.querySelector('[data-task-deadline]'),options={task_id:form.dataset.taskId,version:editor.dataset.version};if(deadline){options.task_version=deadline.dataset.taskVersion;options.date_deadline=deadline.value;}var result=await post(deadline?'schedule':'details',editor.readDetails(),form.elements.token.value,options);editor.dataset.version=result.details.version;status.textContent=result.message;if(document.body.classList.contains('cpo-task-embed'))window.parent.postMessage({type:'cpo-task-dirty'},window.location.origin);window.location.reload();}catch(e){status.textContent=e.message;}finally{submit.disabled=false;}});});
     var cancelOpen=document.querySelector('[data-task-cancel-open]'),cancelDialog=document.querySelector('[data-task-cancel-dialog]');
     if(cancelOpen&&cancelDialog){cancelOpen.addEventListener('click',function(){cancelDialog.showModal();cancelDialog.querySelector('[data-task-cancel-close]').focus();});cancelDialog.querySelector('[data-task-cancel-close]').addEventListener('click',function(){cancelDialog.close();});cancelDialog.addEventListener('close',function(){cancelOpen.focus();});}
+    document.querySelectorAll('[data-task-dialog-open]').forEach(function(open){
+      var dialog=document.querySelector('[data-task-dialog="'+open.dataset.taskDialogOpen+'"]');if(!dialog)return;
+      open.addEventListener('click',function(){dialog.showModal();var focus=dialog.querySelector(open.dataset.taskDialogOpen==='rename'?'input[name="title"]':'[data-task-dialog-close]');focus.focus();if(focus.select)focus.select();});
+      dialog.querySelector('[data-task-dialog-close]').addEventListener('click',function(){dialog.close();});
+      dialog.addEventListener('close',function(){open.focus();});
+    });
+    var editOpen=document.querySelector('[data-task-edit]'),editPanel=document.getElementById('task-edit');
+    if(editOpen&&editPanel)editOpen.addEventListener('click',function(event){event.preventDefault();editPanel.open=true;editPanel.scrollIntoView({block:'start'});editPanel.querySelector('input[name="title"]').focus();});
     var boardPage=document.querySelector('.cpt-board-page'),board=document.querySelector('.cpo-task-kanban');
     if(boardPage&&board){
       function fit(){board.style.setProperty('--board-top',Math.max(80,board.getBoundingClientRect().top)+'px');}fit();window.addEventListener('resize',fit);

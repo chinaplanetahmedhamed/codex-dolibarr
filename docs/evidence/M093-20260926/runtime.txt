@@ -1,0 +1,51 @@
+PASS 1 creator and assignee resolved on old own task
+PASS 2 renamed old task persists after service reload
+PASS 3 rename preserves description
+PASS 4 rename preserves priority
+PASS 5 rename preserves fk_usergroup
+PASS 6 rename preserves fk_user_assign
+PASS 7 rename preserves fk_user_creat
+PASS 8 rename preserves date_deadline
+PASS 9 rename preserves date_creation
+PASS 10 stale rename denied
+PASS 11 empty rename denied
+PASS 12 foreign worker rename denied
+PASS 13 information edit persists
+PASS 14 own edit cannot reassign task
+PASS 15 manager creator and staff assignee shown separately
+PASS 16 staff cannot renameTask manager-assigned task
+PASS 17 staff cannot trashTask manager-assigned task
+PASS 18 staff cannot cancelAndArchive manager-assigned task
+PASS 19 worker cannot restore manager-deleted task
+PASS 20 audit failure aborts trash
+PASS 21 failed trash rolls back status and version
+PASS 22 trash removes active record without hard deletion
+PASS 23 own Trash contains deleted task and My Tasks excludes it
+PASS 24 normal task and content routes deny deleted record
+PASS 25 other staff Trash excludes deleted task
+PASS 26 deleted task absent from Agenda
+PASS 27 stale recovery denied
+PASS 28 audit failure aborts restore
+PASS 29 failed restore leaves task in Trash
+PASS 30 restore preserves original status
+PASS 31 restore preserves original date_archived
+PASS 32 restore preserves original progress
+PASS 33 restore preserves original fk_stage
+PASS 34 restore preserves original fk_user_creat
+PASS 35 restore preserves original fk_user_assign
+PASS 36 restore preserves original fk_user_modif
+PASS 37 restore retains rich metadata and version
+PASS 38 recovery metadata hidden from user-facing timeline
+PASS 39 trash recovery preserves prior archive state
+PASS 40 trash recovery does not bypass manager cancellation
+PASS 41 granted non-admin manager controls own team task
+PASS 42 revoked team grant denies control immediately
+PASS 43 revoked manager cannot list team Trash
+PASS 44 foreign entity creator identity is not joined
+PASS 45 unassigned task has an explicit fallback
+PASS 46 inactive former creator name remains visible
+PASS 47 native entity-zero administrator creator remains identifiable
+PASS 48 external foreign entity inactive trash denied 4
+PASS 49 external foreign entity inactive trash denied 5
+PASS 50 external foreign entity inactive trash denied 6
+M093_CONTROLS=PASS ASSERTIONS=50

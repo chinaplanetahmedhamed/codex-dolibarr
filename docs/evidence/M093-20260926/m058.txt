@@ -1,0 +1,40 @@
+PASS migration is ready after idempotent rerun
+PASS migration preserves legacy task rows
+PASS interrupted migration is not ready
+PASS migration rerun repairs an interrupted index step
+PASS non-unique replacement cannot satisfy unique schema contract
+PASS unique schema contract restores readiness
+PASS feature readiness requires exact disabled right definitions
+PASS internal Dolibarr user with zero object entity and fk_soc can open its database-scoped board
+PASS task starts at version 1
+PASS replayed create request changes state once across service instances
+PASS reused create request identity rejects a changed payload
+PASS Worker A sees assigned task
+PASS Worker B cannot infer Worker A task
+PASS wrong worker detail is denied
+PASS entity-0 shared actor is rejected from entity-1 board
+PASS verified entity-0 Dolibarr super administrator can open the active entity board
+PASS cross-entity supervisor grant target is rejected
+PASS malformed cross-entity grant does not project foreign identity
+PASS malformed cross-entity assignee does not project foreign identity
+PASS database deactivation revokes board access immediately
+PASS membership revocation removes list visibility immediately
+PASS membership revocation denies detail and file scope
+PASS worker transition progress and waiting are atomic
+PASS stale task version fails closed
+PASS same-group membership grants no supervisor visibility
+PASS replayed supervisor grant changes state and activity once
+PASS explicit supervisor grant reveals exact team
+PASS forbidden lifecycle matrix fails closed for worker manager and missing reasons
+PASS active team view excludes archived task
+PASS operation task list excludes archived task
+PASS archived task activity requires explicit archive view and stays out of operation stream
+PASS return and lifecycle reasons are retained in authorized activity with immutable stage codes
+PASS soft-deleted task cannot be read or streamed
+PASS deleted task activity is excluded from legacy operation stream for administrators
+PASS revoked grant removes visibility immediately
+PASS cancellation requires and retains its reason
+PASS legacy operation activity hides task events unless task authorization passes
+PASS generated task without team remains Unclassified
+PASS external actor is denied
+M058_RUNTIME=PASS
