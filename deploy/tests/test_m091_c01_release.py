@@ -11,7 +11,7 @@ class Correction(unittest.TestCase):
         self.c.INBOX=self.base.root.parent/'inbox';self.c.INBOX.mkdir()
         self.c.STATE=self.base.root.parent/'correction-state'
         (self.c.INBOX/'m091-deploy.py').write_bytes((ARTIFACT/'m091-deploy.py').read_bytes())
-        self.data=(ROOT/'custom'/self.c.NAME).read_bytes()
+        self.data=subprocess.check_output(['git','show','db746106ef5fbe6a62db61ccac70064390fa3fd7:custom/'+self.c.NAME],cwd=ROOT)
         (self.c.INBOX/'m091-c01-agenda.php').write_bytes(self.data)
         self.patches=[patch.object(self.c,'exec',side_effect=lambda code,ns:ns.update(self.base.m.__dict__),create=True),patch.object(self.c,'runtime',return_value={'result':'PASS','scheduled_tasks':1})]
         for p in self.patches:p.start()
