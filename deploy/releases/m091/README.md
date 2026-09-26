@@ -14,3 +14,10 @@ The first preflight refused descriptor drift before any runtime write. Read-only
 - Local integrity/recovery tests: `M091_RELEASE_DIR=/private/tmp/m091-artifact python3 deploy/tests/test_m091_release.py`
 
 Upload uses restricted `codex-deploy`. There is no M091 sudo grant; execute the checksum-verified mission helper from the existing authorized server console. No persistent permission expansion or generic deployment helper is required. Runtime outcome and native acceptance belong in dated M091 evidence.
+
+
+## Final deployed corrections
+
+The final production code corresponds to `6e5dd5604d089cbb6e7390e684bf2bd604a55ab3`; `final-manifest.json` records all final code/dependency hashes. Retain the original artifact unchanged. `c01.py` applies the pinned one-file MariaDB collation correction, and `c02.py` applies the pinned one-file task wall-clock correction. Each requires the exact predecessor, tests its candidate with a read-only production query before writes, saves a private code backup and rolls back code automatically if post-write checks fail. C02 independently checks each projected date/time against its unchanged task value.
+
+Both corrections and final C02 verification passed. Native staff month/day/task-card acceptance passed. Full rollback order: C02 `rollback`, C01 `rollback`, then base `production rollback`. Never restore the database over later writes. The base helper's original `verify` intentionally rejects the corrected service hash; use the final C02 `verify` for the deployed state. See the dated production evidence for all source/helper pins and exact validation boundaries.

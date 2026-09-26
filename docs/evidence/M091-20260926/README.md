@@ -4,7 +4,7 @@ Source branch: `codex/m091-task-agenda`, base `cd84e48`. Runtime: isolated synth
 
 ## Results
 
-- New task-calendar integration: 43 assertions passed. Includes persisted schedule edits, live status/progress projection, reassignment, own/team/entity/customer/inactive-user isolation, broad Agenda-rights isolation, team grant revocation, native filters, multi-day clipping, date-only timezone handling, invalid dates/ranges, stale edits and transaction rollback.
+- New task-calendar integration: initially 43 assertions; final correction run passed 47. Includes persisted schedule edits, live status/progress projection, reassignment, own/team/entity/customer/inactive-user isolation, broad Agenda-rights isolation, team grant revocation, native filters, multi-day clipping, date-only timezone handling, mixed connection collations, exact task/calendar wall-clock agreement with a UTC server and Shanghai/Los Angeles users, invalid dates/ranges, stale edits and transaction rollback.
 - Existing task runtime suites: M058, M059, M060, M089 own tasks and M089 personal board passed (145 assertions total). Runtime harnesses were adapted only to the synthetic M091 database/config/path. The M058/M059/M060 suites used a separate synthetic regression clone.
 - PHP syntax, JavaScript syntax and `git diff --check`: passed.
 - Existing source/UI contracts passed except `test_m059_ui_contract.php`: three stale expectations for the pre-C03 composer/drag UI fail identically on untouched base `cd84e48`. No attempt was made to rewrite those unrelated expectations.
@@ -23,3 +23,7 @@ The explicit hook installer was checked, applied twice, rolled back, checked dis
 `ae02a995fda044b3985a3238b80379e0daac63696eb0080ef2178ea41e278e93`
 
 Only `MAIN_MODULE_CHINAPLANETOPERATIONS_HOOKS` is changed by installation; unrelated contexts are retained. No table/column/index migration, task backfill, outbound messages or duplicate ActionComm records.
+
+## Subsequent authorized production release
+
+Ahmed subsequently requested direct production deployment. Base release integrity/recovery tests passed 15 cases; each one-file correction passed six cases covering candidate rejection, drift, apply/verify/rollback and automatic code recovery. Final production verification and authenticated month/day/task-card acceptance are recorded separately in [production-release.md](production-release.md). The initial local-only scope statement above describes local QA, not the final release state. No production business records were changed for acceptance.
