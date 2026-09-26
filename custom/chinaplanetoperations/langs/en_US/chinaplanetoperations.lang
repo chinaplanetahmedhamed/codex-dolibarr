@@ -782,3 +782,9 @@ CPTUseColor=Use a color cover
 CPTTeamLabels=Team labels
 InternalTaskActivity_task_details_updated=Card details updated
 CPTBackToTasks=Back to tasks
+
+CPTStartTime=Start time
+CPTAgendaHelp=Scheduled tasks appear in Agenda with their current status. Open a task there to update it.
+CPTAgendaUnavailable=Task calendar could not be loaded. Open My Tasks and try again.
+CPTAgendaTask=Task
+CPTAgendaLink=Agenda

@@ -21,7 +21,7 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->depends = array('modSociete', 'modProduct', 'modPropale', 'modChinaPlanetShippingPrices');
         $this->phpmin = array(7, 4);
         $this->need_dolibarr_version = array(23, 0);
-        $this->module_parts = array('api' => 1, 'hooks' => array('login'));
+        $this->module_parts = array('api' => 1, 'hooks' => array('login', 'agenda'));
 
         $this->rights = array();
         $this->rights_class = 'chinaplanetoperations';

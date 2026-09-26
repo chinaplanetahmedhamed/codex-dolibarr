@@ -775,3 +775,9 @@ CPTUseColor=استخدام غلاف ملون
 CPTTeamLabels=تصنيفات الفريق
 InternalTaskActivity_task_details_updated=تحديث تفاصيل الكارت
 CPTBackToTasks=العودة للمهام
+
+CPTStartTime=وقت البداية
+CPTAgendaHelp=تظهر المهام المجدولة في الأجندة بحالتها الحالية. افتح المهمة من الأجندة لتحديثها.
+CPTAgendaUnavailable=تعذر تحميل تقويم المهام. افتح مهامي وحاول مرة أخرى.
+CPTAgendaTask=مهمة
+CPTAgendaLink=الأجندة

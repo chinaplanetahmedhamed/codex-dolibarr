@@ -1,0 +1,44 @@
+PASS 1 start time survives service reload
+PASS 2 task projects exact start and deadline
+PASS 3 localized status without private detail payload
+PASS 4 repeated calendar reads do not duplicate tasks
+PASS 5 forged owner filter cannot expose another worker task
+PASS 6 owner filter honored
+PASS 7 broad Agenda rights do not expand task visibility
+PASS 8 supervisor without team grant denied
+PASS 9 granted supervisor sees authorized team task
+PASS 10 revoked team grant removes projection immediately
+PASS 11 completed filter excludes open work
+PASS 12 native category filter does not leak unrelated task cards
+PASS 13 start work immediately updates Agenda state
+PASS 14 progress refresh is current
+PASS 15 reassignment removes old staff entry and shows new owner
+PASS 16 rescheduling refreshes same projected entry
+PASS 17 completion uses native completed/incomplete filters
+PASS 18 archived work disappears
+PASS 19 restored completed work returns
+PASS 20 deadline-only task is a deadline marker
+PASS 21 unscheduled task omitted
+PASS 22 cancelled task omitted
+PASS 23 legacy date-only schedule remains all day
+PASS 24 date-only task keeps its calendar date across user timezones
+PASS 25 multi-month task clipped to visible days count=30
+PASS 26 external/entity/inactive exclusion 4
+PASS 27 external/entity/inactive exclusion 5
+PASS 28 external/entity/inactive exclusion 6
+PASS 29 revoked task rights remove Agenda projection
+PASS 30 native Agenda rights required
+PASS 31 escaped task link targets authorized card
+PASS 32 invalid calendar date/time rejected 2026-02-30T10:00
+PASS 33 invalid calendar date/time rejected 2026-09-27T25:10
+PASS 34 invalid calendar date/time rejected 2026-09-27T12:60
+PASS 35 time without date rejected
+PASS 36 reversed schedule rejected before creation
+PASS 37 deadline edit cannot precede saved start
+PASS 38 invalid deadline leaves saved value unchanged
+PASS 39 start edit cannot exceed saved deadline
+PASS 40 invalid details save rolls back
+PASS 41 stale schedule edit rejected
+PASS 42 stale save preserves latest schedule
+PASS 43 other worker cannot change schedule
+M091_AGENDA=PASS ASSERTIONS=43

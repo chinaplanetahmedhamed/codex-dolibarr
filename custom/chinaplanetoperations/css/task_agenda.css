@@ -1,0 +1,4 @@
+.family_cpo_task .tdoverflow { white-space: normal; overflow-wrap: anywhere; }
+.cpo-agenda-task { display: block; white-space: normal; line-height: 1.4; }
+.cpo-agenda-status { display: block; font-size: .85em; font-weight: 600; opacity: .8; }
+.cpo-agenda-time { display: block; white-space: normal; line-height: 1.35; margin-top: .2em; }

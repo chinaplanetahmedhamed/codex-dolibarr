@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__.'/InternalTaskMigration.class.php';
+require_once __DIR__.'/InternalTaskSchedule.class.php';
 require_once __DIR__.'/InternalTaskAuthorizationService.class.php';
 require_once __DIR__.'/InternalTaskStageService.class.php';
 
@@ -233,6 +234,13 @@ class InternalTaskService
             $description = $this->boundedText(isset($data['description']) ? $data['description'] : $task['description'], 20000, true);
             $priority = in_array(isset($data['priority']) ? $data['priority'] : '', self::priorities(), true) ? $data['priority'] : $task['priority'];
             $deadline = $this->dateOrNull(isset($data['date_deadline']) ? $data['date_deadline'] : $task['date_deadline']);
+            // The task row is locked, serializing deadline and details edits.
+            $scheduleResult = $this->db->query('SELECT payload FROM '.MAIN_DB_PREFIX.'cpo_task_details WHERE entity='.$this->entity.' AND fk_task='.(int)$taskId);
+            if (!$scheduleResult) throw new RuntimeException('Unable to validate task schedule.');
+            $scheduleRow = $this->db->fetch_object($scheduleResult);
+            $scheduleDetails = $scheduleRow ? json_decode($scheduleRow->payload, true) : array();
+            if (!is_array($scheduleDetails)) throw new RuntimeException('Invalid task details.');
+            InternalTaskSchedule::validate($scheduleDetails, isset($data['date_deadline']) ? $data['date_deadline'] : $task['date_deadline']);
             $sql = 'UPDATE '.MAIN_DB_PREFIX.'cpo_task SET title='.$this->q($title).',description='.$this->q($description).',fk_usergroup='.$teamId.',fk_user_assign='.($assigneeId > 0 ? $assigneeId : 'NULL').',priority='.$this->q($priority).',date_deadline='.$deadline.',fk_user_modif='.$this->auth->actorId().',version=version+1';
             $sql .= ' WHERE entity='.$this->entity.' AND rowid='.(int) $taskId.' AND version='.(int) $expectedVersion;
             $this->cas($sql);
@@ -604,12 +612,8 @@ class InternalTaskService
 
     private function dateOrNull($value)
     {
-        $value = trim((string) $value);
-        if ($value === '') return 'NULL';
-        $value = str_replace('T', ' ', $value);
-        if (strlen($value) === 16) $value .= ':00';
-        if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $value)) throw new RuntimeException('Invalid date.');
-        return $this->q($value);
+        $value = InternalTaskSchedule::dateTime($value);
+        return $value === '' ? 'NULL' : $this->q($value);
     }
 
     private function boundedText($value, $max, $required)

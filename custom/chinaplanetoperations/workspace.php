@@ -98,6 +98,7 @@ cpcc_admin_shell_open('workspace', $view === 'my' ? $langs->trans('WsToday') : '
     <div class="cpw-hero-actions">
       <?php if ($canCreateOperation) { ?><a class="button button-save" href="operations/edit.php<?php echo $customer ? '?fk_soc='.(int) $customer['rowid'] : ''; ?>"><span class="fas fa-plus"></span> عملية جديدة</a><?php } ?>
       <?php if ($canReadOperations) { ?><a class="button" href="operations/index.php"><span class="fas fa-list"></span> سجل العمليات</a><?php } ?>
+      <?php if (isModEnabled('agenda') && ($user->admin || $user->hasRight('agenda','myactions','read') || $user->hasRight('agenda','allactions','read'))) { ?><a class="button" href="<?php echo DOL_URL_ROOT; ?>/comm/action/index.php?mainmenu=agenda&amp;search_filtert=<?php echo (int)$user->id; ?>"><?php echo $esc($langs->trans('CPTAgendaLink')); ?></a><?php } ?>
       <?php if ($taskAuth->canOpenBoard()) { ?><a class="button" href="tasks/board.php?view=my"><?php echo $esc($langs->trans('InternalTaskView_my')); ?></a><?php } ?>
       <?php if ($taskService->ownTaskTeams()) { ?><a class="button button-save" href="tasks/board.php?view=my&amp;new=1"><?php echo $esc($langs->trans('AddTask')); ?></a><?php } ?>
     </div>

@@ -713,3 +713,9 @@ CPTUseColor=使用彩色封面
 CPTTeamLabels=团队标签
 InternalTaskActivity_task_details_updated=卡片详细信息已更新
 CPTBackToTasks=返回任务
+
+CPTStartTime=开始时间
+CPTAgendaHelp=已安排的任务将按当前状态显示在日程中。打开任务即可更新。
+CPTAgendaUnavailable=无法加载任务日历。请打开我的任务并重试。
+CPTAgendaTask=任务
+CPTAgendaLink=日程

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/InternalTaskService.class.php';
+require_once __DIR__.'/InternalTaskSchedule.class.php';
 require_once __DIR__.'/InternalTaskCollaborationService.class.php';
 require_once __DIR__.'/InternalTaskPersonalBoard.class.php';
 
@@ -13,8 +14,9 @@ class InternalTaskDetailsService
     private function text($s,$max){if(!is_scalar($s)&&$s!==null)throw new RuntimeException('Invalid text.');$s=trim((string)$s);if(mb_strlen($s)>$max||preg_match('/[<>\x00-\x08\x0b\x0c\x0e-\x1f]/u',$s))throw new RuntimeException('Invalid text.');return $s;}
     public function validate(array $data)
     {
-        $out=array('start_date'=>'','cover_color'=>'','labels'=>array(),'fields'=>array(),'notes'=>$this->text($data['notes']??'',10000));
+        $out=array('start_date'=>'','start_time'=>$this->text($data['start_time']??'',5),'cover_color'=>'','labels'=>array(),'fields'=>array(),'notes'=>$this->text($data['notes']??'',10000));
         $date=$this->text($data['start_date']??'',10);if($date!==''){if(!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date)||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4)))throw new RuntimeException('Invalid start date.');$out['start_date']=$date;}
+        InternalTaskSchedule::start($out);
         $color=$this->text($data['cover_color']??'',7);if($color!==''&&!preg_match('/^#[a-f0-9]{6}$/iD',$color))throw new RuntimeException('Invalid cover color.');$out['cover_color']=strtolower($color);
         if(!is_array($data['labels']??array())||count($data['labels']??array())>20)throw new RuntimeException('Invalid labels.');
         foreach($data['labels']??array() as $label){if(!is_array($label))throw new RuntimeException('Invalid label.');$name=$this->text($label['name']??'',70);$color=$this->text($label['color']??'',7);if($name===''||!preg_match('/^#[a-f0-9]{6}$/iD',$color))throw new RuntimeException('Invalid label.');$out['labels'][]=array('name'=>$name,'color'=>strtolower($color));}
@@ -35,6 +37,7 @@ class InternalTaskDetailsService
     {
         $clean=$this->validate($data);if(!$this->db->begin())throw new RuntimeException('Unable to start save.');
         try{$this->must('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_task WHERE entity='.$this->entity.' AND rowid='.(int)$id.' FOR UPDATE');$task=$this->tasks->requireReadableTask($id);if(!$this->canEdit($task))throw new InternalTaskAccessException('Task access denied.');$row=$this->row($id);if(($row?(int)$row['version']:0)!==(int)$version)throw new InternalTaskConflictException('Task details changed.');
+            InternalTaskSchedule::validate($clean,$task['date_deadline']);
             $json=$this->q(json_encode($clean,JSON_UNESCAPED_UNICODE));$actor=$this->auth->actorId();
             if($row)$this->must('UPDATE '.MAIN_DB_PREFIX.'cpo_task_details SET payload='.$json.',version=version+1,fk_user_modif='.$actor.' WHERE entity='.$this->entity.' AND fk_task='.(int)$id.' AND version='.(int)$version);
             else $this->must('INSERT INTO '.MAIN_DB_PREFIX.'cpo_task_details(entity,fk_task,payload,create_hash,version,fk_user_creat,fk_user_modif,date_creation) VALUES('.$this->entity.','.(int)$id.','.$json.','.($createHash?$this->q($createHash):'NULL').',1,'.$actor.','.$actor.','.$this->q(date('Y-m-d H:i:s')).')');
@@ -45,7 +48,7 @@ class InternalTaskDetailsService
     public function compose(array $taskData,array $details,array $items,$comment,$request,$columnId=0)
     {
         if(!preg_match('/^[a-f0-9]{48}$/D',(string)$request))throw new RuntimeException('Invalid request.');
-        $clean=$this->validate($details);$comment=$this->text($comment,5000);if(count($items)>100)throw new RuntimeException('Checklist limit reached.');$items=array_values(array_filter(array_map(function($s){return $this->text($s,500);},$items),function($s){return $s!=='';}));
+        $clean=$this->validate($details);InternalTaskSchedule::validate($clean,$taskData['date_deadline']??'');$comment=$this->text($comment,5000);if(count($items)>100)throw new RuntimeException('Checklist limit reached.');$items=array_values(array_filter(array_map(function($s){return $this->text($s,500);},$items),function($s){return $s!=='';}));
         $digest=hash('sha256',json_encode(array($taskData,$clean,$items,$comment,(int)$columnId),JSON_UNESCAPED_UNICODE));$lock='cpo_compose_'.$this->entity.'_'.$this->auth->actorId().'_'.substr($request,0,25);
         $r=$this->must('SELECT GET_LOCK('.$this->q($lock).',5) acquired');$locked=$this->db->fetch_object($r);if(!$locked||(int)$locked->acquired!==1)throw new RuntimeException('Please retry.');
         $begun=false;

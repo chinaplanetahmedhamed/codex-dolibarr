@@ -1,0 +1,33 @@
+PASS 1 rich composer saves
+PASS 2 rich values persist
+PASS 3 checklist persists
+PASS 4 comment persists
+PASS 5 replay is idempotent
+PASS 6 changed replay conflicts [InternalTaskConflictException]
+PASS 7 other worker cannot read details [InternalTaskAccessException]
+PASS 8 other worker cannot edit details [InternalTaskAccessException]
+PASS 9 stale details rejected [InternalTaskConflictException]
+PASS 10 assigned instructions stay manager owned [InternalTaskAccessException]
+PASS 11 column add/reorder
+PASS 12 other user/admin columns unchanged
+PASS 13 stale columns rejected [InternalTaskConflictException]
+PASS 14 move persists
+PASS 15 personal move preserves operational status
+PASS 16 forged task move denied [InternalTaskAccessException]
+PASS 17 composer honors selected personal column
+PASS 18 insert before untouched card persists
+PASS 19 restricted actor 4 [InternalTaskAccessException]
+PASS 20 details restricted actor 4 [InternalTaskAccessException]
+PASS 21 restricted actor 5 [InternalTaskAccessException]
+PASS 22 details restricted actor 5 [InternalTaskAccessException]
+PASS 23 restricted actor 6 [InternalTaskAccessException]
+PASS 24 details restricted actor 6 [InternalTaskAccessException]
+PASS 25 CSS injection denied [RuntimeException]
+PASS 26 HTML injection denied [RuntimeException]
+PASS 27 worker login landing
+PASS 28 admin landing preserved
+PASS 29 failed checklist aborts compose [InternalTaskAccessException]
+C03 TESTS PASS=29
+PASS 30 top-level failure rejected [InternalTaskAccessException]
+PASS 31 failed rich save leaves no partial task
+M089_PERSONAL_BOARD=PASS ASSERTIONS=31
