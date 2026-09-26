@@ -807,3 +807,9 @@ InternalTaskActivity_task_renamed=Task renamed
 
 InternalTask200Limit=Each file must be 200 MB or smaller.
 InternalTaskUploadResponse=The server could not complete the upload. Open the saved task to check attached files before retrying.
+
+CPTStaffDashboard=Staff dashboard
+CPTDashboardOwner=Dashboard
+CPTAllVisibleTasks=All tasks
+CPTViewingStaffBoard=You are viewing this employee’s columns and task order. Their layout can only be changed from their own account. Task actions follow your existing permissions.
+CPTNoMatchingTasks=No tasks match these filters.

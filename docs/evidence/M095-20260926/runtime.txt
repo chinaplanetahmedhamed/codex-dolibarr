@@ -1,0 +1,19 @@
+PASS 1 administrator sees employee column names colors and order
+PASS 2 administrator sees employee card placement and order
+PASS 3 staff layout editable only from owner dashboard
+PASS 4 viewing staff dashboard writes no preferences
+PASS 5 manager own columns stay independent
+PASS 6 supervisor only sees granted-team tasks on employee board
+PASS 7 hidden-team placement IDs removed from viewed state
+PASS 8 All tasks uses list without manager columns
+PASS 9 supervisor all-task list remains team-scoped
+PASS 10 search retains employee dashboard layout
+PASS 11 staff forged staff filter denied
+PASS 12 external foreign inactive nonexistent board denied 4
+PASS 13 external foreign inactive nonexistent board denied 5
+PASS 14 external foreign inactive nonexistent board denied 6
+PASS 15 external foreign inactive nonexistent board denied 999999
+PASS 16 revoked supervisor grant denies employee board immediately
+PASS 17 staff cannot enumerate other dashboards
+PASS 18 manager own dashboard uses own settings
+M095_STAFF_BOARDS=PASS ASSERTIONS=18

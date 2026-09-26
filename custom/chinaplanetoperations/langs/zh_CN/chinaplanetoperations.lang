@@ -738,3 +738,9 @@ InternalTaskActivity_task_renamed=任务已重命名
 
 InternalTask200Limit=每个文件不得超过 200 MB。
 InternalTaskUploadResponse=服务器未能完成上传。请打开已保存的任务，检查附件后再重试。
+
+CPTStaffDashboard=员工看板
+CPTDashboardOwner=工作看板
+CPTAllVisibleTasks=全部任务
+CPTViewingStaffBoard=当前显示该员工的栏目和任务顺序。布局仅由员工本人修改；任务操作仍遵循您现有的权限。
+CPTNoMatchingTasks=没有符合筛选条件的任务。

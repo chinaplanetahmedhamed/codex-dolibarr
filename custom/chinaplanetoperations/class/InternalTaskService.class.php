@@ -85,7 +85,7 @@ class InternalTaskService
         if (!empty($filters['status']) && in_array($filters['status'], self::allStatuses(), true)) $where[] = 't.status='.$this->q($filters['status']);
         if (!empty($filters['priority']) && in_array($filters['priority'], self::priorities(), true)) $where[] = 't.priority='.$this->q($filters['priority']);
         if (!empty($filters['team_id']) && ($this->auth->isAdministrator() || $this->auth->hasTeamGrant((int) $filters['team_id']))) $where[] = 't.fk_usergroup='.(int) $filters['team_id'];
-        if (!empty($filters['assignee_id']) && $this->auth->isAdministrator()) $where[] = 't.fk_user_assign='.(int) $filters['assignee_id'];
+        if (!empty($filters['assignee_id'])) $where[] = 't.fk_user_assign='.(int) $filters['assignee_id'];
         if (!empty($filters['due'])) {
             if ($filters['due'] === 'overdue') $where[] = "t.date_deadline<NOW() AND t.status NOT IN ('done','cancelled')";
             elseif ($filters['due'] === 'today') $where[] = 'DATE(t.date_deadline)=CURDATE()';
@@ -624,7 +624,7 @@ class InternalTaskService
     public function internalUsers()
     {
         if (!$this->auth->isAdministrator()) return array();
-        $sql = 'SELECT rowid,login,firstname,lastname FROM '.MAIN_DB_PREFIX.'user WHERE entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login';
+        $sql = 'SELECT rowid,login,firstname,lastname FROM '.MAIN_DB_PREFIX.'user WHERE (entity='.$this->entity.' OR (entity=0 AND admin=1)) AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login';
         return $this->rows($sql);
     }
 

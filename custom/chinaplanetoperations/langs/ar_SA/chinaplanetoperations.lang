@@ -800,3 +800,9 @@ InternalTaskActivity_task_renamed=أُعيدت تسمية المهمة
 
 InternalTask200Limit=الحد الأقصى لكل ملف هو 200 MB.
 InternalTaskUploadResponse=لم يتمكن الخادم من إكمال الرفع. افتح المهمة المحفوظة وتحقق من المرفقات قبل إعادة المحاولة.
+
+CPTStaffDashboard=لوحة الموظف
+CPTDashboardOwner=لوحة العمل
+CPTAllVisibleTasks=كل المهام
+CPTViewingStaffBoard=تعرض هذه اللوحة أعمدة الموظف وترتيب مهامه. يغيّر الموظف ترتيب لوحته من حسابه فقط. تظل إجراءات المهام حسب صلاحياتك الحالية.
+CPTNoMatchingTasks=لا توجد مهام تطابق هذه الفلاتر.

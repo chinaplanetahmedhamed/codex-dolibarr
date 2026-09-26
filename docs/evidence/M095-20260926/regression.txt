@@ -1,0 +1,382 @@
+/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/local-runtime/m091-qa/m058-runtime.php
+PASS migration is ready after idempotent rerun
+PASS migration preserves legacy task rows
+PASS interrupted migration is not ready
+PASS migration rerun repairs an interrupted index step
+PASS non-unique replacement cannot satisfy unique schema contract
+PASS unique schema contract restores readiness
+PASS feature readiness requires exact disabled right definitions
+PASS internal Dolibarr user with zero object entity and fk_soc can open its database-scoped board
+PASS task starts at version 1
+PASS replayed create request changes state once across service instances
+PASS reused create request identity rejects a changed payload
+PASS Worker A sees assigned task
+PASS Worker B cannot infer Worker A task
+PASS wrong worker detail is denied
+PASS entity-0 shared actor is rejected from entity-1 board
+PASS verified entity-0 Dolibarr super administrator can open the active entity board
+PASS cross-entity supervisor grant target is rejected
+PASS malformed cross-entity grant does not project foreign identity
+PASS malformed cross-entity assignee does not project foreign identity
+PASS database deactivation revokes board access immediately
+PASS membership revocation removes list visibility immediately
+PASS membership revocation denies detail and file scope
+PASS worker transition progress and waiting are atomic
+PASS stale task version fails closed
+PASS same-group membership grants no supervisor visibility
+PASS replayed supervisor grant changes state and activity once
+PASS explicit supervisor grant reveals exact team
+PASS forbidden lifecycle matrix fails closed for worker manager and missing reasons
+PASS active team view excludes archived task
+PASS operation task list excludes archived task
+PASS archived task activity requires explicit archive view and stays out of operation stream
+PASS return and lifecycle reasons are retained in authorized activity with immutable stage codes
+PASS soft-deleted task cannot be read or streamed
+PASS deleted task activity is excluded from legacy operation stream for administrators
+PASS revoked grant removes visibility immediately
+PASS cancellation requires and retains its reason
+PASS legacy operation activity hides task events unless task authorization passes
+PASS generated task without team remains Unclassified
+PASS external actor is denied
+M058_RUNTIME=PASS
+
+/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/local-runtime/m091-qa/m059-runtime.php
+PASS M059 migration is idempotent and preserves existing tasks
+PASS M059 readiness includes exact internal-task rights
+PASS exact protected stage set is seeded
+PASS administrator defaults to All Tasks
+PASS no-grant supervisor defaults to Team Tasks
+PASS worker defaults to My Tasks
+PASS administrator sees Done as a direct target from To Do
+PASS administrator can move an incomplete card directly to Done
+PASS new task starts in protected To Do stage
+PASS admin moves a task into a custom work stage
+PASS stage activity retains immutable source and target codes after rename
+PASS in-use custom stage cannot be deactivated
+PASS future cancellation retains the real current stage
+PASS future soft delete retains the real stage evidence
+PASS unused custom stage can be deactivated
+PASS protected system stage cannot be deactivated
+PASS pre-M059 terminal task maps only to explicit non-historical fallback
+M059_RUNTIME=PASS
+
+/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/local-runtime/m091-qa/m060-runtime.php
+PASS direct migration collision case 0 fails before any M060 DDL
+PASS direct migration collision case 1 fails before any M060 DDL
+PASS direct migration collision case 2 fails before any M060 DDL
+PASS M060 exact rights rerun schema and invariants are ready
+PASS task_admin without task_comment cannot add comments
+PASS task_admin without task_checklist cannot mutate checklists
+PASS task_admin with each new right is allowed in the same task scope
+PASS verified Dolibarr administrator may use collaboration without the two optional rights
+PASS hidden task counters and label fingerprints are denied inside the service
+PASS same normalized comment replay returns one original row
+PASS same comment key with changed payload conflicts
+PASS comment remains escaped-at-output plain text without source mutation
+PASS administrator redaction masks body in normal projection
+PASS eligible mention creates one recipient notification
+PASS recipient inbox lists only the currently readable mentioned task
+PASS inactive historical notification author is masked as a former internal user
+PASS revoked recipient and wrong task pairing are denied before notification resolution
+PASS mark-read changes only the exact task recipient notification state
+PASS checklist item completion is independently versioned
+PASS inactive checklist item cannot be changed by a forged POST
+PASS checklist reorder returns a new fingerprint and rejects stale overwrite
+PASS inactive checklist only accepts restore
+PASS label complete-set fingerprint changes after assignment
+PASS duplicate label IDs are rejected rather than silently deduplicated
+PASS bidi control text is rejected before persistence
+PASS collaboration does not change task lifecycle or version
+PASS comment without mentions creates no notification
+PASS collaboration activity is generic and contains no content
+M060_RUNTIME=PASS
+
+/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/local-runtime/m091-qa/m089_own_tasks.php
+PASS own creation forces actor assignment and creator
+PASS same request creates exactly one task
+PASS changed replay rejected
+PASS worker cannot select team or all views
+PASS creation teams contain memberships only
+PASS worker cannot enumerate other team members
+PASS forged creation scope {"fk_user_assign":3}
+PASS forged creation scope {"fk_usergroup":2}
+PASS forged creation scope {"fk_usergroup":3}
+PASS forged creation scope {"fk_operation":100}
+PASS read-only worker cannot create
+PASS inactive worker cannot create
+PASS external user cannot create
+PASS cross-entity worker cannot create
+PASS same-team colleague cannot read personal task
+PASS forged all view cannot list colleague task
+PASS self-created instructions persist after fresh service reload
+PASS forged edit scope {"fk_user_assign":3}
+PASS forged edit scope {"fk_user_assign":0}
+PASS forged edit scope {"fk_usergroup":2}
+PASS forged edit scope {"fk_usergroup":0}
+PASS forged edit scope {"fk_operation":100}
+PASS colleague cannot edit
+PASS stale edit rejected
+PASS worker cannot edit manager-created instructions
+PASS worker can still start manager-assigned task
+PASS worker can still report progress
+PASS manager instruction editing retained
+PASS membership revocation denies own edit
+PASS membership revocation denies creation
+M089_OWN_TASKS=PASS TASK_ID=209 ASSIGNED_ID=210
+
+/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/local-runtime/m091-qa/m089_personal_board.php
+PASS 1 rich composer saves
+PASS 2 rich values persist
+PASS 3 checklist persists
+PASS 4 comment persists
+PASS 5 replay is idempotent
+PASS 6 changed replay conflicts [InternalTaskConflictException]
+PASS 7 other worker cannot read details [InternalTaskAccessException]
+PASS 8 other worker cannot edit details [InternalTaskAccessException]
+PASS 9 stale details rejected [InternalTaskConflictException]
+PASS 10 assigned instructions stay manager owned [InternalTaskAccessException]
+PASS 11 column add/reorder
+PASS 12 other user/admin columns unchanged
+PASS 13 stale columns rejected [InternalTaskConflictException]
+PASS 14 move persists
+PASS 15 personal move preserves operational status
+PASS 16 forged task move denied [InternalTaskAccessException]
+PASS 17 composer honors selected personal column
+PASS 18 insert before untouched card persists
+PASS 19 restricted actor 4 [InternalTaskAccessException]
+PASS 20 details restricted actor 4 [InternalTaskAccessException]
+PASS 21 restricted actor 5 [InternalTaskAccessException]
+PASS 22 details restricted actor 5 [InternalTaskAccessException]
+PASS 23 restricted actor 6 [InternalTaskAccessException]
+PASS 24 details restricted actor 6 [InternalTaskAccessException]
+PASS 25 CSS injection denied [RuntimeException]
+PASS 26 HTML injection denied [RuntimeException]
+PASS 27 worker login landing
+PASS 28 admin landing preserved
+PASS 29 failed checklist aborts compose [InternalTaskAccessException]
+C03 TESTS PASS=29
+PASS 30 top-level failure rejected [InternalTaskAccessException]
+PASS 31 failed rich save leaves no partial task
+M089_PERSONAL_BOARD=PASS ASSERTIONS=31
+
+/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr-m091-task-agenda/deploy/tests/test_m091_task_agenda.php
+PASS 1 start time survives service reload
+PASS 2 task projects exact start and deadline
+PASS 3 localized status without private detail payload
+PASS 4 repeated calendar reads do not duplicate tasks
+PASS 5 date projection with connection collation utf8_general_ci
+PASS 6 date projection with connection collation utf8_unicode_ci
+PASS 7 Agenda matches task wall-clock dates with UTC server and Asia/Shanghai user
+PASS 8 Agenda matches task wall-clock dates with UTC server and America/Los_Angeles user
+PASS 9 forged owner filter cannot expose another worker task
+PASS 10 owner filter honored
+PASS 11 broad Agenda rights do not expand task visibility
+PASS 12 supervisor without team grant denied
+PASS 13 granted supervisor sees authorized team task
+PASS 14 revoked team grant removes projection immediately
+PASS 15 completed filter excludes open work
+PASS 16 native category filter does not leak unrelated task cards
+PASS 17 start work immediately updates Agenda state
+PASS 18 progress refresh is current
+PASS 19 reassignment removes old staff entry and shows new owner
+PASS 20 rescheduling refreshes same projected entry
+PASS 21 completion uses native completed/incomplete filters
+PASS 22 archived work disappears
+PASS 23 restored completed work returns
+PASS 24 deadline-only task is a deadline marker
+PASS 25 unscheduled task omitted
+PASS 26 cancelled task omitted
+PASS 27 legacy date-only schedule remains all day
+PASS 28 date-only task keeps its calendar date across user timezones
+PASS 29 multi-month task clipped to visible days count=30
+PASS 30 external/entity/inactive exclusion 4
+PASS 31 external/entity/inactive exclusion 5
+PASS 32 external/entity/inactive exclusion 6
+PASS 33 revoked task rights remove Agenda projection
+PASS 34 native Agenda rights required
+PASS 35 escaped task link targets authorized card
+PASS 36 invalid calendar date/time rejected 2026-02-30T10:00
+PASS 37 invalid calendar date/time rejected 2026-09-27T25:10
+PASS 38 invalid calendar date/time rejected 2026-09-27T12:60
+PASS 39 time without date rejected
+PASS 40 reversed schedule rejected before creation
+PASS 41 deadline edit cannot precede saved start
+PASS 42 invalid deadline leaves saved value unchanged
+PASS 43 start edit cannot exceed saved deadline
+PASS 44 invalid details save rolls back
+PASS 45 stale schedule edit rejected
+PASS 46 stale save preserves latest schedule
+PASS 47 other worker cannot change schedule
+M091_AGENDA=PASS ASSERTIONS=47
+
+/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr-m091-task-agenda/deploy/tests/test_m092_task_controls.php
+PASS 1 start and deadline save together and survive independent reload
+PASS 2 schedule preserves title
+PASS 3 schedule preserves description
+PASS 4 schedule preserves priority
+PASS 5 schedule preserves fk_usergroup
+PASS 6 schedule preserves fk_user_assign
+PASS 7 reversed combined schedule rejected
+PASS 8 invalid save changes neither record
+PASS 9 stale task version rejects combined save
+PASS 10 stale details version rejects combined save
+PASS 11 other worker cannot change schedule
+PASS 12 details write failure aborts combined save
+PASS 13 post-write failure rolls back deadline and versions
+PASS 14 audit failure aborts cancellation
+PASS 15 post-write failure rolls back status archive and version
+PASS 16 manager-assigned deadline remains protected
+PASS 17 worker cannot cancel manager-assigned work
+PASS 18 cancellation reason required
+PASS 19 stale cancellation changes nothing
+PASS 20 failed cancellation leaves task active
+PASS 21 one cancellation atomically sets cancelled and archived
+PASS 22 cancellation increments optimistic version exactly once
+PASS 23 cancelled task disappears from active My Tasks
+PASS 24 cancelled task appears in own Archive
+PASS 25 cancelled task disappears from Agenda
+PASS 26 cancellation retains rich details
+PASS 27 cancellation and archive reasons retained in history
+PASS 28 other worker archive cannot expose own task
+PASS 29 stored team grant without manager permission cannot widen Archive
+PASS 30 other worker cannot restore task
+PASS 31 stale restore leaves archive untouched
+PASS 32 restore returns prior active stage and progress
+PASS 33 restored task returns to My Tasks
+PASS 34 worker cannot undo manager cancellation
+PASS 35 external foreign-entity inactive cancellation denied 4
+PASS 36 external foreign-entity inactive cancellation denied 5
+PASS 37 external foreign-entity inactive cancellation denied 6
+M092_CONTROLS=PASS ASSERTIONS=37
+
+/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr-m091-task-agenda/deploy/tests/test_m093_task_control.php
+PASS 1 creator and assignee resolved on old own task
+PASS 2 renamed old task persists after service reload
+PASS 3 rename preserves description
+PASS 4 rename preserves priority
+PASS 5 rename preserves fk_usergroup
+PASS 6 rename preserves fk_user_assign
+PASS 7 rename preserves fk_user_creat
+PASS 8 rename preserves date_deadline
+PASS 9 rename preserves date_creation
+PASS 10 stale rename denied
+PASS 11 empty rename denied
+PASS 12 foreign worker rename denied
+PASS 13 information edit persists
+PASS 14 own edit cannot reassign task
+PASS 15 manager creator and staff assignee shown separately
+PASS 16 staff cannot renameTask manager-assigned task
+PASS 17 staff cannot trashTask manager-assigned task
+PASS 18 staff cannot cancelAndArchive manager-assigned task
+PASS 19 worker cannot restore manager-deleted task
+PASS 20 audit failure aborts trash
+PASS 21 failed trash rolls back status and version
+PASS 22 trash removes active record without hard deletion
+PASS 23 own Trash contains deleted task and My Tasks excludes it
+PASS 24 normal task and content routes deny deleted record
+PASS 25 other staff Trash excludes deleted task
+PASS 26 deleted task absent from Agenda
+PASS 27 stale recovery denied
+PASS 28 audit failure aborts restore
+PASS 29 failed restore leaves task in Trash
+PASS 30 restore preserves original status
+PASS 31 restore preserves original date_archived
+PASS 32 restore preserves original progress
+PASS 33 restore preserves original fk_stage
+PASS 34 restore preserves original fk_user_creat
+PASS 35 restore preserves original fk_user_assign
+PASS 36 restore preserves original fk_user_modif
+PASS 37 restore retains rich metadata and version
+PASS 38 recovery metadata hidden from user-facing timeline
+PASS 39 trash recovery preserves prior archive state
+PASS 40 trash recovery does not bypass manager cancellation
+PASS 41 granted non-admin manager controls own team task
+PASS 42 revoked team grant denies control immediately
+PASS 43 revoked manager cannot list team Trash
+PASS 44 foreign entity creator identity is not joined
+PASS 45 unassigned task has an explicit fallback
+PASS 46 inactive former creator name remains visible
+PASS 47 native entity-zero administrator creator remains identifiable
+PASS 48 external foreign entity inactive trash denied 4
+PASS 49 external foreign entity inactive trash denied 5
+PASS 50 external foreign entity inactive trash denied 6
+M093_CONTROLS=PASS ASSERTIONS=50
+
+/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr-m091-task-agenda/deploy/tests/test_m094_members.php
+PASS 1 existing native entity-zero administrator appears in team
+PASS 2 ordinary active native member appears
+PASS 3 external foreign inactive member excluded 4
+PASS 4 server assignment excludes invalid member 4
+PASS 5 external foreign inactive member excluded 5
+PASS 6 server assignment excludes invalid member 5
+PASS 7 external foreign inactive member excluded 6
+PASS 8 server assignment excludes invalid member 6
+PASS 9 assignment to native global administrator persists with visible assignee
+PASS 10 assigned administrator sees own task
+PASS 11 invalid assignee rejected 4
+PASS 12 invalid assignee rejected 5
+PASS 13 invalid assignee rejected 6
+PASS 14 entity-zero non-administrator remains excluded
+PASS 15 foreign membership cannot grant assignment in current entity
+PASS 16 server denies assignment after native membership removed
+PASS 17 staff cannot acquire manager assignment list
+M094_MEMBERS=PASS ASSERTIONS=17
+
+/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr-m091-task-agenda/deploy/tests/test_m095_staff_boards.php
+PASS 1 administrator sees employee column names colors and order
+PASS 2 administrator sees employee card placement and order
+PASS 3 staff layout editable only from owner dashboard
+PASS 4 viewing staff dashboard writes no preferences
+PASS 5 manager own columns stay independent
+PASS 6 supervisor only sees granted-team tasks on employee board
+PASS 7 hidden-team placement IDs removed from viewed state
+PASS 8 All tasks uses list without manager columns
+PASS 9 supervisor all-task list remains team-scoped
+PASS 10 search retains employee dashboard layout
+PASS 11 staff forged staff filter denied
+PASS 12 external foreign inactive nonexistent board denied 4
+PASS 13 external foreign inactive nonexistent board denied 5
+PASS 14 external foreign inactive nonexistent board denied 6
+PASS 15 external foreign inactive nonexistent board denied 999999
+PASS 16 revoked supervisor grant denies employee board immediately
+PASS 17 staff cannot enumerate other dashboards
+PASS 18 manager own dashboard uses own settings
+M095_STAFF_BOARDS=PASS ASSERTIONS=18
+
+/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr-m091-task-agenda/deploy/tests/test_m058_asset_validation.php
+PASS PNG is decoded and re-encoded
+PASS double extension is rejected
+PASS image MIME mismatch is rejected
+PASS SVG active content is rejected
+PASS Unicode direction filename is rejected
+PASS NUL text is rejected
+PASS UTF-8 text is accepted
+PASS OOXML traversal entry is rejected
+PASS OOXML macro content is rejected
+PASS OOXML embedded executable is rejected
+PASS minimal safe OOXML document is accepted
+PASS OOXML comment strings and wrong root are rejected
+PASS active PDF polyglot marker is rejected
+PASS name-escaped active PDF is rejected
+PASS header-only fake PDF is rejected
+PASS minimal structurally valid PDF is accepted
+PASS compressed active PDF action is rejected
+PASS standard raw-deflate PDF stream is accepted
+PASS raw-deflate active PDF action is rejected
+PASS trailing-CR safe stream fixture is available
+PASS declared PDF stream length preserves a trailing CR data byte
+PASS trailing-CR active stream fixture is available
+PASS trailing-CR compressed active PDF action is rejected
+PASS array-filter compressed active PDF action is rejected
+PASS indirect PDF filter reference fails closed
+M058_ASSET_VALIDATION=PASS
+
+/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr-m091-task-agenda/deploy/tests/test_m094_large_files.php
+PASS 200 MB text accepted
+PASS 200 MB plus one byte rejected
+PASS 200 MB PDF accepted with bounded scanning
+PASS escaped active PDF name spanning scan boundary rejected
+PASS large Office XML accepted without DOM memory expansion
+PASS Office DTD rejected by streaming validation
+PASS validation peak PHP memory below 96 MB
+M094_LARGE_FILES=PASS PEAK_BYTES=6291456

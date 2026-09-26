@@ -26,7 +26,16 @@ class InternalTaskPersonalBoard
     public function get()
     {
         $this->authorize();
-        $r=$this->must('SELECT value FROM '.MAIN_DB_PREFIX.'user_param WHERE '.$this->where());
+        return $this->readState($this->auth->actorId());
+    }
+    public function getForUser($userId)
+    {
+        if (!$this->auth->canViewPersonalBoard($userId)) throw new InternalTaskAccessException('Task access denied.');
+        return $this->readState((int)$userId);
+    }
+    private function readState($userId)
+    {
+        $r=$this->must('SELECT value FROM '.MAIN_DB_PREFIX.'user_param WHERE entity='.$this->entity.' AND fk_user='.(int)$userId.' AND param='.$this->q(self::PARAM));
         $row=$this->db->fetch_object($r);
         if($row){$state=json_decode($row->value,true);if(!is_array($state)||!isset($state['version'],$state['columns'],$state['cards']))throw new RuntimeException('Invalid personal board.');return $state;}
         $columns=array();

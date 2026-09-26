@@ -226,6 +226,25 @@ class InternalTaskAuthorizationService
         return $res && (bool) $this->db->fetch_object($res);
     }
 
+    /** View an employee's personal layout within the existing management scope. */
+    public function canViewPersonalBoard($userId)
+    {
+        $userId = (int)$userId;
+        if ($userId <= 0 || !$this->canOpenBoard()) return false;
+        if ($userId === $this->actorId()) return true;
+        if (!$this->isAdministrator() && !$this->hasRight('task_manage_team')) return false;
+        $sql = 'SELECT u.rowid FROM '.MAIN_DB_PREFIX.'user u WHERE u.rowid='.$userId;
+        $sql .= ' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0 AND (u.entity='.$this->entity.' OR (u.entity=0 AND u.admin=1))';
+        if (!$this->isAdministrator()) {
+            $sql .= ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'usergroup_user gu';
+            $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
+            $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_team_manager tm ON tm.fk_usergroup=g.rowid AND tm.entity=g.entity';
+            $sql .= ' WHERE gu.entity='.$this->entity.' AND gu.fk_user=u.rowid AND tm.fk_user='.$this->actorId().' AND tm.status=1)';
+        }
+        $res = $this->db->query($sql.' LIMIT 1');
+        return $res && (bool)$this->db->fetch_object($res);
+    }
+
     /** Return a SQL predicate containing only server-owned integers. */
     public function visibilitySql($alias, $view)
     {
