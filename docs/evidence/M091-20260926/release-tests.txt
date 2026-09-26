@@ -1,0 +1,12 @@
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 6.816s
+
+OK
+{"environment": "production", "action": "preflight", "result": "PASS", "files": 15}
+{"environment": "production", "action": "apply", "result": "PASS", "status": "DEPLOYED", "code_files": 15, "code_backup": "942c8d56c2a8b9f2280160f94ba178b324f9609e66c8c8f7afbbb6baae516264", "database_backup": "5d1f81582e09ac73756f2fbdacd5c980b44adba985c4c796c65f6391b5194de4", "authenticated_acceptance": "PENDING"}
+{"environment": "production", "action": "verify", "result": "PASS", "status": "DEPLOYED", "code_files": 15, "code_backup": "942c8d56c2a8b9f2280160f94ba178b324f9609e66c8c8f7afbbb6baae516264", "database_backup": "5d1f81582e09ac73756f2fbdacd5c980b44adba985c4c796c65f6391b5194de4", "authenticated_acceptance": "PENDING"}
+{"environment": "production", "action": "rollback", "result": "PASS", "status": "ROLLED_BACK", "code_files": 15, "code_backup": "942c8d56c2a8b9f2280160f94ba178b324f9609e66c8c8f7afbbb6baae516264", "database_backup": "5d1f81582e09ac73756f2fbdacd5c980b44adba985c4c796c65f6391b5194de4", "authenticated_acceptance": "PENDING"}
+{"environment": "production", "action": "apply", "result": "PASS", "status": "DEPLOYED", "code_files": 15, "code_backup": "942c8d56c2a8b9f2280160f94ba178b324f9609e66c8c8f7afbbb6baae516264", "database_backup": "5d1f81582e09ac73756f2fbdacd5c980b44adba985c4c796c65f6391b5194de4", "authenticated_acceptance": "PENDING"}
+{"environment": "production", "action": "apply", "result": "PASS", "status": "DEPLOYED", "code_files": 15, "code_backup": "942c8d56c2a8b9f2280160f94ba178b324f9609e66c8c8f7afbbb6baae516264", "database_backup": "5d1f81582e09ac73756f2fbdacd5c980b44adba985c4c796c65f6391b5194de4", "authenticated_acceptance": "PENDING"}
+{"environment": "production", "action": "apply", "result": "PASS", "status": "DEPLOYED", "code_files": 15, "code_backup": "942c8d56c2a8b9f2280160f94ba178b324f9609e66c8c8f7afbbb6baae516264", "database_backup": "5d1f81582e09ac73756f2fbdacd5c980b44adba985c4c796c65f6391b5194de4", "authenticated_acceptance": "PENDING"}
