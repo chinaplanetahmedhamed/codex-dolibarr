@@ -10,4 +10,6 @@ Dolibarr 23.0.3 synthetic local runtime, administrator m089_manager, browser UI.
 - Local synthetic manager password fixture restored after sign-in. No production credential changed.
 - Runtime suite separately verifies authorized supervisor reads, cross-team exclusions, revoked grants, external/foreign/inactive denial and persistence without preference writes.
 
-Production browser acceptance is pending deployment.
+Worker session separately confirmed the identical six columns after reload, editable owner controls and no staff selector. Forged board URL requesting manager ID 1 displayed native Access denied. Direct navigation to the JSON revision endpoint was blocked by the browser client, so HTTP revision denial is not claimed from that attempt; the shared presentation authorization is covered by runtime tests.
+
+Production deployment subsequently passed; native live browser acceptance remains pending stable window control.

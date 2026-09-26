@@ -7,3 +7,7 @@ Diagnose runtime upload limits and native membership records first. Keep allowed
 Validate 200 MB boundary, multi-file persistence, readable upload failures, assignment positive/negative cases, desktop/mobile EN/AR, full task regression, immutable release with scoped backup and rollback, and authenticated live acceptance.
 
 Release includes the prepared M093 controls/identity update in one artifact over the verified M092 baseline; M093 was not applied because its stale real-task smoke fixture stopped preflight. Use task-independent read-only permission checks. Native Apache overrides are limited to tasks/asset.php; no proxy, core, global PHP, rights, membership or schema changes.
+
+## Release status — 2026-09-26
+
+DEPLOYED; authenticated production browser acceptance remains pending stable ERP window control. M093/M094 shipped in M094; M095 shipped separately. See dated production-release evidence. Local authenticated workflows, runtime regression and release rollback tests passed.
