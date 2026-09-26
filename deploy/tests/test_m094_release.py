@@ -86,6 +86,14 @@ class Release(unittest.TestCase):
     def test_postdeploy_drift_refuses_rollback(self):
         self.action('apply');(self.root/next(iter(self.payload))).write_bytes(b'later-code')
         with self.assertRaisesRegex(RuntimeError,'FILE_DRIFT'):self.action('rollback')
+    def test_upload_probe_uses_socket_and_cleans_up(self):
+        m=load()
+        def php(web,code):
+            self.assertIn('fsockopen',code);self.assertNotIn('file_get_contents',code)
+            result=subprocess.run(['php','-l'],input=('<?php '+code).encode(),capture_output=True);self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            return b'{"sapi":"apache2handler","upload":"200M","post":"201M"}'
+        with patch.object(m,'php',side_effect=php):m.upload_config('web',self.root)
+        self.assertFalse((self.root/'chinaplanetoperations/tasks/m094-upload-probe').exists())
     def test_embedded_php_parses(self):
         capture=[]
         def php(web,code):

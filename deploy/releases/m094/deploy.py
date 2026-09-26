@@ -28,7 +28,7 @@ TARGETS = {
 ALLOWED_OWNERS = (0,33)
 ALLOWED_GROUPS = (0,33)
 METADATA_OVERRIDES = {'chinaplanetoperations/workspace.php': (1002,1002,0o644)}
-STATE = Path('/root/chinaplanetos-m094-production')
+STATE = Path('/root/chinaplanetos-m094-production-r1')
 
 def check(ok, reason):
     if not ok: raise RuntimeError(reason)
@@ -170,14 +170,14 @@ if(!preg_match('/^HTTP\/1\.[01] 200 /',$r)||stripos($r,'login')===false)exit(2);
 
 def upload_config(web, root):
     """Check actual Apache SAPI and inherited asset.php limits, then remove probe."""
-    directory=root/'chinaplanetoperations/tasks/.m094-upload-probe'
+    directory=root/'chinaplanetoperations/tasks/m094-upload-probe'
     check(not directory.exists() and not directory.is_symlink(),'PROBE_COLLISION')
-    directory.mkdir(mode=0o755)
+    directory.mkdir(mode=0o755);directory.chmod(0o755)
     path=directory/'asset.php'
     probe=b"<?php if(($_SERVER['REMOTE_ADDR']??'')!=='127.0.0.1'){http_response_code(403);exit;}echo json_encode(array('sapi'=>PHP_SAPI,'upload'=>ini_get('upload_max_filesize'),'post'=>ini_get('post_max_size')));"
     try:
         path.write_bytes(probe);path.chmod(0o644)
-        code="echo file_get_contents('http://127.0.0.1/custom/chinaplanetoperations/tasks/.m094-upload-probe/asset.php');"
+        code=r'''$s=fsockopen('127.0.0.1',80,$e,$m,10);if(!$s)exit(1);stream_set_timeout($s,10);fwrite($s,"GET /custom/chinaplanetoperations/tasks/m094-upload-probe/asset.php HTTP/1.0\r\nHost: erp.visiontrading.biz\r\nConnection: close\r\n\r\n");$r=stream_get_contents($s,100000);fclose($s);if(!preg_match('/^HTTP\/1\.[01] 200 /',$r))exit(2);$parts=explode("\r\n\r\n",$r,2);echo $parts[1]??'';'''
         result=json.loads(php(web,code))
         check(result=={'sapi':'apache2handler','upload':'200M','post':'201M'},'APACHE_UPLOAD_LIMIT_MISMATCH')
     finally:
