@@ -30,6 +30,12 @@ try {
     ok($event && date('H:i', $event->datep) === '09:15' && date('H:i', $event->datef) === '15:30', 'task projects exact start and deadline');
     ok(strpos($event->label, 'To do') !== false && strpos(json_encode($event), 'PRIVATE NOTE') === false, 'localized status without private detail payload');
     ok(count(array_filter(flat($calendar->events($first, $last)), function($e)use($id){return $e->id===-$id;})) === 1, 'repeated calendar reads do not duplicate tasks');
+    $collation=$db->fetch_object($db->query('SELECT @@collation_connection AS value'))->value;
+    foreach (array('utf8_general_ci','utf8_unicode_ci') as $connectionCollation) {
+        $db->query("SET collation_connection='".$connectionCollation."'");
+        ok(isset(flat($calendar->events($first,$last))[$id]),'date projection with connection collation '.$connectionCollation);
+    }
+    $db->query("SET collation_connection='".$db->escape($collation)."'");
     ok(!isset(flat((new InternalTaskAgendaService($db,$other,1))->events($first,$last,array('owner'=>'2')))[$id]), 'forged owner filter cannot expose another worker task');
     ok(!isset(flat($calendar->events($first,$last,array('owner'=>'3')))[$id]), 'owner filter honored');
     $broad=actor(3);$broad->rights->agenda->allactions=(object)array('read'=>1);

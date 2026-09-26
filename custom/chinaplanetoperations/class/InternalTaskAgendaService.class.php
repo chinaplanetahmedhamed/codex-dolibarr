@@ -54,7 +54,9 @@ class InternalTaskAgendaService
         elseif ($status === 'na') return array();
 
         // Restrict the query to the visible range before materializing calendar days.
-        $start = "NULLIF(JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(d.payload) THEN d.payload ELSE '{}' END, '$.start_date')), '')";
+        // JSON_UNQUOTE inherits different collations on MySQL and MariaDB. Dates
+        // contain only ASCII; binary comparison also handles legacy table collations.
+        $start = "NULLIF(CAST(JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(d.payload) THEN d.payload ELSE '{}' END, '$.start_date')) AS BINARY), '')";
         // Include timezone boundary days for legacy date-only values; exact clipping is below.
         $where[] = 'COALESCE('.$start.',DATE(t.date_deadline)) <= '.$this->q($this->db->idate($last + 2 * 86400));
         $where[] = 'COALESCE(t.date_deadline,CONCAT('.$start.", ' 23:59:59')) >= ".$this->q($this->db->idate($first - 2 * 86400));
