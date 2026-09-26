@@ -92,8 +92,8 @@ class InternalTaskAgendaService
             $event->array_options['cpo_task_status'] = $langs->trans('TaskStatus_'.$row->status);
             $event->array_options['cpo_task_title'] = $row->title;
             $event->percentage = $row->status === 'done' ? 100 : ($row->status === 'todo' ? 0 : max(1, min(99, (int)$row->progress)));
-            $event->datep = $this->db->jdate($startValue !== '' ? $startValue : $endValue);
-            $event->datef = $endValue !== '' ? $this->db->jdate($endValue) : $event->datep;
+            $event->datep = $this->calendarTime($startValue !== '' ? $startValue : $endValue);
+            $event->datef = $endValue !== '' ? $this->calendarTime($endValue) : $event->datep;
             $event->fulldayevent = $startValue !== '' && empty($details['start_time']) && $endValue === '' ? 1 : 0;
             if ($event->fulldayevent) {
                 $y = (int)substr($startValue, 0, 4); $m = (int)substr($startValue, 5, 2); $d = (int)substr($startValue, 8, 2);
@@ -115,6 +115,13 @@ class InternalTaskAgendaService
     }
 
     private function q($value) { return "'".$this->db->escape((string)$value)."'"; }
+    private function calendarTime($value)
+    {
+        // Task forms persist datetime-local wall-clock values, unlike ActionComm's
+        // UTC timestamps. Keep the exact time shown on the task card in Agenda.
+        return dol_mktime((int)substr($value,11,2),(int)substr($value,14,2),(int)substr($value,17,2),
+            (int)substr($value,5,2),(int)substr($value,8,2),(int)substr($value,0,4),'tzuserrel');
+    }
     private function dayKey($timestamp)
     {
         return dol_mktime(0, 0, 0, (int)dol_print_date($timestamp, '%m', 'tzuserrel'), (int)dol_print_date($timestamp, '%d', 'tzuserrel'), (int)dol_print_date($timestamp, '%Y', 'tzuserrel'), 'gmt');

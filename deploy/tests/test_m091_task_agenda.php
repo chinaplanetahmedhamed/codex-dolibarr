@@ -36,6 +36,15 @@ try {
         ok(isset(flat($calendar->events($first,$last))[$id]),'date projection with connection collation '.$connectionCollation);
     }
     $db->query("SET collation_connection='".$db->escape($collation)."'");
+    $serverTimezone=date_default_timezone_get();date_default_timezone_set('UTC');
+    foreach(array('Asia/Shanghai','America/Los_Angeles') as $userTimezone) {
+        $_SESSION['dol_tz_string']=$userTimezone;
+        $zoneEvent=flat($calendar->events($first,$last))[$id];
+        ok(dol_print_date($zoneEvent->datep,'%Y-%m-%d %H:%M','tzuserrel')==='2026-09-27 09:15'
+            && dol_print_date($zoneEvent->datef,'%Y-%m-%d %H:%M','tzuserrel')==='2026-09-27 15:30',
+            'Agenda matches task wall-clock dates with UTC server and '.$userTimezone.' user');
+    }
+    date_default_timezone_set($serverTimezone);$_SESSION['dol_tz_string']='Asia/Shanghai';
     ok(!isset(flat((new InternalTaskAgendaService($db,$other,1))->events($first,$last,array('owner'=>'2')))[$id]), 'forged owner filter cannot expose another worker task');
     ok(!isset(flat($calendar->events($first,$last,array('owner'=>'3')))[$id]), 'owner filter honored');
     $broad=actor(3);$broad->rights->agenda->allactions=(object)array('read'=>1);
