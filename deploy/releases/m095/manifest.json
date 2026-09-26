@@ -1,0 +1,62 @@
+{
+  "baseline_commit": "6d692aff2db0281ac9a68a4a84dcf9eca07e7471",
+  "before": {
+    "production": {
+      "chinaplanetoperations/class/InternalTaskAuthorizationService.class.php": "5f31e0140df0373dd9353e82994eb9a91103dc1b98d7e865bf1689ed5c699680",
+      "chinaplanetoperations/class/InternalTaskBoardPresentation.class.php": null,
+      "chinaplanetoperations/class/InternalTaskPersonalBoard.class.php": "6b2ef95edb9aad818490cb4da5d249882b7213bdb903811630c88e4c69671c6a",
+      "chinaplanetoperations/class/InternalTaskService.class.php": "3e3d0c03769052341a1f260cf8145e0c5811284683a6133f0108aeeff372f8c2",
+      "chinaplanetoperations/css/task_experience.css": "9324c5cd05c0238eeec88df815dfc89429bae9752f1bedfe55a4a92c5ff95448",
+      "chinaplanetoperations/js/internal_tasks.js": "9b822449f802409ccd9658e5f9564628fcc9b32484aa669bbaeba302698d4d70",
+      "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "13ddd8579b7935759a2fa13bad740f3d3010dd77ff1d670e2ea60dea87c63173",
+      "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "865d819575dda48a05097e8d3e501c7c354f6b6de9600f8093d302762adbd649",
+      "chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang": "419312bdcb2b658876e91b24bc123552f8c4451ed98a2e1067da2de393712794",
+      "chinaplanetoperations/tasks/board.php": "48b089bd0891541baef0046afe699c0b2e8b2c1e5701e52e8feb5594b6e4e74d",
+      "chinaplanetoperations/tasks/board_revision.php": "c95fc6c216a6ee013b2ba218d35876f425651ca6521504fed7304016f4f39dff"
+    }
+  },
+  "files": {
+    "chinaplanetoperations/class/InternalTaskAuthorizationService.class.php": "96e0be10b5934a88dd81d387d03a03308986f3f88c92342083f0ff3e7a373f97",
+    "chinaplanetoperations/class/InternalTaskBoardPresentation.class.php": "6e5dbc79d1e8d9bd60b4a69fe9a5684fc23df21ef7fc5ed67ad5495c80e6f842",
+    "chinaplanetoperations/class/InternalTaskPersonalBoard.class.php": "d0500a413a8dfee813d4400bc8e63ae5ecff3f6c568dcd1eb32fdbbd2fe1aa64",
+    "chinaplanetoperations/class/InternalTaskService.class.php": "e50ea740f7e671378a60f1b09d3717918b5ad33d0867c048559237042e50117a",
+    "chinaplanetoperations/css/task_experience.css": "a9504c117f77a9ee4a6140b0768f8ccd79823bc6f2a86714bcd8f8a1429dd6ae",
+    "chinaplanetoperations/js/internal_tasks.js": "7acda663f08eb1eae3c7581400fd9977b623ed67f2a1d175300ac6f174dd158d",
+    "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "8de3f51b13db434cdeee79763483ed75d76ccac00e1ad63f8adef109925d7ded",
+    "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "6027964f8e9914dfd1569ef752a23d60ddfb3e380b9f7d4f6c56947b9e82e036",
+    "chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang": "b18c4ad3142ca78db417994b468015781fbace5b706100e80406021cba242011",
+    "chinaplanetoperations/tasks/board.php": "0671840c9338ef7853ab27c0baea54fc745a45ba9df8f6e616f7f14b87d23ff6",
+    "chinaplanetoperations/tasks/board_revision.php": "3b2995ec86d765c3ab29b3bbb87ce4cc9fc39916161868f31d27f9dbfd852f22"
+  },
+  "payload_sha256": "08810b0d3f45949e1be63fb7f0deed1521e5f7259375439e27b61dc582aa9885",
+  "prerequisites": {
+    "chinaplanetcustomercenter/lib/admin_shell.lib.php": "582e07a4da51dcf552793fc68a19ec6ce4eee23a0a6df204f0bc5431ede4e53b",
+    "chinaplanetoperations/class/InternalTaskAgendaService.class.php": "9f67788044be4e5c5567f60a630c4062e97bbf1a4bbc7ff69d17b19a91f615f5",
+    "chinaplanetoperations/class/InternalTaskAssetService.class.php": "4381384bdcb6fdff03b4f327fabb8edde1d1f2c86f95147a573faf9f0d6d8831",
+    "chinaplanetoperations/class/InternalTaskCollaborationService.class.php": "01900a7c82941b7ca65e8d4682c0fc3cfc0c7ea56e7d49d760a6308506a5d438",
+    "chinaplanetoperations/class/InternalTaskDetailsService.class.php": "97de0bd253dbcaa28b331e07088fd7e7bd32e6f7795ef20bea553bcfde306163",
+    "chinaplanetoperations/class/InternalTaskExperienceMigration.class.php": "6f7dac1ac5601af4b2e03c3c5b693480e0eeb30722c8d29b34563bae59ee419f",
+    "chinaplanetoperations/class/InternalTaskFileValidator.class.php": "c0cdb977b97a7b6e4cfc355ace82f6a9d077771769ee84411948cdeb2763ac88",
+    "chinaplanetoperations/class/InternalTaskMigration.class.php": "252c52be436268bcab505f6a0c79a65cc47bcc8f835ed18b09b0072d05d2975d",
+    "chinaplanetoperations/class/InternalTaskSchedule.class.php": "86a0489d588351571be92ef21223b44388a6a671f902feff4cf8f173f91b7479",
+    "chinaplanetoperations/class/InternalTaskStageService.class.php": "f9ea28fad1b5ed0e42bafd3cf66eefc2472f2957b7989b8ef772bdaf366c8595",
+    "chinaplanetoperations/class/actions_chinaplanetoperations.class.php": "3c8f8359b09b684546893d33577d9a4b14ca60ec01e88ebcee4c3dda4c7aa415",
+    "chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php": "ce05c198a9224fef482a15d3d5c71bd11eae120f9ee69dfad8e769d8f38425e9",
+    "chinaplanetoperations/css/task_agenda.css": "dc487b24feef60b493b61f708008eed13b341fd1c63f4cb7f17e1a448ad31c52",
+    "chinaplanetoperations/js/task_agenda.js": "7afb10972229448febdb5459e74f97b1d801c4da10b274c24777c360e62ad16b",
+    "chinaplanetoperations/js/task_experience.js": "fe8f5e3790ee77dd8a316a63f5703448eb0dc2e218209c9b211efa0296dd018e",
+    "chinaplanetoperations/lib/main.lib.php": "acbe61d637a6da356240296371fbe1219aa8b6490632e58bf601b1b49ad39243",
+    "chinaplanetoperations/lib/task_experience.lib.php": "fa2078dd80ab4a872749915e436a22608fc0a2052188075a43950a669021ce64",
+    "chinaplanetoperations/sql/llx_cpo_task_details.sql": "84e957bf2a76e930c0f549738b4b7bef79748cd3882f8562e63f21e919f89844",
+    "chinaplanetoperations/tasks/.htaccess": "3c59ee5d7fa9a95af0d8f31fd5b23790d42f42512a5ec623657406e08c4ae15c",
+    "chinaplanetoperations/tasks/action.php": "a2ecec7c5d4fb1fa94e68262d8a84aac606d8a177d2f1e462450e55f0aa774ed",
+    "chinaplanetoperations/tasks/asset.php": "bf1e4c9eab091e97e6e0f85c3baee02d023878fa3bcc14dfaeae133adf6c5212",
+    "chinaplanetoperations/tasks/card.php": "c420d809eec4a7d8dc45d596b1eb8c1b1cfad8b062c380169d396ea563f157cc",
+    "chinaplanetoperations/tasks/new.php": "94449f4ec9194c412264fa854b9aa036e93a263b230a387a4ffc2f4a840c9555",
+    "chinaplanetoperations/tasks/personal_action.php": "42d4ab6c77673f5d8d53fbbb25d9e13fc2978d28797d0b6d9009f2e6d5601c83",
+    "chinaplanetoperations/tasks/trash.php": "ec8626005f966d21729f754d51da38baf208cef6259ed911a8225eae9b8c3173",
+    "chinaplanetoperations/workspace.php": "2746a9aa2fb16cb1c40c40f9fcd584510319d92d95b4b4332d223165a197ddaf"
+  },
+  "release": "M095",
+  "source_commit": "b2cfa568e743e0ec98783238b64df82a76753982"
+}
