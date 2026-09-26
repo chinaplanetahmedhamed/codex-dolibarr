@@ -218,9 +218,9 @@ class InternalTaskAuthorizationService
         $teamId = (int) $teamId;
         if ($userId <= 0 || $teamId <= 0) return false;
         $sql = 'SELECT u.rowid FROM '.MAIN_DB_PREFIX.'user u';
-        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity=u.entity';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity='.$this->entity;
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
-        $sql .= ' WHERE u.rowid='.$userId.' AND u.entity='.$this->entity.' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0';
+        $sql .= ' WHERE u.rowid='.$userId.' AND (u.entity='.$this->entity.' OR (u.entity=0 AND u.admin=1)) AND u.statut=1 AND COALESCE(u.fk_soc,0)=0';
         $sql .= ' AND g.rowid='.$teamId.' AND g.entity='.$this->entity.' LIMIT 1';
         $res = $this->db->query($sql);
         return $res && (bool) $this->db->fetch_object($res);
@@ -288,9 +288,9 @@ class InternalTaskAuthorizationService
         return $alias.'.fk_user_assign='.$userId
             .' AND '.$alias.'.fk_usergroup IS NOT NULL'
             .' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'user cpo_ou'
-            .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user cpo_ogu ON cpo_ogu.fk_user=cpo_ou.rowid AND cpo_ogu.entity=cpo_ou.entity'
+            .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user cpo_ogu ON cpo_ogu.fk_user=cpo_ou.rowid AND cpo_ogu.entity='.$this->entity
             .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup cpo_og ON cpo_og.rowid=cpo_ogu.fk_usergroup AND cpo_og.entity=cpo_ogu.entity'
-            .' WHERE cpo_ou.rowid='.$userId.' AND cpo_ou.entity='.$this->entity.' AND cpo_ou.statut=1 AND COALESCE(cpo_ou.fk_soc,0)=0'
+            .' WHERE cpo_ou.rowid='.$userId.' AND (cpo_ou.entity='.$this->entity.' OR (cpo_ou.entity=0 AND cpo_ou.admin=1)) AND cpo_ou.statut=1 AND COALESCE(cpo_ou.fk_soc,0)=0'
             .' AND cpo_ogu.fk_usergroup='.$alias.'.fk_usergroup)';
     }
 

@@ -577,9 +577,9 @@ class InternalTaskService
         $teamId = (int) $teamId;
         if (!$this->auth->isAdministrator() && (!$this->auth->hasRight('task_manage_team') || !$this->auth->hasTeamGrant($teamId))) return array();
         $sql = 'SELECT u.rowid,u.login,u.firstname,u.lastname FROM '.MAIN_DB_PREFIX.'user u';
-        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity=u.entity';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity='.$this->entity;
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
-        $sql .= ' WHERE g.rowid='.$teamId.' AND u.entity='.$this->entity.' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0 ORDER BY u.firstname,u.lastname,u.login';
+        $sql .= ' WHERE g.rowid='.$teamId.' AND g.entity='.$this->entity.' AND (u.entity='.$this->entity.' OR (u.entity=0 AND u.admin=1)) AND u.statut=1 AND COALESCE(u.fk_soc,0)=0 ORDER BY u.firstname,u.lastname,u.login';
         return $this->rows($sql);
     }
 
@@ -651,7 +651,7 @@ class InternalTaskService
             .' FROM '.MAIN_DB_PREFIX.'cpo_task t'
             .' INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_stage s ON s.rowid=t.fk_stage AND s.entity=t.entity'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'cpo_operation o ON o.rowid=t.fk_operation AND o.entity=t.entity'
-            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND u.entity=t.entity AND COALESCE(u.fk_soc,0)=0'
+            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND (u.entity=t.entity OR (u.entity=0 AND u.admin=1)) AND COALESCE(u.fk_soc,0)=0'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'user creator ON creator.rowid=t.fk_user_creat AND (creator.entity=t.entity OR (creator.entity=0 AND creator.admin=1)) AND COALESCE(creator.fk_soc,0)=0'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=t.fk_usergroup AND g.entity=t.entity';
     }

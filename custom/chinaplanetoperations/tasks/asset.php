@@ -1,4 +1,13 @@
 <?php
+// PHP discards POST and FILES before bootstrap when post_max_size is exceeded.
+// Return a bounded JSON error before native CSRF processing sees an empty token.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && (int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    http_response_code(413);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    echo json_encode(array('ok'=>false,'code'=>'upload_size','message'=>'Each file must be 200 MB or smaller.'));
+    exit;
+}
 if($_SERVER['REQUEST_METHOD']==='POST')define('CSRFCHECK_WITH_TOKEN',1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/../lib/main.lib.php';
@@ -6,7 +15,7 @@ require_once __DIR__.'/../class/InternalTaskAssetService.class.php';
 cpo_task_require($db,$user);$langs->load('chinaplanetoperations@chinaplanetoperations');$service=new InternalTaskAssetService($db,$user);$action=GETPOST('action','alpha');
 if($_SERVER['REQUEST_METHOD']==='POST'){
  $ajax=!empty($_SERVER['HTTP_X_REQUESTED_WITH'])&&strtolower((string)$_SERVER['HTTP_X_REQUESTED_WITH'])==='xmlhttprequest';$status=200;$message=$langs->trans('TaskUpdated');$newVersion=0;
- try{if($action==='upload'){$uploaded=$service->upload(GETPOSTINT('task_id'),GETPOSTINT('version'),isset($_FILES['task_file'])?$_FILES['task_file']:array(),GETPOSTINT('replace_asset_id'));$newVersion=(int)$uploaded['version'];}elseif($action==='cover')$newVersion=$service->setCover(GETPOSTINT('task_id'),GETPOSTINT('asset_id'),GETPOSTINT('version'));elseif($action==='cover_clear')$newVersion=$service->clearCover(GETPOSTINT('task_id'),GETPOSTINT('version'));else accessforbidden();setEventMessages($message,null,'mesgs');}catch(InternalTaskConflictException $e){$status=409;$message=$langs->trans('InternalTaskStale');setEventMessages($message,null,'warnings');}catch(InternalTaskAccessException $e){$status=403;$message=$langs->trans('InternalTaskSafeDenied');setEventMessages($message,null,'errors');}catch(Throwable $e){error_log('CPO internal task asset rejected: '.get_class($e).' - '.$e->getMessage());$status=422;$message=$langs->trans('InternalTaskValidationError');setEventMessages($message,null,'errors');}
+ try{if($action==='upload'){$uploaded=$service->upload(GETPOSTINT('task_id'),GETPOSTINT('version'),isset($_FILES['task_file'])?$_FILES['task_file']:array(),GETPOSTINT('replace_asset_id'));$newVersion=(int)$uploaded['version'];}elseif($action==='cover')$newVersion=$service->setCover(GETPOSTINT('task_id'),GETPOSTINT('asset_id'),GETPOSTINT('version'));elseif($action==='cover_clear')$newVersion=$service->clearCover(GETPOSTINT('task_id'),GETPOSTINT('version'));else accessforbidden();setEventMessages($message,null,'mesgs');}catch(InternalTaskConflictException $e){$status=409;$message=$langs->trans('InternalTaskStale');setEventMessages($message,null,'warnings');}catch(InternalTaskAccessException $e){$status=403;$message=$langs->trans('InternalTaskSafeDenied');setEventMessages($message,null,'errors');}catch(LengthException $e){$status=413;$message=$langs->trans('InternalTask200Limit');setEventMessages($message,null,'errors');}catch(Throwable $e){error_log('CPO internal task asset rejected: '.get_class($e).' - '.$e->getMessage());$status=422;$message=$langs->trans('InternalTaskValidationError');setEventMessages($message,null,'errors');}
  if($ajax){http_response_code($status);header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');echo json_encode(array('ok'=>$status===200,'message'=>$message,'version'=>$newVersion,'assetId'=>isset($uploaded)?(int)$uploaded['asset_id']:0));exit;}
  header('Location: card.php?id='.GETPOSTINT('task_id').(GETPOSTINT('embed')===1?'&embed=1&result='.($status===200?'success':($status===409?'stale':($status===403?'denied':'validation'))):''));exit;
 }

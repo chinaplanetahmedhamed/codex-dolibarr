@@ -458,7 +458,7 @@ InternalTaskUnclassified=مهمة قديمة غير مصنفة
 InternalTaskDetails=تفاصيل المهمة
 InternalTaskWorkActions=إجراءات العمل
 InternalTaskFiles=الملفات والصور الداخلية
-InternalTaskFileHelp=المسموح JPG وPNG وWebP وPDF وDOCX وXLSX وCSV وTXT. الحد الأقصى للصور والملفات النصية 10 MB، ولملفات PDF وOffice مقدار 50 MB. تبقى الملفات داخلية.
+InternalTaskFileHelp=المسموح: JPG وPNG وWebP وPDF وDOCX وXLSX وCSV وTXT. الحد الأقصى 200 MB لكل ملف، و25 ملفًا بإجمالي 500 MB لكل مهمة. الصور حتى 25 ميجابكسل. الملفات داخلية فقط.
 InternalTaskCover=صورة الغلاف
 InternalTaskSetCover=تعيين كغلاف
 InternalTaskRemoveCover=إزالة الغلاف
@@ -797,3 +797,6 @@ CPTRestoreTrash=استعادة المهمة
 CPTTrashEmpty=لا توجد مهام محذوفة.
 CPTTrashIntro=المهام المحذوفة المتاحة لك. استعد المهمة لإعادتها إلى حالتها السابقة.
 InternalTaskActivity_task_renamed=أُعيدت تسمية المهمة
+
+InternalTask200Limit=الحد الأقصى لكل ملف هو 200 MB.
+InternalTaskUploadResponse=لم يتمكن الخادم من إكمال الرفع. افتح المهمة المحفوظة وتحقق من المرفقات قبل إعادة المحاولة.

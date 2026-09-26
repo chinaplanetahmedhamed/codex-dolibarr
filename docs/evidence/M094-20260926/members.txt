@@ -1,0 +1,18 @@
+PASS 1 existing native entity-zero administrator appears in team
+PASS 2 ordinary active native member appears
+PASS 3 external foreign inactive member excluded 4
+PASS 4 server assignment excludes invalid member 4
+PASS 5 external foreign inactive member excluded 5
+PASS 6 server assignment excludes invalid member 5
+PASS 7 external foreign inactive member excluded 6
+PASS 8 server assignment excludes invalid member 6
+PASS 9 assignment to native global administrator persists with visible assignee
+PASS 10 assigned administrator sees own task
+PASS 11 invalid assignee rejected 4
+PASS 12 invalid assignee rejected 5
+PASS 13 invalid assignee rejected 6
+PASS 14 entity-zero non-administrator remains excluded
+PASS 15 foreign membership cannot grant assignment in current entity
+PASS 16 server denies assignment after native membership removed
+PASS 17 staff cannot acquire manager assignment list
+M094_MEMBERS=PASS ASSERTIONS=17

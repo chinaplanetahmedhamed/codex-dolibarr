@@ -1,0 +1,26 @@
+PASS PNG is decoded and re-encoded
+PASS double extension is rejected
+PASS image MIME mismatch is rejected
+PASS SVG active content is rejected
+PASS Unicode direction filename is rejected
+PASS NUL text is rejected
+PASS UTF-8 text is accepted
+PASS OOXML traversal entry is rejected
+PASS OOXML macro content is rejected
+PASS OOXML embedded executable is rejected
+PASS minimal safe OOXML document is accepted
+PASS OOXML comment strings and wrong root are rejected
+PASS active PDF polyglot marker is rejected
+PASS name-escaped active PDF is rejected
+PASS header-only fake PDF is rejected
+PASS minimal structurally valid PDF is accepted
+PASS compressed active PDF action is rejected
+PASS standard raw-deflate PDF stream is accepted
+PASS raw-deflate active PDF action is rejected
+PASS trailing-CR safe stream fixture is available
+PASS declared PDF stream length preserves a trailing CR data byte
+PASS trailing-CR active stream fixture is available
+PASS trailing-CR compressed active PDF action is rejected
+PASS array-filter compressed active PDF action is rejected
+PASS indirect PDF filter reference fails closed
+M058_ASSET_VALIDATION=PASS

@@ -453,7 +453,7 @@ InternalTaskUnclassified=旧任务未分类
 InternalTaskDetails=任务详情
 InternalTaskWorkActions=工作操作
 InternalTaskFiles=内部文件和图片
-InternalTaskFileHelp=允许 JPG、PNG、WebP、PDF、DOCX、XLSX、CSV 和 TXT。图片和文本文件最大 10 MB，PDF 和 Office 文件最大 50 MB。文件仅供内部使用。
+InternalTaskFileHelp=允许 JPG、PNG、WebP、PDF、DOCX、XLSX、CSV 和 TXT。每个文件最多 200 MB；每项任务最多 25 个文件，总计 500 MB。图片最多 2500 万像素。文件仅供内部使用。
 InternalTaskCover=封面
 InternalTaskSetCover=设为封面
 InternalTaskRemoveCover=移除封面
@@ -735,3 +735,6 @@ CPTRestoreTrash=恢复任务
 CPTTrashEmpty=没有已删除的任务。
 CPTTrashIntro=您有权查看的已删除任务。恢复任务将还原其先前状态。
 InternalTaskActivity_task_renamed=任务已重命名
+
+InternalTask200Limit=每个文件不得超过 200 MB。
+InternalTaskUploadResponse=服务器未能完成上传。请打开已保存的任务，检查附件后再重试。

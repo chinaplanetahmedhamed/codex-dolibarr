@@ -458,7 +458,7 @@ InternalTaskUnclassified=Legacy unclassified
 InternalTaskDetails=Task details
 InternalTaskWorkActions=Work actions
 InternalTaskFiles=Internal files and images
-InternalTaskFileHelp=Allowed: JPG, PNG, WebP, PDF, DOCX, XLSX, CSV and TXT. Images and text files: 10 MB maximum. PDF and Office files: 50 MB maximum. Files remain internal.
+InternalTaskFileHelp=Allowed: JPG, PNG, WebP, PDF, DOCX, XLSX, CSV and TXT. Maximum 200 MB per file; 25 files and 500 MB total per task. Images: up to 25 megapixels. Files remain internal.
 InternalTaskCover=Cover
 InternalTaskSetCover=Set as cover
 InternalTaskRemoveCover=Remove cover
@@ -804,3 +804,6 @@ CPTRestoreTrash=Restore task
 CPTTrashEmpty=No deleted tasks.
 CPTTrashIntro=Deleted tasks you can access. Restore a task to return it to its previous state.
 InternalTaskActivity_task_renamed=Task renamed
+
+InternalTask200Limit=Each file must be 200 MB or smaller.
+InternalTaskUploadResponse=The server could not complete the upload. Open the saved task to check attached files before retrying.
