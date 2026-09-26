@@ -43,7 +43,7 @@ $task=$worker->requireReadableTask($id);
 check089((int)$task['fk_user_assign']===2 && (int)$task['fk_user_creat']===2 && empty($task['fk_operation']),'own creation forces actor assignment and creator');
 check089($worker->createTask($data)===$id,'same request creates exactly one task');
 $conflict=false;try{$worker->createTask(array_merge($data,array('title'=>'changed')));}catch(InternalTaskConflictException $e){$conflict=true;}check089($conflict,'changed replay rejected');
-check089($worker->authorization()->availableViews()===array('my'),'worker cannot select team or all views');
+check089($worker->authorization()->availableViews()===array('my','archive'),'worker can select own work and scoped archive, never team or all views');
 check089(array_column($worker->ownTaskTeams(),'rowid')==array(1),'creation teams contain memberships only');
 check089($worker->userOptionsForTeam(1)===array(),'worker cannot enumerate other team members');
 foreach(array(array('fk_user_assign'=>3),array('fk_usergroup'=>2),array('fk_usergroup'=>3),array('fk_operation'=>100)) as $forged)denied089(fn()=>$worker->createTask(array_merge($data,$forged)),'forged creation scope '.json_encode($forged));

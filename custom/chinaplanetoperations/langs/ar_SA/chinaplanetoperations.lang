@@ -781,3 +781,7 @@ CPTAgendaHelp=تظهر المهام المجدولة في الأجندة بحا�
 CPTAgendaUnavailable=تعذر تحميل تقويم المهام. افتح مهامي وحاول مرة أخرى.
 CPTAgendaTask=مهمة
 CPTAgendaLink=الأجندة
+
+CPTCancelArchiveHelp=إلغاء المهمة ينقلها إلى الأرشيف ويخفيها من العمل النشط والأجندة، مع الاحتفاظ بسجلها وملفاتها.
+CPTKeepTask=الاحتفاظ بالمهمة
+CPTConfirmCancel=إلغاء وأرشفة

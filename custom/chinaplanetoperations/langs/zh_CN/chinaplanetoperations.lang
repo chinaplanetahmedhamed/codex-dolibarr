@@ -719,3 +719,7 @@ CPTAgendaHelp=已安排的任务将按当前状态显示在日程中。打开任
 CPTAgendaUnavailable=无法加载任务日历。请打开我的任务并重试。
 CPTAgendaTask=任务
 CPTAgendaLink=日程
+
+CPTCancelArchiveHelp=取消后任务将移至归档，并从当前工作和日程中移除。历史记录和文件将保留。
+CPTKeepTask=保留任务
+CPTConfirmCancel=取消并归档

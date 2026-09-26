@@ -371,6 +371,40 @@ class InternalTaskService
         return $this->lifecycle($taskId, $expectedVersion, 'archive', $reason);
     }
 
+    public function cancelAndArchive($taskId,$expectedVersion,$reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canCancelTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $this->cas('UPDATE '.MAIN_DB_PREFIX."cpo_task SET status='cancelled',date_archived=".$this->q($this->now()).',fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_cancelled','cancelled: '.$reason,$this->auth->actorId());
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_archived','archive: '.$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e) {$this->db->rollback();throw $e;}
+    }
+
+    public function restoreCancelled($taskId,$expectedVersion,$reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canRestoreCancelledTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $behavior=(string)$task['stage_behavior'];$stageId=(int)$task['fk_stage'];
+            if(empty($task['stage_active']) || !in_array($behavior,array('todo','work','waiting','review'),true)) {
+                $stage=$this->stages->systemStage('todo',false);
+                if(!$stage)throw new RuntimeException('Internal task board is not ready.');
+                $stageId=(int)$stage['rowid'];$behavior='todo';
+            }
+            $status=$behavior==='work'?'in_progress':$behavior;
+            $this->cas('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET status='.$this->q($status).',fk_stage='.$stageId.',date_archived=NULL,fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_restored','restore: '.$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e) {$this->db->rollback();throw $e;}
+    }
+
     public function restore($taskId, $expectedVersion, $reason)
     {
         return $this->lifecycle($taskId, $expectedVersion, 'restore', $reason);

@@ -1,5 +1,5 @@
 <?php
-function cpo_details_editor(array $details,$editable=true)
+function cpo_details_editor(array $details,$editable=true,$task=null)
 {
     global $langs;
     $data=$details['data'];$e=function($s){return dol_escape_htmltag((string)$s);};
@@ -8,6 +8,7 @@ function cpo_details_editor(array $details,$editable=true)
     <section class="cpt-editor-section" id="task-dates"><h2><?php echo $langs->trans('CPTDatesCover'); ?></h2><div class="cpt-field-grid">
       <label class="cpo-field"><span><?php echo $langs->trans('CPTStartDate'); ?></span><input type="date" data-extra="start_date" value="<?php echo $e($data['start_date']); ?>"<?php echo !$editable?' disabled':''; ?>></label>
       <label class="cpo-field"><span><?php echo $langs->trans('CPTStartTime'); ?></span><input type="time" data-extra="start_time" value="<?php echo $e($data['start_time']??''); ?>"<?php echo !$editable?' disabled':''; ?>></label>
+      <?php if($task!==null){ ?><label class="cpo-field"><span><?php echo $langs->trans('Deadline'); ?></span><input type="datetime-local" data-task-deadline data-task-version="<?php echo (int)$task['version']; ?>" value="<?php echo $e($task['date_deadline']?str_replace(' ','T',substr($task['date_deadline'],0,16)):''); ?>"<?php echo !$editable?' disabled':''; ?>></label><?php } ?>
       <label class="cpo-field"><span><?php echo $langs->trans('CPTCoverColor'); ?></span><input type="color" data-extra="cover_color" value="<?php echo $e($data['cover_color']?:'#2563eb'); ?>"<?php echo !$editable?' disabled':''; ?>></label>
       <label class="cpo-field cpt-check"><input type="checkbox" data-color-enabled<?php echo $data['cover_color']?' checked':''; ?><?php echo !$editable?' disabled':''; ?>><?php echo $langs->trans('CPTUseColor'); ?></label>
     </div><p class="cpt-agenda-help"><?php echo $langs->trans('CPTAgendaHelp'); ?></p></section>

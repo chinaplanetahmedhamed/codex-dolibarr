@@ -1,0 +1,48 @@
+PASS 1 start time survives service reload
+PASS 2 task projects exact start and deadline
+PASS 3 localized status without private detail payload
+PASS 4 repeated calendar reads do not duplicate tasks
+PASS 5 date projection with connection collation utf8_general_ci
+PASS 6 date projection with connection collation utf8_unicode_ci
+PASS 7 Agenda matches task wall-clock dates with UTC server and Asia/Shanghai user
+PASS 8 Agenda matches task wall-clock dates with UTC server and America/Los_Angeles user
+PASS 9 forged owner filter cannot expose another worker task
+PASS 10 owner filter honored
+PASS 11 broad Agenda rights do not expand task visibility
+PASS 12 supervisor without team grant denied
+PASS 13 granted supervisor sees authorized team task
+PASS 14 revoked team grant removes projection immediately
+PASS 15 completed filter excludes open work
+PASS 16 native category filter does not leak unrelated task cards
+PASS 17 start work immediately updates Agenda state
+PASS 18 progress refresh is current
+PASS 19 reassignment removes old staff entry and shows new owner
+PASS 20 rescheduling refreshes same projected entry
+PASS 21 completion uses native completed/incomplete filters
+PASS 22 archived work disappears
+PASS 23 restored completed work returns
+PASS 24 deadline-only task is a deadline marker
+PASS 25 unscheduled task omitted
+PASS 26 cancelled task omitted
+PASS 27 legacy date-only schedule remains all day
+PASS 28 date-only task keeps its calendar date across user timezones
+PASS 29 multi-month task clipped to visible days count=30
+PASS 30 external/entity/inactive exclusion 4
+PASS 31 external/entity/inactive exclusion 5
+PASS 32 external/entity/inactive exclusion 6
+PASS 33 revoked task rights remove Agenda projection
+PASS 34 native Agenda rights required
+PASS 35 escaped task link targets authorized card
+PASS 36 invalid calendar date/time rejected 2026-02-30T10:00
+PASS 37 invalid calendar date/time rejected 2026-09-27T25:10
+PASS 38 invalid calendar date/time rejected 2026-09-27T12:60
+PASS 39 time without date rejected
+PASS 40 reversed schedule rejected before creation
+PASS 41 deadline edit cannot precede saved start
+PASS 42 invalid deadline leaves saved value unchanged
+PASS 43 start edit cannot exceed saved deadline
+PASS 44 invalid details save rolls back
+PASS 45 stale schedule edit rejected
+PASS 46 stale save preserves latest schedule
+PASS 47 other worker cannot change schedule
+M091_AGENDA=PASS ASSERTIONS=47

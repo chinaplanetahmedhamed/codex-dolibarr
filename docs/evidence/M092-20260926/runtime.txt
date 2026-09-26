@@ -1,0 +1,38 @@
+PASS 1 start and deadline save together and survive independent reload
+PASS 2 schedule preserves title
+PASS 3 schedule preserves description
+PASS 4 schedule preserves priority
+PASS 5 schedule preserves fk_usergroup
+PASS 6 schedule preserves fk_user_assign
+PASS 7 reversed combined schedule rejected
+PASS 8 invalid save changes neither record
+PASS 9 stale task version rejects combined save
+PASS 10 stale details version rejects combined save
+PASS 11 other worker cannot change schedule
+PASS 12 details write failure aborts combined save
+PASS 13 post-write failure rolls back deadline and versions
+PASS 14 audit failure aborts cancellation
+PASS 15 post-write failure rolls back status archive and version
+PASS 16 manager-assigned deadline remains protected
+PASS 17 worker cannot cancel manager-assigned work
+PASS 18 cancellation reason required
+PASS 19 stale cancellation changes nothing
+PASS 20 failed cancellation leaves task active
+PASS 21 one cancellation atomically sets cancelled and archived
+PASS 22 cancellation increments optimistic version exactly once
+PASS 23 cancelled task disappears from active My Tasks
+PASS 24 cancelled task appears in own Archive
+PASS 25 cancelled task disappears from Agenda
+PASS 26 cancellation retains rich details
+PASS 27 cancellation and archive reasons retained in history
+PASS 28 other worker archive cannot expose own task
+PASS 29 stored team grant without manager permission cannot widen Archive
+PASS 30 other worker cannot restore task
+PASS 31 stale restore leaves archive untouched
+PASS 32 restore returns prior active stage and progress
+PASS 33 restored task returns to My Tasks
+PASS 34 worker cannot undo manager cancellation
+PASS 35 external foreign-entity inactive cancellation denied 4
+PASS 36 external foreign-entity inactive cancellation denied 5
+PASS 37 external foreign-entity inactive cancellation denied 6
+M092_CONTROLS=PASS ASSERTIONS=37

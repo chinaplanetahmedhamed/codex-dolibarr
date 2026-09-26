@@ -16,6 +16,7 @@ try {
     if($action==='columns')$result['board']=(new InternalTaskPersonalBoard($db,$user))->saveColumns($version,$data);
     elseif($action==='move')$result['board']=(new InternalTaskPersonalBoard($db,$user))->move($version,GETPOSTINT('task_id'),(int)($data['column']??0),(int)($data['before']??0));
     elseif($action==='details')$result['details']=(new InternalTaskDetailsService($db,$user))->save(GETPOSTINT('task_id'),$version,$data);
+    elseif($action==='schedule')$result['details']=(new InternalTaskDetailsService($db,$user))->saveWithSchedule(GETPOSTINT('task_id'),$version,GETPOSTINT('task_version'),$data,GETPOST('date_deadline','alphanohtml'));
     elseif($action==='compose'){
         $task=$data['task']??array();$extra=$data['details']??array();$items=$data['items']??array();if(!is_array($task)||!is_array($extra)||!is_array($items))throw new RuntimeException('Invalid task.');
         $task=array_intersect_key($task,array_flip(array('title','description','priority','date_deadline','fk_usergroup','fk_user_assign')));foreach($task as $value)if(!is_scalar($value))throw new RuntimeException('Invalid task field.');

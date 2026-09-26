@@ -35,14 +35,28 @@ class InternalTaskDetailsService
     public function canEdit(array $task){return empty($task['date_archived'])&&($this->auth->canManageTask($task)||$this->auth->canEditOwnInstructions($task));}
     public function save($id,$version,array $data,$createHash=null)
     {
+        return $this->saveInternal($id,$version,$data,$createHash);
+    }
+    public function saveWithSchedule($id,$version,$taskVersion,array $data,$deadline)
+    {
+        return $this->saveInternal($id,$version,$data,null,array('version'=>(int)$taskVersion,'deadline'=>InternalTaskSchedule::dateTime($deadline)));
+    }
+    private function saveInternal($id,$version,array $data,$createHash=null,$schedule=null)
+    {
         $clean=$this->validate($data);if(!$this->db->begin())throw new RuntimeException('Unable to start save.');
         try{$this->must('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_task WHERE entity='.$this->entity.' AND rowid='.(int)$id.' FOR UPDATE');$task=$this->tasks->requireReadableTask($id);if(!$this->canEdit($task))throw new InternalTaskAccessException('Task access denied.');$row=$this->row($id);if(($row?(int)$row['version']:0)!==(int)$version)throw new InternalTaskConflictException('Task details changed.');
-            InternalTaskSchedule::validate($clean,$task['date_deadline']);
+            if($schedule!==null&&(int)$task['version']!==$schedule['version'])throw new InternalTaskConflictException('Task changed.');
+            $deadline=$schedule!==null?$schedule['deadline']:$task['date_deadline'];
+            InternalTaskSchedule::validate($clean,$deadline);
             $json=$this->q(json_encode($clean,JSON_UNESCAPED_UNICODE));$actor=$this->auth->actorId();
+            if($schedule!==null){
+                $updated=$this->must('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET date_deadline='.($deadline!==''?$this->q($deadline):'NULL').',fk_user_modif='.$actor.',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$id.' AND version='.(int)$task['version']);
+                if($this->db->affected_rows($updated)!==1)throw new InternalTaskConflictException('Task changed.');
+            }
             if($row)$this->must('UPDATE '.MAIN_DB_PREFIX.'cpo_task_details SET payload='.$json.',version=version+1,fk_user_modif='.$actor.' WHERE entity='.$this->entity.' AND fk_task='.(int)$id.' AND version='.(int)$version);
             else $this->must('INSERT INTO '.MAIN_DB_PREFIX.'cpo_task_details(entity,fk_task,payload,create_hash,version,fk_user_creat,fk_user_modif,date_creation) VALUES('.$this->entity.','.(int)$id.','.$json.','.($createHash?$this->q($createHash):'NULL').',1,'.$actor.','.$actor.','.$this->q(date('Y-m-d H:i:s')).')');
             $this->must('INSERT INTO '.MAIN_DB_PREFIX.'cpo_activity(entity,fk_task,fk_user,action_code,message,date_action) VALUES('.$this->entity.','.(int)$id.','.$actor.",'task_details_updated','',".$this->q(date('Y-m-d H:i:s')).')');
-            if(!$this->db->commit())throw new RuntimeException('Unable to confirm save.');return array('version'=>(int)$version+1,'data'=>$clean);
+            if(!$this->db->commit())throw new RuntimeException('Unable to confirm save.');return array('version'=>(int)$version+1,'task_version'=>(int)$task['version']+($schedule!==null?1:0),'data'=>$clean);
         }catch(Throwable $e){$this->db->rollback();throw $e;}
     }
     public function compose(array $taskData,array $details,array $items,$comment,$request,$columnId=0)

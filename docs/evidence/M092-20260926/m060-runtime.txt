@@ -1,0 +1,29 @@
+PASS direct migration collision case 0 fails before any M060 DDL
+PASS direct migration collision case 1 fails before any M060 DDL
+PASS direct migration collision case 2 fails before any M060 DDL
+PASS M060 exact rights rerun schema and invariants are ready
+PASS task_admin without task_comment cannot add comments
+PASS task_admin without task_checklist cannot mutate checklists
+PASS task_admin with each new right is allowed in the same task scope
+PASS verified Dolibarr administrator may use collaboration without the two optional rights
+PASS hidden task counters and label fingerprints are denied inside the service
+PASS same normalized comment replay returns one original row
+PASS same comment key with changed payload conflicts
+PASS comment remains escaped-at-output plain text without source mutation
+PASS administrator redaction masks body in normal projection
+PASS eligible mention creates one recipient notification
+PASS recipient inbox lists only the currently readable mentioned task
+PASS inactive historical notification author is masked as a former internal user
+PASS revoked recipient and wrong task pairing are denied before notification resolution
+PASS mark-read changes only the exact task recipient notification state
+PASS checklist item completion is independently versioned
+PASS inactive checklist item cannot be changed by a forged POST
+PASS checklist reorder returns a new fingerprint and rejects stale overwrite
+PASS inactive checklist only accepts restore
+PASS label complete-set fingerprint changes after assignment
+PASS duplicate label IDs are rejected rather than silently deduplicated
+PASS bidi control text is rejected before persistence
+PASS collaboration does not change task lifecycle or version
+PASS comment without mentions creates no notification
+PASS collaboration activity is generic and contains no content
+M060_RUNTIME=PASS

@@ -788,3 +788,7 @@ CPTAgendaHelp=Scheduled tasks appear in Agenda with their current status. Open a
 CPTAgendaUnavailable=Task calendar could not be loaded. Open My Tasks and try again.
 CPTAgendaTask=Task
 CPTAgendaLink=Agenda
+
+CPTCancelArchiveHelp=Cancelling moves this task to Archive and removes it from active work and Agenda. Its history and files are kept.
+CPTKeepTask=Keep task
+CPTConfirmCancel=Cancel and archive

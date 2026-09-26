@@ -50,6 +50,10 @@ try {
         $service->updateProgress($taskId,$version,$posted['progress']);
     } elseif ($action === 'archive') {
         $service->archive($taskId,$version,$posted['reason']);
+    } elseif ($action === 'cancel_archive') {
+        $service->cancelAndArchive($taskId,$version,$posted['reason']);
+    } elseif ($action === 'restore_cancelled') {
+        $service->restoreCancelled($taskId,$version,$posted['reason']);
     } elseif ($action === 'restore') {
         $service->restore($taskId,$version,$posted['reason']);
     } elseif ($action === 'delete') {

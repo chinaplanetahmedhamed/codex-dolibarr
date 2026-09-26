@@ -81,6 +81,7 @@ class InternalTaskAuthorizationService
             $views[] = 'unassigned';
             $views[] = 'archive';
         }
+        if ($this->hasRight('task_read_own')) $views[] = 'archive';
         if ($this->isAdministrator()) {
             $views[] = 'unclassified';
             $views[] = 'grants';
@@ -158,6 +159,22 @@ class InternalTaskAuthorizationService
         return $this->hasRight('task_manage_team') && $this->hasTeamGrant((int) $task['fk_usergroup']);
     }
 
+    public function canCancelTask(array $task)
+    {
+        return empty($task['date_archived'])
+            && in_array((string)$task['status'],array('todo','in_progress','waiting','review'),true)
+            && ($this->canArchiveTask($task) || $this->canEditOwnInstructions($task));
+    }
+
+    public function canRestoreCancelledTask(array $task)
+    {
+        if (empty($task['date_archived']) || (string)$task['status'] !== 'cancelled') return false;
+        if ($this->canArchiveTask($task)) return true;
+        return $this->canReadTask($task) && $this->isOwnTask($task) && $this->hasRight('task_update_own')
+            && (int)$task['fk_user_creat'] === $this->actorId() && empty($task['fk_operation'])
+            && (int)$task['fk_user_modif'] === $this->actorId();
+    }
+
     public function canDeleteTask(array $task)
     {
         return $this->taskEntityValid($task) && $this->isAdministrator() && $this->hasRight('task_delete');
@@ -205,7 +222,7 @@ class InternalTaskAuthorizationService
         if ($view === 'all') return $admin ? '1=1' : '1=0';
         if ($view === 'unclassified') return $admin ? $alias.'.fk_usergroup IS NULL' : '1=0';
         if ($view === 'archive') {
-            $scope = $admin ? '1=1' : '(('.$own.') OR ('.$team.'))';
+            $scope = $this->readableSql($alias);
             return $scope.' AND ('.$alias.'.date_archived IS NOT NULL OR '.$alias.".status='cancelled')";
         }
         return '1=0';
