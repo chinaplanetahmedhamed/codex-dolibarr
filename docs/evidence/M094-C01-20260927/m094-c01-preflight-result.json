@@ -1,0 +1,6 @@
+{
+  "action": "preflight",
+  "environment": "production",
+  "files": 5,
+  "result": "PASS"
+}

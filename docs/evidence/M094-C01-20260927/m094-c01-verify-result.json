@@ -1,0 +1,10 @@
+{
+  "action": "verify",
+  "authenticated_acceptance": "PENDING",
+  "code_backup": "bdfa2e3e585266bcaa81a2035659a80679015b5f03335f26c55a333c9e8ea0b7",
+  "code_files": 5,
+  "database_backup": "829d4d37e9392ced5d52b3aa77d98c1d258b8032be8e3f28f5f873116951aca9",
+  "environment": "production",
+  "result": "PASS",
+  "status": "DEPLOYED"
+}
