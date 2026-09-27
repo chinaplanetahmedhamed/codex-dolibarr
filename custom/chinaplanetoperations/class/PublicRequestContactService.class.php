@@ -80,6 +80,7 @@ class PublicRequestContactService
 
     public function sendEmail(array $request, $subject, $body, $user)
     {
+        if (($request['lifecycle_state'] ?? 'active') !== 'active') throw new PublicRequestContactException('PublicRequestRestoreFirst');
         $recipient = strtolower(trim((string) ($request['email'] ?? '')));
         if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) throw new PublicRequestContactException('public_request_email_missing');
 

@@ -814,3 +814,25 @@ InternalTaskOfficeExpandedLimit=يتجاوز حجم محتويات ملف Office
 InternalTaskOfficeArchiveUnsafe=يحتوي ملف Office المضغوط على مسارات غير آمنة أو ضغط مفرط. احفظ نسخة جديدة أو قسّمه إلى ملفات أصغر.
 InternalTaskFileNameInvalid=استخدم اسم ملف بسيطًا بامتداد واحد، مثل report.xlsx.
 InternalTaskFileQuota=تسمح المهمة بحد أقصى 25 ملفًا و500 MB إجمالًا. لم يُحفظ هذا المرفق.
+
+# Request archive and recoverable deletion
+PublicRequestViews=مجلدات الطلبات
+PublicRequestViewActive=النشطة
+PublicRequestViewArchived=المؤرشفة
+PublicRequestViewDeleted=المحذوفة
+PublicRequestActionArchive=أرشفة
+PublicRequestActionDelete=حذف
+PublicRequestActionRestore=استعادة
+PublicRequestConfirmDelete=هل تريد حذف هذا الطلب؟
+PublicRequestDeleteHelp=سينتقل الطلب إلى المحذوفة. يمكنك استعادته لاحقًا، وتبقى تفاصيله وسجله محفوظة.
+PublicRequestLinkedArchiveOnly=طلب مرتبط: الأرشفة متاحة
+PublicRequestLinkedDeleteDenied=هذا الطلب مرتبط بعملية أو عرض سعر. استخدم الأرشفة للحفاظ على السجل الأصلي.
+PublicRequestLifecycleSaved=تم تحديث مجلد الطلب.
+PublicRequestRestoreFirst=استعد هذا الطلب إلى النشطة قبل متابعة العمل عليه.
+PublicRequestStale=تم تغيير هذا الطلب. حدّث الصفحة ثم أعد المحاولة.
+PublicRequestActionFailed=تعذّر تحديث الطلب. يرجى المحاولة مرة أخرى.
+PublicRequestAccessDenied=ليست لديك صلاحية إدارة هذا الطلب.
+PublicRequestInvalidAction=إجراء الطلب غير صالح.
+PublicRequestNotFound=الطلب غير موجود.
+PublicRequestViewEmpty=لا توجد طلبات في هذا العرض.
+PublicRequestActions=الإجراءات

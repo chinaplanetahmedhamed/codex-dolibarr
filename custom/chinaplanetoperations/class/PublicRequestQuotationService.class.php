@@ -112,6 +112,7 @@ class PublicRequestQuotationService
         try {
             $row = $this->fetchRequest((int) $requestId);
             if (!$row || $row['request_type'] !== 'catalog_order') throw new RuntimeException('quotation_request_not_found');
+            if (($row['lifecycle_state'] ?? 'active') !== 'active') throw new RuntimeException('PublicRequestRestoreFirst');
             if (!empty($row['fk_soc']) && (int) $row['fk_soc'] !== (int) $socid) throw new RuntimeException('quotation_request_customer_mismatch');
             $customer = $this->fetchCustomer((int) $socid);
             if (!$customer) throw new RuntimeException('invalid_customer');

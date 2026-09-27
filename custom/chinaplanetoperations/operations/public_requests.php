@@ -89,6 +89,25 @@ function cpo_public_request_product_image_html(array $line)
     return '<span class="cpo-quote-product-placeholder fas fa-box" aria-hidden="true"></span>';
 }
 
+function cpo_public_request_lifecycle_actions(array $row, $canManage, $view, $langs)
+{
+    if (!$canManage) return;
+    $language = rawurlencode($langs->defaultlang);
+    $actions = $row['lifecycle_state'] === 'active' ? array('archive') : array('restore');
+    echo '<div class="cpo-request-lifecycle-actions">';
+    foreach ($actions as $action) {
+        echo '<form method="post"><input type="hidden" name="lang" value="'.dol_escape_htmltag($langs->defaultlang).'"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="'.$action.'"><input type="hidden" name="id" value="'.(int) $row['rowid'].'"><input type="hidden" name="lifecycle_version" value="'.(int) $row['lifecycle_version'].'"><input type="hidden" name="view" value="'.dol_escape_htmltag($view).'"><button class="button">'.dol_escape_htmltag($langs->trans('PublicRequestAction'.ucfirst($action))).'</button></form>';
+    }
+    if ($row['lifecycle_state'] !== 'deleted') {
+        if (empty($row['fk_operation']) && empty($row['fk_propal'])) {
+            echo '<a class="button cpo-request-delete" href="?id='.(int) $row['rowid'].'&amp;view='.rawurlencode($view).'&amp;lang='.$language.'&amp;confirm=delete#cpo-request-confirm">'.dol_escape_htmltag($langs->trans('PublicRequestActionDelete')).'</a>';
+        } else {
+            echo '<span class="cpo-request-linked-hint">'.dol_escape_htmltag($langs->trans('PublicRequestLinkedArchiveOnly')).'</span>';
+        }
+    }
+    echo '</div>';
+}
+
 cpo_require($user, 'publicrequest_read');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $service = new PublicWebsiteRequestService($db);
@@ -97,6 +116,29 @@ $contactService = new PublicRequestContactService($db);
 $action = GETPOST('action', 'aZ09');
 $id = GETPOSTINT('id');
 $compose = GETPOST('compose', 'aZ09');
+$view = GETPOST('view', 'alpha');
+if (!in_array($view, PublicWebsiteRequestService::lifecycleStates(), true)) $view = 'active';
+$canManageLifecycle = $service->canManageLifecycle($user);
+$writeActions = array('archive', 'delete', 'restore', 'save_quotation', 'update_status', 'send_customer_email', 'promote', 'anonymize_expired');
+if (in_array($action, $writeActions, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405); header('Allow: POST'); exit;
+}
+if (in_array($action, array('archive', 'delete', 'restore'), true)) {
+    if (!$canManageLifecycle) accessforbidden();
+    try {
+        if ($action === 'delete' && GETPOSTINT('confirmed') !== 1) throw new PublicWebsiteRequestException('PublicRequestConfirmDelete', 422);
+        $service->changeLifecycle($id, $action, GETPOSTINT('lifecycle_version'), $user);
+        setEventMessages($langs->trans('PublicRequestLifecycleSaved'), null, 'mesgs');
+        header('Location: public_requests.php?view='.rawurlencode($view).'&lang='.rawurlencode($langs->defaultlang)); exit;
+    } catch (PublicWebsiteRequestException $e) {
+        http_response_code($e->getHttpStatus());
+        setEventMessages($langs->trans($e->getPublicCode()), null, 'errors');
+    } catch (Throwable $e) {
+        http_response_code(500);
+        setEventMessages($langs->trans('PublicRequestActionFailed'), null, 'errors');
+    }
+}
+
 
 if ($action === 'save_quotation') {
     cpo_require($user, 'publicrequest_quote');
@@ -156,7 +198,7 @@ if ($action === 'anonymize_expired' && !empty($user->admin)) {
 $status = GETPOST('status', 'alphanohtml');
 $requestType = GETPOST('request_type', 'alphanohtml');
 $selected = $id ? $service->get($id) : null;
-$rows = $service->listing(array('status'=>$status, 'request_type'=>$requestType));
+$rows = $service->listing(array('status'=>$status, 'request_type'=>$requestType, 'view'=>$view));
 $companies = array();
 $res = $db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (0,".(int) $conf->entity.") AND status=1 ORDER BY nom LIMIT 500");
 if ($res) while ($company = $db->fetch_object($res)) $companies[(int) $company->rowid] = $company->nom;
@@ -184,10 +226,11 @@ foreach ((array) GETPOST('line_product', 'array:int') as $index=>$productId) $qu
 $preparedQuoteLines = $catalogLines ? $quotationService->prepareLines($selected, $quoteSocId, $quoteSelectedProducts, $quoteCurrency) : array();
 $hasPackingGaps = false;
 foreach ($preparedQuoteLines as $preparedQuoteLine) if ((int) $preparedQuoteLine['units_per_carton'] < 1) { $hasPackingGaps = true; break; }
-$canQuote = $catalogLines && cpo_can($user, 'publicrequest_quote') && $user->hasRight('propal', 'creer') && $user->hasRight('product', 'read');
-$canContactByEmail = $selected && cpo_can($user, 'publicrequest_update') && cpo_can($user, 'email_write') && filter_var((string) $selected['email'], FILTER_VALIDATE_EMAIL);
+$isActive = $selected && $selected['lifecycle_state'] === 'active';
+$canQuote = $isActive && $catalogLines && cpo_can($user, 'publicrequest_quote') && $user->hasRight('propal', 'creer') && $user->hasRight('product', 'read');
+$canContactByEmail = $isActive && cpo_can($user, 'publicrequest_update') && cpo_can($user, 'email_write') && filter_var((string) $selected['email'], FILTER_VALIDATE_EMAIL);
 $whatsappUrl = $selected ? PublicRequestContactService::whatsappUrl($selected) : '';
-$canContactByWhatsApp = $whatsappUrl !== '' && cpo_can($user, 'publicrequest_update');
+$canContactByWhatsApp = $isActive && $whatsappUrl !== '' && cpo_can($user, 'publicrequest_update');
 $emailSubject = $selected ? PublicRequestContactService::defaultSubject($selected) : '';
 $emailBody = $selected ? PublicRequestContactService::defaultBody($selected) : '';
 if ($action === 'send_customer_email') {
@@ -202,16 +245,30 @@ llxHeader('', $langs->trans('PublicWebsiteRequests'), '', '', 0, 0, array(), $mo
 cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests'), $langs->trans('PublicWebsiteRequestsHelp'), 'fa-inbox');
 ?>
 <div class="cpo-public-requests">
+  <nav class="cpo-request-views" aria-label="<?php echo dol_escape_htmltag($langs->trans('PublicRequestViews')); ?>">
+    <?php foreach(PublicWebsiteRequestService::lifecycleStates() as $state){ ?><a href="?view=<?php echo $state; ?>&amp;lang=<?php echo rawurlencode($langs->defaultlang); ?>"<?php echo $view===$state?' aria-current="page"':''; ?>><?php echo dol_escape_htmltag($langs->trans('PublicRequestView'.ucfirst($state))); ?></a><?php } ?>
+  </nav>
+  <?php if($selected && GETPOST('confirm', 'alpha') === 'delete' && $canManageLifecycle && $selected['lifecycle_state'] !== 'deleted'){ ?>
+  <section class="cpo-panel cpo-request-confirm" id="cpo-request-confirm" role="region" aria-label="<?php echo dol_escape_htmltag($langs->trans('PublicRequestConfirmDelete')); ?>">
+    <h2><?php echo dol_escape_htmltag($langs->trans('PublicRequestConfirmDelete')); ?></h2>
+    <p><strong><?php echo dol_escape_htmltag($selected['ref'].' — '.$selected['contact_name']); ?></strong></p>
+    <?php if(!empty($selected['fk_operation']) || !empty($selected['fk_propal'])){ ?><p><?php echo dol_escape_htmltag($langs->trans('PublicRequestLinkedDeleteDenied')); ?></p><?php } else { ?>
+    <p><?php echo dol_escape_htmltag($langs->trans('PublicRequestDeleteHelp')); ?></p>
+    <form method="post"><input type="hidden" name="lang" value="<?php echo dol_escape_htmltag($langs->defaultlang); ?>"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="confirmed" value="1"><input type="hidden" name="id" value="<?php echo (int)$selected['rowid']; ?>"><input type="hidden" name="lifecycle_version" value="<?php echo (int)$selected['lifecycle_version']; ?>"><input type="hidden" name="view" value="<?php echo dol_escape_htmltag($view); ?>"><button class="button cpo-request-delete"><?php echo dol_escape_htmltag($langs->trans('PublicRequestActionDelete')); ?></button> <a class="button" href="?view=<?php echo rawurlencode($view); ?>&amp;lang=<?php echo rawurlencode($langs->defaultlang); ?>"><?php echo $langs->trans('Cancel'); ?></a></form>
+    <?php } ?>
+  </section>
+  <?php } ?>
   <section class="cpo-panel cpo-request-filter-panel">
-    <form method="get"><div class="cpo-filters">
+    <form method="get"><input type="hidden" name="lang" value="<?php echo dol_escape_htmltag($langs->defaultlang); ?>"><input type="hidden" name="view" value="<?php echo dol_escape_htmltag($view); ?>"><div class="cpo-filters">
       <label class="cpo-field"><span><?php echo $langs->trans('Status'); ?></span><select name="status"><option value=""><?php echo $langs->trans('All'); ?></option><?php foreach(PublicWebsiteRequestService::statuses() as $value){ ?><option value="<?php echo $value; ?>"<?php echo $status===$value?' selected':''; ?>><?php echo dol_escape_htmltag($value); ?></option><?php } ?></select></label>
       <label class="cpo-field"><span><?php echo $langs->trans('RequestType'); ?></span><select name="request_type"><option value=""><?php echo $langs->trans('All'); ?></option><?php foreach(PublicWebsiteRequestService::requestTypes() as $value){ ?><option value="<?php echo $value; ?>"<?php echo $requestType===$value?' selected':''; ?>><?php echo dol_escape_htmltag($value); ?></option><?php } ?></select></label>
       <div class="cpo-form-actions"><button class="button"><span class="fas fa-search" aria-hidden="true"></span> <?php echo $langs->trans('Search'); ?></button></div>
     </div></form>
   </section>
 
-  <div class="div-table-responsive cpo-request-table-wrap"><table class="liste centpercent"><thead><tr><th><?php echo $langs->trans('Ref'); ?></th><th><?php echo $langs->trans('RequestType'); ?></th><th><?php echo $langs->trans('Contact'); ?></th><th><?php echo $langs->trans('Status'); ?></th><th><?php echo $langs->trans('Date'); ?></th></tr></thead><tbody>
-  <?php foreach($rows as $row){ ?><tr<?php echo $id === (int) $row['rowid'] ? ' class="cpo-selected-row"' : ''; ?>><td><a href="?id=<?php echo (int) $row['rowid']; ?>"><?php echo dol_escape_htmltag($row['ref']); ?></a></td><td><?php echo dol_escape_htmltag($row['request_type']); ?></td><td><?php echo dol_escape_htmltag($row['contact_name'].($row['company_name']?' · '.$row['company_name']:'')); ?></td><td><span class="cpo-request-status"><?php echo dol_escape_htmltag($row['status']); ?></span></td><td><?php echo dol_escape_htmltag($row['date_creation']); ?></td></tr><?php } ?>
+  <div class="div-table-responsive cpo-request-table-wrap"><table class="liste centpercent"><thead><tr><th><?php echo $langs->trans('Ref'); ?></th><th><?php echo $langs->trans('RequestType'); ?></th><th><?php echo $langs->trans('Contact'); ?></th><th><?php echo $langs->trans('Status'); ?></th><th><?php echo $langs->trans('Date'); ?></th><th><?php echo $langs->trans('PublicRequestActions'); ?></th></tr></thead><tbody>
+  <?php foreach($rows as $row){ ?><tr<?php echo $id === (int) $row['rowid'] ? ' class="cpo-selected-row"' : ''; ?>><td data-title="<?php echo dol_escape_htmltag($langs->trans('Ref')); ?>"><a href="?id=<?php echo (int) $row['rowid']; ?>&amp;view=<?php echo rawurlencode($view); ?>&amp;lang=<?php echo rawurlencode($langs->defaultlang); ?>"><?php echo dol_escape_htmltag($row['ref']); ?></a></td><td data-title="<?php echo dol_escape_htmltag($langs->trans('RequestType')); ?>"><?php echo dol_escape_htmltag($row['request_type']); ?></td><td data-title="<?php echo dol_escape_htmltag($langs->trans('Contact')); ?>"><?php echo dol_escape_htmltag($row['contact_name'].($row['company_name']?' · '.$row['company_name']:'')); ?></td><td data-title="<?php echo dol_escape_htmltag($langs->trans('Status')); ?>"><span class="cpo-request-status"><?php echo dol_escape_htmltag($row['status']); ?></span></td><td data-title="<?php echo dol_escape_htmltag($langs->trans('Date')); ?>"><?php echo dol_escape_htmltag($row['date_creation']); ?></td><td data-title="<?php echo dol_escape_htmltag($langs->trans('PublicRequestActions')); ?>"><?php cpo_public_request_lifecycle_actions($row, $canManageLifecycle, $view, $langs); ?></td></tr><?php } ?>
+  <?php if(!$rows){ ?><tr><td colspan="6"><?php echo dol_escape_htmltag($langs->trans('PublicRequestViewEmpty')); ?></td></tr><?php } ?>
   </tbody></table></div>
 
   <?php if($selected){ ?>
@@ -225,6 +282,11 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
       <div class="cpo-request-date"><span class="fas fa-calendar-alt" aria-hidden="true"></span><small><?php echo $langs->trans('Date'); ?></small><strong><?php echo dol_escape_htmltag($selected['date_creation']); ?></strong></div>
     </header>
 
+    <div class="cpo-request-lifecycle-detail">
+      <strong><?php echo dol_escape_htmltag($langs->trans('PublicRequestView'.ucfirst($selected['lifecycle_state']))); ?></strong>
+      <?php cpo_public_request_lifecycle_actions($selected, $canManageLifecycle, $view, $langs); ?>
+      <?php if(!$isActive){ ?><p><?php echo dol_escape_htmltag($langs->trans('PublicRequestRestoreFirst')); ?></p><?php } ?>
+    </div>
     <div class="cpo-request-section-grid">
       <article class="cpo-request-block">
         <h3><span class="fas fa-address-card" aria-hidden="true"></span><?php echo $langs->trans('PublicContactInformation'); ?></h3>
@@ -235,10 +297,10 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
           <?php echo cpo_public_request_field_html('email', $selected['email'], $langs); ?>
           <?php echo cpo_public_request_field_html('country_code', $selected['country_code'], $langs); ?>
         </div>
-        <div class="cpo-contact-actions">
+        <?php if($isActive){ ?><div class="cpo-contact-actions">
           <?php if($canContactByEmail){ ?><a class="button button-save" href="?id=<?php echo (int) $selected['rowid']; ?>&amp;compose=email#cpo-customer-email"><span class="fas fa-envelope" aria-hidden="true"></span> <?php echo $langs->trans('PublicReplyByEmail'); ?></a><?php } else { ?><span class="cpo-contact-unavailable"><span class="fas fa-envelope" aria-hidden="true"></span> <?php echo $langs->trans('PublicEmailUnavailable'); ?></span><?php } ?>
           <?php if($canContactByWhatsApp){ ?><a class="button cpo-whatsapp-button" href="<?php echo dol_escape_htmltag($whatsappUrl); ?>" target="_blank" rel="noopener noreferrer"><span class="fab fa-whatsapp" aria-hidden="true"></span> <?php echo $langs->trans('PublicOpenWhatsApp'); ?><span class="fas fa-external-link-alt cpo-external-icon" aria-hidden="true"></span></a><?php } else { ?><span class="cpo-contact-unavailable"><span class="fab fa-whatsapp" aria-hidden="true"></span> <?php echo $langs->trans('PublicWhatsAppUnavailable'); ?></span><?php } ?>
-        </div>
+        </div><?php } ?>
       </article>
 
       <article class="cpo-request-block">
@@ -370,8 +432,8 @@ cpcc_admin_shell_open('website_requests', $langs->trans('PublicWebsiteRequests')
     <?php } ?>
 
     <div class="cpo-request-workflow">
-      <?php if(cpo_can($user,'publicrequest_update') && empty($selected['fk_operation'])){ ?><form method="post" class="cpo-request-action-form"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="update_status"><input type="hidden" name="id" value="<?php echo (int) $selected['rowid']; ?>"><label><span><?php echo $langs->trans('Status'); ?></span><select name="status"><?php foreach(PublicWebsiteRequestService::statuses() as $value){ ?><option value="<?php echo $value; ?>"<?php echo $selected['status']===$value?' selected':''; ?>><?php echo dol_escape_htmltag($value); ?></option><?php } ?></select></label><label class="is-grow"><span><?php echo $langs->trans('InternalReason'); ?></span><input name="internal_reason" maxlength="255" placeholder="<?php echo dol_escape_htmltag($langs->trans('InternalReason')); ?>"></label><button class="button"><span class="fas fa-save" aria-hidden="true"></span> <?php echo $langs->trans('Save'); ?></button></form><?php } ?>
-      <?php if(cpo_can($user,'publicrequest_promote') && empty($selected['fk_operation'])){ ?><form method="post" class="cpo-request-action-form is-promote"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="promote"><input type="hidden" name="id" value="<?php echo (int) $selected['rowid']; ?>"><label class="is-grow"><span><?php echo $langs->trans('Customer'); ?></span><select required name="fk_soc"><option value=""><?php echo $langs->trans('SelectThirdParty'); ?></option><?php foreach($companies as $companyId=>$companyName){ ?><option value="<?php echo $companyId; ?>"><?php echo dol_escape_htmltag($companyName); ?></option><?php } ?></select></label><button class="button button-save"><span class="fas fa-arrow-right" aria-hidden="true"></span> <?php echo $langs->trans('PromoteToOperation'); ?></button></form><?php } ?>
+      <?php if($isActive && cpo_can($user,'publicrequest_update') && empty($selected['fk_operation'])){ ?><form method="post" class="cpo-request-action-form"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="update_status"><input type="hidden" name="id" value="<?php echo (int) $selected['rowid']; ?>"><label><span><?php echo $langs->trans('Status'); ?></span><select name="status"><?php foreach(PublicWebsiteRequestService::statuses() as $value){ ?><option value="<?php echo $value; ?>"<?php echo $selected['status']===$value?' selected':''; ?>><?php echo dol_escape_htmltag($value); ?></option><?php } ?></select></label><label class="is-grow"><span><?php echo $langs->trans('InternalReason'); ?></span><input name="internal_reason" maxlength="255" placeholder="<?php echo dol_escape_htmltag($langs->trans('InternalReason')); ?>"></label><button class="button"><span class="fas fa-save" aria-hidden="true"></span> <?php echo $langs->trans('Save'); ?></button></form><?php } ?>
+      <?php if($isActive && cpo_can($user,'publicrequest_promote') && empty($selected['fk_operation'])){ ?><form method="post" class="cpo-request-action-form is-promote"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="promote"><input type="hidden" name="id" value="<?php echo (int) $selected['rowid']; ?>"><label class="is-grow"><span><?php echo $langs->trans('Customer'); ?></span><select required name="fk_soc"><option value=""><?php echo $langs->trans('SelectThirdParty'); ?></option><?php foreach($companies as $companyId=>$companyName){ ?><option value="<?php echo $companyId; ?>"><?php echo dol_escape_htmltag($companyName); ?></option><?php } ?></select></label><button class="button button-save"><span class="fas fa-arrow-right" aria-hidden="true"></span> <?php echo $langs->trans('PromoteToOperation'); ?></button></form><?php } ?>
     </div>
   </section><?php } ?>
 

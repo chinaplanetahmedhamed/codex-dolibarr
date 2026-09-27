@@ -821,3 +821,25 @@ InternalTaskOfficeExpandedLimit=The Office file expands beyond the 200 MB inspec
 InternalTaskOfficeArchiveUnsafe=The Office archive contains unsafe paths or excessive compression. Save a new copy or split it into smaller files.
 InternalTaskFileNameInvalid=Use a simple file name with one extension, for example report.xlsx.
 InternalTaskFileQuota=This task allows up to 25 files and 500 MB total. The upload was not saved.
+
+# Request archive and recoverable deletion
+PublicRequestViews=Request folders
+PublicRequestViewActive=Active
+PublicRequestViewArchived=Archived
+PublicRequestViewDeleted=Deleted
+PublicRequestActionArchive=Archive
+PublicRequestActionDelete=Delete
+PublicRequestActionRestore=Restore
+PublicRequestConfirmDelete=Delete this request?
+PublicRequestDeleteHelp=The request will move to Deleted. You can restore it later; its details and history are kept.
+PublicRequestLinkedArchiveOnly=Linked request: archive available
+PublicRequestLinkedDeleteDenied=This request is linked to an operation or quotation. Archive it to keep the source record.
+PublicRequestLifecycleSaved=Request folder updated.
+PublicRequestRestoreFirst=Restore this request to Active before processing it.
+PublicRequestStale=This request changed. Refresh the page and try again.
+PublicRequestActionFailed=The request could not be updated. Please try again.
+PublicRequestAccessDenied=You do not have permission to manage this request.
+PublicRequestInvalidAction=Invalid request action.
+PublicRequestNotFound=Request not found.
+PublicRequestViewEmpty=No requests in this view.
+PublicRequestActions=Actions

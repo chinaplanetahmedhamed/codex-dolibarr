@@ -1,0 +1,42 @@
+PASS 1 local request schema available
+PASS 2 additive migration and repeat check pass
+PASS 3 native administrator and permitted internal staff allowed
+PASS 4 denied actor 0
+PASS 5 denied actor 1
+PASS 6 denied actor 2
+PASS 7 denied actor 3
+PASS 8 existing insert contract defaults to Active
+PASS 9 unauthorized mutation 0
+PASS 10 unauthorized mutation 1
+PASS 11 unauthorized mutation 2
+PASS 12 unauthorized mutation 3
+PASS 13 cross-entity request inaccessible
+PASS 14 staff archives request
+PASS 15 business status and payload survive archive
+PASS 16 default Active excludes archived; Archived includes it
+PASS 17 stale browser version rejected
+PASS 18 archived status update denied
+PASS 19 archived promotion denied
+PASS 20 archived contact action denied before sending
+PASS 21 archived request moves to Deleted
+PASS 22 website retry cannot recreate or restore deleted request
+PASS 23 Deleted view separated from Archived
+PASS 24 deleted request restores to Active
+PASS 25 restore preserves status
+PASS 26 restore preserves request_json
+PASS 27 restore preserves snapshot_json
+PASS 28 restore preserves idempotency_key
+PASS 29 restore preserves request_hash
+PASS 30 restore preserves contact_name
+PASS 31 audit persists actor time and each state transition
+PASS 32 fk_operation blocks deletion
+PASS 33 fk_propal blocks deletion
+PASS 34 linked request can archive without modifying operation link
+PASS 35 database failure returns safe error
+PASS 36 failed transition leaves state version and history unchanged
+PASS 37 failed transaction releases lock and subsequent transition succeeds
+PASS 38 archived quotation creation denied
+PASS 39 busy quotation lock returns conflict (fault injection)
+PASS 40 lock conflict changes no request state
+PASS 41 real database transition remains available after injected conflict
+M096_LIFECYCLE=PASS ASSERTIONS=41

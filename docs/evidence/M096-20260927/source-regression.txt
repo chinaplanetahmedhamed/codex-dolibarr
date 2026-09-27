@@ -1,0 +1,41 @@
+test_m043_public_rate_token.php: exit 0
+M043_RATE_TOKEN=PASS encrypted=YES ttl=600 projection=ALLOWLIST
+
+test_m043_public_website_intake_source.php: exit 0
+M043_SOURCE=PASS public_projection=ALLOWLIST idempotency=STRICT promotion=MANUAL retention=180D
+
+test_m045_public_request_quotation_source.php: exit 0
+M045_SOURCE=PASS propal=STANDARD idempotency=LOCKED pricing=SELL_ONLY grants=EXPLICIT
+
+test_m055_public_request_contact_service.php: exit 0
+PASS Egypt international digits
+PASS Egypt local mobile
+PASS Saudi local mobile
+PASS explicit plus
+PASS explicit 00
+PASS invalid letters
+PASS invalid short
+PASS invalid leading zero without known country
+PASS safe WhatsApp URL and request reference
+M055_PUBLIC_REQUEST_CONTACT_SERVICE=PASS
+
+test_m055_public_request_customer_replies_source.php: exit 0
+PASS page uses CSRF token enforcement
+PASS send requires both request update and email rights
+PASS recipient is loaded server side from durable request
+PASS email form does not accept a posted recipient
+PASS sender comes from Dolibarr server configuration
+PASS subject and body are normalized to plain text server side
+PASS email is sent through standard Dolibarr mail class
+PASS quotation replies use standard proposal tracker
+PASS outgoing email is recorded as an Agenda event
+PASS WhatsApp uses wa.me and a bounded international number
+PASS WhatsApp opens a separate protected browser tab
+PASS WhatsApp requires request update permission
+PASS WhatsApp never auto-sends a message
+PASS customer contact UI has responsive mobile rules
+PASS no credential material is present
+M055_PUBLIC_REQUEST_CUSTOMER_REPLIES_SOURCE=PASS
+
+test_m053_module_dependency_cycle.php: exit 0
+M053_DEPENDENCY_CYCLE=PASS shipping_service_to_operations=REMOVED composition=EXPLICIT behavior=CHARACTERIZED

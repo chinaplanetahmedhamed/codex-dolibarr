@@ -20,6 +20,9 @@ CREATE TABLE llx_cpo_public_request (
   fk_operation bigint NULL,
   fk_propal bigint NULL,
   status varchar(32) NOT NULL DEFAULT 'new',
+  lifecycle_state varchar(16) NOT NULL DEFAULT 'active',
+  lifecycle_version integer NOT NULL DEFAULT 1,
+  lifecycle_history mediumtext NULL,
   internal_reason varchar(255) NULL,
   fk_user_creat integer NOT NULL,
   fk_user_modif integer NULL,
@@ -31,6 +34,7 @@ CREATE TABLE llx_cpo_public_request (
   UNIQUE KEY uk_cpo_public_request_ref (entity, ref),
   UNIQUE KEY uk_cpo_public_request_idempotency (entity, integration_source, request_type, idempotency_key),
   KEY idx_cpo_public_request_queue (entity, status, date_creation),
+  KEY idx_cpo_public_request_folder (entity, lifecycle_state, date_creation),
   KEY idx_cpo_public_request_contact (entity, contact_hmac),
   KEY idx_cpo_public_request_operation (entity, fk_operation),
   UNIQUE KEY uk_cpo_public_request_propal (entity, fk_propal)

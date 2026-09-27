@@ -45,6 +45,52 @@ class PublicWebsiteRequestService
 
     public static function requestTypes() { return array('quote_request', 'catalog_order', 'shipping_booking'); }
     public static function statuses() { return array('new', 'qualified', 'waiting_information', 'converted', 'disqualified', 'closed'); }
+    public static function lifecycleStates() { return array('active', 'archived', 'deleted'); }
+
+    public function canManageLifecycle($user)
+    {
+        return !empty($user->id) && empty($user->socid) && (int) ($user->statut ?? 0) === 1
+            && in_array((int) $user->entity, array(0, $this->entity), true)
+            && (!empty($user->admin) || ($user->hasRight('chinaplanetoperations', 'publicrequest_read') && $user->hasRight('chinaplanetoperations', 'publicrequest_update')));
+    }
+
+    /** Recoverable state changes; never remove source evidence or linked records. */
+    public function changeLifecycle($id, $action, $expectedVersion, $user)
+    {
+        if (!$this->canManageLifecycle($user)) throw new PublicWebsiteRequestException('PublicRequestAccessDenied', 403);
+        if (!in_array($action, array('archive', 'delete', 'restore'), true)) throw new PublicWebsiteRequestException('PublicRequestInvalidAction', 422);
+        // Quotation creation already uses this lock; share it to prevent delete/link races.
+        $lockName = 'cpo_quote_'.$this->entity.'_'.(int) $id;
+        $res = $this->db->query('SELECT GET_LOCK('.$this->q($lockName).',5) AS acquired');
+        $lock = $res ? $this->db->fetch_object($res) : null;
+        if (!$lock || (int) $lock->acquired !== 1) throw new PublicWebsiteRequestException('PublicRequestStale', 409);
+        try {
+            if ($this->db->begin() <= 0) throw new PublicWebsiteRequestException('PublicRequestActionFailed', 500);
+            $row = $this->get($id, true);
+            if (!$row) throw new PublicWebsiteRequestException('PublicRequestNotFound', 404);
+            if ((int) $row['lifecycle_version'] !== (int) $expectedVersion) throw new PublicWebsiteRequestException('PublicRequestStale', 409);
+            $from = $row['lifecycle_state'];
+            if (($action === 'archive' && $from !== 'active') || ($action === 'delete' && !in_array($from, array('active', 'archived'), true)) || ($action === 'restore' && !in_array($from, array('archived', 'deleted'), true))) {
+                throw new PublicWebsiteRequestException('PublicRequestStale', 409);
+            }
+            if ($action === 'delete' && (!empty($row['fk_operation']) || !empty($row['fk_propal']))) throw new PublicWebsiteRequestException('PublicRequestLinkedDeleteDenied', 409);
+            $to = array('archive'=>'archived', 'delete'=>'deleted', 'restore'=>'active')[$action];
+            $history = empty($row['lifecycle_history']) ? array() : json_decode($row['lifecycle_history'], true);
+            if (!is_array($history)) throw new PublicWebsiteRequestException('PublicRequestActionFailed', 500);
+            $now = $this->now();
+            $history[] = array('action'=>$action, 'from'=>$from, 'to'=>$to, 'user_id'=>(int) $user->id, 'at'=>$now, 'version'=>(int) $expectedVersion + 1);
+            $sql = 'UPDATE '.MAIN_DB_PREFIX.'cpo_public_request SET lifecycle_state='.$this->q($to).',lifecycle_version=lifecycle_version+1,lifecycle_history='.$this->json($history).',fk_user_modif='.(int) $user->id.',date_modification='.$this->q($now).' WHERE entity='.$this->entity.' AND rowid='.(int) $id.' AND lifecycle_version='.(int) $expectedVersion;
+            $res = $this->db->query($sql);
+            if (!$res || $this->db->affected_rows($res) !== 1) throw new PublicWebsiteRequestException('PublicRequestActionFailed', 500);
+            if ($this->db->commit() <= 0) throw new PublicWebsiteRequestException('PublicRequestActionFailed', 500);
+            return $to;
+        } catch (Throwable $e) {
+            $this->db->rollback();
+            throw $e;
+        } finally {
+            $this->db->query('SELECT RELEASE_LOCK('.$this->q($lockName).')');
+        }
+    }
 
     public function create(array $input, $user)
     {
@@ -109,7 +155,8 @@ class PublicWebsiteRequestService
 
     public function listing(array $filters = array(), $limit = 100)
     {
-        $sql = "SELECT rowid,ref,request_type,contact_name,company_name,country_code,status,fk_soc,fk_operation,fk_propal,date_creation,date_modification FROM ".MAIN_DB_PREFIX."cpo_public_request WHERE entity=".$this->entity;
+        $view = isset($filters['view']) && in_array($filters['view'], self::lifecycleStates(), true) ? $filters['view'] : 'active';
+        $sql = "SELECT rowid,ref,request_type,contact_name,company_name,country_code,status,lifecycle_state,lifecycle_version,fk_soc,fk_operation,fk_propal,date_creation,date_modification FROM ".MAIN_DB_PREFIX."cpo_public_request WHERE entity=".$this->entity." AND lifecycle_state=".$this->q($view);
         if (!empty($filters['status']) && in_array($filters['status'], self::statuses(), true)) $sql .= " AND status=".$this->q($filters['status']);
         if (!empty($filters['request_type']) && in_array($filters['request_type'], self::requestTypes(), true)) $sql .= " AND request_type=".$this->q($filters['request_type']);
         $sql .= " ORDER BY date_creation DESC,rowid DESC LIMIT ".max(1, min(250, (int) $limit));
@@ -122,7 +169,9 @@ class PublicWebsiteRequestService
     public function updateStatus($id, $status, $reason, $userId)
     {
         if (!in_array($status, self::statuses(), true)) throw new PublicWebsiteRequestException('invalid_status', 422);
-        $sql = "UPDATE ".MAIN_DB_PREFIX."cpo_public_request SET status=".$this->q($status).",internal_reason=".$this->qOrNull($this->clean($reason, 255)).",fk_user_modif=".(int) $userId.",date_modification=".$this->q($this->now())." WHERE entity=".$this->entity." AND rowid=".(int) $id." AND fk_operation IS NULL";
+        $row = $this->get($id);
+        if (!$row || $row['lifecycle_state'] !== 'active') throw new PublicWebsiteRequestException('PublicRequestRestoreFirst', 409);
+        $sql = "UPDATE ".MAIN_DB_PREFIX."cpo_public_request SET status=".$this->q($status).",internal_reason=".$this->qOrNull($this->clean($reason, 255)).",fk_user_modif=".(int) $userId.",date_modification=".$this->q($this->now())." WHERE entity=".$this->entity." AND rowid=".(int) $id." AND fk_operation IS NULL AND lifecycle_state='active'";
         $res = $this->db->query($sql);
         if (!$res) throw new RuntimeException($this->db->lasterror());
         return $this->db->affected_rows($res) > 0;
@@ -133,6 +182,7 @@ class PublicWebsiteRequestService
         $this->db->begin();
         $row = $this->get($id, true);
         if (!$row) { $this->db->rollback(); throw new PublicWebsiteRequestException('request_not_found', 404); }
+        if ($row['lifecycle_state'] !== 'active') { $this->db->rollback(); throw new PublicWebsiteRequestException('PublicRequestRestoreFirst', 409); }
         if (!empty($row['fk_operation'])) { $this->db->commit(); return (int) $row['fk_operation']; }
         if (!in_array($row['status'], array('new', 'qualified', 'waiting_information'), true)) { $this->db->rollback(); throw new PublicWebsiteRequestException('request_not_promotable', 409); }
         $res = $this->db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (0,".$this->entity.") AND rowid=".(int) $socid." AND status=1");

@@ -1,0 +1,2 @@
+Native UI persistence: active, version 4, history archive/delete/restore; rejected requests added no history.
+Local UI fixtures, temporary rights and form removed. Production untouched.

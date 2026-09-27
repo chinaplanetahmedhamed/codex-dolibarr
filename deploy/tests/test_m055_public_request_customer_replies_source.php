@@ -17,7 +17,7 @@ $checks = array(
     'outgoing email is recorded as an Agenda event'=>strpos($service, 'new ActionComm(') !== false && strpos($service, "\$event->code = 'AC_EMAIL';") !== false,
     'WhatsApp uses wa.me and a bounded international number'=>strpos($service, "return 'https://wa.me/'") !== false && strpos($service, "preg_match('/^[1-9][0-9]{7,14}$/', \$digits)") !== false,
     'WhatsApp opens a separate protected browser tab'=>strpos($page, 'target="_blank" rel="noopener noreferrer"') !== false,
-    'WhatsApp requires request update permission'=>strpos($page, '$canContactByWhatsApp = $whatsappUrl !== \'\' && cpo_can($user, \'publicrequest_update\');') !== false,
+    'WhatsApp requires request update permission'=>strpos($page, '$canContactByWhatsApp = $isActive && $whatsappUrl !== \'\' && cpo_can($user, \'publicrequest_update\');') !== false,
     'WhatsApp never auto-sends a message'=>strpos($service, 'api.whatsapp.com/send') === false && strpos($service, 'graph.facebook.com') === false,
     'customer contact UI has responsive mobile rules'=>strpos($css, '.cpo-contact-actions') !== false && strpos($css, '@media(max-width:700px)') !== false && strpos($css, '.cpo-customer-email-actions{align-items:stretch;flex-direction:column}') !== false,
     'no credential material is present'=>stripos($page.$service, 'titan.email') === false && stripos($page.$service, 'password') === false,

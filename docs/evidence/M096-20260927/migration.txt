@@ -1,0 +1,10 @@
+PASS 1 original schema fixture created without lifecycle fields
+PASS 2 legacy request exists before upgrade
+PASS 3 check detects missing migration without mutating
+PASS 4 migration upgrades original schema
+PASS 5 old request receives active default version and empty history
+PASS 6 upgrade preserves old business status and evidence
+PASS 7 repeat migration changes no request data
+PASS 8 old code query remains compatible for rollback
+PASS 9 schema drift fails closed without replacing existing data
+M096_MIGRATION=PASS ASSERTIONS=9
