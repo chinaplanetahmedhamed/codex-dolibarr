@@ -1,0 +1,100 @@
+{
+  "result": "PASS",
+  "read_only": true,
+  "database_accessed": false,
+  "source_content_printed": false,
+  "targets": [
+    {
+      "environment": "staging",
+      "container": "erp-staging-dolibarr-1",
+      "project": "erp-staging",
+      "volume": "erp-staging_erp-staging_custom",
+      "image": "local/dolibarr:24.0.1",
+      "image_id": "sha256:56e459f0d2e7be2c9d809015b922624234f2899cc9f36e74fab1c5254913e482",
+      "php_version": "8.2",
+      "files": {
+        "class/PublicRequestQuotationService.class.php": {
+          "sha256": "14aa074677083e88806bd04aba99a2c4a9dab5b69c86de842126b730bf93ccb8",
+          "bytes": 25706,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "operations/public_requests.php": {
+          "sha256": "37081ee920e4c9bff8f905aacb96ada1c985a2204bd7234a62299df9d329c883",
+          "bytes": 40544,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "langs/en_US/chinaplanetoperations.lang": {
+          "sha256": "3497da90ee00bc8cce23ee3e0e5d27f71053027a9b234fda41a080fbdb608adb",
+          "bytes": 35582,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "langs/ar_SA/chinaplanetoperations.lang": {
+          "sha256": "4e826fc9681fc3c53050fb418f0bf73b8afea52ddb8102d0e12053e314239fe2",
+          "bytes": 46709,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "langs/zh_CN/chinaplanetoperations.lang": {
+          "sha256": "75f42ac406104b3d2cf9e74bb98f391b465acb0e94eef57e67e5ade4ea2fabcc",
+          "bytes": 27456,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        }
+      }
+    },
+    {
+      "environment": "production",
+      "container": "vision_erp",
+      "project": null,
+      "volume": "vision-os_dolibarr_custom",
+      "image": "vision_erp:24.0.1",
+      "image_id": "sha256:db5c663a52c24e6cf66a19b18d4632dec212e280751780178d9b5162e3afafee",
+      "php_version": "8.2",
+      "files": {
+        "class/PublicRequestQuotationService.class.php": {
+          "sha256": "ea0f4d8b8588acf56aa5b2f6ab546dacc1c7ceaa564768c36850ba7b3faf375a",
+          "bytes": 28773,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "operations/public_requests.php": {
+          "sha256": "9bbfe01e93097a29a6852218b022678d596f3667766c288cbc7e7b73c87ffe2a",
+          "bytes": 55059,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "langs/en_US/chinaplanetoperations.lang": {
+          "sha256": "fad4a670c02a21ab0ab83e113616d9d974154e065e95c119d8d57f250c089543",
+          "bytes": 37798,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "langs/ar_SA/chinaplanetoperations.lang": {
+          "sha256": "e991cd00d1e6f78e0832c33abfe7b12e8e9d3f497f6b8a018e22a3b3c57a86c5",
+          "bytes": 48542,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        },
+        "langs/zh_CN/chinaplanetoperations.lang": {
+          "sha256": "43eb2e3b219776107a9e4f7aa9012a49ed566c1be59e363c4cf5263304c14826",
+          "bytes": 31260,
+          "uid": 33,
+          "gid": 33,
+          "mode": "0o644"
+        }
+      }
+    }
+  ]
+}
