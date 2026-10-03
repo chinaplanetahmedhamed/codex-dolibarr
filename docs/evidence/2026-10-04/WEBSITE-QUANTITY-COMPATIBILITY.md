@@ -23,3 +23,5 @@ Website production workflow `37160452141` was dispatched for the exact accepted 
 ## Recovery
 
 Frozen helper files and manifests are committed under `deploy/releases/web-quantity-20261004/tooling`. Run the matching retained root script with `rollback` only within authorized recovery scope. Rollback validates current hashes, restores only the five backed-up code files with original owner/mode, and preserves later enquiries/business writes. If the website must also be rolled back, restore the website first, then the ERP receiver. Never restore an older database over current records.
+
+Final website promotion: GitHub run37160452141 completed success; live health reports17590abffcc977de769af523c503d9c33e222cea. Native live Arabic/English desktop and390pxmobile header accepted; WebP office image loaded, mobile fresh load selects640px candidate, no horizontal overflow, essential-only choice has no Google/Meta scripts. Production ERP authenticated browser check remains pending login; runtime deployment and pure PHP/hash/login health checks passed.
