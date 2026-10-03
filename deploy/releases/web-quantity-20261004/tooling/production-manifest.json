@@ -1,0 +1,27 @@
+{
+  "environment": "production",
+  "commit": "6e35e6f9224b621660a72178b365a8875314a915",
+  "helper_sha256": "29ff0adfa6695ab382ebc2c0e6d9f8a7cb32e972693d0dcec5813ef08876e665",
+  "files": {
+    "class/PublicRequestQuotationService.class.php": {
+      "before": "ea0f4d8b8588acf56aa5b2f6ab546dacc1c7ceaa564768c36850ba7b3faf375a",
+      "sha256": "5dd77dedad3d60fba388b51c4b5670762fc07f058a7b737b1b70dd65840be629"
+    },
+    "operations/public_requests.php": {
+      "before": "9bbfe01e93097a29a6852218b022678d596f3667766c288cbc7e7b73c87ffe2a",
+      "sha256": "b0bad5dca351265bb9bf1df3b50454fe4b8cccecda67ea648b1c6cc9793341f6"
+    },
+    "langs/en_US/chinaplanetoperations.lang": {
+      "before": "fad4a670c02a21ab0ab83e113616d9d974154e065e95c119d8d57f250c089543",
+      "sha256": "aec66de300b3c2916fb338854209745159a22225bc975f3f29f116c263ad4221"
+    },
+    "langs/ar_SA/chinaplanetoperations.lang": {
+      "before": "e991cd00d1e6f78e0832c33abfe7b12e8e9d3f497f6b8a018e22a3b3c57a86c5",
+      "sha256": "74d8c408119989967b4a40d039fe5349edcffac6e903cbd76fa00f6d7143d57a"
+    },
+    "langs/zh_CN/chinaplanetoperations.lang": {
+      "before": "43eb2e3b219776107a9e4f7aa9012a49ed566c1be59e363c4cf5263304c14826",
+      "sha256": "c037a26b937e43c8d213a952143e69c68b3d9c09b24c88c0eb68472412d043f1"
+    }
+  }
+}
