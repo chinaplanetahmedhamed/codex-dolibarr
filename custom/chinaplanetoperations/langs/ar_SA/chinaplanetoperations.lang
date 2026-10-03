@@ -712,3 +712,7 @@ PublicPdfProspectMatch=مطابقة العميل المحتمل
 PublicPdfCustomerCopyHelp=نسخة العميل المعروضة. بيانات المنتجات المسجلة في الاستفسار هي المرجع التجاري. طلب التحميل لا يؤكد حفظ الملف أو فتحه.
 PublicPdfDownloadCopy=تحميل نسخة العميل
 PublicPdfOpenProspect=فتح العميل المحتمل المقترح
+
+PublicMachines=ماكينة
+PublicSets=طقم
+PublicPrivacyEvidence=إقرار الخصوصية

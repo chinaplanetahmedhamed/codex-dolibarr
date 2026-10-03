@@ -65,7 +65,7 @@ class PublicRequestQuotationService
                     $line['units_per_carton'] = (int)$review['verified_units_per_carton'];
                     $line['cbm_per_carton'] = (float)$review['verified_cbm_per_carton'];
                     $line['gross_weight'] = (float)$review['verified_gross_weight_kg'];
-                    $line['total_units'] = $line['cartons'] * $line['units_per_carton'];
+                    $line['total_units'] = $line['requested_unit'] !== '' && $line['requested_unit'] !== 'carton' ? $line['requested_quantity'] : $line['cartons'] * $line['units_per_carton'];
                     $line['total_cbm'] = $line['cartons'] * $line['cbm_per_carton'];
                     $line['total_gross_weight'] = $line['cartons'] * $line['gross_weight'];
                     $line['packing_source'] = 'staff_verified';
@@ -156,7 +156,7 @@ class PublicRequestQuotationService
                 if (!$product) throw new RuntimeException('quotation_product_mapping_required');
                 $line = $this->withProductPacking($line, $product);
                 if ((int)($row['schema_version'] ?? 1) === 2 && (empty($line['packing_verified']) || (string)($line['review_status'] ?? '') !== 'ready' || (int)($line['mapped_product_id'] ?? 0) !== (int)$product->id)) throw new RuntimeException('quotation_line_review_required');
-                if ($line['units_per_carton'] < 1) throw new RuntimeException('quotation_pieces_per_carton_required');
+                if ($line['cartons'] < 1 || $line['units_per_carton'] < 1) throw new RuntimeException('quotation_pieces_per_carton_required');
                 $source = (string) ($input['price_source'] ?? 'dolibarr');
                 if (!in_array($source, array('dolibarr','manual'), true)) throw new RuntimeException('quotation_price_source_invalid');
                 $defaultBase = $this->sellingPrice($product, $customer);
@@ -237,22 +237,29 @@ class PublicRequestQuotationService
 
     private function normalizeCatalogLine(array $line, $index)
     {
-        $cartons = max(1, min(2000, (int) ($line['cartons'] ?? $line['quantity'] ?? 1)));
-        $units = max(0, min(1000000, (int) ($line['unitsPerCarton'] ?? $line['units_per_carton'] ?? 0)));
+        $requestedUnit = (string) ($line['requestedUnit'] ?? '');
+        $modern = in_array($requestedUnit, array('piece', 'machine', 'set', 'carton'), true);
+        $requestedQuantity = $modern ? max(0, min(1000000, (int) ($line['requestedQuantity'] ?? 0))) : 0;
+        $rawCartons = array_key_exists('cartons', $line) ? $line['cartons'] : ($modern ? null : ($line['quantity'] ?? null));
+        $cartons = is_numeric($rawCartons) ? max(0, min(2000, (int) $rawCartons)) : 0;
+        if ($modern && $requestedUnit !== 'carton') $cartons = 0;
+        $units = max(0, min(1000000, (int) ($line['piecesPerCarton'] ?? $line['unitsPerCarton'] ?? $line['units_per_carton'] ?? 0)));
         $cbm = max(0, (float) ($line['cbmPerCarton'] ?? $line['cbm_per_carton'] ?? 0));
         $weight = max(0, (float) ($line['grossWeightKg'] ?? $line['gross_weight'] ?? 0));
         return array(
             'index'=>(int) $index,
             'line_key'=>$this->clean($line['lineId'] ?? ('legacy-'.$index), 100),
-            'product_id'=>max(0, (int) ($line['productId'] ?? $line['product_id'] ?? 0)),
-            'variation_id'=>max(0, (int) ($line['variationId'] ?? $line['variation_id'] ?? 0)),
+            'product_id'=>max(0, (int) ($line['wooProductId'] ?? $line['productId'] ?? $line['product_id'] ?? 0)),
+            'variation_id'=>max(0, (int) ($line['wooVariationId'] ?? $line['variationId'] ?? $line['variation_id'] ?? 0)),
             'cartons'=>$cartons,
+            'requested_unit'=>$modern ? $requestedUnit : '',
+            'requested_quantity'=>$requestedQuantity,
             'sku'=>$this->clean($line['sku'] ?? '', 128),
             'name'=>$this->clean($line['name'] ?? $line['title'] ?? '', 255),
-            'option'=>$this->clean($line['optionLabel'] ?? $line['option_label'] ?? $line['variantLabel'] ?? '', 255),
+            'option'=>$this->clean($line['selectedOptionLabel'] ?? $line['optionLabel'] ?? $line['option_label'] ?? $line['variantLabel'] ?? '', 255),
             'image'=>$this->safeSnapshotImage($line['image'] ?? ''),
             'units_per_carton'=>$units,
-            'total_units'=>$units > 0 ? $cartons * $units : 0,
+            'total_units'=>$modern && $requestedUnit !== 'carton' ? $requestedQuantity : ($units > 0 ? $cartons * $units : 0),
             'cbm_per_carton'=>$cbm,
             'total_cbm'=>$cbm > 0 ? $cartons * $cbm : 0,
             'gross_weight'=>$weight,
@@ -266,7 +273,7 @@ class PublicRequestQuotationService
 
     private function websiteLineKey(array $line)
     {
-        return (int) ($line['productId'] ?? $line['product_id'] ?? 0).':'.(int) ($line['variationId'] ?? $line['variation_id'] ?? 0).':'.(int) ($line['cartons'] ?? $line['quantity'] ?? 0);
+        return (int) ($line['wooProductId'] ?? $line['productId'] ?? $line['product_id'] ?? 0).':'.(int) ($line['wooVariationId'] ?? $line['variationId'] ?? $line['variation_id'] ?? 0).':'.(int) ($line['cartons'] ?? $line['quantity'] ?? 0);
     }
 
     private function resolveProduct(array $line, $selectedId = 0)
@@ -307,7 +314,7 @@ class PublicRequestQuotationService
         $units = $obj ? max(0, min(1000000, (int) $obj->b2b_units_per_carton)) : 0;
         if ($units < 1) return $line;
         $line['units_per_carton'] = $units;
-        $line['total_units'] = $line['cartons'] * $units;
+        $line['total_units'] = $line['requested_unit'] !== '' && $line['requested_unit'] !== 'carton' ? $line['requested_quantity'] : $line['cartons'] * $units;
         $line['packing_source'] = 'dolibarr_product';
         return $line;
     }

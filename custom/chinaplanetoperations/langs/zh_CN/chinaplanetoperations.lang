@@ -650,3 +650,7 @@ QcStagePublished=已发布
 QcStepDone=已完成
 QcStepCurrent=进行中
 QcStepPending=等待中
+
+PublicMachines=台
+PublicSets=套
+PublicPrivacyEvidence=隐私确认记录
