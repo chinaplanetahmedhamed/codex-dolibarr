@@ -10,7 +10,7 @@ def load():
 class Release(unittest.TestCase):
     def setUp(self):
         self.m=load(); self.temp=tempfile.TemporaryDirectory(); self.root=Path(self.temp.name)/'custom';self.root.mkdir()
-        self.m.STATE_BASE=Path(self.temp.name); self.state=self.m.STATE_BASE/'chinaplanetos-m097-production'; self.manifest,self.payload=self.m.load_payload()
+        self.m.STATE_BASE=Path(self.temp.name); self.state=self.m.STATE_BASE/'chinaplanetos-m097-r1-production'; self.manifest,self.payload=self.m.load_payload()
         self.before={}
         import tarfile
         snapshot=ARTIFACT/'m097-production-prestate.tar.gz'

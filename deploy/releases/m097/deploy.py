@@ -18,10 +18,10 @@ import sys
 import tarfile
 import time
 
-RELEASE = 'M097'
+RELEASE = 'M097-R1'
 INBOX = Path('/home/codex-deploy/staging-inbox')
-MANIFEST_SHA = '72c3aa518bdf0ab43d8c70b5fb1840289c9ddfdb14cd83547c57683fc621bdbe'
-PAYLOAD_SHA = '00495176043bc143fec54bdb5d651a29b393e2581efa50989556e7a31acbebb2'
+MANIFEST_SHA = '309c125fa4676b58b01427bd696485db9957c1f8b9f0d75abf5e7c0d2155cd38'
+PAYLOAD_SHA = '64636fee0c255f55276f50d5527156beb1d2938f1ccbf15c5d5f3e775734fc41'
 TARGETS = {
     'staging': ('erp-staging-dolibarr-1', 'erp-staging-mariadb-1', 'erp-staging_erp-staging_custom', 'erp-staging'),
     'production': ('vision_erp', 'vision_db', 'vision-os_dolibarr_custom', 'vision-os'),
@@ -142,6 +142,8 @@ if(DOL_VERSION!=='24.0.1'||(int)$conf->entity!==1||!isModEnabled('agenda')||!isM
 foreach(['SELECT entity,fk_task,payload,version FROM '.MAIN_DB_PREFIX.'cpo_task_details LIMIT 0','SELECT entity,rowid,status,date_archived,date_deadline,fk_user_assign,fk_stage,version FROM '.MAIN_DB_PREFIX.'cpo_task LIMIT 0'] as $q)if(!$db->query($q))exit(12);
 require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';$a=new User($db);if($a->fetch(1)<=0||!$a->admin||!$a->statut||$a->socid)exit(13);$a->loadRights();
 echo 'READY';"""
+    if enabled:
+        code=code.replace("echo 'READY';", "if(!is_file(DOL_DOCUMENT_ROOT.'/public/includes/ckeditor/ckeditor/ckeditor.js')&&!is_file(DOL_DOCUMENT_ROOT.'/includes/ckeditor/ckeditor/ckeditor.js'))exit(14);echo 'READY';")
     check(php(web,code).strip()==b'READY','RUNTIME_PREREQUISITE_FAILED')
 
 def config(web, old=None):
@@ -216,7 +218,7 @@ def write_json(path, value):
 
 def report(value):
     print(json.dumps(value))
-    dest=INBOX/('m097-'+value['environment']+'-'+value['action']+'-result.json')
+    dest=INBOX/('m097-r1-'+value['environment']+'-'+value['action']+'-result.json')
     check(not dest.is_symlink(),'UNSAFE_RESULT_PATH')
     if dest.exists():dest.unlink()
     fd=os.open(dest,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o644)
@@ -227,7 +229,7 @@ def main():
     env, action=sys.argv[1:]
     manifest,payload=load_payload()
     web,db,root=target(env)
-    state_dir=STATE_BASE/('chinaplanetos-m097-'+env)
+    state_dir=STATE_BASE/('chinaplanetos-m097-r1-'+env)
     compare(root,manifest['prerequisites'][env])
     if action=='preflight':
         compare(root,manifest['before'][env])

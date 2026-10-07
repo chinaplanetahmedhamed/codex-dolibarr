@@ -141,12 +141,12 @@
     "chinaplanetoperations/tasks/board_revision.php": "3b2995ec86d765c3ab29b3bbb87ce4cc9fc39916161868f31d27f9dbfd852f22",
     "chinaplanetoperations/tasks/boards.php": "87e8d83a96f93cead11af7fe56fbc25735817f7e3937a8abf4086771ab492d32",
     "chinaplanetoperations/tasks/boards_api.php": "a035c6af24b242c2cee5b4ba03f4b2327662bbbfbe113d599fd89d7f6688f345",
-    "chinaplanetoperations/tasks/card.php": "ff352e780c7deb3cac4a00ba1eb8050895e7ca2e25bb9ecf68841de88f76c155",
+    "chinaplanetoperations/tasks/card.php": "3540d10c3140271b7e217da5b27a36a027cc1fd4a56b33ad3de255d73f3a2d95",
     "chinaplanetoperations/tasks/personal_action.php": "50ce35fefd39bf748c93400484629dbdd6820527e7a5477afb4b36c3e6805cb3",
     "chinaplanetoperations/tasks/trash.php": "ec8626005f966d21729f754d51da38baf208cef6259ed911a8225eae9b8c3173",
     "chinaplanetoperations/workspace.php": "2746a9aa2fb16cb1c40c40f9fcd584510319d92d95b4b4332d223165a197ddaf"
   },
-  "payload_sha256": "00495176043bc143fec54bdb5d651a29b393e2581efa50989556e7a31acbebb2",
+  "payload_sha256": "64636fee0c255f55276f50d5527156beb1d2938f1ccbf15c5d5f3e775734fc41",
   "prerequisites": {
     "production": {
       "chinaplanetoperations/class/InternalTaskExperienceMigration.class.php": "6f7dac1ac5601af4b2e03c3c5b693480e0eeb30722c8d29b34563bae59ee419f",
@@ -165,7 +165,6 @@
       "chinaplanetoperations/tasks/new.php": "94449f4ec9194c412264fa854b9aa036e93a263b230a387a4ffc2f4a840c9555"
     }
   },
-  "production_existing_tasks": 53,
-  "release": "M097",
-  "staging_existing_tasks": 18
+  "release": "M097-R1",
+  "source_commit": "6ad88ede9b16965e43cec3259bebb997773672f8"
 }
