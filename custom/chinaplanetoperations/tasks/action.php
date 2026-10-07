@@ -101,5 +101,5 @@ if ($action==='create') {
     if($result!=='success')$query['create_result']=$result;
     header('Location: board.php?'.http_build_query($query));exit;
 }
-if($taskId>0){header('Location: card.php?id='.(int)$taskId.($embedded?'&embed=1&result='.$result:''));exit;}
+if($taskId>0){header('Location: card.php?id='.(int)$taskId.($embedded?'&embed=1&theme='.(GETPOST('theme','aZ09')==='dark'?'dark':'light').'&result='.$result:''));exit;}
 header('Location: board.php');exit;

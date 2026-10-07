@@ -45,7 +45,7 @@ class InternalTaskAssetService
         $row = $res ? $this->db->fetch_object($res) : null;
         if (!$row) throw new InternalTaskAccessException('Task access denied.');
         $asset = get_object_vars($row);
-        $task = array('entity'=>(int)$asset['task_entity'],'status'=>$asset['task_status'],'date_archived'=>$asset['task_archived'],'fk_user_assign'=>$asset['fk_user_assign'],'fk_usergroup'=>$asset['fk_usergroup']);
+        $task = $this->tasks->requireReadableTask((int)$asset['fk_task']);
         if ($task['status'] === 'deleted' || !$this->auth->canUseTaskFiles($task, false, $history)) throw new InternalTaskAccessException('Task access denied.');
         if (!$history && $asset['status'] !== 'active') throw new InternalTaskAccessException('Task access denied.');
         if ($history && !in_array($asset['status'], array('active','superseded','archived'), true)) throw new InternalTaskAccessException('Task access denied.');

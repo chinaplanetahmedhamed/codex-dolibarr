@@ -61,6 +61,11 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
             $items['workspace'][2] = $items['workspace'][3] = 'My day / يومي';
         }
 
+        if (function_exists('getDolGlobalInt') && getDolGlobalInt('CPO_BOARDS_ENABLED')) {
+            $items['tasks'][0] = '/chinaplanetoperations/tasks/boards.php';
+            $items['tasks'][2] = 'Boards / اللوحات';
+        }
+
         // Older shipping pages still pass their former section key. Keep those
         // calls compatible while presenting one clear Shipping Center entry.
         $activeAliases = array('tracking'=>'shipping', 'shippingprices'=>'shipping', 'shipments'=>'shipping');

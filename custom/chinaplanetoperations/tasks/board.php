@@ -5,6 +5,9 @@ require_once __DIR__.'/../class/InternalTaskService.class.php';
 require_once __DIR__.'/../class/InternalTaskCollaborationService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 cpo_task_require($db,$user);
+require_once __DIR__.'/../class/InternalTaskBoardPolicy.class.php';
+if(InternalTaskBoardPolicy::enabled() && !GETPOSTINT('legacy')){header('Location: boards.php'.(GETPOST('view','aZ09')==='my'?'?view=my':''));exit;}
+
 require_once __DIR__.'/../class/InternalTaskPersonalBoard.class.php';
 require_once __DIR__.'/../class/InternalTaskBoardPresentation.class.php';
 require_once __DIR__.'/../class/InternalTaskDetailsService.class.php';

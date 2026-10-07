@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__.'/InternalTaskService.class.php';
+require_once __DIR__.'/InternalTaskAssetService.class.php';
+require_once __DIR__.'/InternalTaskRichText.class.php';
 require_once __DIR__.'/InternalTaskSchedule.class.php';
 require_once __DIR__.'/InternalTaskCollaborationService.class.php';
 require_once __DIR__.'/InternalTaskPersonalBoard.class.php';
@@ -15,6 +17,7 @@ class InternalTaskDetailsService
     public function validate(array $data)
     {
         $out=array('start_date'=>'','start_time'=>$this->text($data['start_time']??'',5),'cover_color'=>'','labels'=>array(),'fields'=>array(),'notes'=>$this->text($data['notes']??'',10000));
+        if(!is_string($data['description_html']??'')||strlen($data['description_html']??'')>60000)throw new RuntimeException('Invalid description.');$out['description_html']=$data['description_html']??'';$out['description_text']=is_string($data['description_text']??'')?($data['description_text']??''):'';if(mb_strlen($out['description_text'])>20000)throw new RuntimeException('Invalid description.');
         $date=$this->text($data['start_date']??'',10);if($date!==''){if(!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$date)||!checkdate((int)substr($date,5,2),(int)substr($date,8,2),(int)substr($date,0,4)))throw new RuntimeException('Invalid start date.');$out['start_date']=$date;}
         InternalTaskSchedule::start($out);
         $color=$this->text($data['cover_color']??'',7);if($color!==''&&!preg_match('/^#[a-f0-9]{6}$/iD',$color))throw new RuntimeException('Invalid cover color.');$out['cover_color']=strtolower($color);
@@ -41,16 +44,35 @@ class InternalTaskDetailsService
     {
         return $this->saveInternal($id,$version,$data,null,array('version'=>(int)$taskVersion,'deadline'=>InternalTaskSchedule::dateTime($deadline)));
     }
+    public function safeDescription($id,$html)
+    {
+        $assets=new InternalTaskAssetService($this->db,$this->actor,$this->entity);
+        return InternalTaskRichText::clean($html,function($assetId)use($assets,$id){try{$a=$assets->getAsset($assetId);return (int)$a['fk_task']===(int)$id&&$a['asset_type']==='image';}catch(Throwable $e){return false;}});
+    }
+    public function saveDescription($id,$version,$taskVersion,$html)
+    {
+        $task=$this->tasks->requireReadableTask($id);$current=$this->get($id);$clean=$this->safeDescription($id,$html);$text=InternalTaskRichText::plain($clean);
+        if(mb_strlen($text)>20000)throw new RuntimeException('Description too long.');
+        $data=$current['data'];$data['description_html']=$clean;$data['description_text']=$text;
+        return $this->saveInternal($id,$version,$data,null,array('version'=>(int)$taskVersion,'deadline'=>(string)($task['date_deadline']??''),'description'=>$text));
+    }
+    public function saveCoverColor($id,$version,$taskVersion,$color)
+    {
+        $task=$this->tasks->requireReadableTask($id);$data=$this->get($id)['data'];$data['cover_color']=$color;
+        return $this->saveInternal($id,$version,$data,null,array('version'=>(int)$taskVersion,'deadline'=>(string)($task['date_deadline']??''),'cover_color'=>true));
+    }
     private function saveInternal($id,$version,array $data,$createHash=null,$schedule=null)
     {
         $clean=$this->validate($data);if(!$this->db->begin())throw new RuntimeException('Unable to start save.');
         try{$this->must('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_task WHERE entity='.$this->entity.' AND rowid='.(int)$id.' FOR UPDATE');$task=$this->tasks->requireReadableTask($id);if(!$this->canEdit($task))throw new InternalTaskAccessException('Task access denied.');$row=$this->row($id);if(($row?(int)$row['version']:0)!==(int)$version)throw new InternalTaskConflictException('Task details changed.');
             if($schedule!==null&&(int)$task['version']!==$schedule['version'])throw new InternalTaskConflictException('Task changed.');
+            $clean['description_html']=$this->safeDescription($id,$clean['description_html']);
+            if($schedule!==null&&isset($schedule['cover_color'])){if(!$this->auth->canUseTaskFiles($task,true,false))throw new InternalTaskAccessException('Task access denied.');$this->must('UPDATE '.MAIN_DB_PREFIX.'cpo_task_asset SET is_cover=0,fk_user_modif='.$this->auth->actorId().' WHERE entity='.$this->entity.' AND fk_task='.(int)$id);}
             $deadline=$schedule!==null?$schedule['deadline']:$task['date_deadline'];
             InternalTaskSchedule::validate($clean,$deadline);
             $json=$this->q(json_encode($clean,JSON_UNESCAPED_UNICODE));$actor=$this->auth->actorId();
             if($schedule!==null){
-                $updated=$this->must('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET date_deadline='.($deadline!==''?$this->q($deadline):'NULL').',fk_user_modif='.$actor.',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$id.' AND version='.(int)$task['version']);
+                $updated=$this->must('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET '.(isset($schedule['description'])?'description='.$this->q($schedule['description']).',':'').'date_deadline='.($deadline!==''?$this->q($deadline):'NULL').',fk_user_modif='.$actor.',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$id.' AND version='.(int)$task['version']);
                 if($this->db->affected_rows($updated)!==1)throw new InternalTaskConflictException('Task changed.');
             }
             if($row)$this->must('UPDATE '.MAIN_DB_PREFIX.'cpo_task_details SET payload='.$json.',version=version+1,fk_user_modif='.$actor.' WHERE entity='.$this->entity.' AND fk_task='.(int)$id.' AND version='.(int)$version);
