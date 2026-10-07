@@ -70,8 +70,10 @@ def target(env):
     mounts = [m for m in info['Mounts'] if m['Destination'] == '/var/www/html/custom']
     root = Path('/var/lib/docker/volumes') / volume / '_data'
     check(len(mounts) == 1 and mounts[0]['Type'] == 'volume' and mounts[0]['Name'] == volume and mounts[0]['Source'] == str(root) and mounts[0]['RW'], 'CUSTOM_MOUNT_MISMATCH')
-    if project:
+    if env=='staging':
         check(info['Config']['Labels'].get('com.docker.compose.project') == project, 'COMPOSE_IDENTITY_MISMATCH')
+    else:
+        check(not (info['Config'].get('Labels') or {}).get('com.docker.compose.project'), 'PRODUCTION_WEB_LABEL_DRIFT')
     dbinfo = json.loads(command(['docker','inspect',db]))[0]
     check(dbinfo['State']['Running'] and dbinfo['Config']['Labels'].get('com.docker.compose.project') == project, 'DB_IDENTITY_OR_STATE_MISMATCH')
     if env=='staging':
