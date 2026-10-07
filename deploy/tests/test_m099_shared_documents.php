@@ -82,7 +82,12 @@ $db->begin();try{
     ok99(!$changed['documents']&&count($docs->documents($sid))===$oldDocs&&is_file($legacy),'changing shipment never moves previous documents');
     require_once __DIR__.'/../../custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php';$boardService=new InternalTaskBoardsService($db,$u,1);$bid=$boardService->mutate('create_board',['title'=>'M099 move '.$suffix,'team'=>1])['id'];$workspace=$boardService->workspace($bid);
     $boardService->mutate('add_card',['board'=>$bid,'version'=>$workspace['board']['version'],'list'=>(int)$workspace['lists'][0]['rowid'],'title'=>'M099 linked move','request'=>bin2hex(random_bytes(24))]);$workspace=$boardService->workspace($bid);$moving=(int)$workspace['cards'][0]['fk_task'];$ids[]=$moving;$context->save($moving,0,0,0,$sid);$shipmentBefore=row99('SELECT * FROM '.MAIN_DB_PREFIX.'chinaplanetlogistics WHERE rowid='.$sid);
-    $boardService->mutate('move_card',['board'=>$bid,'version'=>$workspace['board']['version'],'list'=>(int)$workspace['lists'][1]['rowid'],'task'=>$moving,'position'=>0]);
+    $projection=$boardService->workspace($bid)['cards'][0]['erp'];$refs=$context->getReferences($moving)['context'];
+    ok99($projection===['customer'=>$refs['customer']['label'],'shipment'=>$refs['shipment']['label'],'project'=>$refs['project']['label']],'board cards expose canonical customer shipment and project labels');
+    $boardService->mutate('share_board',['board'=>$bid,'version'=>$boardService->board($bid)['version'],'user'=>2,'role'=>'viewer']);
+    $staffBoard=new InternalTaskBoardsService($db,$staff,1);ok99($staffBoard->workspace($bid)['cards'][0]['erp']===[],'board membership does not expose restricted ERP labels');
+    $conf->global->CPO_SHIPMENT_CARDS_ENABLED=0;ok99($boardService->workspace($bid)['cards'][0]['erp']===[],'feature disabled preserves board without ERP metadata');$conf->global->CPO_SHIPMENT_CARDS_ENABLED=1;
+    $boardService->mutate('move_card',['board'=>$bid,'version'=>$boardService->board($bid)['version'],'list'=>(int)$workspace['lists'][1]['rowid'],'task'=>$moving,'position'=>0]);
     ok99(row99('SELECT * FROM '.MAIN_DB_PREFIX.'chinaplanetlogistics WHERE rowid='.$sid)===$shipmentBefore,'moving linked card never changes shipment state or fields');
 
 }finally{while($db->transaction_opened>0)$db->rollback();foreach($dirs as $dir){foreach(glob($dir.'/*') as $f)if(is_file($f))unlink($f);if(is_dir($dir))rmdir($dir);}foreach($temps as $f)if(is_file($f))unlink($f);if($flag===null)unset($conf->global->CPO_SHIPMENT_CARDS_ENABLED);else $conf->global->CPO_SHIPMENT_CARDS_ENABLED=$flag;}
