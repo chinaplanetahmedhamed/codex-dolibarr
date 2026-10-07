@@ -64,6 +64,7 @@ def load_payload():
 
 def target(env):
     web, db, volume, project = TARGETS[env]
+    METADATA_OVERRIDES['chinaplanetoperations/workspace.php'] = (33,33,0o644) if env=='staging' else (1002,1002,0o644)
     info = json.loads(command(['docker','inspect',web]))[0]
     check(info['State']['Running'] and info['State'].get('Health',{}).get('Status','healthy') == 'healthy', 'ERP_NOT_HEALTHY')
     mounts = [m for m in info['Mounts'] if m['Destination'] == '/var/www/html/custom']
