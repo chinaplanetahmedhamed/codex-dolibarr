@@ -843,3 +843,5 @@ PublicRequestInvalidAction=Invalid request action.
 PublicRequestNotFound=Request not found.
 PublicRequestViewEmpty=No requests in this view.
 PublicRequestActions=Actions
+InternalTaskActivity_task_context_changed=ERP links updated
+InternalTaskActivity_shared_cover_changed=Shared document cover updated

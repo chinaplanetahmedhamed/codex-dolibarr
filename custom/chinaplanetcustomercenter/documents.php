@@ -86,6 +86,9 @@ if ($action === 'rename' || $action === 'deletefile') {
         $archived = cpcc_portal_archive_shipment_file($db, $shipment, $user, $file);
         if (empty($archived['ok'])) setEventMessages($archived['error'] ?? 'Document operation failed.', null, 'errors');
         else setEventMessages($langs->trans('CPLShipmentFileArchived'), null, 'mesgs');
+    } elseif(cpcc_shared_documents_enabled()) {
+        try{$svc=new ShipmentDocumentService($db,$user);$doc=$svc->byStorage($shipid_post,$file);$svc->rename($doc['rowid'],$doc['revision'],$newname);setEventMessages('Document renamed.',null,'mesgs');}
+        catch(Throwable $e){setEventMessages('Document operation was rejected.',null,'errors');}
     } else {
         $safe_new = cpcc_portal_validate_shipment_filename($newname);
         $base_dir = realpath(dirname($old_full));
@@ -177,6 +180,10 @@ if ($is_external && $socid <= 0) {
     }
     if ($resql && $db->num_rows($resql) > 0) {
         while ($obj = $db->fetch_object($resql)) {
+            if(!$is_external&&cpcc_shared_documents_enabled()){
+                print '<tr><td>'.(int)$obj->rowid.'</td><td colspan="8"><a href="'.dol_buildpath('/chinaplanetlogistics/card.php',1).'?id='.(int)$obj->rowid.'">'.dol_escape_htmltag($obj->ref).'</a>'.cpcc_portal_staff_shipment_files_html($db,$obj,$canwrite,$_SERVER['PHP_SELF'],$candelete).'</td></tr>';
+                continue;
+            }
             $docs = array();
             if (!$is_external) {
                 foreach (cpcc_portal_shipment_doc_roots($obj->rowid, $obj->ref) as $dir) {

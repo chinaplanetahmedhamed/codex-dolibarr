@@ -68,11 +68,15 @@ if ($type === 'shipment') {
     accessforbidden();
 }
 
-$full_path = cpcc_portal_resolve_shipment_doc_path($id, $shipment->ref, $file);
+if(cpcc_shared_documents_enabled()){
+    try{$service=new ShipmentDocumentService($db,$user);$document=$service->byStorage($id,$file);$content=$service->content($document['rowid']);}
+    catch(Throwable $e){accessforbidden();}
+    $full_path=$content['path'];
+}else $full_path = cpcc_portal_resolve_shipment_doc_path($id, $shipment->ref, $file);
 if (empty($full_path)) accessforbidden();
 
 while (ob_get_level()) ob_end_clean();
-$downloadName = dol_sanitizeFileName(basename($full_path));
+$downloadName = dol_sanitizeFileName(isset($content)?$content['name']:basename($full_path));
 header('Content-Description: File Transfer');
 header('Content-Type: application/octet-stream');
 header('Content-Disposition: attachment; filename="'.rawurlencode($downloadName).'"');

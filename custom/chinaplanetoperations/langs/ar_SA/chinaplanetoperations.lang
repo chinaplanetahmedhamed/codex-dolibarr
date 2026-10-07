@@ -836,3 +836,5 @@ PublicRequestInvalidAction=إجراء الطلب غير صالح.
 PublicRequestNotFound=الطلب غير موجود.
 PublicRequestViewEmpty=لا توجد طلبات في هذا العرض.
 PublicRequestActions=الإجراءات
+InternalTaskActivity_task_context_changed=تم تحديث الربط بالنظام
+InternalTaskActivity_shared_cover_changed=تم تحديث غلاف المستند المشترك

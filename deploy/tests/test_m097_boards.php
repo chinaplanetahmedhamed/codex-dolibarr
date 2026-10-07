@@ -4,6 +4,8 @@ $config=getenv('M097_QA_CONFIG');require $config;
 if(!preg_match('/^m097_qa_[a-f0-9]{10}$/D',$dolibarr_main_db_name)||$dolibarr_main_db_host!=='127.0.0.1')throw new RuntimeException('Synthetic local only.');
 $_SERVER['DOCUMENT_ROOT']=$dolibarr_main_document_root;$_SERVER['SERVER_NAME']='127.0.0.1';$_SERVER['HTTP_HOST']='127.0.0.1:8107';require $dolibarr_main_document_root.'/master.inc.php';require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php';require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/InternalTaskBoardsMigration.class.php';
 $r=$db->query('SELECT DATABASE() n');if(!preg_match('/^m097_qa_[a-f0-9]{10}$/D',$db->fetch_object($r)->n))throw new RuntimeException('Database drift.');
+// M097 exercises the preserved personal-board fallback; M099 summary has its own suite.
+$conf->global->CPO_SHIPMENT_CARDS_ENABLED=0;
 function actor($id){global $db;$u=new User($db);$u->fetch($id);$u->loadRights();return $u;}
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/InternalTaskAssetService.class.php';
 $n=0;function ok($b,$s){global $n;if(!$b)throw new RuntimeException('FAIL '.$s);echo 'PASS '.(++$n).' '.$s."\n";}

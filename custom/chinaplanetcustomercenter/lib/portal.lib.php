@@ -1,5 +1,15 @@
 <?php
 
+/** Canonical storage remains active when the card UI is rolled back; never scan immutable versions as legacy files. */
+function cpcc_shared_documents_enabled()
+{
+    global $conf;
+    if(empty($conf->global->CPO_SHIPMENT_CARDS_ENABLED)&&empty($conf->global->CPL_SHARED_DOCUMENTS_ENABLED))return false;
+    require_once __DIR__.'/../../chinaplanetlogistics/class/ShipmentDocumentService.class.php';
+    return true;
+}
+
+
 function cpcc_portal_user_scope($user)
 {
     $socid = !empty($user->socid) ? (int) $user->socid : 0;
@@ -363,6 +373,13 @@ function cpcc_portal_validate_shipment_upload($originalName, $tmpName, $size = 0
 
 function cpcc_portal_store_uploaded_shipment_file($shipid, $upload_dir, $original_name, $tmp_name, $file_size = 0, $upload_error = UPLOAD_ERR_OK, $maxBytes = 0)
 {
+    if(cpcc_shared_documents_enabled()){
+        global $db,$user;
+        if($upload_dir!==cpcc_portal_shipment_doc_root($shipid))return array('ok'=>false,'error'=>'Upload was rejected.');
+        try{$r=(new ShipmentDocumentService($db,$user))->upload($shipid,array('name'=>$original_name,'tmp_name'=>$tmp_name,'size'=>$file_size,'error'=>$upload_error),0,0,$maxBytes);return array('ok'=>true,'file'=>$r['file'],'document_id'=>$r['id'],'version_id'=>$r['versionId']);}
+        catch(Throwable $e){return array('ok'=>false,'error'=>'Upload was rejected. Check the file and permissions.');}
+    }
+
     $shipid = (int) $shipid;
     $expectedDir = cpcc_portal_shipment_doc_root($shipid);
     if ($shipid <= 0 || $upload_dir !== $expectedDir) return array('ok' => false, 'error' => 'Upload was rejected.');
@@ -477,6 +494,15 @@ function cpcc_portal_gallery_file_metadata($shipment, $file)
 /** Publish exactly one validated shipment file to its owning customer. */
 function cpcc_portal_gallery_publish($db, $shipment, $user, $file, $sourceOrigin = 'staff')
 {
+    if(cpcc_shared_documents_enabled()){
+        try{return (new ShipmentDocumentService($db,$user))->publishStorage(!empty($shipment->id)?$shipment->id:$shipment->rowid,$file,$sourceOrigin);}
+        catch(Throwable $e){return array('ok'=>false,'error'=>'Document publication was rejected.');}
+    }
+    return cpcc_portal_gallery_publish_legacy($db,$shipment,$user,$file,$sourceOrigin);
+}
+
+function cpcc_portal_gallery_publish_legacy($db, $shipment, $user, $file, $sourceOrigin = 'staff')
+{
     if (!cpcc_portal_gallery_schema_ready($db)) return array('ok' => false, 'error' => 'Shipment Gallery schema is not installed.');
     $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
     if ($shipmentId <= 0 || (int) $shipment->entity <= 0 || (int) $shipment->fk_soc <= 0 || empty($user->id)) {
@@ -527,6 +553,11 @@ function cpcc_portal_gallery_publish($db, $shipment, $user, $file, $sourceOrigin
 /** Unpublish one owned gallery row without deleting or moving the source file. */
 function cpcc_portal_gallery_unpublish($db, $shipment, $user, $publicationId)
 {
+    if(cpcc_shared_documents_enabled()){
+        try{return (new ShipmentDocumentService($db,$user))->unpublishPublication(!empty($shipment->id)?$shipment->id:$shipment->rowid,$publicationId);}
+        catch(Throwable $e){return array('ok'=>false,'error'=>'Document publication was rejected.');}
+    }
+
     if (!cpcc_portal_gallery_schema_ready($db)) return array('ok' => false, 'error' => 'Shipment Gallery schema is not installed.');
     $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
     $publicationId = (int) $publicationId;
@@ -638,6 +669,7 @@ function cpcc_portal_customer_upload_statuses()
 /** Advance one customer-originated upload through the staff handling workflow. */
 function cpcc_portal_staff_customer_upload_status($db, $shipment, $user, $publicationId, $status, $note = '')
 {
+    if(cpcc_shared_documents_enabled()){try{(new ShipmentDocumentService($db,$user))->requireShipment(!empty($shipment->id)?$shipment->id:$shipment->rowid,'write');}catch(Throwable $e){return array('ok'=>false,'error'=>'Customer upload status was rejected.');}}
     $publicationId = (int) $publicationId;
     $statuses = cpcc_portal_customer_upload_statuses();
     if (!cpcc_portal_collaboration_schema_ready($db) || $publicationId <= 0 || empty($user->id) || !in_array($status, $statuses, true)) {
@@ -671,6 +703,11 @@ function cpcc_portal_staff_customer_upload_status($db, $shipment, $user, $public
  */
 function cpcc_portal_archive_shipment_file($db, $shipment, $user, $relativePath)
 {
+    if(cpcc_shared_documents_enabled()){
+        try{$svc=new ShipmentDocumentService($db,$user);$sid=!empty($shipment->id)?$shipment->id:$shipment->rowid;$d=$svc->byStorage($sid,$relativePath);$svc->archive($d['rowid'],$d['revision']);return array('ok'=>true,'archive_key'=>'document-'.$d['rowid']);}
+        catch(Throwable $e){return array('ok'=>false,'error'=>'Document archive was rejected.');}
+    }
+
     if (!cpcc_portal_collaboration_schema_ready($db) || empty($user->id)) return array('ok'=>false,'error'=>'Shipment file archive is unavailable.');
     $shipmentId = !empty($shipment->id) ? (int)$shipment->id : (int)$shipment->rowid;
     $metadata = cpcc_portal_gallery_file_metadata($shipment, $relativePath);
@@ -1034,6 +1071,11 @@ function cpcc_portal_customer_shipment_gallery_html($db, $user, $shipment, $incl
 /** Staff-only manager embedded in shipment view and edit pages. */
 function cpcc_portal_staff_shipment_files_html($db, $shipment, $canwrite, $actionUrl, $candelete = false)
 {
+    if(cpcc_shared_documents_enabled()){
+        require_once __DIR__.'/../../chinaplanetlogistics/lib/shared_documents.lib.php';
+        return cpl_shared_documents_html($db,$shipment);
+    }
+
     global $langs;
     $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) ($shipment->rowid ?? 0);
     if ($shipmentId <= 0) return '';

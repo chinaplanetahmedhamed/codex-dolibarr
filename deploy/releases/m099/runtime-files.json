@@ -1,0 +1,24 @@
+{
+  "changed": [
+    "chinaplanetcustomercenter/documents.php",
+    "chinaplanetcustomercenter/download.php",
+    "chinaplanetcustomercenter/lib/portal.lib.php",
+    "chinaplanetlogistics/class/ShipmentDocumentMigration.class.php",
+    "chinaplanetlogistics/class/ShipmentDocumentService.class.php",
+    "chinaplanetlogistics/documents_api.php",
+    "chinaplanetlogistics/lib/shared_documents.lib.php",
+    "chinaplanetlogistics/sql/llx_cpl_shared_document.sql",
+    "chinaplanetoperations/class/InternalTaskBoardsService.class.php",
+    "chinaplanetoperations/class/InternalTaskContextService.class.php",
+    "chinaplanetoperations/css/boards.css",
+    "chinaplanetoperations/css/card_operation.css",
+    "chinaplanetoperations/js/boards.js",
+    "chinaplanetoperations/js/card_board.js",
+    "chinaplanetoperations/js/card_operation.js",
+    "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang",
+    "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang",
+    "chinaplanetoperations/tasks/boards_api.php",
+    "chinaplanetoperations/tasks/card.php",
+    "chinaplanetoperations/tasks/context_api.php"
+  ]
+}
