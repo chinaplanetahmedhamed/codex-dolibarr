@@ -15,7 +15,10 @@ for n in names:
  before[n]=sha(r.stdout) if r.returncode==0 else None
 # Pin existing unchanged direct dependencies. Drift stops apply; never overwrite them.
 deps=['chinaplanetoperations/class/InternalTaskService.class.php','chinaplanetoperations/class/InternalTaskAuthorizationService.class.php','chinaplanetoperations/class/InternalTaskDetailsService.class.php','chinaplanetoperations/class/InternalTaskCollaborationService.class.php','chinaplanetoperations/class/InternalTaskBoardsMigration.class.php','chinaplanetoperations/class/InternalTaskBoardPolicy.class.php','chinaplanetlogistics/card.php','chinaplanetcustomercenter/class/api_chinaplanetcustomercenter.class.php','chinaplanetcustomercenter/lib/mobile_api_data.lib.php']
-prereq={n:sha(git('custom/'+n,baseline)) for n in deps}
+# Verified staging retains M079's stricter mobile customer-visibility filters.
+# This dependency is never deployed; pin its exact committed bytes instead.
+dependency_revisions={'chinaplanetcustomercenter/lib/mobile_api_data.lib.php':'077bbe04ff69ad443efa7dddcff9d6c05292665a'}
+prereq={n:sha(git('custom/'+n,dependency_revisions.get(n,baseline))) for n in deps}
 p=out/'m099-payload.tar.gz'
 with tarfile.open(p,'w:gz') as t:
  for n,b in sorted(payload.items()):
