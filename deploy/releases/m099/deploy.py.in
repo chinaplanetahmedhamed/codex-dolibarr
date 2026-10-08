@@ -38,7 +38,7 @@ def sha(data): return hashlib.sha256(data).hexdigest()
 def command(argv, timeout=90, data=None):
     result = subprocess.run(argv, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=timeout, env={'PATH':'/usr/sbin:/usr/bin:/sbin:/bin'})
-    check(result.returncode == 0, 'COMMAND_FAILED')
+    check(result.returncode == 0, 'COMMAND_FAILED_EXIT_'+str(result.returncode))
     return result.stdout
 
 def load_payload():
@@ -170,6 +170,19 @@ $db->begin();try{
     result=json.loads(php(web,code));check(result['protected_unchanged'],'MIGRATION_INTEGRITY_FAILED');return result
 
 
+
+def preflight_documents(web):
+    code=BOOT+r"""require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
+foreach(['cpo_task','cpo_task_details','cpo_task_asset','cpo_board','cpo_board_list','cpo_board_card','user_param','chinaplanetlogistics','societe','projet','user_rights','usergroup_rights'] as $t)if(!$db->query('SELECT * FROM '.MAIN_DB_PREFIX.$t.' LIMIT 0'))exit(41);
+$r=$db->query('SELECT rowid,ref,entity FROM '.MAIN_DB_PREFIX.'chinaplanetlogistics');if(!$r)exit(42);$owners=[];$count=0;
+while($s=$db->fetch_object($r)){foreach(cpcc_portal_shipment_doc_roots($s->rowid,$s->ref) as $root){$key=realpath($root)?:rtrim($root,'/');if(isset($owners[$key])&&$owners[$key]!=(int)$s->rowid)exit(43);$owners[$key]=(int)$s->rowid;
+if((int)$s->entity!==1||!is_dir($root))continue;if(!is_readable($root))exit(44);
+foreach(new DirectoryIterator($root) as $file){if(!$file->isFile()||$file->isLink()||preg_match('/(\.meta|_preview.*\.png)$/',$file->getFilename()))continue;
+$path=cpcc_portal_resolve_shipment_doc_path($s->rowid,$s->ref,basename($root).'/'.$file->getFilename());if($path==='')exit(45);
+$v=cpcc_portal_validate_shipment_upload(basename($path),$path,filesize($path),cpcc_portal_staff_upload_max_bytes());if(empty($v['ok']))exit(46);$count++;}}}echo json_encode(['existing_files_validated'=>$count,'limit_scope'=>'staff_existing_documents']);"""
+    return json.loads(php(web,code))
+
+
 def controls(web):
     code=BOOT+r"""require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/InternalTaskContextService.class.php';require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php';require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';
 if(empty($conf->global->CPO_SHIPMENT_CARDS_ENABLED)||empty($conf->global->CPL_SHARED_DOCUMENTS_ENABLED)||!ShipmentDocumentMigration::ready($db))exit(32);
@@ -243,7 +256,7 @@ def main():
         compare(root,manifest['before'][env])
         for name,data in payload.items():
             if name.endswith('.php'): command(['docker','exec','-i',web,'php','-l'],data=data)
-        readiness(web); health(web); check(config(web)['ui'] in ('','0'),'FEATURE_ALREADY_ACTIVE')
+        readiness(web,True); preflight_documents(web); health(web); check(config(web)['ui'] in ('','0'),'FEATURE_ALREADY_ACTIVE')
         report({'environment':env,'action':action,'result':'PASS','files':len(payload)}); return
     state_dir.mkdir(mode=0o700,exist_ok=True)
     check(not state_dir.is_symlink() and stat.S_IMODE(state_dir.stat().st_mode)==0o700, 'STATE_UNSAFE')
@@ -254,7 +267,7 @@ def main():
         if action=='apply':
             check(state is None, 'REPLAY_REFUSED')
             compare(root,manifest['before'][env])
-            readiness(web); health(web)
+            readiness(web,True); preflight_documents(web); health(web)
             for name,data in payload.items():
                 if name.endswith('.php'): command(['docker','exec','-i',web,'php','-l'],data=data)
             before={name:file_info(root,name) for name in payload}

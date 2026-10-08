@@ -90,6 +90,21 @@ $db->begin();try{
     $boardService->mutate('move_card',['board'=>$bid,'version'=>$boardService->board($bid)['version'],'list'=>(int)$workspace['lists'][1]['rowid'],'task'=>$moving,'position'=>0]);
     ok99(row99('SELECT * FROM '.MAIN_DB_PREFIX.'chinaplanetlogistics WHERE rowid='.$sid)===$shipmentBefore,'moving linked card never changes shipment state or fields');
 
+
+    $customerLimit=$conf->global->MAIN_UPLOAD_DOC??null;$conf->global->MAIN_UPLOAD_DOC=1;
+    try{
+        $large=$dir.'/staff-large.txt';file_put_contents($large,str_repeat('a',4069994));chmod($large,0640);$largeKey=basename($dir).'/staff-large.txt';$largeHash=hash_file('sha256',$large);
+        ok99(empty(cpcc_portal_gallery_file_metadata((object)['rowid'=>$sid,'ref'=>'M099-'.$suffix],$largeKey)['ok']),'default metadata retains customer size limit');
+        $largeDoc=$docs->registerExisting($sid,$largeKey);$largeVersion=$docs->document($largeDoc)['version_id'];
+        ok99($largeDoc===$docs->registerExisting($sid,$largeKey)&&$docs->document($largeDoc)['version_id']===$largeVersion,'existing staff document above customer limit registers idempotently');
+        ok99($docs->content($largeDoc)['size']===4069994&&hash_file('sha256',$large)===$largeHash,'large legacy registration preserves exact bytes and readable content');
+        ok99(!$docs->publicationState($largeDoc),'large staff registration does not publish to customer');
+        $bad=$dir.'/mismatched.xlsx';file_put_contents($bad,str_repeat('a',4096));chmod($bad,0640);
+        deny99(fn()=>$docs->registerExisting($sid,basename($dir).'/mismatched.xlsx'),'legacy registration still rejects MIME mismatch',RuntimeException::class);
+        $huge=$dir.'/too-large.txt';$stream=fopen($huge,'w');ftruncate($stream,cpcc_portal_staff_upload_max_bytes()+1);fclose($stream);chmod($huge,0640);
+        deny99(fn()=>$docs->registerExisting($sid,basename($dir).'/too-large.txt'),'legacy registration still enforces staff limit',RuntimeException::class);
+    }finally{if($customerLimit===null)unset($conf->global->MAIN_UPLOAD_DOC);else $conf->global->MAIN_UPLOAD_DOC=$customerLimit;}
+
 }finally{while($db->transaction_opened>0)$db->rollback();foreach($dirs as $dir){foreach(glob($dir.'/*') as $f)if(is_file($f))unlink($f);if(is_dir($dir))rmdir($dir);}foreach($temps as $f)if(is_file($f))unlink($f);if($flag===null)unset($conf->global->CPO_SHIPMENT_CARDS_ENABLED);else $conf->global->CPO_SHIPMENT_CARDS_ENABLED=$flag;}
 foreach($ids as $id)ok99(!row99('SELECT COUNT(*) n FROM '.MAIN_DB_PREFIX.'cpo_task WHERE rowid='.$id)['n'],'outer rollback removes synthetic task');
 echo 'M099_SHARED_DOCUMENTS=PASS ASSERTIONS='.$n99."\n";

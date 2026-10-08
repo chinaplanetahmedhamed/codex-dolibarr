@@ -103,7 +103,7 @@ class ShipmentDocumentService
     public function registerExisting($shipmentId,$key){
         $s=$this->requireShipment($shipmentId,'write');$path=cpcc_portal_resolve_shipment_doc_path($shipmentId,$s['ref'],$key);
         if($path===''||is_link($path))throw new ShipmentDocumentAccessException('Shipment document access denied.');
-        $key=cpcc_portal_gallery_storage_key($path);$meta=cpcc_portal_gallery_file_metadata((object)$s,$key);
+        $key=cpcc_portal_gallery_storage_key($path);$meta=cpcc_portal_gallery_file_metadata((object)$s,$key,cpcc_portal_staff_upload_max_bytes());
         if(empty($meta['ok']))throw new RuntimeException('Existing document could not be registered.');
         $this->beginScope();try{
             $this->lockShipment($shipmentId);

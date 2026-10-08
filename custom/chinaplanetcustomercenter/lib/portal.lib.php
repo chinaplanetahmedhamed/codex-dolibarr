@@ -499,7 +499,7 @@ function cpcc_portal_gallery_storage_key($resolvedPath)
 }
 
 /** Resolve and fingerprint one internal shipment file before publication. */
-function cpcc_portal_gallery_file_metadata($shipment, $file)
+function cpcc_portal_gallery_file_metadata($shipment, $file, $maxBytes = 0)
 {
     $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
     $resolved = cpcc_portal_resolve_shipment_doc_path($shipmentId, (string) $shipment->ref, $file);
@@ -507,7 +507,7 @@ function cpcc_portal_gallery_file_metadata($shipment, $file)
 
     $size = filesize($resolved);
     if ($size === false) return array('ok' => false, 'error' => 'Shipment file was not found.');
-    $validation = cpcc_portal_validate_shipment_upload(basename($resolved), $resolved, (int) $size);
+    $validation = cpcc_portal_validate_shipment_upload(basename($resolved), $resolved, (int) $size, $maxBytes);
     if (empty($validation['ok'])) return $validation;
 
     $storageKey = cpcc_portal_gallery_storage_key($resolved);
