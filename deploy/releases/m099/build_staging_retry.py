@@ -22,6 +22,7 @@ m={'release':'M099-R2','source_commit':commit,'baseline_manifest_sha256':sha(pri
 b=(json.dumps(m,sort_keys=True,indent=2)+'\n').encode();(out/'m099-manifest.json').write_bytes(b)
 h=git('deploy/releases/m099/deploy.py.in').decode().replace('__MANIFEST_SHA__',sha(b)).replace('__PAYLOAD_SHA__',m['payload_sha256'])
 h=h.replace("RELEASE = 'M099-R1'", "RELEASE = 'M099-R2'").replace("INBOX = Path('/home/codex-deploy/staging-inbox')", "INBOX = Path('/home/codex-deploy/staging-inbox/m099-staging-r2')").replace('chinaplanetos-m099-r1-', 'chinaplanetos-m099-r2-').replace('m099-r1-', 'm099-r2-')
+h=h.replace("check(config(web)['ui'] in ('','0'),'FEATURE_ALREADY_ACTIVE')", "check(config(web)=={'ui':'1','storage':'1'},'STAGING_FEATURE_STATE_DRIFT')")
 compile(h,'m099-deploy.py','exec');(out/'m099-deploy.py').write_text(h)
 e={'release':'M099-R2','source_commit':commit,'manifest_sha256':sha(b),'payload_sha256':m['payload_sha256'],'helper_sha256':sha(h.encode()),'target':'staging only'}
 (out/'artifact-evidence.json').write_text(json.dumps(e,indent=2)+'\n');print(json.dumps(e))
