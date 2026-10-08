@@ -4,7 +4,8 @@ from pathlib import Path
 import hashlib,io,json,subprocess,sys,tarfile
 root=Path(__file__).resolve().parents[3]
 if len(sys.argv)!=4:raise SystemExit('source commit, private snapshot, private output directory required')
-commit,snapshot,out=sys.argv[1],Path(sys.argv[2]),Path(sys.argv[3]);out.mkdir(parents=True,exist_ok=True)
+commit=subprocess.check_output(['git','rev-parse',sys.argv[1]+'^{commit}'],cwd=root,text=True).strip()
+snapshot,out=Path(sys.argv[2]),Path(sys.argv[3]);out.mkdir(parents=True,exist_ok=True)
 def git(path):return subprocess.check_output(['git','show',commit+':'+path],cwd=root)
 sha=lambda b:hashlib.sha256(b).hexdigest()
 observed=json.loads(snapshot.read_text())
