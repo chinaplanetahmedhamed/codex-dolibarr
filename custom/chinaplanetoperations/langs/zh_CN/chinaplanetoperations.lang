@@ -753,26 +753,8 @@ InternalTaskOfficeArchiveUnsafe=此 Office 压缩包包含不安全路径或过�
 InternalTaskFileNameInvalid=请使用仅有一个扩展名的简单文件名，例如 report.xlsx。
 InternalTaskFileQuota=每个任务最多允许 25 个文件，总大小不超过 500 MB。此次上传未保存。
 
-# Request archive and recoverable deletion
-PublicRequestViews=申请分类
-PublicRequestViewActive=处理中
-PublicRequestViewArchived=已归档
-PublicRequestViewDeleted=已删除
-PublicRequestActionArchive=归档
-PublicRequestActionDelete=删除
-PublicRequestActionRestore=恢复
-PublicRequestConfirmDelete=删除此申请？
-PublicRequestDeleteHelp=申请将移至“已删除”，保留详情及历史记录，可随时恢复。
-PublicRequestLinkedArchiveOnly=已关联申请：可归档
-PublicRequestLinkedDeleteDenied=此申请已关联业务或报价，请使用归档以保留来源记录。
-PublicRequestLifecycleSaved=申请分类已更新。
-PublicRequestRestoreFirst=请先将申请恢复至处理中，再继续操作。
-PublicRequestStale=此申请已更改，请刷新页面后重试。
-PublicRequestActionFailed=无法更新申请，请重试。
-PublicRequestAccessDenied=您没有管理此申请的权限。
-PublicRequestInvalidAction=申请操作无效。
-PublicRequestNotFound=未找到申请。
-PublicRequestViewEmpty=此分类中没有申请。
-PublicRequestActions=操作
+PublicMachines=台
+PublicSets=套
+PublicPrivacyEvidence=隐私确认记录
 
 InternalTaskActivity_task_reopened=任务已重新打开
