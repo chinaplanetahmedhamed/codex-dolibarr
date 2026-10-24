@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/InternalTaskWorkspaceService.class.php';
 require_once __DIR__.'/InternalTaskBoardPolicy.class.php';
 
 class InternalTaskAccessException extends RuntimeException
@@ -16,6 +17,12 @@ class InternalTaskAuthorizationService
 
     /** @var int */
     private $entity;
+
+    private $customerWorkspaceScope;
+    private function workspaceScope() {
+        if(!$this->customerWorkspaceScope)$this->customerWorkspaceScope=new InternalTaskWorkspaceService($this->db,$this->actor,$this->entity);
+        return $this->customerWorkspaceScope;
+    }
 
     public function __construct($db, $actor, $entity)
     {
@@ -263,6 +270,11 @@ class InternalTaskAuthorizationService
     /** Return a SQL predicate containing only server-owned integers. */
     public function visibilitySql($alias, $view)
     {
+        return '('.$this->workspaceLegacyVisibilitySql($alias,$view).') AND ('.($this->workspaceScope())->taskScopeSql($alias).')';
+    }
+
+    private function workspaceLegacyVisibilitySql($alias, $view)
+    {
         if (!$this->canOpenBoard()) throw new InternalTaskAccessException('Task access denied.');
         $alias = preg_replace('/[^a-z0-9_]/i', '', (string) $alias);
         $view = $this->normalizeView($view);
@@ -286,12 +298,12 @@ class InternalTaskAuthorizationService
     {
         if (!$this->canOpenBoard()) return '1=0';
         $alias = preg_replace('/[^a-z0-9_]/i', '', (string) $alias);
-        if ($this->isAdministrator()) return '1=1';
+        if ($this->isAdministrator()) return ($this->workspaceScope())->taskScopeSql($alias);
         $parts = array();
         if ($this->hasRight('task_read_own')) $parts[] = '('.$this->ownSql($alias).')';
         if ($this->hasRight('task_manage_team')) $parts[] = '('.$this->teamGrantSql($alias).')';
         $legacy=$parts ? '('.implode(' OR ', $parts).')' : '1=0';
-        return (new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->readableSql($alias,$legacy);
+        return '('.(new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->readableSql($alias,$legacy).') AND ('.($this->workspaceScope())->taskScopeSql($alias).')';
     }
 
     public function requireBoard()
@@ -306,7 +318,7 @@ class InternalTaskAuthorizationService
 
     private function taskEntityValid(array $task)
     {
-        return $this->isInternalActive() && isset($task['entity']) && (int) $task['entity'] === $this->entity;
+        return $this->isInternalActive() && isset($task['entity']) && (int) $task['entity'] === $this->entity && ($this->workspaceScope())->taskAllowed($task['rowid']);
     }
 
     private function isOwnTask(array $task)

@@ -63,3 +63,27 @@ body.cpo-board-canvas{overflow:hidden;margin:0}body.cpo-board-canvas .fiche{marg
 
 /* Authorized ERP references stay compact and readable on the board card. */
 #cp-boards .cb-card-erp{display:flex;flex-direction:column;gap:5px;margin:0 0 12px;font-size:12px;line-height:1.45}#cp-boards .cb-card-erp-row{display:grid;grid-template-columns:60px minmax(0,1fr);gap:6px;align-items:baseline}#cp-boards .cb-card-erp-label{color:#44546f;font-weight:600}#cp-boards .cb-card-erp bdi{overflow-wrap:anywhere;color:#172b4d}#cp-boards.cb-theme-dark .cb-card-erp-label{color:#9fadbc}#cp-boards.cb-theme-dark .cb-card-erp bdi{color:#dfe1e6}
+
+/* Customer containers extend the existing China Planet board canvas. */
+#cp-boards .cb-ws-tabs{display:flex;gap:10px;padding:9px 24px;background:#123e35;color:#edf5ee;flex:0 0 auto;font-size:14px;border-top:1px solid #416355}
+#cp-boards .cb-ws-tabs a{padding:5px 10px;border-radius:6px}#cp-boards .cb-ws-tabs a:hover{background:#285b4e}
+#cp-boards .cb-customer-spaces{padding:30px 34px 36px;max-width:1500px;margin:auto}
+#cp-boards .cb-ws-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:30px}
+#cp-boards .cb-ws-heading h1{font-size:30px;line-height:1.5;margin:0 0 8px;color:inherit}
+#cp-boards .cb-ws-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#cp-boards .cb-ws-link{display:inline-block;padding:10px 14px;border:1px solid #80928b;border-radius:8px;font-size:14px}
+#cp-boards .cb-ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:22px}
+#cp-boards .cb-ws-customer,#cp-boards .cb-ws-project{padding:24px;background:#fff;border:1px solid #d7e1d7;border-radius:14px;color:#1c332f;display:flex;align-items:flex-start;flex-direction:column;gap:14px}
+#cp-boards .cb-ws-initial{display:grid;place-items:center;width:48px;height:48px;border-radius:12px;background:#e2eddf;color:#325d3b;font-size:22px;font-weight:700}
+#cp-boards .cb-ws-name{font-size:22px;font-weight:700;line-height:1.6;overflow-wrap:anywhere}
+#cp-boards .cb-ws-name:hover,#cp-boards .cb-ws-open:hover{text-decoration:underline;text-underline-offset:4px}
+#cp-boards .cb-ws-open{font-size:14px;font-weight:700;color:#17594b;margin-top:auto;padding-top:12px}
+#cp-boards .cb-ws-project h2{font-size:21px;color:inherit;line-height:1.6;margin:0;overflow-wrap:anywhere}
+#cp-boards .cb-ws-ref{color:#536c60;font-size:12px;direction:ltr}
+#cp-boards .cb-ws-note{font-size:13px;line-height:1.8;color:var(--cb-muted);margin:26px 0 0}
+#cp-boards .cb-workspace-breadcrumb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 20px;background:#123e35;color:#eff6ef;font-size:13px;flex:0 0 auto}
+#cp-boards .cb-customer-spaces .cb-primary{background:#17594b!important}
+#cp-boards.cb-theme-dark .cb-ws-customer,#cp-boards.cb-theme-dark .cb-ws-project{background:#20352e;color:#f2f6ef;border-color:#466054}
+#cp-boards.cb-theme-dark .cb-customer-spaces .cb-hint,#cp-boards.cb-theme-dark .cb-ws-ref{color:#c0d5c5}
+#cp-boards.cb-theme-dark .cb-ws-open{color:#c7e3b9}
+@media(max-width:700px){#cp-boards .cb-ws-tabs{padding:8px 12px;gap:5px;font-size:13px}#cp-boards .cb-customer-spaces{padding:22px 16px}#cp-boards .cb-ws-heading{display:block;margin-bottom:24px}#cp-boards .cb-ws-heading h1{font-size:25px}#cp-boards .cb-ws-actions{margin-top:18px;gap:8px}#cp-boards .cb-ws-grid{grid-template-columns:1fr;gap:16px}#cp-boards .cb-ws-link{font-size:13px;padding:9px 11px}#cp-boards .cb-workspace-breadcrumb{font-size:12px;padding:10px 14px}}

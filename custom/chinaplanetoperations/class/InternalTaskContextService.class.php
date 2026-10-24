@@ -74,6 +74,12 @@ class InternalTaskContextService
                 // Explicit card references override inherited operation links; the operation is untouched.
                 if($shipmentId===(int)$c['fk_shipment'])$coverId=(int)$c['fk_cover_document'];
             }
+            if(InternalTaskWorkspaceService::enabled()){
+                $placements=$this->rows('SELECT fk_board FROM '.MAIN_DB_PREFIX.'cpo_board_card WHERE entity='.$this->entity.' AND fk_task='.(int)$id);
+                $scope=$placements?(new InternalTaskWorkspaceService($this->db,$this->actor,$this->entity))->boardProject($placements[0]['fk_board']):null;
+                if($scope && (($customerId&&(int)$scope['fk_soc']!==$customerId)||($projectId&&(int)$scope['rowid']!==$projectId)))throw new InternalTaskAccessException('Task references must match its project board.');
+                if($scope && $shipmentId && (!$projectId || (int)$scope['rowid']!==$projectId))throw new InternalTaskAccessException('Shipment must belong to this project board.');
+            }
             $set='fk_soc='.($customerId?:'NULL').',fk_project='.($projectId?:'NULL').',fk_shipment='.($shipmentId?:'NULL').',fk_cover_document='.($coverId?:'NULL').',fk_user_modif='.(int)$this->actor->id;
             if((int)$c['version']===0)$this->query('INSERT INTO '.MAIN_DB_PREFIX.'cpo_task_context(entity,fk_task,fk_soc,fk_project,fk_shipment,fk_cover_document,version,fk_user_modif) VALUES('.$this->entity.','.(int)$id.','.($customerId?:'NULL').','.($projectId?:'NULL').','.($shipmentId?:'NULL').','.($coverId?:'NULL').',1,'.(int)$this->actor->id.')');
             else $this->query('UPDATE '.MAIN_DB_PREFIX.'cpo_task_context SET '.$set.',version=version+1 WHERE entity='.$this->entity.' AND fk_task='.(int)$id);

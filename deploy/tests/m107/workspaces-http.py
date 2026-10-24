@@ -1,0 +1,27 @@
+from pathlib import Path
+import json,urllib.parse,os
+fixture=Path('/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/local-runtime/m097-qa/http-acceptance.py').read_text()
+# Reuse established synthetic-account client; do not create or print credentials.
+exec(fixture.split("admin=Client(")[0].replace('127.0.0.1:8107','127.0.0.1:8117'))
+ids=json.loads((Path(os.environ['M107_QA_ROOT'])/'ui-fixtures.json').read_text());cid=ids['customers'][0];pid=ids['projects'][0];bid=ids['boards'][0]
+a=Client('m097-admin');s=Client('m097-staff')
+status,r=a.get('customers');ok(status==200 and any(int(c['rowid'])==cid for c in r['data']['customers']),'authenticated administrator customer gallery')
+status,r=a.get('customer_projects',customer=cid);ok(status==200 and len(r['data']['projects'])==2,'customer scoped native project gallery')
+ok(all(int(p['rowid']) in ids['projects'][:2] for p in r['data']['projects']),'no sibling customer project leakage')
+ok(not r['data']['can_create_project'],'native project create link capability matches stored rights')
+status,r=s.get('customer_projects',customer=cid);ok(status==403,'staff direct customer URL denied without native rights')
+status,r=s.get('workspace',board=bid);ok(status==403,'unrelated staff board denied')
+status,r=s.get('customers');ok(status==200 and not r['data']['customers'],'staff gallery and counts omit unauthorized customers')
+status,r=s.get('search',q='مراجعة');ok(status==200 and not any(int(t['rowid']) in ids.get('tasks',[]) for t in r['data']['tasks']),'staff search scoped')
+status,r=a.get('gallery',general=1);ok(status==200 and not any(int(b['rowid']) in ids['boards'] for b in r['data']['boards']),'generic board view preserves separation')
+status,r=a.get('workspace',board=bid);ok(status==200 and int(r['data']['board']['workspace_project']['fk_soc'])==cid,'authorized board breadcrumb native customer')
+lid=int(r['data']['lists'][0]['rowid']);card=r['data']['cards'][0];tid=int(card['fk_task']);version=int(r['data']['board']['version'])
+status,body=s.request('card.php?id='+str(tid));ok(status==403 or 'Access denied' in body,'direct task detail denied to unrelated staff')
+status,body=a.post('add_card',{'board':bid,'version':version,'list':lid,'title':'HTTP QA should not save','request':'f'*48},token=False);ok(status==403,'workspace mutations retain native CSRF denial')
+status,body=s.post('enable_customer_workspace',{'customer':cid});ok(status==403,'staff cannot activate customer workspace')
+status,body=s.post('create_board',{'title':'forged','team':1,'project':pid,'background':'#17594b','request':'a'*48});ok(status==403,'staff cannot provision project board')
+status,body=a.post('create_board',{'title':'duplicate project','team':1,'project':pid,'background':'#17594b','request':'b'*48});ok(status==409,'duplicate project board returns conflict')
+status,r=a.get('gallery');ok(sum(int(b['rowid']) in ids['boards'] for b in r['data']['boards'])==len(ids['boards']),'failed create rolls back orphan board')
+status,r=a.get('customers',q='zzzz-no-match');ok(status==200 and not r['data']['customers'],'server customer search filters')
+status,r=a.get('customer_projects',customer=2147483647);ok(status==403,'forged customer rejected')
+print('WORKSPACE_HTTP=PASS ASSERTIONS='+str(n)+'; existing authenticated accounts; no stored rights changes')
