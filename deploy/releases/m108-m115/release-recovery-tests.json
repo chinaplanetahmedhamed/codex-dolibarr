@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "assertions": 9,
+  "coverage": [
+    "artifact integrity and allowlist",
+    "real before/after runtime pins",
+    "human source drift refusal",
+    "rollback preserves additive files",
+    "rollback restores original files and flags only"
+  ],
+  "mode": "isolated filesystem, no production or database execution"
+}
