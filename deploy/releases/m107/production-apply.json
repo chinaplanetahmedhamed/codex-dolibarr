@@ -1,0 +1,17 @@
+{
+  "result": "M107_FEATURE_APPLIED",
+  "commit": "c0a6c69109e2771a54fe8772d74f71d3c2c96de2",
+  "artifact_sha256": "bb3ba56d04192d502c1a540127fd5d95d8db654673b868ea1925b680f211a65b",
+  "full_db_backup_sha256": "b97754416ad30182419bdd311d6a78fd0681937e903520e784bef842fcc186f7",
+  "backup_path": "/root/chinaplanetos-m107-workspaces-20261024",
+  "files": 10,
+  "version": "24.0.1",
+  "protected_records_preserved": true,
+  "accounts_rights_unchanged": true,
+  "additive_schema": true,
+  "business_writes_retained": true,
+  "authenticated_acceptance": "PENDING",
+  "time_utc": "2026-10-24T11:43:18Z",
+  "environment": "production",
+  "production_core_updated": false
+}

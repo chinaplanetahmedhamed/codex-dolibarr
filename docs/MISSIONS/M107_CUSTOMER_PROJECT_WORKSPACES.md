@@ -1,6 +1,6 @@
 # M107 — Customer project workspaces and local core update
 
-Status: APPROVED / IN_PROGRESS.
+Status: COMPLETED.
 Authorization: Ahmed's explicit request on 2026-10-24 (Asia/Shanghai): "OK, NOW PUBLISH TO LIVE, AND UPDATE LOCAL DOLIBARR TO LATEST". Earlier approved feature: Customer workspace > Project board > existing Lists/Tasks at erp.visiontrading.biz/custom/chinaplanetoperations/tasks/boards.php.
 
 Scope: release only the tested bounded workspace feature, additive native customer option and project-board association; preserve existing generic boards, object identities, business rows, attachments/comments, memberships and stored native rights. Update the existing local M097 installation with official native core migration and backups to latest stable 24.0.2. Production core stays 24.0.1. No M106 credential step, new user accounts/credentials, access expansion, integrations or unrelated pending source changes.

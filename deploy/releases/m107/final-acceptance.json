@@ -1,0 +1,35 @@
+{
+  "result": "M107_AUTHENTICATED_ACCEPTANCE_PASS",
+  "live_url": "https://erp.visiontrading.biz/custom/chinaplanetoperations/tasks/boards.php",
+  "production_core": "24.0.1",
+  "local_core": "24.0.2",
+  "production_apply_utc": "2026-10-24T11:43:18Z",
+  "release_commit": "c0a6c69109e2771a54fe8772d74f71d3c2c96de2",
+  "artifact_sha256": "bb3ba56d04192d502c1a540127fd5d95d8db654673b868ea1925b680f211a65b",
+  "backup_sha256": "b97754416ad30182419bdd311d6a78fd0681937e903520e784bef842fcc186f7",
+  "backup_directory": "/root/chinaplanetos-m107-workspaces-20261024",
+  "observed": [
+    "existing authenticated ERP user1; no login/access changes",
+    "native customer creation form includes unchecked options_cpo_board_workspace under More",
+    "generic gallery retains ten boards; existing board6 lists/cards rendered",
+    "Arabic live customer gallery and English native form",
+    "forged customer2147483647 rejected through normal token-aware UI",
+    "raw API request without native CSRF token rejected by unchanged protection",
+    "zero new customer workspaces/project associations activated automatically",
+    "local original records and account/security/right hashes restored after synthetic cleanup"
+  ],
+  "limits": [
+    "No synthetic production records or project/task mutations for acceptance. Positive create/move/isolation persistence tests ran locally on same core24.0.1 and latest24.0.2.",
+    "Local original accounts lack native customer/project-create rights; unchanged. Positive native create-form GET verified on live existing authorized admin; no production submission."
+  ],
+  "live_image_library_file_id": "libfile_dcd15b9589dc8191983ce34a658f285b",
+  "live_image_file_id": "file_000000003b3882309b16418bc75d3776",
+  "services": {
+    "local_8107": "running_loopback",
+    "local_db_8889": "running_loopback",
+    "private_qa_8117": "stopped",
+    "production_containers": "preserved_running_no_restart"
+  },
+  "access_expansion": false,
+  "production_core_changed": false
+}

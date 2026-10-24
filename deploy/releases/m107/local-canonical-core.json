@@ -1,0 +1,12 @@
+{
+  "result": "LOCAL_CANONICAL_CORE_UPDATED",
+  "core": "24.0.2",
+  "path": "/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/local-runtime/m097-qa/htdocs",
+  "native_schema_upgrade": "24.0.0",
+  "conf_preserved": true,
+  "documents_preserved": true,
+  "custom_preserved": true,
+  "core_backup": "release-work/backups/m097-before-core-upgrade.tar.gz",
+  "db_backup": "release-work/backups/m107-before-upgrade.sql",
+  "production_core_changed": false
+}

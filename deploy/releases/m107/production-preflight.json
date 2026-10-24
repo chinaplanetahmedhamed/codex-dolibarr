@@ -1,0 +1,68 @@
+{
+  "result": "M107_PREFLIGHT_PASS",
+  "commit": "c0a6c69109e2771a54fe8772d74f71d3c2c96de2",
+  "artifact_sha256": "bb3ba56d04192d502c1a540127fd5d95d8db654673b868ea1925b680f211a65b",
+  "version": "24.0.1",
+  "files": 10,
+  "protected": {
+    "societe": {
+      "rows": 1191,
+      "sha256": "992c730153c743d11d30c8fca059949edb8133c610147641acb268594efdabf4"
+    },
+    "projet": {
+      "rows": 10,
+      "sha256": "7c4a53dd679d866f526b71d020c6ce64ec78a7fa315a2a551d015fd038bbfe9d"
+    },
+    "cpo_board": {
+      "rows": 10,
+      "sha256": "9248c7c3e83c3b7c547110a6a0e089bedea7855bfa15abb8d8ccd79a86e5ef0c"
+    },
+    "cpo_board_list": {
+      "rows": 34,
+      "sha256": "c2a959c067fe92fbb1c8384e0470076b5a3d57ec9f883005ab495c67827cba0d"
+    },
+    "cpo_board_card": {
+      "rows": 46,
+      "sha256": "0cf8f92332ca7eeea3f64976a0047d934e22e4c985f9b43933ce2018c013a083"
+    },
+    "cpo_board_member": {
+      "rows": 11,
+      "sha256": "f539e230c587eb5120546594d4df62e792d8303a340a74dd111ad116db8de0a1"
+    },
+    "cpo_card_grant": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "cpo_task": {
+      "rows": 63,
+      "sha256": "081c5f7def37aa63e52221bcd0deba8a6710ae12d6089f1111975b1cb2eebe25"
+    },
+    "cpo_task_context": {
+      "rows": 2,
+      "sha256": "938cde2d6ca2f1f9fc7fa30147d6e398ec38af5ff310e7c8768ed2866cfb53a9"
+    },
+    "cpo_task_comment": {
+      "rows": 2,
+      "sha256": "0fd569eb7ddaa60fa34f3d401cf4e84657255363956e3b9bee9aea8b2465ef66"
+    },
+    "cpo_task_asset": {
+      "rows": 6,
+      "sha256": "7e70cd7ff8187cf35430e95660588fa4f79639c5f4982b7e7b26d11cdb4c0622"
+    },
+    "user": {
+      "rows": 17,
+      "sha256": "5d2189a4554810e2b2af769ccc56a9a497d012aa8ded024a56f686b4358a80de"
+    },
+    "user_rights": {
+      "rows": 1038,
+      "sha256": "06e2fd14183ae37ef172411b180dcdb5f90c08718812088bcce378495605f23f"
+    },
+    "usergroup_rights": {
+      "rows": 720,
+      "sha256": "f7d044d981167e8e76b8da77a5351aab30680d1e5e2b8569c268ec5ec62c9f4c"
+    }
+  },
+  "time_utc": "2026-10-24T11:41:14Z",
+  "environment": "production",
+  "production_core_updated": false
+}

@@ -1,0 +1,7 @@
+{
+  "commit": "c0a6c69109e2771a54fe8772d74f71d3c2c96de2",
+  "artifact_sha256": "bb3ba56d04192d502c1a540127fd5d95d8db654673b868ea1925b680f211a65b",
+  "helper_sha256": "b0e0eda8bc1cda77c14ebf1e8451ed05ae492519376e83329359109092289662",
+  "files": 10,
+  "dependencies": 20
+}
