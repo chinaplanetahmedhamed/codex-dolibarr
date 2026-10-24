@@ -1,0 +1,5 @@
+{
+  "result": "PASS",
+  "assertions": 7,
+  "mode": "isolated source-overlay and recovery tests; no DB/production execution"
+}
