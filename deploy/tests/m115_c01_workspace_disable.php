@@ -23,6 +23,7 @@ try{
  denied(fn()=>(new InternalTaskWorkspaceService($db,$reader,1))->disableCustomer($c),'ordinary staff cannot disable a shared container');
  foreach(['external','inactive','entity'] as $kind){$u=clone $admin;if($kind==='external')$u->socid=$c;if($kind==='inactive')$u->statut=0;if($kind==='entity')$u->entity=2;denied(fn()=>(new InternalTaskWorkspaceService($db,$u,1))->disableCustomer($c),$kind.' actor denied');}
  q("INSERT INTO ".MAIN_DB_PREFIX."societe(entity,nom,client,status) VALUES(2,'Other entity disable QA',1,1)");$foreign=id('societe');denied(fn()=>$ws->disableCustomer($foreign),'cross-entity customer rejected');
+ foreach([[],-1,'1e2',true] as $bad)denied(fn()=>$ws->disableCustomer($bad),'malformed customer identity rejected without mutation',RuntimeException::class);
  $conf->global->CPO_CUSTOMER_WORKSPACES_ENABLED=0;denied(fn()=>$ws->disableCustomer($c),'disabled feature rejects mutation');$conf->global->CPO_CUSTOMER_WORKSPACES_ENABLED=1;
  $db->rollback();ok(hashes()===$before,'all synthetic records rolled back and original permissions/data unchanged');echo 'M115_C01_DISABLE=PASS ASSERTIONS='.$n.' CORE='.DOL_VERSION.' STORED_RIGHTS_CHANGED=0'.PHP_EOL;
 }catch(Throwable $e){while($db->transaction_opened>0)$db->rollback();throw $e;}

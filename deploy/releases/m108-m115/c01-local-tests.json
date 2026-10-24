@@ -1,6 +1,6 @@
 {
-  "disable_native_24.0.2": 19,
-  "disable_native_24.0.1": 19,
+  "disable_native_24.0.2": 23,
+  "disable_native_24.0.1": 23,
   "affected_gallery_24.0.2": 41,
   "affected_gallery_24.0.1": 41,
   "result": "PASS",

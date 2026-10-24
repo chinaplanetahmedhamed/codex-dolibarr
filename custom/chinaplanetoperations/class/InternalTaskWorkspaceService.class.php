@@ -87,6 +87,7 @@ class InternalTaskWorkspaceService
     }
     public function enableCustomer($id) {
         if(!$this->canCreate()||!self::enabled())throw new InternalTaskAccessException('Administrator required.');
+        if(!is_int($id)&&!is_string($id))throw new RuntimeException('Select a valid customer.');$id=filter_var($id,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);if($id===false)throw new RuntimeException('Select a valid customer.');
         $r=$this->rows('SELECT s.rowid FROM '.MAIN_DB_PREFIX.'societe s WHERE s.rowid='.(int)$id.' AND s.client IN (1,3) AND '.$this->customerSql('s'));if(!$r)throw new InternalTaskAccessException('Customer access denied.');
         // Update only this option; preserve unrelated native customer extra fields.
         $sql='INSERT INTO '.MAIN_DB_PREFIX.'societe_extrafields(fk_object,cpo_board_workspace) SELECT s.rowid,1 FROM '.MAIN_DB_PREFIX.'societe s WHERE s.rowid='.(int)$id.' AND s.client IN (1,3) AND '.$this->customerSql('s').' ON DUPLICATE KEY UPDATE cpo_board_workspace=VALUES(cpo_board_workspace)';
@@ -95,6 +96,7 @@ class InternalTaskWorkspaceService
     /** Hide the shared container only; never delete or alter its project boards/tasks. */
     public function disableCustomer($id) {
         if(!$this->canCreate()||!self::enabled())throw new InternalTaskAccessException('Administrator required.');
+        if(!is_int($id)&&!is_string($id))throw new RuntimeException('Select a valid customer.');$id=filter_var($id,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);if($id===false)throw new RuntimeException('Select a valid customer.');
         $r=$this->rows('SELECT s.rowid FROM '.MAIN_DB_PREFIX.'societe s WHERE s.rowid='.(int)$id.' AND s.client IN (1,3) AND '.$this->customerSql('s'));if(!$r)throw new InternalTaskAccessException('Customer access denied.');
         $sql='UPDATE '.MAIN_DB_PREFIX.'societe_extrafields ef INNER JOIN '.MAIN_DB_PREFIX.'societe s ON s.rowid=ef.fk_object SET ef.cpo_board_workspace=0 WHERE s.rowid='.(int)$id.' AND ef.cpo_board_workspace=1 AND s.client IN (1,3) AND '.$this->customerSql('s');
         $result=$this->db->query($sql);if(!$result)throw new RuntimeException('Unable to disable customer workspace.');
