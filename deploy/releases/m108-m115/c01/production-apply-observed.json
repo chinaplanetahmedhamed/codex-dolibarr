@@ -1,0 +1,17 @@
+{
+  "result": "M115_C01_FEATURE_APPLIED",
+  "commit": "63723ec30d73b7cbeab15c441d9af21c9abf2c82",
+  "artifact_sha256": "14ad88c42619484f1e9eb6b168240084c4c67f661263b8cad0fea17bde2d401a",
+  "files": 5,
+  "backup_path": "/root/chinaplanetos-m115-c01-20261025",
+  "full_database_backup_sha256": "da9dc7afe19511a6600fc466f5a20a0708b593f95221406ce3177eb86cedec0b",
+  "all_native_and_workspace_records_preserved": true,
+  "team_container_disable_not_access_revocation": true,
+  "actual_customer_disables_performed": 0,
+  "authenticated_live_acceptance": "PENDING",
+  "target": "srv1011043/vision_erp",
+  "time_utc": "2026-10-24T20:47:13Z",
+  "schema_changes": false,
+  "config_or_access_changes": false,
+  "production_core_upgrade": false
+}

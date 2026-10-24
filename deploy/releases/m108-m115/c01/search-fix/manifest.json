@@ -1,0 +1,9 @@
+{
+  "commit": "f9e4abadd78f5e1a2db1b5b76b313925f1cc0d4f",
+  "path": "custom/chinaplanetoperations/js/boards.js",
+  "before_sha256": "f0e12e40e35d44803a576372b3b8c9a90f945071269a1950b81f7c8b51bb3692",
+  "sha256": "a107d075c347a2976c215063ab35ace6ebc85e57b80f54ea008d32182ec02a07",
+  "scope": "Customer-option search uses GET; board mutations unchanged",
+  "schema_changes": false,
+  "access_changes": false
+}

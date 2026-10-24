@@ -1,0 +1,30 @@
+{
+  "result": "AUTHENTICATED_LIVE_UI_ACCEPTED_WITHOUT_BUSINESS_WRITES",
+  "verified_utc": "2026-10-24T21:02:58.971408+00:00",
+  "url": "https://erp.visiontrading.biz/custom/chinaplanetoperations/tasks/boards.php",
+  "surfaces": [
+    "Arabic desktop872 during acceptance and1280x720 final capture",
+    "Arabic phone390x844",
+    "English phone390x844"
+  ],
+  "checks": [
+    "Customer menu exposes team disable",
+    "Confirmation explicitly preserves native records/settings and authorized deep links",
+    "Cancel closes without disabling",
+    "Reenable search Manzur filters to one existing customer after GET transport fix",
+    "Select existing customer then cancel without saving",
+    "English disable menu and confirmation localized",
+    "Project12 breadcrumb computed rgb(22,26,29)",
+    "390px gallery and project board document scrollWidth=390",
+    "Original selected project-board color retained"
+  ],
+  "actual_customer_disables_performed": 0,
+  "production_reenable_save_performed": false,
+  "limitation": "Actual disable/reload/reenable/preservation and permission-negative cases executed on isolated local runtime; production business records were not used as test fixtures.",
+  "final_js_source_commit": "f9e4abadd78f5e1a2db1b5b76b313925f1cc0d4f",
+  "original_c01_source_commit": "63723ec30d73b7cbeab15c441d9af21c9abf2c82",
+  "screenshots": {
+    "desktop": "screenshots/disable-confirmation-live-ar-desktop.jpg",
+    "mobile": "screenshots/reenable-search-live-ar-mobile.jpg"
+  }
+}

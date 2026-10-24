@@ -1,0 +1,15 @@
+{
+  "result": "M115_C01_SEARCHFIX_APPLIED",
+  "backup_path": "/root/chinaplanetos-m115-c01-searchfix-20261025",
+  "before_sha256": "f0e12e40e35d44803a576372b3b8c9a90f945071269a1950b81f7c8b51bb3692",
+  "after_sha256": "a107d075c347a2976c215063ab35ace6ebc85e57b80f54ea008d32182ec02a07",
+  "records_and_permissions_preserved": true,
+  "customer_disables_performed": 0,
+  "commit": "f9e4abadd78f5e1a2db1b5b76b313925f1cc0d4f",
+  "target": "srv1011043/vision_erp",
+  "time_utc": "2026-10-24T20:57:57Z",
+  "files": 1,
+  "schema_changes": false,
+  "config_or_access_changes": false,
+  "production_core_upgrade": false
+}

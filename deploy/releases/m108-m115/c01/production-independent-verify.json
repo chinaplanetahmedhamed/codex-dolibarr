@@ -1,0 +1,13 @@
+{
+  "result": "M115_C01_INDEPENDENT_VERIFY_PASS",
+  "commit": "63723ec30d73b7cbeab15c441d9af21c9abf2c82",
+  "artifact_sha256": "14ad88c42619484f1e9eb6b168240084c4c67f661263b8cad0fea17bde2d401a",
+  "files": 5,
+  "all_final_runtime_files_verified": 36,
+  "read_only": true,
+  "target": "srv1011043/vision_erp",
+  "time_utc": "2026-10-24T20:47:48Z",
+  "schema_changes": false,
+  "config_or_access_changes": false,
+  "production_core_upgrade": false
+}
