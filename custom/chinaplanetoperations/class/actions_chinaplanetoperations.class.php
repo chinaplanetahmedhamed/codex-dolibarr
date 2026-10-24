@@ -10,6 +10,17 @@ class ActionsChinaplanetoperations
     public $errors = array();
     private $db;
     public function __construct($db) { $this->db = $db; }
+    /** Global native left-menu hook; append once without changing existing entries. */
+    public function menuLeftMenuItems($parameters, &$object, &$action = null, $hookmanager = null)
+    {
+        global $conf,$user,$langs;
+        $this->results=[];
+        if(empty($conf->global->CPO_BOARDS_ENABLED)||empty($conf->global->CPO_BOARDS_SHORTCUT_ENABLED)||!(new InternalTaskAuthorizationService($this->db,$user,(int)$conf->entity))->canOpenBoard())return 0;
+        foreach((array)$object as $item)if(strpos((string)($item['url']??''),'/chinaplanetoperations/tasks/boards.php')!==false)return 0;
+        $langs->load('chinaplanetoperations@chinaplanetoperations');
+        $this->results=['rowid'=>'cpo_boards_shortcut','fk_menu'=>0,'langs'=>'chinaplanetoperations@chinaplanetoperations','enabled'=>1,'type'=>'left','fk_mainmenu'=>'','fk_leftmenu'=>'','url'=>dol_buildpath('/chinaplanetoperations/tasks/boards.php',1).(strpos($langs->defaultlang,'ar')===0?'?lang=ar_SA':''),'titre'=>$langs->trans('CPOBoardsShortcut'),'perms'=>'1','target'=>'','mainmenu'=>$parameters['mainmenu']??'','leftmenu'=>'cpo_boards_shortcut','position'=>9990,'showtopmenuinframe'=>0,'level'=>0,'prefix'=>''];
+        return 0;
+    }
     public function getCalendarEvents($parameters, &$object, &$action, $hookmanager)
     {
         global $conf, $user, $langs, $firstdaytoshow, $lastdaytoshow, $filtert, $status, $usergroup, $socid, $pid, $actioncode, $resourceid, $type, $search_categ_cus;

@@ -841,3 +841,7 @@ InternalTaskActivity_shared_cover_changed=تم تحديث غلاف المستن�
 PublicMachines=ماكينة
 PublicSets=طقم
 PublicPrivacyEvidence=إقرار الخصوصية
+
+CPOBoardsShortcut=لوحات العمل
+
+InternalTaskActivity_task_reopened=أُعيد فتح المهمة

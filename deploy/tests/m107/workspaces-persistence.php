@@ -26,7 +26,8 @@ CREATE TABLE llx_projet(rowid INTEGER PRIMARY KEY,entity INT,fk_soc INT,ref TEXT
 CREATE TABLE llx_cpo_board(rowid INTEGER PRIMARY KEY,entity INT,title TEXT,archived INT);
 CREATE TABLE llx_cpo_board_member(entity INT,fk_board INT,fk_user INT,role TEXT);
 CREATE TABLE llx_cpo_project_board(rowid INTEGER PRIMARY KEY,entity INT,fk_project INT,fk_board INT,UNIQUE(entity,fk_project),UNIQUE(entity,fk_board));
-CREATE TABLE llx_cpo_board_card(entity INT,fk_board INT,fk_task INT,archived INT);
+CREATE TABLE llx_cpo_board_card(entity INT,fk_board INT,fk_task INT,archived INT,fk_list INT);
+CREATE TABLE llx_cpo_board_list(rowid INT,entity INT,fk_board INT,archived INT);
 CREATE TABLE llx_cpo_task(rowid INTEGER PRIMARY KEY,entity INT,date_archived TEXT,status TEXT);
 INSERT INTO llx_societe VALUES(1,1,'Customer A',1),(2,1,'Customer B',1),(3,2,'Other entity',1),(4,1,'Disabled space',1);
 INSERT INTO llx_societe_extrafields VALUES(1,1),(2,1),(3,1),(4,0);
@@ -36,7 +37,8 @@ INSERT INTO llx_cpo_board VALUES(101,1,'Board A',0),(102,1,'Board B',0),(103,2,'
 INSERT INTO llx_cpo_project_board VALUES(1,1,11,101),(2,1,12,102),(3,2,13,103);
 INSERT INTO llx_cpo_board_member VALUES(1,101,2,'viewer'),(1,102,2,'viewer');
 INSERT INTO llx_cpo_task VALUES(201,1,NULL,'todo'),(202,1,NULL,'todo'),(203,2,NULL,'todo'),(204,1,NULL,'todo'),(205,1,NULL,'done'),(206,1,'2026-10-01','todo');
-INSERT INTO llx_cpo_board_card VALUES(1,101,201,0),(1,102,202,0),(2,103,203,0),(1,104,204,0),(1,101,205,0),(1,101,206,0);
+INSERT INTO llx_cpo_board_card VALUES(1,101,201,0,101),(1,102,202,0,102),(2,103,203,0,103),(1,104,204,0,104),(1,101,205,0,101),(1,101,206,0,101);
+INSERT INTO llx_cpo_board_list VALUES(101,1,101,0),(102,1,102,0),(103,2,103,0),(104,1,104,0);
 SQL);
 $conf=(object)array('global'=>(object)array('CPO_CUSTOMER_WORKSPACES_ENABLED'=>1));
 $a=new Actor();$a->rights=['societe.lire'=>1,'projet.all.lire'=>1];$svc=new InternalTaskWorkspaceService($db,$a,1);

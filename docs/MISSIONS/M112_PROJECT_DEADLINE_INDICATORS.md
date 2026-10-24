@@ -1,0 +1,5 @@
+# M112 — Project-card native deadline indicators
+
+APPROVED / IN_PROGRESS. Ahmed approved displaying the native PROJECT deadline on project-board cards inside customer workspaces, automatic Urgent below3days, Overdue for past due, no urgency for completed projects, explicit no-date state. Keep this derived indicator separate from manually selected customer priority. No sidebar shortcut scope approved here.
+
+Source: native projet.datee converted through DB jdate and Dolibarr dol_print_date(...,tzserver), matching native project dates entered at server midnight. Threshold uses native server-local calendar days:0(today),1,2 => Urgent; exactly3days => no urgency; beforetoday => Overdue; fk_statut2(completed) suppresses urgent/overdue. This prevents a date-only deadline becoming overdue just after midnight on its own due date. No deadline is fabricated or persisted; indicator recomputes on every API load. Tests must cover missing, exactly3,under3,today,past,completed and native save/reload. No native project/task writes outside synthetic test fixtures.

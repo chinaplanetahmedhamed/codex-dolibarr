@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__.'/InternalTaskBoardLifecycle.class.php';
+require_once __DIR__.'/InternalTaskBoardCounts.class.php';
 /** Bounded customer -> native project -> existing board grouping.
  * Feature flag disabled: all legacy board/task paths are unchanged.
  * Native customer/project rights supplement existing board/card membership.
@@ -64,17 +66,22 @@ class InternalTaskWorkspaceService
         // Ordinary staff only discover spaces with an authorized native project.
         if(!$this->canCreate())$sql.=' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'projet p WHERE p.fk_soc=s.rowid AND '.$this->projectSql('p').')';
         $rows=$this->rows($sql.' ORDER BY s.nom,s.rowid LIMIT 200');
-        foreach($rows as &$s){$ps=$this->projects($s['rowid']);$s['projects']=count($ps['projects']);$s['boards']=count(array_filter($ps['projects'],function($p){return !empty($p['board']);}));$s['open_tasks']=array_sum(array_column($ps['projects'],'open_tasks'));}
+        foreach($rows as &$s){$totals=$this->totals($s['rowid']);$s=array_merge($s,$totals);}
         return array('customers'=>$rows,'can_create'=>$this->canCreate(),'can_create_customer'=>(bool)$this->actor->hasRight('societe','creer'));
     }
-    private function openCountSql($board) {
-        return '(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_board_card ws_c INNER JOIN '.MAIN_DB_PREFIX.'cpo_task ws_t ON ws_t.entity=ws_c.entity AND ws_t.rowid=ws_c.fk_task WHERE ws_c.entity='.$this->entity.' AND ws_c.fk_board='.$board." AND ws_c.archived=0 AND ws_t.date_archived IS NULL AND ws_t.status NOT IN ('done','cancelled','deleted'))";
+    private function openCountSql($board) {return InternalTaskBoardCounts::expression($this->entity,$board,false);}
+    public function totals($socid){
+        if(!self::enabled()||!$this->internal())throw new InternalTaskAccessException('Customer workspace access denied.');
+        $state= !empty($GLOBALS['conf']->global->CPO_BOARD_COMPLETION_ENABLED)?'(SELECT COALESCE(MAX(completed),0) FROM '.MAIN_DB_PREFIX.'cpo_board_completion cc WHERE cc.entity=b.entity AND cc.fk_board=b.rowid)':'0';
+        $from=' FROM '.MAIN_DB_PREFIX.'projet p LEFT JOIN '.MAIN_DB_PREFIX.'cpo_project_board pb ON pb.entity=p.entity AND pb.fk_project=p.rowid LEFT JOIN '.MAIN_DB_PREFIX.'cpo_board b ON b.entity=pb.entity AND b.rowid=pb.fk_board AND '.$this->boardVisibleSql('b').' AND '.InternalTaskBoardLifecycle::visibleSql('b.entity','b.rowid').' WHERE p.fk_soc='.(int)$socid.' AND '.$this->projectSql('p');
+        $r=$this->rows('SELECT COUNT(*) projects,COALESCE(SUM(b.rowid IS NOT NULL),0) boards,COALESCE(SUM(CASE WHEN b.rowid IS NOT NULL THEN '.$this->openCountSql('b.rowid').' ELSE 0 END),0) open_tasks,COALESCE(SUM(CASE WHEN b.rowid IS NOT NULL THEN '.InternalTaskBoardCounts::expression($this->entity,'b.rowid',true).' ELSE 0 END),0) done_tasks,COALESCE(SUM(CASE WHEN b.rowid IS NOT NULL AND '.$state.'=1 THEN 1 ELSE 0 END),0) done_boards,COALESCE(SUM(CASE WHEN b.rowid IS NOT NULL AND '.$state.'=0 THEN 1 ELSE 0 END),0) open_boards'.$from);
+        return array_map('intval',$r[0]);
     }
     public function projects($socid) {
         if(!self::enabled()||!$this->internal())throw new InternalTaskAccessException('Customer workspace access denied.');
         $s=$this->rows('SELECT s.rowid,s.nom FROM '.MAIN_DB_PREFIX.'societe s INNER JOIN '.MAIN_DB_PREFIX.'societe_extrafields ef ON ef.fk_object=s.rowid AND ef.cpo_board_workspace=1 WHERE s.rowid='.(int)$socid.' AND '.$this->customerSql('s'));
         if(!$s)throw new InternalTaskAccessException('Customer workspace access denied.');
-        $ps=$this->rows('SELECT p.rowid,p.ref,p.title,p.fk_statut,b.rowid board_id,b.title board_title,b.archived board_archived,CASE WHEN b.rowid IS NULL THEN 0 ELSE '.$this->openCountSql('b.rowid').' END open_tasks FROM '.MAIN_DB_PREFIX.'projet p LEFT JOIN '.MAIN_DB_PREFIX.'cpo_project_board pb ON pb.entity=p.entity AND pb.fk_project=p.rowid LEFT JOIN '.MAIN_DB_PREFIX.'cpo_board b ON b.entity=pb.entity AND b.rowid=pb.fk_board AND '.$this->boardVisibleSql('b').' WHERE p.fk_soc='.(int)$socid.' AND '.$this->projectSql('p').' ORDER BY p.rowid DESC LIMIT 200');
+        $ps=$this->rows('SELECT p.rowid,p.ref,p.title,p.fk_statut,b.rowid board_id,b.title board_title,b.archived board_archived,CASE WHEN b.rowid IS NULL THEN 0 ELSE '.$this->openCountSql('b.rowid').' END open_tasks FROM '.MAIN_DB_PREFIX.'projet p LEFT JOIN '.MAIN_DB_PREFIX.'cpo_project_board pb ON pb.entity=p.entity AND pb.fk_project=p.rowid LEFT JOIN '.MAIN_DB_PREFIX.'cpo_board b ON b.entity=pb.entity AND b.rowid=pb.fk_board AND '.$this->boardVisibleSql('b').' AND '.InternalTaskBoardLifecycle::visibleSql('b.entity','b.rowid').' WHERE p.fk_soc='.(int)$socid.' AND '.$this->projectSql('p').' ORDER BY p.rowid DESC LIMIT 200');
         foreach($ps as &$p){$p['board']=$p['board_id']?array('rowid'=>$p['board_id'],'title'=>$p['board_title'],'archived'=>$p['board_archived']):null;unset($p['board_id'],$p['board_title'],$p['board_archived']);}
         return array('customer'=>$s[0],'projects'=>$ps,'can_create'=>$this->canCreate(),'can_create_project'=>(bool)$this->actor->hasRight('projet','creer'));
     }

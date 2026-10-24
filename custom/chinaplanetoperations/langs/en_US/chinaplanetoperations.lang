@@ -848,3 +848,7 @@ InternalTaskActivity_shared_cover_changed=Shared document cover updated
 PublicMachines=machines
 PublicSets=sets
 PublicPrivacyEvidence=Privacy acknowledgement
+
+CPOBoardsShortcut=Boards
+
+InternalTaskActivity_task_reopened=Task reopened

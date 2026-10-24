@@ -340,6 +340,7 @@ class InternalTaskService
     public function moveToStage($taskId, $expectedVersion, $targetStageId, array $data = array())
     {
         $this->beginTransaction();
+        $nativeSavepoint=null;if(!empty($GLOBALS['conf']->global->CPO_PROJECT_TASK_BRIDGE_ENABLED)){$nativeSavepoint='cpo_stage_'.bin2hex(random_bytes(6));if(!$this->db->query('SAVEPOINT '.$nativeSavepoint))throw new RuntimeException('Native completion transaction unavailable.');}
         try {
             // Task authorization deliberately happens before a supplied stage is resolved.
             $task = $this->getTask($taskId, true);
@@ -386,16 +387,18 @@ class InternalTaskService
                 $reason = $this->boundedText(isset($data['reason']) ? $data['reason'] : '', 500, true);
                 $action = 'task_returned'; $suffix = ': '.$reason;
             }
-            if ($behavior === 'done') { $progress=100; $completed=$this->q($this->now()); $action='task_completed'; }
+            if ($behavior === 'done') { require_once __DIR__.'/InternalTaskCompletionService.class.php';(new InternalTaskCompletionService($this->db,$this->actor,$this->entity))->nativeTask($taskId,true);$progress=100; $completed=$this->q($this->now()); $action='task_completed'; }
             $fromCode = !empty($task['stage_code']) ? (string)$task['stage_code'] : (string)$task['status'];
             $message = $fromCode.' > '.(string)$targetStage['code'].$suffix;
             $sql = 'UPDATE '.MAIN_DB_PREFIX.'cpo_task SET fk_stage='.(int)$targetStageId.',status='.$this->q($status).',progress='.$progress.',waiting_reason='.$waitingReason.',waiting_on='.$waitingOn.',date_followup='.$followup.',date_completed='.$completed.',fk_user_modif='.$this->auth->actorId().',version=version+1';
             $sql .= ' WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion;
             $this->cas($sql);
             $this->log((int)$task['fk_operation'], (int)$taskId, $action, $message, $this->auth->actorId());
+            if($nativeSavepoint)$this->db->query('RELEASE SAVEPOINT '.$nativeSavepoint);
             $this->commitTransaction();
             return (int)$expectedVersion + 1;
         } catch (Throwable $e) {
+            if($nativeSavepoint){$this->db->query('ROLLBACK TO SAVEPOINT '.$nativeSavepoint);$this->db->query('RELEASE SAVEPOINT '.$nativeSavepoint);}
             $this->db->rollback();
             throw $e;
         }

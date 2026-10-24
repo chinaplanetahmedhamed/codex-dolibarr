@@ -65,8 +65,8 @@ body.cpo-board-canvas{overflow:hidden;margin:0}body.cpo-board-canvas .fiche{marg
 #cp-boards .cb-card-erp{display:flex;flex-direction:column;gap:5px;margin:0 0 12px;font-size:12px;line-height:1.45}#cp-boards .cb-card-erp-row{display:grid;grid-template-columns:60px minmax(0,1fr);gap:6px;align-items:baseline}#cp-boards .cb-card-erp-label{color:#44546f;font-weight:600}#cp-boards .cb-card-erp bdi{overflow-wrap:anywhere;color:#172b4d}#cp-boards.cb-theme-dark .cb-card-erp-label{color:#9fadbc}#cp-boards.cb-theme-dark .cb-card-erp bdi{color:#dfe1e6}
 
 /* Customer containers extend the existing China Planet board canvas. */
-#cp-boards .cb-ws-tabs{display:flex;gap:10px;padding:9px 24px;background:#123e35;color:#edf5ee;flex:0 0 auto;font-size:14px;border-top:1px solid #416355}
-#cp-boards .cb-ws-tabs a{padding:5px 10px;border-radius:6px}#cp-boards .cb-ws-tabs a:hover{background:#285b4e}
+#cp-boards .cb-ws-tabs{display:flex;gap:10px;padding:9px 24px;background:#f7f8fa;color:#243247;flex:0 0 auto;font-size:14px;border-top:1px solid #dfe1e6;border-bottom:1px solid #dfe1e6}
+#cp-boards .cb-ws-tabs a{padding:5px 10px;border-radius:6px}#cp-boards .cb-ws-tabs a:hover{background:#091e4214}
 #cp-boards .cb-customer-spaces{padding:30px 34px 36px;max-width:1500px;margin:auto}
 #cp-boards .cb-ws-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:30px}
 #cp-boards .cb-ws-heading h1{font-size:30px;line-height:1.5;margin:0 0 8px;color:inherit}
@@ -87,3 +87,60 @@ body.cpo-board-canvas{overflow:hidden;margin:0}body.cpo-board-canvas .fiche{marg
 #cp-boards.cb-theme-dark .cb-customer-spaces .cb-hint,#cp-boards.cb-theme-dark .cb-ws-ref{color:#c0d5c5}
 #cp-boards.cb-theme-dark .cb-ws-open{color:#c7e3b9}
 @media(max-width:700px){#cp-boards .cb-ws-tabs{padding:8px 12px;gap:5px;font-size:13px}#cp-boards .cb-customer-spaces{padding:22px 16px}#cp-boards .cb-ws-heading{display:block;margin-bottom:24px}#cp-boards .cb-ws-heading h1{font-size:25px}#cp-boards .cb-ws-actions{margin-top:18px;gap:8px}#cp-boards .cb-ws-grid{grid-template-columns:1fr;gap:16px}#cp-boards .cb-ws-link{font-size:13px;padding:9px 11px}#cp-boards .cb-workspace-breadcrumb{font-size:12px;padding:10px 14px}}
+/* M107 review: generous targets and visible keyboard focus for the new hierarchy. */
+#cp-boards .cb-ws-tabs a,#cp-boards .cb-ws-link,#cp-boards .cb-ws-open,#cp-boards .cb-workspace-breadcrumb a{display:inline-flex;align-items:center;min-height:44px;touch-action:manipulation}
+#cp-boards .cb-ws-actions button,#cp-boards .cb-ws-project button{min-height:44px}
+#cp-boards .cb-ws-name{display:block;min-height:44px}
+#cp-boards :is(.cb-ws-tabs,.cb-customer-spaces,.cb-workspace-breadcrumb) :is(a,button):focus-visible{outline:3px solid #17594b;outline-offset:3px}
+#cp-boards.cb-theme-dark :is(.cb-ws-tabs,.cb-customer-spaces,.cb-workspace-breadcrumb) :is(a,button):focus-visible{outline-color:#c7e3b9}
+#cp-boards :is(.cb-ws-tabs,.cb-workspace-breadcrumb) a:focus-visible{outline-color:#c7e3b9}
+#cp-boards #cb-search::placeholder{color:#52617a;opacity:1}
+#cp-boards.cb-theme-dark #cb-search::placeholder{color:#9fadbc}
+/* M109: use the existing General boards gallery and tile language. */
+.cb-workspace-gallery .cb-page-head{align-items:flex-start;gap:20px}
+.cb-workspace-gallery .cb-page-head h1{font-size:26px;line-height:1.4;margin:0}
+.cb-workspace-gallery .cb-page-head .cb-ws-actions{margin-top:0}
+.cb-workspace-gallery .cb-workspace-filters{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0 12px}
+.cb-workspace-gallery .cb-ws-filter{display:flex;flex-direction:column;gap:6px;font-size:13px;min-width:150px}
+.cb-workspace-gallery select{min-height:44px;padding:9px 12px;border-radius:6px;font:inherit;color:inherit;background:transparent;max-width:100%}
+.cb-workspace-gallery option{color:#243247;background:#fff}
+.cb-workspace-gallery .cb-board-tile{display:flex;flex-direction:column;gap:8px;min-height:180px;isolation:isolate}
+.cb-workspace-gallery .cb-board-tile>a{padding-inline-end:32px;line-height:1.5}
+.cb-workspace-gallery .cb-board-tile small{display:block;line-height:1.6;margin:0;opacity:1;color:inherit}
+.cb-workspace-gallery .cb-board-tile h2{color:inherit!important;font-size:20px;line-height:1.5;margin:0;overflow-wrap:anywhere;padding-inline-end:30px}
+#cp-boards .cb-board-tile .cb-star{min-width:44px;min-height:44px;padding:6px!important}
+#cp-boards .cb-workspace-menu{position:absolute;inset-inline-end:8px;bottom:8px;min-width:44px;min-height:44px;font-size:24px;padding:5px!important}
+.cb-ws-priority{align-self:flex-start;font-size:12px;line-height:1.6;font-weight:700;padding:3px 9px;border-radius:4px;margin-top:auto;color:#172b4d;background:#e2e9f5}
+.cb-priority-urgent{background:#ffd9df;color:#861b2b}.cb-priority-high{background:#ffe6c0;color:#714000}.cb-priority-low{background:#d9ede6;color:#124b3c}
+#cp-boards .cb-workspace-create{align-self:flex-start;min-height:44px;text-align:start;background:#ffffff21;color:#fff;margin-top:8px}
+#cp-boards .cb-workspace-gallery :is(a,button,select):focus-visible{outline:3px solid #17594b;outline-offset:3px}
+#cp-boards .cb-workspace-gallery .cb-board-tile :is(a,button):focus-visible,#cp-boards.cb-theme-dark .cb-workspace-gallery :is(a,button,select):focus-visible{outline-color:#c7e3b9}
+@media(max-width:700px){.cb-workspace-gallery .cb-page-head h1{font-size:22px}.cb-workspace-gallery .cb-ws-actions{gap:8px}.cb-workspace-gallery .cb-workspace-filters{gap:10px}.cb-workspace-gallery .cb-ws-filter{min-width:0;flex:1 1 130px}.cb-workspace-gallery .cb-board-tile{min-height:180px}.cb-workspace-gallery .cb-board-tile>a{font-size:20px}}
+#cb-dialog .cb-confirm-board-delete{background:#ae2a19!important;border-color:#ae2a19;color:#fff!important;min-height:44px}
+.cb-project-deadline{display:flex;align-items:flex-start;flex-direction:column;gap:8px;margin-top:auto;font-size:13px;line-height:1.6}.cb-project-deadline time{font-variant-numeric:tabular-nums;unicode-bidi:plaintext}.cb-project-deadline .cb-ws-priority{margin:0}.cb-deadline-urgent{background:#ffe6c0;color:#714000}.cb-deadline-overdue{background:#ffd9df;color:#861b2b}.cb-deadline-completed{background:#d9ede6;color:#124b3c}
+
+/* Persisted completion is distinct from archived/deleted board state. */
+.cb-completion-summary,.cb-completion-warning{margin:0;padding:12px 24px;background:var(--cb-surface,#fff);color:var(--cb-text,#172b4d);font-variant-numeric:tabular-nums}
+.cb-completion-warning{background:#fff1d6;color:#5c3900}
+.cb-task-done{display:inline-block;padding:4px 8px;margin-bottom:6px;background:#d9f2e4;color:#16462e;font-size:12px;font-weight:700;border-radius:6px}
+.cb-board-counts{display:block;color:inherit;font-variant-numeric:tabular-nums}
+.cb-board-done{display:inline-block;padding:4px 8px;background:#d9f2e4;color:#16462e;border-radius:6px;font-weight:700;font-size:12px}
+#cb-dialog>header button,#cb-card-dialog>header button,.cb-list-popover .cb-popover-close{width:44px;height:44px;min-width:44px;min-height:44px;line-height:1}
+#cb-dialog>header h2{padding-inline-end:12px}.cb-list-popover .cb-popover-item{min-height:44px}
+.cb-theme-dark .cb-completion-summary{background:#22272b;color:#dfe1e6}
+.cb-theme-dark .cb-completion-warning{background:#46391f;color:#ffe2a0}
+.cb-filter,.cb-card-menu,.cb-ellipsis{min-width:44px;min-height:44px}
+.cb-card{padding-inline-end:48px}.cb-card-menu{width:44px;height:44px}
+.cb-workspace-gallery .cb-board-tile>a{padding-inline-end:52px}
+@media(max-width:760px){.cb-boards-home{grid-template-columns:minmax(0,1fr)}.cb-boards-sidebar{display:none}}
+
+/* Customer and General board navigation share the incumbent gallery palette. */
+#cp-boards.cb-theme-dark .cb-ws-tabs{background:#161a1d;color:#dfe1e6;border-color:#454f59}
+#cp-boards.cb-theme-dark .cb-ws-tabs a:hover{background:#22272b}
+#cp-boards .cb-ws-tabs a[aria-current=page]{background:#e9f2ff;color:#0c66e4;box-shadow:inset 0 -2px #0c66e4;font-weight:700}
+#cp-boards.cb-theme-dark .cb-ws-tabs a[aria-current=page]{background:#182b4e;color:#cce0ff;box-shadow:inset 0 -2px #85b8ff}
+#cp-boards .cb-ws-tabs a:focus-visible{outline-color:#0c66e4}
+#cp-boards.cb-theme-dark .cb-ws-tabs a:focus-visible{outline-color:#85b8ff}
+
+.cb-workspace-gallery .cb-workspace-appearance-cover{padding:22px;border-radius:10px;background-size:cover;background-position:center;color:#fff;margin-bottom:20px}
+.cb-workspace-appearance-cover h1{color:inherit!important}.cb-workspace-appearance-cover .cb-ws-link{color:inherit;border-color:#fff9;background:#0003}

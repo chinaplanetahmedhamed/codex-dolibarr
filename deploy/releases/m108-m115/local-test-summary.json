@@ -1,0 +1,53 @@
+[
+  {
+    "suite": "m108_native_project_tasks",
+    "core": "24.0.2",
+    "exit": 0,
+    "result": "M108_NATIVE_PROJECT_TASKS=PASS ASSERTIONS=26 CORE=24.0.2 STORED_RIGHTS_CHANGED=0"
+  },
+  {
+    "suite": "m109_m110_workspace_controls",
+    "core": "24.0.2",
+    "exit": 0,
+    "result": "M109_M110=PASS ASSERTIONS=41 CORE=24.0.2 STORED_RIGHTS_CHANGED=0"
+  },
+  {
+    "suite": "m111_m112_context_deadlines",
+    "core": "24.0.2",
+    "exit": 0,
+    "result": "M111_M112=PASS ASSERTIONS=42 CORE=24.0.2 STORED_RIGHTS_CHANGED=0"
+  },
+  {
+    "suite": "m108_native_project_tasks",
+    "core": "24.0.1",
+    "exit": 0,
+    "result": "M108_NATIVE_PROJECT_TASKS=PASS ASSERTIONS=26 CORE=24.0.1 STORED_RIGHTS_CHANGED=0"
+  },
+  {
+    "suite": "m109_m110_workspace_controls",
+    "core": "24.0.1",
+    "exit": 0,
+    "result": "M109_M110=PASS ASSERTIONS=41 CORE=24.0.1 STORED_RIGHTS_CHANGED=0"
+  },
+  {
+    "suite": "m111_m112_context_deadlines",
+    "core": "24.0.1",
+    "exit": 0,
+    "result": "M111_M112=PASS ASSERTIONS=42 CORE=24.0.1 STORED_RIGHTS_CHANGED=0"
+  },
+  {
+    "suite": "test_m097_boards",
+    "exit": 0,
+    "result": "M097_BOARDS=PASS ASSERTIONS=58"
+  },
+  {
+    "suite": "test_m099_shared_documents",
+    "exit": 0,
+    "result": "M099_SHARED_DOCUMENTS=PASS ASSERTIONS=78"
+  },
+  {
+    "suite": "m113_boards_shortcut",
+    "exit": 0,
+    "result": "M113_SHORTCUT=PASS ASSERTIONS=8 STORED_RIGHTS_CHANGED=0"
+  }
+]

@@ -29,9 +29,29 @@ class InternalTaskContextService
     private function rows($sql){$r=$this->query($sql);$out=[];while($o=$this->db->fetch_object($r))$out[]=(array)$o;return $out;}
     private function one($sql){$r=$this->rows($sql);return $r?$r[0]:null;}
     private function task($id,$write=false){if(empty($GLOBALS['conf']->global->CPO_SHIPMENT_CARDS_ENABLED))throw new ShipmentDocumentAccessException('Operation cards are unavailable.');$this->docs->ensureReady();$t=$this->tasks->requireReadableTask($id);if($write&&!$this->auth->canEditTask($t))throw new InternalTaskAccessException('Task access denied.');return $t;}
+    private $projectShipments=[];
+    private function shipmentDefaults($customer,$project){
+        $key=(int)$customer.':'.(int)$project;if(isset($this->projectShipments[$key]))return $this->projectShipments[$key];
+        $out=['automatic'=>0,'choiceRequired'=>false];$rows=$this->rows('SELECT rowid FROM '.MAIN_DB_PREFIX.'chinaplanetlogistics WHERE entity='.$this->entity.' AND fk_soc='.(int)$customer.' AND fk_project='.(int)$project.' ORDER BY rowid LIMIT 2');$visible=[];
+        foreach($rows as $row)try{$this->shipment($row['rowid']);$visible[]=(int)$row['rowid'];}catch(ShipmentDocumentAccessException|InternalTaskAccessException $e){}
+        // One visible shipment among several is still ambiguous: never guess or
+        // reveal the identities/count of records the actor cannot read.
+        if(count($rows)===1&&count($visible)===1)$out['automatic']=$visible[0];
+        $out['choiceRequired']=count($visible)>1;return $this->projectShipments[$key]=$out;
+    }
+    public function inheritBoardContext($taskId,array $scope){
+        $task=$this->task($taskId,true);if($this->one('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_task_context WHERE entity='.$this->entity.' AND fk_task='.(int)$taskId))return;
+        $this->project($scope['rowid'],$scope['fk_soc']);$defaults=$this->shipmentDefaults($scope['fk_soc'],$scope['rowid']);
+        $this->save($taskId,0,(int)$scope['fk_soc'],(int)$scope['rowid'],$defaults['automatic']);
+    }
     private function rawContext($task){$c=$this->one('SELECT * FROM '.MAIN_DB_PREFIX.'cpo_task_context WHERE entity='.$this->entity.' AND fk_task='.(int)$task['rowid']);if($c)return $c;
         $c=['version'=>0,'fk_soc'=>0,'fk_project'=>0,'fk_shipment'=>0,'fk_cover_document'=>0];
-        if(!empty($task['fk_operation'])){$o=$this->one('SELECT fk_soc,fk_project,fk_shipment FROM '.MAIN_DB_PREFIX.'cpo_operation WHERE entity='.$this->entity.' AND rowid='.(int)$task['fk_operation']);if($o)$c=array_merge($c,$o);}return $c;}
+        if(!empty($task['fk_operation'])){$o=$this->one('SELECT fk_soc,fk_project,fk_shipment FROM '.MAIN_DB_PREFIX.'cpo_operation WHERE entity='.$this->entity.' AND rowid='.(int)$task['fk_operation']);if($o)$c=array_merge($c,$o);}
+        if(empty($c['fk_soc'])&&empty($c['fk_project'])&&!empty($GLOBALS['conf']->global->CPO_PROJECT_TASK_BRIDGE_ENABLED)){
+            $link=$this->one('SELECT fk_board FROM '.MAIN_DB_PREFIX.'cpo_board_card WHERE entity='.$this->entity.' AND fk_task='.(int)$task['rowid']);
+            $scope=$link?(new InternalTaskWorkspaceService($this->db,$this->actor,$this->entity))->boardProject($link['fk_board']):null;
+            if($scope){$defaults=$this->shipmentDefaults($scope['fk_soc'],$scope['rowid']);$c['fk_soc']=(int)$scope['fk_soc'];$c['fk_project']=(int)$scope['rowid'];$c['fk_shipment']=$defaults['automatic'];$c['inherited_from_board']=true;}
+        }return $c;}
     private function customer($id){
         if(!$this->auth->isInternalActive()||(!$this->auth->isDolibarrAdministrator()&&!$this->actor->hasRight('societe','lire')))throw new InternalTaskAccessException('Customer access denied.');
         $sql='SELECT s.rowid,s.nom FROM '.MAIN_DB_PREFIX.'societe s WHERE s.entity='.$this->entity.' AND s.rowid='.(int)$id.'';
@@ -48,11 +68,13 @@ class InternalTaskContextService
         if(!empty($p['fk_soc']))$this->customer($p['fk_soc']);return ['id'=>(int)$p['rowid'],'label'=>$p['ref'].' · '.$p['title'],'customerId'=>(int)$p['fk_soc']];}
     private function shipment($id){$s=$this->docs->requireShipment($id);$this->customer($s['fk_soc']);if(!empty($s['fk_project']))$this->project($s['fk_project'],$s['fk_soc']);$customer=$this->customer($s['fk_soc']);$project=!empty($s['fk_project'])?$this->project($s['fk_project'],$s['fk_soc']):null;return ['id'=>(int)$s['rowid'],'label'=>$s['ref'],'customerId'=>(int)$s['fk_soc'],'projectId'=>(int)$s['fk_project'],'customerLabel'=>$customer['label'],'projectLabel'=>$project?$project['label']:''];}
     public function get($id,$archived=false,$includeDocuments=true){
-        $t=$this->task($id);$c=$this->rawContext($t);$context=['version'=>(int)$c['version'],'customer'=>null,'project'=>null,'shipment'=>null,'coverDocumentId'=>(int)$c['fk_cover_document'],'restricted'=>false];
+        $t=$this->task($id);$c=$this->rawContext($t);$context=['version'=>(int)$c['version'],'customer'=>null,'project'=>null,'shipment'=>null,'coverDocumentId'=>(int)$c['fk_cover_document'],'restricted'=>false,'inheritedFromBoard'=>!empty($c['inherited_from_board']),'shipmentChoiceRequired'=>false];
+        $context['boardProjectId']=0;if(InternalTaskWorkspaceService::enabled()){$bp=$this->one('SELECT pb.fk_project FROM '.MAIN_DB_PREFIX.'cpo_board_card bc INNER JOIN '.MAIN_DB_PREFIX.'cpo_project_board pb ON pb.entity=bc.entity AND pb.fk_board=bc.fk_board WHERE bc.entity='.$this->entity.' AND bc.fk_task='.(int)$id);$context['boardProjectId']=(int)($bp['fk_project']??0);}
         try{if(!empty($c['fk_shipment'])){$s=$this->shipment($c['fk_shipment']);$context['shipment']=$s;$context['customer']=$this->customer($s['customerId']);if($s['projectId'])$context['project']=$this->project($s['projectId'],$s['customerId']);}
             else{if(!empty($c['fk_soc']))$context['customer']=$this->customer($c['fk_soc']);if(!empty($c['fk_project']))$context['project']=$this->project($c['fk_project'],$c['fk_soc']);}}
         catch(ShipmentDocumentAccessException $e){$context['restricted']=true;$context['customer']=$context['project']=$context['shipment']=null;}
         catch(InternalTaskAccessException $e){$context['restricted']=true;$context['customer']=$context['project']=$context['shipment']=null;}
+        if(!$context['restricted']&&$context['customer']&&$context['project']&&!$context['shipment']&&!empty($GLOBALS['conf']->global->CPO_PROJECT_TASK_BRIDGE_ENABLED))$context['shipmentChoiceRequired']=$this->shipmentDefaults($context['customer']['id'],$context['project']['id'])['choiceRequired'];
         $read=!$context['restricted']&&!empty($context['shipment'])&&$this->auth->canUseTaskFiles($t);
         $permissions=['link'=>$this->auth->canEditTask($t),'readDocuments'=>$read,'uploadDocuments'=>$read&&$this->auth->canUseTaskFiles($t,true)&&$this->docs->can($c['fk_shipment'],'write'),'archiveDocuments'=>$read&&$this->auth->canEditTask($t)&&$this->docs->can($c['fk_shipment'],'archive')];
         $out=['enabled'=>true,'context'=>$context,'permissions'=>$permissions,'documents'=>[],'events'=>[]];
@@ -77,13 +99,18 @@ class InternalTaskContextService
             if(InternalTaskWorkspaceService::enabled()){
                 $placements=$this->rows('SELECT fk_board FROM '.MAIN_DB_PREFIX.'cpo_board_card WHERE entity='.$this->entity.' AND fk_task='.(int)$id);
                 $scope=$placements?(new InternalTaskWorkspaceService($this->db,$this->actor,$this->entity))->boardProject($placements[0]['fk_board']):null;
-                if($scope && (($customerId&&(int)$scope['fk_soc']!==$customerId)||($projectId&&(int)$scope['rowid']!==$projectId)))throw new InternalTaskAccessException('Task references must match its project board.');
-                if($scope && $shipmentId && (!$projectId || (int)$scope['rowid']!==$projectId))throw new InternalTaskAccessException('Shipment must belong to this project board.');
+                if($scope){
+                    if(!$projectId||!$customerId)throw new InternalTaskAccessException('A project card must keep its customer and project. Clear only its shipment, or choose another project.');
+                    if((int)$scope['rowid']!==$projectId){
+                        require_once __DIR__.'/InternalTaskProjectTaskService.class.php';
+                        $movedBoard=(new InternalTaskProjectTaskService($this->db,$this->actor,$this->entity))->moveCard($id,$placements[0]['fk_board'],$projectId);
+                    }elseif((int)$scope['fk_soc']!==$customerId)throw new InternalTaskAccessException('Customer must match the project board.');
+                }
             }
             $set='fk_soc='.($customerId?:'NULL').',fk_project='.($projectId?:'NULL').',fk_shipment='.($shipmentId?:'NULL').',fk_cover_document='.($coverId?:'NULL').',fk_user_modif='.(int)$this->actor->id;
             if((int)$c['version']===0)$this->query('INSERT INTO '.MAIN_DB_PREFIX.'cpo_task_context(entity,fk_task,fk_soc,fk_project,fk_shipment,fk_cover_document,version,fk_user_modif) VALUES('.$this->entity.','.(int)$id.','.($customerId?:'NULL').','.($projectId?:'NULL').','.($shipmentId?:'NULL').','.($coverId?:'NULL').',1,'.(int)$this->actor->id.')');
             else $this->query('UPDATE '.MAIN_DB_PREFIX.'cpo_task_context SET '.$set.',version=version+1 WHERE entity='.$this->entity.' AND fk_task='.(int)$id);
-            $this->query('INSERT INTO '.MAIN_DB_PREFIX.'cpo_activity(entity,fk_task,fk_operation,action_code,message,visibility,fk_user,date_action) VALUES('.$this->entity.','.(int)$id.','.((int)$t['fk_operation']?:'NULL').",".$this->q($coverOnly?'shared_cover_changed':'task_context_changed').",'', 'internal',".(int)$this->actor->id.','.$this->q($this->db->idate(dol_now())).')');$this->commitScope();return $this->get($id);
+            $this->query('INSERT INTO '.MAIN_DB_PREFIX.'cpo_activity(entity,fk_task,fk_operation,action_code,message,visibility,fk_user,date_action) VALUES('.$this->entity.','.(int)$id.','.((int)$t['fk_operation']?:'NULL').",".$this->q($coverOnly?'shared_cover_changed':'task_context_changed').",'', 'internal',".(int)$this->actor->id.','.$this->q($this->db->idate(dol_now())).')');$this->commitScope();$result=$this->get($id);if(!empty($movedBoard))$result['movedBoardId']=$movedBoard;return $result;
         }catch(Throwable $e){$this->rollbackScope();throw $e;}
     }
     public function options($taskId,$type,$q='',$customerId=0,$projectId=0){

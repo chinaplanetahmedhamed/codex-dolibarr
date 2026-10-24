@@ -774,3 +774,5 @@ PublicRequestInvalidAction=申请操作无效。
 PublicRequestNotFound=未找到申请。
 PublicRequestViewEmpty=此分类中没有申请。
 PublicRequestActions=操作
+
+InternalTaskActivity_task_reopened=任务已重新打开

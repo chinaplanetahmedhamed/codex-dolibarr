@@ -1,0 +1,34 @@
+{
+  "result": "AUTHENTICATED_NATIVE_BROWSER_PASS",
+  "core": "24.0.2",
+  "session_user_id": 1,
+  "agent_permission_changes": 0,
+  "human_prepared_existing_account": true,
+  "checks": [
+    "card creates native task shown on native project list",
+    "task Done native Closed100",
+    "task Reopen native Validated0",
+    "cross-project/customer change moves same native/card identities",
+    "links survive full reload",
+    "board Done preserves open task/native project and shows warning",
+    "board reopen",
+    "owned synthetic cleanup matches 25 original table baselines"
+  ],
+  "card_id": 637,
+  "native_task_id": 134,
+  "source_project": 1929,
+  "destination_project": 1930,
+  "boards": [
+    177,
+    178
+  ],
+  "production_writes": 0,
+  "fixture_cleanup": "PASS",
+  "screenshots": [
+    "card-created.png",
+    "native-task-list-created.png",
+    "native-task-after-transfer.png",
+    "card-after-transfer.png",
+    "board-done-open-native-task.png"
+  ]
+}
