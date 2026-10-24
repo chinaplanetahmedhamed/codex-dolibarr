@@ -88,7 +88,18 @@ class InternalTaskWorkspaceService
     public function enableCustomer($id) {
         if(!$this->canCreate()||!self::enabled())throw new InternalTaskAccessException('Administrator required.');
         $r=$this->rows('SELECT s.rowid FROM '.MAIN_DB_PREFIX.'societe s WHERE s.rowid='.(int)$id.' AND s.client IN (1,3) AND '.$this->customerSql('s'));if(!$r)throw new InternalTaskAccessException('Customer access denied.');
-        require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';$soc=new Societe($this->db);if($soc->fetch((int)$id)<=0)throw new RuntimeException('Customer unavailable.');$soc->fetch_optionals();$soc->array_options['options_cpo_board_workspace']=1;if($soc->insertExtraFields()<0)throw new RuntimeException('Unable to enable customer workspace.');return array('id'=>(int)$id);
+        // Update only this option; preserve unrelated native customer extra fields.
+        $sql='INSERT INTO '.MAIN_DB_PREFIX.'societe_extrafields(fk_object,cpo_board_workspace) SELECT s.rowid,1 FROM '.MAIN_DB_PREFIX.'societe s WHERE s.rowid='.(int)$id.' AND s.client IN (1,3) AND '.$this->customerSql('s').' ON DUPLICATE KEY UPDATE cpo_board_workspace=VALUES(cpo_board_workspace)';
+        if(!$this->db->query($sql))throw new RuntimeException('Unable to enable customer workspace.');return array('id'=>(int)$id);
+    }
+    /** Hide the shared container only; never delete or alter its project boards/tasks. */
+    public function disableCustomer($id) {
+        if(!$this->canCreate()||!self::enabled())throw new InternalTaskAccessException('Administrator required.');
+        $r=$this->rows('SELECT s.rowid FROM '.MAIN_DB_PREFIX.'societe s WHERE s.rowid='.(int)$id.' AND s.client IN (1,3) AND '.$this->customerSql('s'));if(!$r)throw new InternalTaskAccessException('Customer access denied.');
+        $sql='UPDATE '.MAIN_DB_PREFIX.'societe_extrafields ef INNER JOIN '.MAIN_DB_PREFIX.'societe s ON s.rowid=ef.fk_object SET ef.cpo_board_workspace=0 WHERE s.rowid='.(int)$id.' AND ef.cpo_board_workspace=1 AND s.client IN (1,3) AND '.$this->customerSql('s');
+        $result=$this->db->query($sql);if(!$result)throw new RuntimeException('Unable to disable customer workspace.');
+        if((int)$this->db->affected_rows($result)!==1)throw new InternalTaskConflictException('Workspace changed or is already disabled. Reload before saving.');
+        return array('id'=>(int)$id,'enabled'=>false);
     }
     public function customerOptions($q='') {
         if(!$this->canCreate())throw new InternalTaskAccessException('Administrator required.');

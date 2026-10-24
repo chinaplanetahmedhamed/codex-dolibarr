@@ -1,0 +1,24 @@
+{
+  "result": "M108_M115_FEATURE_APPLIED",
+  "commit": "ed9b316de228da9aa7569278808266d2c409e7b5",
+  "artifact_sha256": "a2739eca3d3155d4f56fc4d475eb6847e30a3945e7326c13b2b8da06ccb62183",
+  "runtime_files": 36,
+  "backup_path": "/root/chinaplanetos-m108-m115-20261025",
+  "full_database_backup_sha256": "83053044269cc506914d6cf7b38e36b5df5f7cf5651f307d5e2513c1045bf72b",
+  "protected_records_preserved": true,
+  "native_projects_tasks_and_rights_preserved": true,
+  "additive_tables": [
+    "cpo_project_task",
+    "cpo_customer_workspace_meta",
+    "cpo_customer_workspace_pref",
+    "cpo_board_deleted",
+    "cpo_board_completion",
+    "cpo_customer_workspace_appearance"
+  ],
+  "existing_sourcing_hooks_preserved": true,
+  "authenticated_live_acceptance": "PENDING",
+  "time_utc": "2026-10-24T18:44:10Z",
+  "target": "srv1011043/vision_erp",
+  "production_core_upgrade": false,
+  "access_changes": false
+}

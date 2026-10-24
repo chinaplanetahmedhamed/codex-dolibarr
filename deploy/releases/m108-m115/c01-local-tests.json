@@ -1,0 +1,16 @@
+{
+  "disable_native_24.0.2": 19,
+  "disable_native_24.0.1": 19,
+  "affected_gallery_24.0.2": 41,
+  "affected_gallery_24.0.1": 41,
+  "result": "PASS",
+  "browser": [
+    "cancel preserves workspace",
+    "disable hides customer container",
+    "full reload keeps disabled",
+    "search locates disabled customer",
+    "reenable restores same board/card/native task"
+  ],
+  "cleanup": "all 25 original table hashes match; user rights/images/settings preserved",
+  "production_business_test_writes": 0
+}

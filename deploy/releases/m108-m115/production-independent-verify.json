@@ -1,0 +1,23 @@
+{
+  "result": "M108_M115_INDEPENDENT_VERIFY_PASS",
+  "commit": "ed9b316de228da9aa7569278808266d2c409e7b5",
+  "artifact_sha256": "a2739eca3d3155d4f56fc4d475eb6847e30a3945e7326c13b2b8da06ccb62183",
+  "runtime_files": 36,
+  "native_core_pins": {
+    "projet/class/task.class.php": "efcd0d3a0aea351a5b663cf5cfab1eb6c3a940fa28ab0ee37cc35c1d921fadc9",
+    "projet/class/project.class.php": "b77612b38fc7830ad4a9c8439b42e92629faecf06fd106b4effcf74a491896d4"
+  },
+  "schema_tables": [
+    "cpo_project_task",
+    "cpo_customer_workspace_meta",
+    "cpo_customer_workspace_pref",
+    "cpo_board_deleted",
+    "cpo_board_completion",
+    "cpo_customer_workspace_appearance"
+  ],
+  "read_only": true,
+  "time_utc": "2026-10-24T18:45:07Z",
+  "target": "srv1011043/vision_erp",
+  "production_core_upgrade": false,
+  "access_changes": false
+}

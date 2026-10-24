@@ -144,3 +144,9 @@ body.cpo-board-canvas{overflow:hidden;margin:0}body.cpo-board-canvas .fiche{marg
 
 .cb-workspace-gallery .cb-workspace-appearance-cover{padding:22px;border-radius:10px;background-size:cover;background-position:center;color:#fff;margin-bottom:20px}
 .cb-workspace-appearance-cover h1{color:inherit!important}.cb-workspace-appearance-cover .cb-ws-link{color:inherit;border-color:#fff9;background:#0003}
+
+/* Workspace breadcrumbs use the same neutral shell and blue focus as General boards. */
+#cp-boards .cb-workspace-breadcrumb{background:#f7f8fa;color:#243247;border-bottom:1px solid #dfe1e6}
+#cp-boards.cb-theme-dark .cb-workspace-breadcrumb{background:#161a1d;color:#dfe1e6;border-color:#454f59}
+#cp-boards :is(.cb-workspace-gallery,.cb-workspace-breadcrumb) :is(a,button,select):focus-visible{outline-color:#0c66e4}
+#cp-boards.cb-theme-dark :is(.cb-workspace-gallery,.cb-workspace-breadcrumb) :is(a,button,select):focus-visible{outline-color:#85b8ff}
