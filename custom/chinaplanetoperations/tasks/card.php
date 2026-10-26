@@ -58,5 +58,13 @@ if($embedded&&$embedResult){$embedMessages=array('success'=>$langs->trans('TaskU
 <?php $life='';if($canRestoreCancelled)$life='restore_cancelled';elseif($auth->canArchiveTask($task)&&empty($task['date_archived'])&&in_array($task['status'],array('done','cancelled'),true))$life='archive';elseif($auth->canArchiveTask($task)&&!empty($task['date_archived']))$life='restore'; ?>
 <?php if($life){ ?><form method="post" action="action.php"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="<?php echo $life; ?>"><input type="hidden" name="task_id" value="<?php echo $id; ?>"><input type="hidden" name="version" value="<?php echo (int)$task['version']; ?>"><label class="cpo-field"><span><?php echo $langs->trans('InternalReason'); ?></span><textarea required maxlength="500" name="reason"></textarea></label><button class="button"><?php echo $langs->trans('InternalTaskAction_'.($life==='restore_cancelled'?'restore':$life)); ?></button></form><?php } ?>
 </section><?php } ?>
+<?php
+// Finance navigation is contextual only; destination revalidates finance/native scope.
+if(!empty($conf->global->CPO_ACCOUNT_STATEMENTS_ENABLED)&&empty($user->socid)&&empty($user->fk_soc)&&(!empty($user->admin)||$user->hasRight('chinaplanetoperations','account_read'))){
+    $map=$db->query('SELECT p.rowid,p.fk_soc FROM '.MAIN_DB_PREFIX.'cpo_board_card bc INNER JOIN '.MAIN_DB_PREFIX.'cpo_project_board pb ON pb.entity=bc.entity AND pb.fk_board=bc.fk_board INNER JOIN '.MAIN_DB_PREFIX.'projet p ON p.entity=pb.entity AND p.rowid=pb.fk_project WHERE bc.entity='.(int)$conf->entity.' AND bc.fk_task='.(int)$id);
+    $accountScope=$map?$db->fetch_object($map):null;
+    if($accountScope)echo '<section class="cpo-panel"><a class="button" href="account.php?customer='.(int)$accountScope->fk_soc.'&amp;project='.(int)$accountScope->rowid.'&amp;task='.(int)$id.'">'.(strpos($langs->defaultlang,'ar')===0?'حساب البطاقة':'Card account').'</a></section>';
+}
+?>
 <section class="cpo-panel cpt-meta-panel"><form data-task-details-form data-task-id="<?php echo (int)$id; ?>" action="personal_action.php" method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><?php cpo_details_editor($richDetails,$canEditDetails,$task); ?><?php if($canEditDetails){ ?><div class="cpt-detail-save"><button class="cpt-primary" type="submit"><?php echo $langs->trans('Save'); ?></button><output role="status"></output></div><?php } ?></form></section>
 </main><?php if($embedded)echo '</body></html>';else {cpcc_admin_shell_close();llxFooter();}$db->close(); ?>

@@ -50,6 +50,11 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500522, 'Administer internal task board and team grants', 'task_admin'),
             array(500523, 'Comment on readable internal tasks', 'task_comment'),
             array(500524, 'Manage checklists on scoped internal tasks', 'task_checklist'),
+            array(500525, 'Read internal customer account statements', 'account_read'),
+            array(500526, 'Edit account drafts and custom text columns', 'account_edit'),
+            array(500527, 'Post and reverse manual account entries', 'account_post'),
+            array(500528, 'Reallocate posted customer funds', 'account_reallocate'),
+            array(500529, 'Export internal customer account statements', 'account_export'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;
