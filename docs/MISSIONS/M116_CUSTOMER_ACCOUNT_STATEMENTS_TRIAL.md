@@ -1,6 +1,6 @@
 # M116 Customer account statements — approved isolated trial
 
-Status: READY_FOR_REVIEW (isolated implementation; native acceptance outstanding). Approval: Ahmed, relayed 2026-10-26: “ok for customer statments task , we need to implent it inside our dolibarr”, explicitly bounded to an isolated development/test version, no live deployment, push, merge, native payment adapters, customer portal exposure or permission grants.
+Status: READY_FOR_REVIEW (isolated implementation and approved native test cases passed; no production release). Approval: Ahmed, relayed 2026-10-26: “ok for customer statments task , we need to implent it inside our dolibarr”, explicitly bounded to an isolated development/test version, no live deployment, push, merge, native payment adapters, customer portal exposure or permission grants.
 
 Build manual operational customer ledger entries once with allocation lines, customer/project/card views; paired desktop statement, compact mobile entry; editable drafts; posted immutable monetary data and reversal corrections; exact locked per-record FX; same-customer audited allocation revisions; custom text columns; scoped Excel/print-PDF exports. Cash must remain distinct from obligations and native invoice receivables. Native accounting remains authoritative; manual trial is not statutory posting or native bank reconciliation. No double-entry or native accounting writes. All fixtures synthetic. No migration against production/shared databases.
 

@@ -1,6 +1,6 @@
 # M116 isolated trial implementation and verification
 
-Status: READY_FOR_REVIEW — implemented trial; native Dolibarr/MySQL installation and acceptance remain outstanding. No production release, push, merge, permission grant or customer portal change.
+Status: READY_FOR_REVIEW — isolated trial implemented; the subsequently approved native test cases passed. See `M116_NATIVE_ACCEPTANCE.md` for the current acceptance scope; earlier outstanding items below are historical milestones. No production release, push, merge, permission grant or customer portal change.
 
 Approval and policy: `docs/MISSIONS/M116_CUSTOMER_ACCOUNT_STATEMENTS_TRIAL.md`. Plan: `docs/superpowers/plans/2026-10-26-customer-account-statements.md`. Installation, tests and rollback: `deploy/tests/m116/README.md`.
 
@@ -48,3 +48,7 @@ Read-only configured-resource investigation found existing local Dolibarr 24.0.2
 Native acceptance is blocked, not denied or pending: no already configured dedicated M116 installation was found in the inspected local resources. Required next authorization is provisioning a dedicated local `m116_test_<suffix>` database/runtime using the existing local connection where possible. Credential creation or finance permission grants are not assumed; if the chosen native test identity lacks rights, their assignment requires separate explicit authorization. Native schema/locking/CSRF/UI acceptance remains outstanding.
 
 The continuation expressly excludes the prior rejected external-upload operation. No source/report upload, cloud sharing or external delivery package was attempted during this continuation. All files and evidence remain on the Mac. Local commit only; no push, merge or deployment.
+
+## Approved native phase completed
+
+The later explicit approval permitted the dedicated local native setup and synthetic test identities. Tested native acceptance cases passed, with no application-code changes required. See `M116_NATIVE_ACCEPTANCE.md` for exact versions, checks, private local evidence, retained-fixture cleanup and remaining limits. Earlier no-grants statements refer to the earlier implementation phase; this later phase assigned application rights only to newly created synthetic identities in the dedicated trial database. No MySQL grants or existing identity permissions changed.
