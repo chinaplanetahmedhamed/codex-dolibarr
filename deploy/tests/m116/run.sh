@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/../../.."
-for test in amount service hardening concurrency export failure audit-scope ui-source; do
+for test in amount service hardening concurrency export failure audit-scope ui-source rights; do
  php "deploy/tests/m116/$test.php"
 done
 php deploy/tests/m107/workspaces-persistence.php
