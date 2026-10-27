@@ -172,3 +172,6 @@ body.cpo-board-canvas{overflow:hidden;margin:0}body.cpo-board-canvas .fiche{marg
 @media(prefers-reduced-motion:reduce){#cp-boards *{scroll-behavior:auto!important}}
 /* Keep move handles reachable on short mobile canvases; scroll outside them. */
 @media(max-width:600px){body.cpo-board-canvas #cb-content:has(>.cb-workspace){overflow:auto}body.cpo-board-canvas .cb-workspace{flex:1 0 auto;height:auto;min-height:660px}body.cpo-board-canvas .cb-lanes{min-height:320px}body.cpo-board-canvas .cb-list{max-height:390px}}
+
+/* Keep automatic refresh running without a persistent status banner. */
+#cp-boards .cb-live-monitor{display:none}
