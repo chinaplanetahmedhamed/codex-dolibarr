@@ -1,0 +1,42 @@
+{
+  "release": "boards-live-20261028",
+  "base_release": "f6fefab",
+  "files": [
+    {
+      "path": "custom/chinaplanetoperations/css/boards.css",
+      "before_sha256": "d6ef4e884654dc4c5fd2e5e2725611fdabc81894cf53e09e347473dddfb2b89b",
+      "sha256": "5fff4d68da18f3e0b97762a36704e6f20dfb27ac93b0d17782fba18bfcafa950"
+    },
+    {
+      "path": "custom/chinaplanetoperations/js/boards.js",
+      "before_sha256": "00a29efd921b87ed185f32d5d87902d738ac0a7ee9e8ebc73b8c9241ec8e73a3",
+      "sha256": "77f3cc2c735662bd76c85a81760a4a627842d07a00c1c753fe2828dce74f0e50"
+    },
+    {
+      "path": "custom/chinaplanetoperations/js/boards_live_runtime.js",
+      "before_sha256": null,
+      "sha256": "01a57890e4ea586f609d7acd8755fce8c5ea5f097ac38be8c5abcafb57371394"
+    },
+    {
+      "path": "custom/chinaplanetoperations/tasks/boards.php",
+      "before_sha256": "01cf8b4b74059a8f65bb4b1976e3bfbfc42fe89e4b5587498743cbffa930c61b",
+      "sha256": "47716eecbc330ebf89fc1c6bbe6cb37e85dc5f00b696cb19d49adff49e3efc78"
+    }
+  ],
+  "schema_changes": false,
+  "permissions_changed": false,
+  "core_upgrade": false,
+  "scope": "Selected board polling every 2 seconds after previous response; dedicated move handles; shared customer/project/general visuals; preserve existing account summary.",
+  "preserved_files": {
+    "custom/chinaplanetoperations/class/CustomerAccountExport.class.php": "5705503e17614b58de14c4de6276e5488c0fb7ea1205eeddb54066c207ae801b",
+    "custom/chinaplanetoperations/class/CustomerAccountView.class.php": "5275e0a6951b9662660b8ba52c3065aa159d1bc40c46bd6e3b5b19b4c19509ce",
+    "custom/chinaplanetoperations/class/CustomerAccountSummary.class.php": "8dd5a9321ecc23562e82ed28d8344a740e0d14b8d5efaa43e3a3d5fc0ce60984",
+    "custom/chinaplanetoperations/css/customer_account.css": "20e41d3e2864f9040f15109924475529084010c59000203d06befb78d3b4cf61",
+    "custom/chinaplanetoperations/js/customer_account.js": "aa0a5886d9bbe2740a98bfce446cc109135fec379068cbcc7d45cdcdba00734e",
+    "custom/chinaplanetoperations/js/customer_account_presentations.js": "ea1e3c86e95a2a36310d36538d448642bda38eb7ed85acf1e504933385d47722",
+    "custom/chinaplanetoperations/tasks/account.php": "475bef4d65d650136a2bf8f8aa2bddbf2dca4d70b5b170fa2a22dd787ffa6a83",
+    "custom/chinaplanetoperations/tasks/account_summary.php": "b61fcb5d5493487c859d5df970e29d9fc709a8fcb59033438a03c4422c5f3703"
+  },
+  "commit": "064b9e0626ee0c58987c177beb5e4c4656b20631",
+  "production_fixtures": false
+}
