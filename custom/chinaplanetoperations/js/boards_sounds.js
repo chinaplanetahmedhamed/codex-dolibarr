@@ -36,13 +36,14 @@ function createController(o){
   try{last=Promise.resolve(o.play(selected)).catch(()=>{ready=false;update();});}catch{ready=false;update();return false;}return true;
  }
  function seed(data){baseline=data;lastRead=now();}
+ function settle(){let timer;return Promise.race([last,new Promise(resolve=>{timer=setTimeout(resolve,500);})]).finally(()=>clearTimeout(timer));}
  return {
   settings,toneFor,configure(next){if(validTone(next?.tone))p.tone=next.tone;persist();},
   setBoardTone(id,tone){const k=boardId(id);if(!k)return;if(tone===null)delete p.boards[k];else if(validTone(tone)||tone==='silent')p.boards[k]=tone;else return;
    while(Object.keys(p.boards).length>200)delete p.boards[Object.keys(p.boards)[0]];persist();},
   async toggle(){if(!p.muted&&ready){p.muted=true;persist();return true;}if(!await unlock())return false;p.muted=false;persist();return true;},
-  async preview(tone){if(!validTone(tone)||!await unlock())return false;return cue(0,true,tone);},
-  seed,disconnected(){baseline=null;lastRead=0;},
+  async preview(tone){if(!validTone(tone)||!await unlock()||!cue(0,true,tone))return false;await settle();return ready;},
+  seed,received(data){if(!lastRead||now()-lastRead>10000)baseline=data;lastRead=now();},disconnected(){baseline=null;lastRead=0;},
   observe(data){const old=baseline,gap=now()-lastRead;seed(data);if(!old||gap>10000||!changed(old,data))return false;return cue(data.board.rowid);},
   committed(action,payload={},result={}){
    if(!['move_card','add_card','copy_card','create_board','add_list','complete_board','reopen_completed_board'].includes(action))return false;
@@ -50,7 +51,7 @@ function createController(o){
    if(seen.has(identity))return false;seen.add(identity);if(seen.size>100)seen.delete(seen.values().next().value);
    return cue(action==='create_board'?result.id:payload.board);
   },
-  settle(){return Promise.race([last,new Promise(resolve=>setTimeout(resolve,500))]);}
+  settle
  };
 }
 function createPlayer(win){

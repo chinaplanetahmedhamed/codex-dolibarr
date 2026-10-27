@@ -1,6 +1,6 @@
 # Board Sounds Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add controllable personal sound cues to current Boards without new data access.
 **Architecture:** Separate tested JS sound controller/player; small hooks on successful mutations and selected-board snapshot application; existing dialog and navigation for settings.
@@ -21,15 +21,15 @@
 
 ### Task 1: Controller and short tone player
 **Files:** new js/boards_sounds.js; deploy/tests/boards-sounds/controller.cjs.
-**Interfaces:** createController({storage,key,play,unlock,now,onChange}) → settings(),configure(),setBoardTone(),toggle(),preview(),seed(),observe(),disconnected(),committed(),settle(). createPlayer(window) → unlock(),play().
-- [ ] Write behavior tests for defaults, persisted isolation, choices/override/silent, failure and mute, successful events, rate-limit, seed/reconnect/dedup; run RED (missing controller export).
-- [ ] Implement controller and Web Audio synthesis; run GREEN plus prior sync/pointer tests.
-- [ ] Commit Task1.
+**Interfaces:** createController({storage,key,play,unlock,now,onChange}) → settings(),configure(),setBoardTone(),toggle(),preview(),seed(),received(),observe(),disconnected(),committed(),settle(). createPlayer(window) → unlock(),play().
+- [x] Write behavior tests for defaults, persisted isolation, choices/override/silent, failure and mute, successful events, rate-limit, seed/reconnect/dedup; run RED (missing controller export).
+- [x] Implement controller and Web Audio synthesis; run GREEN plus prior sync/pointer tests.
+- [x] Commit Task1.
 
 ### Task 2: Native controls and event hooks
 **Files:** boards.js, boards.css, tasks/boards.php; new integration test and isolated native preview router.
-**Interfaces:** API success calls committed(action,payload,result); manual load seeds snapshots; remote apply observes; offline/denied reset baseline. Existing native dialog hosts labeled selectors and preview.
-- [ ] Write integration test proving failed requests silent, successful own/remote change once, first load silent, bounded board creation cue and cancel unchanged; run RED.
-- [ ] Implement Arabic/English mute/settings controls, four-tone preview, per-board inherit/silent and persistent choice, gesture unlock; avoid visible update banner.
-- [ ] Run full M116/workspace and prior realtime tests; native desktop/mobile/keyboard UI tests; inspect final screenshots.
-- [ ] Commit Task2, fresh read-only branch review, fix important findings with reproducing tests; report exact readiness and audio/physical-device limits. Do not deploy.
+**Interfaces:** API success calls committed(action,payload,result); manual load seeds snapshots; successful workspace reads maintain the heartbeat; remote apply observes; offline/denied reset baseline. Existing native dialog hosts labeled selectors and preview.
+- [x] Write integration test proving failed requests silent, successful own/remote change once, first load silent, bounded board creation cue and cancel unchanged; run RED.
+- [x] Implement Arabic/English mute/settings controls, four-tone preview, per-board inherit/silent and persistent choice, gesture unlock; avoid visible update banner.
+- [x] Run full M116/workspace and prior realtime tests; native desktop/mobile/keyboard UI tests; inspect final screenshots.
+- [ ] Commit Task2 and complete fresh read-only final branch review; report exact readiness and audio/physical-device limits. Do not deploy.
