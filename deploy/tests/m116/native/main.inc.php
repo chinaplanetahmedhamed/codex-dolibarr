@@ -7,3 +7,6 @@ function GETPOST($name,$filter=''){return $_POST[$name]??$_GET[$name]??'';}
 function GETPOSTINT($name){return (int)GETPOST($name);}
 function newToken(){return 'synthetic-only-csrf-token';}
 if($_SERVER['REQUEST_METHOD']==='POST'&&GETPOST('token')!==newToken())$_GET['errorcode']='InvalidToken';
+
+function llxHeader(...$args){echo '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><nav id="native-menu" aria-label="ERP navigation"><a href="/">ERP home (synthetic shell fixture)</a></nav>';}
+function llxFooter(){echo '</body></html>';}
