@@ -1,0 +1,9 @@
+# Board notification sounds
+
+Ahmed requested sound on successful card movement/new boards, mute/unmute, four choices with preview and optional per-board tone. He accepted the proposal with “ok do it” and opted for direct execution. Implementer's reversible default: preferences are personal to this user/entity/browser, default muted; no screen changes another device. Top navigation exposes mute and sound settings. Four generated soft Web Audio tones avoid external assets. Each board can inherit the default, override with one tone, or be silent. A user gesture enables/previews audio through normal browser policy.
+
+Use existing authorized API success callbacks for own create-board/add-card/move-card/add-list/complete-board actions. Remote sounds use only differences in the already-authorized selected-board snapshot. First load, unchanged polls, disconnected/reconnected snapshots and access loss are silent. Batch/rate-limit sounds; never fetch other boards for audio. New-board events from other sessions are not delivered while browsing the non-polling gallery in this slice. Navigation after own board creation briefly awaits the short cue, bounded to 500ms.
+
+No backend, schema, grants, accounts, integrations, uploads or production deployment. Preserve current two-second polling, touch/keyboard movement, hidden update banner, finance summaries and Arabic RTL. Storage failure must leave functional in-memory settings and explain that they cannot persist. Unsupported/blocked audio must leave saving/navigation functional. Production publication remains separate.
+
+Approaches considered: personal browser settings (selected as implementer default following direct execution), shared per-board server settings (would require new shared data/ACL, deferred), fixed sound only (does not meet selection/override request).
