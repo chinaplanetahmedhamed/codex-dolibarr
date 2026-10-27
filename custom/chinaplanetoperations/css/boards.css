@@ -150,3 +150,25 @@ body.cpo-board-canvas{overflow:hidden;margin:0}body.cpo-board-canvas .fiche{marg
 #cp-boards.cb-theme-dark .cb-workspace-breadcrumb{background:#161a1d;color:#dfe1e6;border-color:#454f59}
 #cp-boards :is(.cb-workspace-gallery,.cb-workspace-breadcrumb) :is(a,button,select):focus-visible{outline-color:#0c66e4}
 #cp-boards.cb-theme-dark :is(.cb-workspace-gallery,.cb-workspace-breadcrumb) :is(a,button,select):focus-visible{outline-color:#85b8ff}
+
+/* Board updates: incumbent navy/neutral palette; no production activation. */
+#cp-boards .cb-live-monitor{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 20px;min-height:44px;background:#e9f2ff;color:#172b4d;font-size:13px;border-block:1px solid #85b8ff}
+#cp-boards.cb-theme-dark .cb-live-monitor{background:#102a4c;color:#cce0ff;border-color:#579dff}
+#cp-boards .cb-live-monitor[data-phase=offline],#cp-boards .cb-live-monitor[data-phase=denied]{background:#fff1d6;color:#533f04}
+#cp-boards .cb-live-monitor small{margin-inline-start:auto;font-variant-numeric:tabular-nums}
+#cp-boards .cb-live-move-help{margin:0;padding:10px 20px;font-size:13px;line-height:1.6;background:#f7f8fa;color:#243247}
+#cp-boards.cb-theme-dark .cb-live-move-help{background:#161a1d;color:#dfe1e6}
+#cp-boards .cb-card{padding-bottom:62px;touch-action:pan-y}
+#cp-boards .cb-card-title{touch-action:pan-y!important;cursor:pointer}
+#cp-boards .cb-card-handle{pointer-events:auto;min-width:56px;min-height:48px;bottom:6px;inset-inline-end:8px;padding:8px!important;border:1px solid currentColor;border-radius:6px;touch-action:none;cursor:grab;background:#ffffff0c}
+#cp-boards .cb-list-handle{min-width:48px;min-height:48px;touch-action:none;cursor:grab}
+#cp-boards .cb-list-head{min-height:56px}
+#cp-boards .cb-card-handle:active,#cp-boards .cb-list-handle:active{cursor:grabbing}
+#cp-boards .cb-drop-target{outline:3px solid #579dff;outline-offset:-3px;background:#dceaff!important}
+#cp-boards.cb-theme-dark .cb-drop-target{background:#1c3d63!important}
+#cp-boards .cb-insert-before{box-shadow:0 -4px 0 #579dff}
+#cp-boards .kanban-pointer-dragging{opacity:.4;pointer-events:none}
+@media(max-width:600px){#cp-boards .cb-live-monitor{padding:8px 12px;gap:6px 12px}#cp-boards .cb-live-monitor small{width:100%;margin:0}#cp-boards .cb-list{min-width:285px}}
+@media(prefers-reduced-motion:reduce){#cp-boards *{scroll-behavior:auto!important}}
+/* Keep move handles reachable on short mobile canvases; scroll outside them. */
+@media(max-width:600px){body.cpo-board-canvas #cb-content:has(>.cb-workspace){overflow:auto}body.cpo-board-canvas .cb-workspace{flex:1 0 auto;height:auto;min-height:660px}body.cpo-board-canvas .cb-lanes{min-height:320px}body.cpo-board-canvas .cb-list{max-height:390px}}
