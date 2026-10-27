@@ -32,4 +32,4 @@
 - [x] Write integration test proving failed requests silent, successful own/remote change once, first load silent, bounded board creation cue and cancel unchanged; run RED.
 - [x] Implement Arabic/English mute/settings controls, four-tone preview, per-board inherit/silent and persistent choice, gesture unlock; avoid visible update banner.
 - [x] Run full M116/workspace and prior realtime tests; native desktop/mobile/keyboard UI tests; inspect final screenshots.
-- [ ] Commit Task2 and complete fresh read-only final branch review; report exact readiness and audio/physical-device limits. Do not deploy.
+- [x] Commit Task2 and complete fresh read-only final branch review; report exact readiness and audio/physical-device limits. Do not deploy.

@@ -1,6 +1,6 @@
 # Boards sounds — local acceptance
 
-Candidate branch: `codex/boards-sound-settings`, based on `0660e6ab3b849be3c7da5041e719df2c2c3e6872`. Controller introduced in `275b1a5`. No production operation or remote source push was performed for this feature.
+Candidate branch: `codex/boards-sound-settings`, based on `0660e6ab3b849be3c7da5041e719df2c2c3e6872`. Controller introduced in `275b1a5`; final source candidate `16e105fcb0923d32860dc9abe246898c79d7700c`. No production operation or remote source push was performed for this feature.
 
 ## Behavior
 
@@ -32,3 +32,7 @@ Evidence stays in the separate local `boards-sounds-20261028/evidence` directory
 ## Limits and release boundary
 
 Physical speaker audibility and real touchscreen interaction are unverified. Native acceptance used24.0.2; live24.0.1/PHP8.2.7 acceptance is not claimed. Existing transport remains two-second polling, not push. Browser navigation resets audio readiness and may require another normal Enable sound gesture. A production rollout requires scoped authorization, fresh source reconciliation/backup and live verification; none occurred for sounds.
+
+## Final review and cleanup
+
+Independent read-only review of exact source candidate16e105f against0660e6a found no important outstanding findings and independently reran the14 sound, API/real-sync integration,12 sync,12 pointer,JS/PHP8.2 syntax and diff checks. All passed. The primary completed native browser acceptance separately; review itself did not operate a browser or database. Temporary preview listeners8132/8133 were stopped; QA preferences returned to mute; temporary browser tabs closed. Shared MySQL and installed runtimes were not restarted or reconfigured.
