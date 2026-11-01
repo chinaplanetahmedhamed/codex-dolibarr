@@ -106,7 +106,7 @@ wt('cash mappings fail closed on duplicate missing wrong-currency closed or non-
     $failed=false;try{$m->cash('egypt');}catch(RuntimeException $e){$failed=true;}finally{$db->query('DELETE FROM llx_bank_account WHERE rowid=106');}we($failed,true);
 });
 wt('native treasury statement limit is explicit and its balance still includes older entries',function()use($m,$db){
-    for($i=0;$i<101;$i++)$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(".(300+$i).",'2026-11-03','2026-11-03',102,0.10,'LIQ','SYNTHETIC statement')");
+    for($i=0;$i<101;$i++)$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(".(300+$i).",'2001-01-03','2001-01-03',102,0.10,'LIQ','SYNTHETIC statement')");
     try{$account=$m->cash('egypt')['accounts'][1];we($account['balance'],'27.40');we($account['has_more'],true);we(count($account['entries']),100);we($account['entries'][0]['id'],400);}finally{$db->query('DELETE FROM llx_bank WHERE rowid BETWEEN 300 AND 400');}
 });
 wt('settings accepts only the mapped primary account and never changes cash or currency bindings',function()use($m,$r,$db){
@@ -121,5 +121,9 @@ wt('native cash cards render AR EN and operational forms offer USD without combi
         $html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($html,'100.30 EGP'),true);we(str_contains($html,'17.30 USD'),true);we(str_contains($html,'value="USD"'),true);we(str_contains($html,'789.01'),false);
         $state=$controller->handle('GET',['view'=>'settings','office'=>'egypt','lang'=>$lang],[]);we($state['status'],200);$html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($html,'CPO-EG-USD'),true);we(str_contains($html,'17.30 USD'),false);
     }
+});
+wt('future-dated cash is recorded but excluded from native current availability',function()use($m,$db){
+    $db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(501,'2099-01-01','2099-01-01',102,2.25,'SOLD','SYNTHETIC future opening')");
+    try{$account=$m->cash('egypt')['accounts'][1];we($account['balance'],'19.55');we($account['available_balance'],'17.30');we($account['entries'][0]['future'],true);$state=(new OfficeExpenseWorkspaceController($m,'synthetic'))->handle('GET',['view'=>'treasury','office'=>'egypt','lang'=>'en'],[]);$html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($html,'Future dated · not available yet'),true);we(str_contains($html,'Available as of Dolibarr date'),true);}finally{$db->query('DELETE FROM llx_bank WHERE rowid=501');}
 });
 echo "$pass passed, $fail failed\n";exit($fail?1:0);

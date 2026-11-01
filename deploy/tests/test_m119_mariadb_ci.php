@@ -78,8 +78,11 @@ try {
         $native=new User($db);qcheck($native->fetch(2001),1);$acl=new OfficeExpenseStaffAccess($db,$native,$conf,2001);$reader=new OfficeExpenseNativeTreasury($db,$native,1,$acl);
         $eg=$reader->read('egypt');qcheck(array_column($eg['accounts'],'balance'),['100.30','17.30']);qcheck($eg['accounts'][0]['entries'][0]['amount'],'-23.15');qcheck($eg['accounts'][0]['entries'][1]['opening'],true);
         qcheck(array_column($reader->read('china')['accounts'],'balance'),['789.01','19.45']);qcheck(array_column($reader->accounts('egypt'),'id'),[101,102]);
-        if(!$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(207,'2026-11-03','2026-11-03',102,0.00000001,'LIQ','SYNTHETIC tiny decimal')"))throw new RuntimeException('Synthetic tiny amount failed.');
+        if(!$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(207,'2001-01-03','2001-01-03',102,0.00000001,'LIQ','SYNTHETIC tiny decimal')"))throw new RuntimeException('Synthetic tiny amount failed.');
         qcheck($reader->read('egypt')['accounts'][1]['balance'],'17.30000001');qcheck($reader->read('egypt')['accounts'][1]['entries'][0]['amount'],'0.00000001');
+        qcheck($reader->read('egypt')['accounts'][1]['available_balance'],'17.30000001');
+        if(!$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(208,'2099-01-01','2099-01-01',102,2.25,'SOLD','SYNTHETIC future opening')"))throw new RuntimeException('Synthetic future amount failed.');
+        $future=$reader->read('egypt')['accounts'][1];qcheck($future['balance'],'19.55000001');qcheck($future['available_balance'],'17.30000001');qcheck($future['entries'][0]['future'],true);
         if(!$db->query("INSERT INTO llx_bank_account(rowid,entity,ref,label,courant,clos,currency_code,fk_pays) VALUES(106,1,'CPO-EG-EGP','SYNTHETIC duplicate',2,0,'EGP',1)"))throw new RuntimeException('Synthetic duplicate ref failed.');
         qreject(fn()=>$reader->read('egypt'),RuntimeException::class);
         foreach(array_merge(['bank','bank_account'],array_reverse($tables))as$table)if(!$db->query('DROP TABLE llx_'.$table))throw new RuntimeException('Synthetic native cash cleanup failed.');

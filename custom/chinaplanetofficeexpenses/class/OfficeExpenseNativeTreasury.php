@@ -51,15 +51,16 @@ final class OfficeExpenseNativeTreasury
     {
         $this->authorize($office,'treasury');
         if($this->access->recordScope($office,'treasury')!=='branch')return ['restricted'=>true,'accounts'=>[]];
-        $accounts=[];
+        $accounts=[];$cutoff=(string)$this->db->idate(dol_now());
+        if(!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}/D',$cutoff))throw new RuntimeException('Native balance date unavailable.');
         foreach(self::REFERENCES[$office]as$currency=>$reference){
             $account=$this->account($office,$currency);$id=$account['id'];$c=$this->connection;
             // One statement supplies each account's total and latest entries from the same snapshot.
             // bank has no entity column: both legs are fenced by the validated native account.
-            $rows=$c->rows('SELECT a.rowid AS account_id,totals.balance,b.rowid,b.dateo,b.datev,b.fk_type,b.label,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank_account a CROSS JOIN (SELECT CAST(CAST(COALESCE(SUM(amount),0) AS DECIMAL(30,8)) AS CHAR) AS balance FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.') totals LEFT JOIN (SELECT rowid,dateo,datev,fk_type,label,amount FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.' ORDER BY dateo DESC,rowid DESC LIMIT 101) b ON 1=1 WHERE a.rowid='.$id.' AND a.entity='.$this->entity.' AND a.ref='.$c->quote($reference).' AND a.currency_code='.$c->quote($currency).' AND a.courant=2 AND a.clos=0 ORDER BY b.dateo DESC,b.rowid DESC');
+            $rows=$c->rows('SELECT a.rowid AS account_id,totals.balance,totals.available_balance,b.rowid,b.dateo,b.datev,b.fk_type,b.label,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank_account a CROSS JOIN (SELECT CAST(CAST(COALESCE(SUM(amount),0) AS DECIMAL(30,8)) AS CHAR) AS balance,CAST(CAST(COALESCE(SUM(CASE WHEN dateo <= '.$c->quote($cutoff).' THEN amount ELSE 0 END),0) AS DECIMAL(30,8)) AS CHAR) AS available_balance FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.') totals LEFT JOIN (SELECT rowid,dateo,datev,fk_type,label,amount FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.' ORDER BY dateo DESC,rowid DESC LIMIT 101) b ON 1=1 WHERE a.rowid='.$id.' AND a.entity='.$this->entity.' AND a.ref='.$c->quote($reference).' AND a.currency_code='.$c->quote($currency).' AND a.courant=2 AND a.clos=0 ORDER BY b.dateo DESC,b.rowid DESC');
             if(!$rows)throw new RuntimeException('Native cash account changed during read.');
-            $account['balance']=self::decimal($rows[0]['balance']);$account['has_more']=count($rows)>100;$account['entries']=[];
-            foreach(array_slice($rows,0,100)as$row){if($row['rowid']===null)continue;$account['entries'][]=['id'=>(int)$row['rowid'],'date'=>$row['dateo'],'value_date'=>$row['datev'],'label'=>$row['label'],'opening'=>$row['fk_type']==='SOLD','amount'=>self::decimal($row['amount'])];}
+            $account['balance']=self::decimal($rows[0]['balance']);$account['available_balance']=self::decimal($rows[0]['available_balance']);$account['as_of']=substr($cutoff,0,10);$account['has_more']=count($rows)>100;$account['entries']=[];
+            foreach(array_slice($rows,0,100)as$row){if($row['rowid']===null)continue;$account['entries'][]=['id'=>(int)$row['rowid'],'date'=>$row['dateo'],'value_date'=>$row['datev'],'label'=>$row['label'],'opening'=>$row['fk_type']==='SOLD','future'=>$row['dateo']>$account['as_of'],'amount'=>self::decimal($row['amount'])];}
             $accounts[]=$account;
         }
         // Revocation or a scope downgrade during the read must discard all financial results.

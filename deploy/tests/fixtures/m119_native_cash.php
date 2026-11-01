@@ -19,6 +19,6 @@ function m119CashAccounts($db): void
         if(!$db->query("INSERT INTO llx_bank_account(rowid,entity,ref,label,courant,clos,currency_code,fk_pays) VALUES($id,$entity,'$ref','SYNTHETIC $id',2,0,'$currency',1)"))throw new RuntimeException('Synthetic cash account insert failed.');
     }
     foreach([[201,101,'123.45','SOLD'],[202,101,'-23.15','LIQ'],[203,102,'17.30','SOLD'],[204,103,'789.01','SOLD'],[205,104,'19.45','SOLD'],[206,105,'999.00','SOLD']]as[$id,$account,$amount,$type]){
-        if(!$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES($id,'2026-11-02','2026-11-02',$account,$amount,'$type','SYNTHETIC entry')"))throw new RuntimeException('Synthetic cash entry insert failed.');
+        if(!$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES($id,'2001-01-02','2001-01-02',$account,$amount,'$type','SYNTHETIC entry')"))throw new RuntimeException('Synthetic cash entry insert failed.');
     }
 }
