@@ -74,12 +74,20 @@ jobs:
           ref: b7958385f00a92219f76a4dfea67dae93df97a25
           path: native-dolibarr-ci
           persist-credentials: false
-      - name: Prepare official runner PHP extensions
+      - name: Pin staging PHP and required test extensions
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: '8.2.32'
+          extensions: bcmath, gd, mysqli, pdo_sqlite, sqlite3, posix
+          coverage: none
+          tools: none
+        env:
+          fail-fast: true
+      - name: Verify exact PHP version and extensions
         run: |
           set -Eeuo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y php-cli php-bcmath php-gd php-mysql php-sqlite3
-          php -r 'foreach (["bcmath","gd","mysqli","pdo_sqlite","sqlite3"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR,"Missing extension\n"); exit(1); } }'
+          php -v
+          php -r 'if (PHP_VERSION !== "8.2.32") { exit(1); } foreach (["bcmath","gd","mysqli","pdo_sqlite","sqlite3","posix"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR,"Missing extension\n"); exit(1); } }'
       - name: Verify syntax and scoped source whitespace
         run: |
           set -Eeuo pipefail
