@@ -31,6 +31,7 @@ final class M119CiLostCommit extends DoliDBMysqli {public $loseNext=false;public
 $admin=null;$db=null;$schema=null;
 try {
     $admin=new mysqli('127.0.0.1','root',$password,'',13306);if($admin->connect_errno)throw new RuntimeException('CI service connection unavailable.');
+    qtest('actual CI server reports the required MariaDB10.6.27 engine',function()use($admin){$r=$admin->query('SELECT VERSION() AS version');$v=$r?$r->fetch_assoc()['version']:'';qcheck(strpos($v,'10.6.27-MariaDB')===0,true);});
     if(!$admin->query('CREATE DATABASE `'.$name.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'))throw new RuntimeException('Fresh disposable database creation failed.');$created=true;
     if(!$admin->query('CREATE TABLE `'.$name.'`.m119_ci_owner(nonce CHAR(32) NOT NULL)')||!$admin->query("INSERT INTO `".$name."`.m119_ci_owner VALUES('".$nonce."')"))throw new RuntimeException('Disposable ownership marker failed.');
     mkdir($base,0700);mkdir($base.'/private',0700);file_put_contents($base.'/private/.cpo-office-expenses-private','cpo-office-expenses-private-v1');chmod($base.'/private/.cpo-office-expenses-private',0600);

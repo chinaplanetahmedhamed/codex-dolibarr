@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 25
     services:
       mariadb:
-        image: mariadb:10.6.27
+        image: mariadb:10.6.27@sha256:4066a44f4a0143c310fbe6972c254bbbb7a844a2be1418831a987fdbbc8ff8bd
         env:
           MARIADB_ROOT_PASSWORD: m119-synthetic-ci-only
         ports:
@@ -74,48 +74,23 @@ jobs:
           ref: b7958385f00a92219f76a4dfea67dae93df97a25
           path: native-dolibarr-ci
           persist-credentials: false
-      - name: Pin staging PHP and required test extensions
-        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
-        with:
-          php-version: '8.2.32'
-          extensions: bcmath, gd, mysqli, pdo_sqlite, sqlite3, posix
-          coverage: none
-          tools: none
-        env:
-          fail-fast: true
-      - name: Verify exact PHP version and extensions
+      - name: Build digest-pinned exact PHP test container
         run: |
           set -Eeuo pipefail
-          php -v
-          php -r 'if (PHP_VERSION !== "8.2.32") { exit(1); } foreach (["bcmath","gd","mysqli","pdo_sqlite","sqlite3","posix"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR,"Missing extension\n"); exit(1); } }'
+          docker build --pull=false -f deploy/releases/m119/Dockerfile.ci -t m119-ci:"$GITHUB_SHA" deploy/releases/m119
       - name: Verify syntax and scoped source whitespace
         run: |
           set -Eeuo pipefail
           while IFS= read -r file; do php -l "$file" >/dev/null; done < <(rg --files custom/chinaplanetoperations/office_expenses deploy/tools/office_expenses deploy/tests | rg '(office_expenses/.+\.php|m119[^/]*\.php|m119_http/.+\.php)$')
           node --check custom/chinaplanetoperations/office_expenses/employee.js
           git diff-tree --check HEAD
-      - name: Run complete Office Expenses CLI regression
+      - name: Run complete CLI real MariaDB and private-filesystem checks
         run: |
           set -Eeuo pipefail
-          native="$GITHUB_WORKSPACE/native-dolibarr-ci/htdocs"
-          php deploy/tests/test_m119_office_expenses.php
-          php deploy/tests/test_m119_employee_ui.php
-          php deploy/tests/test_m119_native_drafts.php "$native"
-          php deploy/tests/test_m119_native_identity.php "$native" --without-auth
-          php deploy/tests/test_m119_native_capabilities.php "$native"
-          php deploy/tests/test_m119_native_provenance.php "$native"
-          php deploy/tests/test_m119_native_workflow.php "$native"
-          php deploy/tests/test_m119_native_storage.php "$native"
-          php deploy/tests/test_m119_receipts.php
-          php deploy/tests/test_m119_receipt_ui.php
-          php deploy/tests/test_m119_native_migration.php "$native"
-          php deploy/tests/test_m119_native_receipts.php "$native"
-          php deploy/tests/test_m119_pilot_configuration.php "$native"
-          python3 deploy/tests/test_m119_employee_http.py
-      - name: Verify actual private configuration permissions as www-data
-        run: sudo --preserve-env=CI,GITHUB_ACTIONS php deploy/tests/test_m119_pilot_filesystem_ci.php
-      - name: Verify real MariaDB migrations storage locks receipts and cleanup
-        run: php deploy/tests/test_m119_mariadb_ci.php "$GITHUB_WORKSPACE/native-dolibarr-ci/htdocs"
+          docker run --rm --network host --tmpfs /tmp:rw,noexec,nosuid,nodev \
+            -e CI=true -e GITHUB_ACTIONS=true \
+            -e M119_CI_DB_HOST -e M119_CI_DB_PORT -e M119_CI_DB_USER -e M119_CI_DB_PASSWORD \
+            -v "$GITHUB_WORKSPACE:/work:ro" m119-ci:"$GITHUB_SHA" bash deploy/releases/m119/run_ci.sh
       - name: Record check boundary
         if: ${{ always() }}
         run: |
