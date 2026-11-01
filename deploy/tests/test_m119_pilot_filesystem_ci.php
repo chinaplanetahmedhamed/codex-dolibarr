@@ -3,7 +3,7 @@ declare(strict_types=1);
 if(PHP_SAPI!=='cli'||getenv('CI')!=='true'||getenv('GITHUB_ACTIONS')!=='true'||PHP_OS_FAMILY!=='Linux'||!function_exists('posix_geteuid')||posix_geteuid()!==0){fwrite(STDERR,"FAIL requires the disposable root-owned GitHub Linux fixture\n");exit(1);}
 $root='/var/lib/chinaplanetos-office-expenses';$web='/var/lib/m119-ci-web-'.bin2hex(random_bytes(8));
 if(file_exists($root)||is_link($root)){fwrite(STDERR,"FAIL fixture root already exists; no changes made\n");exit(1);}
-$source=dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses/class/OfficeExpensePilotConfiguration.php';
+$source=dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpensePilotConfiguration.php';
 $config=array('version'=>1,'enabled'=>true,'environment'=>'backup-erp','entity'=>1,'user_id'=>2001,'base_currency'=>'USD','offices'=>array('egypt'=>array('EGP'),'china'=>array('CNY')),'precision'=>array('EGP'=>2,'CNY'=>2,'USD'=>2),'private_root'=>$root.'/receipts');
 $passed=0;$failed=0;$file=$root.'/pilot.json';
 function ftest(string $name,bool $allowed): void {

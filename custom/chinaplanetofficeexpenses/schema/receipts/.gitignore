@@ -1,0 +1,3 @@
+# Only authored, inactive receipt migration source; never expose dumps elsewhere.
+!001_receipts.sql
+!002_receipt_audit.sql

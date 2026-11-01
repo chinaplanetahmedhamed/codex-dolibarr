@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
-$root=dirname(__DIR__,3);$module=$root.'/custom/chinaplanetoperations/office_expenses';
+$root=dirname(__DIR__,3);$module=$root.'/custom/chinaplanetofficeexpenses';
 if(!is_file($module.'/class/OfficeExpenseReceiptHttp.php')){fwrite(STDERR,"FAIL protected receipt interface/transport is missing\n");exit(1);}
 require_once $module.'/class/OfficeExpenseReceiptHttp.php';require_once $module.'/class/OfficeExpenseEmployeeController.php';require_once $module.'/class/OfficeExpenseEmployeePage.php';
 require_once $root.'/deploy/tools/office_expenses/LocalDraftStore.php';require_once $root.'/deploy/tools/office_expenses/LocalReceiptStore.php';

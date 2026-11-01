@@ -9,6 +9,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.dont_write_bytecode = True
@@ -21,7 +22,8 @@ class ArtifactTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('m119_artifact', BUILDER)
         self.builder = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.builder)
-        self.commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+        # Historical package acceptance stays pinned after the standalone relocation.
+        self.commit = '8b14b9e9c609ed296cb18368f576bbf86fffadbb'
 
     def test_repeat_builds_have_identical_bytes_and_provenance(self):
         with tempfile.TemporaryDirectory(prefix='m119-artifact-') as owned:
@@ -58,6 +60,18 @@ class ArtifactTests(unittest.TestCase):
             for ref in ('HEAD', 'main', '../main', self.commit + '\n'):
                 with self.assertRaises(ValueError):
                     self.builder.build(ref, Path(owned), ROOT)
+            self.assertEqual(list(Path(owned).iterdir()), [])
+
+    def test_legacy_package_rejects_standalone_relocation_shims(self):
+        original_git = self.builder.git
+        def source(repo, *args):
+            if args[0] == 'show' and args[1].endswith(':custom/chinaplanetoperations/office_expenses/index.php'):
+                return b'<?php // CPO_OFFICEEXPENSES_COMPATIBILITY_SHIM\n'
+            return original_git(repo, *args)
+        with tempfile.TemporaryDirectory(prefix='m119-standalone-guard-') as owned:
+            with patch.object(self.builder, 'git', side_effect=source):
+                with self.assertRaisesRegex(ValueError, 'standalone'):
+                    self.builder.build(self.commit, Path(owned), ROOT)
             self.assertEqual(list(Path(owned).iterdir()), [])
 
     def test_git_symlink_cannot_import_outside_source(self):

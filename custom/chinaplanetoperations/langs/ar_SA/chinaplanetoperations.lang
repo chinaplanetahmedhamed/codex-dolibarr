@@ -1,4 +1,7 @@
 OperationsCenter=مركز العمليات
+OfficeExpenses=مصروفات المكتب
+OfficeExpensesMenuAdded=تمت إضافة رابط مصروفات المكتب إلى قائمة دوليبار.
+OfficeExpensesMenuAlreadyPresent=رابط مصروفات المكتب موجود بالفعل في قائمة دوليبار.
 OperationsDashboard=لوحة العمليات
 SopLibrary=مكتبة إجراءات التشغيل
 SopCategories=تصنيفات الإجراءات

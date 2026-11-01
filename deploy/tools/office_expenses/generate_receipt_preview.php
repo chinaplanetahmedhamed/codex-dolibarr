@@ -12,7 +12,7 @@ list($pdo,$user,$drafts,$receipts,$uploads,$controller)=usetup();list($id,$empty
 $controller->handle('POST',array(),uupload($id,'synthetic-preview-one'),ufiles('إيصال_مستلزمات_مكتب_الصين_中国_2026.png'));
 $controller->handle('POST',array(),uupload($id,'synthetic-preview-two'),ufiles('SYNTHETIC-office-supplies-receipt.png'));
 $meta=$receipts->listOwn($id)[1];$page=new OfficeExpenseEmployeePage();
-$module=$root.'/custom/chinaplanetoperations/office_expenses';
+$module=$root.'/custom/chinaplanetofficeexpenses';
 $css=file_get_contents($module.'/assets/fontawesome.css')."\n".file_get_contents($module.'/assets/fontawesome-solid.css')."\n".file_get_contents($module.'/employee.css');
 $css=preg_replace_callback('/url\(([^)]+)\)/',static function($m)use($module){
     $name=basename(trim($m[1]," '\""));$mime=array('Cairo.ttf'=>'font/ttf','fa-solid-900.woff2'=>'font/woff2');

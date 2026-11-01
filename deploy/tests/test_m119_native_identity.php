@@ -9,8 +9,8 @@ ob_start(); // Allow a real PHP session round-trip without printing headers firs
 require_once __DIR__.'/fixtures/m119_native_bootstrap.php';
 require_once __DIR__.'/fixtures/m119_native_identity.php';
 require_once dirname(__DIR__).'/tools/office_expenses/LocalDraftStore.php';
-require_once dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseDraftService.php';
-require_once dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseEmployeeController.php';
+require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseDraftService.php';
+require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseEmployeeController.php';
 require_once dirname(__DIR__).'/tools/office_expenses/LocalNativeDraftWriter.php';
 $passed=0;$failed=0;
 function icheck($actual,$expected): void {if ($actual !== $expected) throw new RuntimeException('Expected '.var_export($expected,true).' got '.var_export($actual,true));}

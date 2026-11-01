@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__.'/../../../custom/chinaplanetoperations/office_expenses/class/OfficeExpenseNativeDraftBridge.php';
+require_once __DIR__.'/../../../custom/chinaplanetofficeexpenses/class/OfficeExpenseNativeDraftBridge.php';
 
 /** Real native objects, restricted to the disposable synthetic SQLite harness. NOT a production adapter. */
 final class LocalNativeDraftWriter implements OfficeExpenseNativeDraftWriter

@@ -38,14 +38,16 @@ def git(repo, *args):
     return subprocess.check_output(['git', *args], cwd=repo, stderr=subprocess.DEVNULL)
 
 
-def build(commit, output, repo=None):
+def build(commit, output, repo=None, *, runtime_files=None, source_files=None, release_metadata=None):
     repo = Path(repo or Path(__file__).resolve().parents[3])
+    runtime_files = RUNTIME_FILES if runtime_files is None else runtime_files
+    source_files = SOURCE_FILES if source_files is None else source_files
     if not isinstance(commit, str) or re.fullmatch('[a-f0-9]{40}', commit) is None:
         raise ValueError('Use a full immutable commit, never a branch or unpinned worktree.')
     if git(repo, 'cat-file', '-t', commit).strip() != b'commit':
         raise ValueError('Source is not a Git commit.')
     payload = {}
-    for path in SOURCE_FILES:
+    for path in source_files:
         tree = git(repo, 'ls-tree', commit, '--', path).decode().strip()
         if not tree or '\t' not in tree:
             raise ValueError('Required immutable release source is missing.')
@@ -53,11 +55,13 @@ def build(commit, output, repo=None):
         if actual != path or meta.split()[0:2] != ['100644', 'blob']:
             raise ValueError('Only ordinary non-executable source files are allowed.')
         data = git(repo, 'show', commit + ':' + path)
+        if b'CPO_OFFICEEXPENSES_COMPATIBILITY_SHIM' in data:
+            raise ValueError('The standalone module needs a new complete release boundary; the legacy M119 package cannot contain relocation shims.')
         if not data or len(data) > 2 * 1024 * 1024:
             raise ValueError('Release source size differs from its bounded contract.')
-        name = path if path in RUNTIME_FILES else 'support/native_operations.php'
-        payload[name] = (data, 'runtime' if path in RUNTIME_FILES else 'support')
-    payload['support/release.json'] = (canonical({'schema': 1, 'mission': 'M119', 'source_commit': commit, 'financial_posting': False}), 'support')
+        name = path if path in runtime_files else 'support/native_operations.php'
+        payload[name] = (data, 'runtime' if path in runtime_files else 'support')
+    payload['support/release.json'] = (canonical({'schema': 1, 'mission': 'M119', 'source_commit': commit, 'financial_posting': False, **(release_metadata or {})}), 'support')
     if sum(len(p[0]) for p in payload.values()) > 4 * 1024 * 1024:
         raise ValueError('Release exceeds bounded package size.')
     manifest_files = []

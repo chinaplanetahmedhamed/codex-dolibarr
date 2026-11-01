@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__.'/../../../custom/chinaplanetoperations/office_expenses/class/OfficeExpenseMoney.php';
+require_once __DIR__.'/../../../custom/chinaplanetofficeexpenses/class/OfficeExpenseMoney.php';
 
 /** Static review artifact, with no forms, scripts, network dependencies or native writes. */
 final class OfficeExpensePreview

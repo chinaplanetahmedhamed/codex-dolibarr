@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 if(PHP_SAPI!=='cli'||$argc!==2||!is_file($argv[1].'/user/class/user.class.php')){fwrite(STDERR,"Usage: php test_m119_native_migration.php <native-htdocs>\n");exit(1);}
-$module=dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses';
+$module=dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses';
 if(!is_file($module.'/class/OfficeExpenseNativeSchemaMigration.php')){fwrite(STDERR,"FAIL native migration adapter is missing\n");exit(1);}
 require __DIR__.'/fixtures/m119_native_bootstrap.php';require __DIR__.'/fixtures/m119_native_identity.php';
 require $module.'/class/OfficeExpenseNativeSchemaMigration.php';require $module.'/class/OfficeExpenseNativeDraftStore.php';

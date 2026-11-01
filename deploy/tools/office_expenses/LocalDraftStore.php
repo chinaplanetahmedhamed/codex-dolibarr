@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__.'/../../../custom/chinaplanetoperations/office_expenses/class/OfficeExpenseDraftService.php';
+require_once __DIR__.'/../../../custom/chinaplanetofficeexpenses/class/OfficeExpenseDraftService.php';
 
 /** Synthetic local workbench adapter ONLY. Never connect this to a native ERP database. */
 final class LocalDraftStore implements OfficeExpenseDraftStore

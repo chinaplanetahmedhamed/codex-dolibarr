@@ -5,7 +5,7 @@ if (PHP_SAPI !== 'cli' || $argc !== 2 || !is_file($argv[1].'/expensereport/class
     fwrite(STDERR, "Usage: php test_m119_native_drafts.php /path/to/dolibarr/htdocs\n"); exit(1);
 }
 $root=dirname(__DIR__, 2);
-$bridge=$root.'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseNativeDraftBridge.php';
+$bridge=$root.'/custom/chinaplanetofficeexpenses/class/OfficeExpenseNativeDraftBridge.php';
 if (!is_file($bridge)) { fwrite(STDERR,"FAIL native draft bridge is missing\n"); exit(1); }
 require_once __DIR__.'/fixtures/m119_native_bootstrap.php';
 require_once $bridge;

@@ -6,7 +6,7 @@ if (PHP_SAPI !== 'cli' || $argc !== 2 || !is_file($argv[1].'/core/class/extrafie
 }
 require_once __DIR__.'/fixtures/m119_native_bootstrap.php';
 require_once __DIR__.'/fixtures/m119_native_identity.php';
-require_once dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseMoney.php';
+require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseMoney.php';
 $passed=0;$failed=0;
 function pcheck($actual,$expected): void {if ($actual !== $expected) throw new RuntimeException('Native provenance readback mismatch.');}
 function ptest(string $label,callable $action): void {

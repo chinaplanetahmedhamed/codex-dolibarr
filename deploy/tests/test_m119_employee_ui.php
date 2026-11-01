@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 $root=dirname(__DIR__,2);
-$controller=$root.'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseEmployeeController.php';
+$controller=$root.'/custom/chinaplanetofficeexpenses/class/OfficeExpenseEmployeeController.php';
 if (!is_file($controller)) { fwrite(STDERR,"FAIL authenticated employee draft controller is missing\n");exit(1); }
 require_once $controller;
-require_once $root.'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseEmployeePage.php';
+require_once $root.'/custom/chinaplanetofficeexpenses/class/OfficeExpenseEmployeePage.php';
 require_once $root.'/deploy/tools/office_expenses/LocalDraftStore.php';
 $pass=0;$fail=0;
 function ueq($actual,$expected): void { if ($actual!==$expected) throw new RuntimeException('Expected '.var_export($expected,true).' got '.var_export($actual,true)); }
@@ -21,6 +21,40 @@ ut('authorized GET renders own form with explicit currency and no posting action
     $html=(new OfficeExpenseEmployeePage())->render($r,'en','synthetic-csrf');
     foreach(array('name="token"','name="amount"','name="currency"','name="submission_key"','name="source_ref"')as$needle)ueq(strpos($html,$needle)!==false,true);
     ueq(strpos($html,'value="post"'),false);ueq(strpos($html,'value="reimbursement"'),false);
+});
+ut('native shell rendering keeps the standalone Finens preview and app fragment distinct',function(){
+    list($c)=usetup();$r=$c->handle('GET',array(),array());$page=new OfficeExpenseEmployeePage();
+    $fragment=$page->render($r,'ar','synthetic-csrf',false);
+    ueq(strpos($fragment,'<!doctype html>'),false);ueq(strpos($fragment,'<body'),false);ueq(strpos($fragment,'</html>'),false);
+    ueq(strpos($fragment,'class="office-expenses-app" lang="ar" dir="rtl"')!==false,true);
+    ueq(strpos($fragment,'<script src="/custom/chinaplanetofficeexpenses/employee.js?v=')!==false,true);
+    ueq(strpos($fragment,'مرحلة تجريبية للمسؤول')!==false,true);
+    ueq(strpos($fragment,'fa-circle-plus')!==false,true);ueq(strpos($fragment,'fa-circle-minus'),false);
+    ueq(strpos($fragment,'sync_office_menu'),false);
+    $prompt=$page->render($r,'en','synthetic-csrf',false,true);
+    ueq(strpos($prompt,'name="action" value="sync_office_menu"')!==false,true);
+    ueq(strpos($prompt,'name="token" value="synthetic-csrf"')!==false,true);
+    $standalone=$page->render($r,'en','synthetic-csrf');
+    ueq(strpos($standalone,'<!doctype html>')!==false,true);ueq(strpos($standalone,'<body class="finens-app">')!==false,true);
+});
+ut('sidebar exposes implemented office expense views only',function(){
+    list($c)=usetup();$html=(new OfficeExpenseEmployeePage())->render($c->handle('GET',array(),array()),'en','synthetic-csrf');
+    foreach(array('view=overview','view=expenses','view=advances')as$view)ueq(strpos($html,$view)!==false,true);
+    foreach(array('reports.php','employees.php','payroll.php','safe-balance')as$unsupported)ueq(strpos($html,$unsupported),false);
+});
+ut('Dolibarr menu keeps pilot administrator default and requires explicit staff activation',function(){
+    global $root;
+    $descriptor=file_get_contents($root.'/custom/chinaplanetofficeexpenses/core/modules/modChinaPlanetOfficeExpenses.class.php');
+    $start=strpos($descriptor,"'fk_menu'=>'0', 'type'=>'top', 'titre'=>'OfficeExpenses'");
+    $end=strpos($descriptor,"\n        );",$start);
+    ueq(is_string($descriptor)&&$start!==false&&$end!==false,true);
+    $entry=substr($descriptor,$start,$end-$start);
+    foreach(array("'type'=>'top'","'mainmenu'=>'chinaplanetexpenses'","/chinaplanetofficeexpenses/index.php",'$user->admin && $user->id == 1','$conf->entity == 1',"'user'=>0")as$needle)ueq(strpos($entry,$needle)!==false,true);
+    ueq(strpos($entry,'getDolGlobalInt("CPO_OE_STAFF_ACCESS_ENABLED") === 1 && $user->hasRight("chinaplanetofficeexpenses", "read")')!==false,true);
+    foreach(array('en_US'=>'Office Expenses','ar_SA'=>'مصروفات المكتب','zh_CN'=>'办公费用')as$locale=>$label){
+        $language=file_get_contents($root.'/custom/chinaplanetofficeexpenses/langs/'.$locale.'/chinaplanetofficeexpenses.lang');
+        ueq(strpos($language,'OfficeExpenses='.$label)!==false,true);
+    }
 });
 ut('POST saves exact own draft then redirects and refresh creates no second record',function(){
     list($c,$s)=usetup();$r=$c->handle('POST',array(),upost());ueq($r['status'],303);ueq(count($s->listOwn()),1);ueq($s->listOwn()[0]['amount'],'700.10');

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 // Synthetic fixtures only. No Dolibarr bootstrap or real database configuration.
 $root = dirname(__DIR__, 2);
-$moneyFile = $root.'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseMoney.php';
+$moneyFile = $root.'/custom/chinaplanetofficeexpenses/class/OfficeExpenseMoney.php';
 if (!is_file($moneyFile)) {
     fwrite(STDERR, "FAIL: exact office-expense money implementation is missing\n");
     exit(1);
@@ -63,7 +63,7 @@ scenario('1000 advance minus 700 expense minus 300 return is settled with 700 ex
     rejects(function () use ($money) { $money->settlement(array('amount'=>'1000','currency'=>'EGP'), array(array('amount'=>'1','currency'=>'CNY')), array()); });
     rejects(function () use ($money) { $money->settlement(array('amount'=>'100','currency'=>'EGP'), array(), array(array('amount'=>'101','currency'=>'EGP'))); });
 });
-$serviceFile = $root.'/custom/chinaplanetoperations/office_expenses/class/OfficeExpenseDraftService.php';
+$serviceFile = $root.'/custom/chinaplanetofficeexpenses/class/OfficeExpenseDraftService.php';
 $storeFile = $root.'/deploy/tools/office_expenses/LocalDraftStore.php';
 if (!is_file($serviceFile) || !is_file($storeFile)) {
     scenario('scoped persistent draft implementation exists', function () { throw new RuntimeException('Draft service/store implementation is missing'); });

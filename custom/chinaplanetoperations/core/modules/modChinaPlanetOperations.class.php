@@ -104,6 +104,7 @@ class modChinaPlanetOperations extends DolibarrModules
             'perms'=>'$user->admin || $user->hasRight("chinaplanetoperations","task_read_own") || $user->hasRight("chinaplanetoperations","task_manage_team") || $user->hasRight("chinaplanetoperations","task_admin")', 'user'=>0,
             'picto'=>'fa-clipboard-check',
         );
+
         $this->menu[$r++] = array(
             'fk_menu'=>'fk_mainmenu=chinaplanettasks', 'type'=>'left',
             'titre'=>'InternalTaskManageColumns', 'mainmenu'=>'chinaplanettasks', 'leftmenu'=>'operations_task_columns',

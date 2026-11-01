@@ -3,7 +3,7 @@ declare(strict_types=1);
 if (PHP_SAPI!=='cli'||$argc!==2||!is_file($argv[1].'/user/class/user.class.php')) {
     fwrite(STDERR,"Usage: php test_m119_native_storage.php /path/to/dolibarr/htdocs\n");exit(1);
 }
-$module=dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses';
+$module=dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses';
 if (!is_file($module.'/class/OfficeExpenseNativeDraftStore.php')) {
     fwrite(STDERR,"FAIL native operational draft storage is missing\n");exit(1);
 }

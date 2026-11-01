@@ -74,6 +74,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - name: Check out official version-matched native source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -89,13 +90,14 @@ jobs:
       - name: Verify immutable release artifact boundaries
         run: |
           python3 deploy/tests/test_m119_release_artifact.py
+          python3 deploy/tests/test_m119_standalone_artifact.py
           python3 deploy/tests/test_m119_runtime_preparation.py
           python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
         run: |
           set -Eeuo pipefail
-          while IFS= read -r file; do php -l "$file" >/dev/null; done < <(rg --files custom/chinaplanetoperations/office_expenses deploy/tools/office_expenses deploy/tests deploy/releases/m119 | rg '(office_expenses/.+\.php|m119[^/]*\.php|m119_http/.+\.php|m119/.+\.php)$')
-          node --check custom/chinaplanetoperations/office_expenses/employee.js
+          while IFS= read -r file; do php -l "$file" >/dev/null; done < <(rg --files custom/chinaplanetofficeexpenses custom/chinaplanetoperations/office_expenses deploy/tools/office_expenses deploy/tests deploy/releases/m119 | rg '(chinaplanetofficeexpenses/.+\.php|office_expenses/.+\.php|m119[^/]*\.php|m119_http/.+\.php|m119/.+\.php)$')
+          node --check custom/chinaplanetofficeexpenses/employee.js
           git diff-tree --check HEAD
       - name: Run complete CLI real MariaDB and private-filesystem checks
         run: |
@@ -104,6 +106,17 @@ jobs:
             -e CI=true -e GITHUB_ACTIONS=true \
             -e M119_CI_DB_HOST -e M119_CI_DB_PORT -e M119_CI_DB_USER -e M119_CI_DB_PASSWORD \
             -v "$GITHUB_WORKSPACE:/work:ro" m119-ci:"$GITHUB_SHA" bash deploy/releases/m119/run_ci.sh
+      - name: Build the complete standalone code package
+        run: |
+          set -Eeuo pipefail
+          python3 -B deploy/releases/m119/build_standalone_artifact.py --commit "$GITHUB_SHA" --output "$RUNNER_TEMP/m119-standalone"
+      - name: Retain the verified standalone package and checksum manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: m119-standalone-${{ github.sha }}
+          path: ${{ runner.temp }}/m119-standalone/
+          if-no-files-found: error
+          retention-days: 14
       - name: Record check boundary
         if: ${{ always() }}
         run: |

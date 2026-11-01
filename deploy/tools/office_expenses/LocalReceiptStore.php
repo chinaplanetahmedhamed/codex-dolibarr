@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__.'/../../../custom/chinaplanetoperations/office_expenses/class/OfficeExpenseReceiptService.php';
+require_once __DIR__.'/../../../custom/chinaplanetofficeexpenses/class/OfficeExpenseReceiptService.php';
 
 /** Owned synthetic workbench ONLY; private blobs and SQLite metadata/audit. Never a runtime factory. */
 final class LocalReceiptStore implements OfficeExpenseReceiptStore

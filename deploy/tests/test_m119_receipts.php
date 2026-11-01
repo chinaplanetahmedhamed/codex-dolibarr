@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-$module=dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses';
+$module=dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses';
 $tools=dirname(__DIR__).'/tools/office_expenses';
 if(!is_file($module.'/class/OfficeExpenseReceiptService.php')||!is_file($tools.'/LocalReceiptStore.php')){
     fwrite(STDERR,"FAIL scoped private receipt storage is missing\n");exit(1);

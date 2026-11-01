@@ -1,4 +1,7 @@
 OperationsCenter=Operations Center
+OfficeExpenses=Office Expenses
+OfficeExpensesMenuAdded=Office Expenses was added to the Dolibarr menu.
+OfficeExpensesMenuAlreadyPresent=Office Expenses is already in the Dolibarr menu.
 OperationsDashboard=Operations Dashboard
 SopLibrary=Internal SOP Library
 SopCategories=SOP Categories

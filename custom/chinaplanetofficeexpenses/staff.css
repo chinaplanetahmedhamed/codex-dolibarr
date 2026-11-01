@@ -1,0 +1,11 @@
+.office-expenses-app.staff-access .staff-picker,.office-expenses-app.staff-access .staff-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;align-items:end}
+.office-expenses-app.staff-access .staff-picker label,.office-expenses-app.staff-access .staff-fields label{display:block;font-size:.8rem;font-weight:700;margin-block-end:.5rem}
+.office-expenses-app.staff-access select{width:100%;min-width:0;border:1px solid #e2e8f0;border-radius:.75rem;padding:.75rem;background:#fff;color:#334155;font:inherit}
+.office-expenses-app.staff-access .filter-panel{padding:1.25rem;border-radius:1rem;margin-block-end:1.5rem}
+.office-expenses-app.staff-access .staff-help{color:#64748b;font-size:.8rem;line-height:1.8;margin-block:1rem}
+.office-expenses-app.staff-access .staff-login,.office-expenses-app.staff-access .staff-grant{display:block;font-size:.75rem;color:#64748b;margin-block:.25rem;overflow-wrap:anywhere}
+.office-expenses-app.staff-access .staff-grants .button{margin-block-start:1rem}
+.office-expenses-app.staff-access .staff-revoke{margin-block-start:.75rem;max-width:19rem;white-space:normal}
+.office-expenses-app.staff-access .staff-revoke summary{cursor:pointer;color:#be123c;font-weight:700}
+.office-expenses-app.staff-access .staff-revoke form{padding:.75rem;border:1px solid #fecdd3;border-radius:.75rem;margin-block-start:.5rem}
+@media(max-width:700px){.office-expenses-app.staff-access .staff-picker,.office-expenses-app.staff-access .staff-fields{grid-template-columns:1fr}.office-expenses-app.staff-access .app-sidebar{display:none}.office-expenses-app.staff-access .page-heading{align-items:start;gap:1rem;flex-wrap:wrap}}

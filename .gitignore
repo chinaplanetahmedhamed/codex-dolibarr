@@ -19,6 +19,9 @@ credentials*
 /backups/
 **/backups/
 *.sql
+# Module-owned reviewed migration source (not a database dump).
+!custom/chinaplanetofficeexpenses/schema/access/001_membership.sql
+!custom/chinaplanetofficeexpenses/schema/access/002_access_audit.sql
 *.sql.gz
 *.dump
 *.bak

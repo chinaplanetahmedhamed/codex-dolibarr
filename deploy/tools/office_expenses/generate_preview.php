@@ -2,8 +2,8 @@
 declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__.'/LocalDraftStore.php';
-require_once __DIR__.'/../../../custom/chinaplanetoperations/office_expenses/class/OfficeExpenseEmployeeController.php';
-require_once __DIR__.'/../../../custom/chinaplanetoperations/office_expenses/class/OfficeExpenseEmployeePage.php';
+require_once __DIR__.'/../../../custom/chinaplanetofficeexpenses/class/OfficeExpenseEmployeeController.php';
+require_once __DIR__.'/../../../custom/chinaplanetofficeexpenses/class/OfficeExpenseEmployeePage.php';
 
 if (($argc !== 2 && $argc !== 3) || ($argc === 3 && $argv[2] !== '--mobile-boundaries')) { fwrite(STDERR, "Usage: php generate_preview.php /absolute/output/directory [--mobile-boundaries]\n"); exit(1); }
 $output=$argv[1];
@@ -47,7 +47,7 @@ foreach(array('ar','en')as$language){
         }
     }
 }
-$module=__DIR__.'/../../../custom/chinaplanetoperations/office_expenses';
+$module=__DIR__.'/../../../custom/chinaplanetofficeexpenses';
 foreach(array('employee.css','employee.js')as$file) copy($module.'/'.$file,$output.'/'.$file);
 if(!is_dir($output.'/assets'))mkdir($output.'/assets',0700);
 foreach(glob($module.'/assets/*')as$file)copy($file,$output.'/assets/'.basename($file));

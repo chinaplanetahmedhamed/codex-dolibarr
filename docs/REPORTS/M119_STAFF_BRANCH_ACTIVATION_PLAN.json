@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "mission": "M119",
+  "environment": "backup-erp",
+  "host": "backup-erp.visiontrading.biz",
+  "entity": 1,
+  "status": "native_accounts_and_groups_created_finance_activation_pending",
+  "financial_posting": false,
+  "system_administrator": false,
+  "subjects": [
+    {
+      "user_id": 5,
+      "login": "moaz",
+      "display_name": "Moaz",
+      "office": "egypt",
+      "role": "manager",
+      "native_group_id": 4,
+      "native_group_name": "Office Expenses - Egypt Managers",
+      "native_module_capabilities": [
+        "read",
+        "draft",
+        "manageaccess"
+      ],
+      "record_scope": "branch"
+    },
+    {
+      "user_id": 6,
+      "login": "rina",
+      "display_name": "rina",
+      "office": "china",
+      "role": "manager",
+      "native_group_id": 5,
+      "native_group_name": "Office Expenses - China Managers",
+      "native_module_capabilities": [
+        "read",
+        "draft",
+        "manageaccess"
+      ],
+      "record_scope": "branch"
+    },
+    {
+      "user_id": 7,
+      "login": "omar",
+      "display_name": "omar",
+      "office": "egypt",
+      "role": "worker",
+      "native_group_id": 6,
+      "native_group_name": "Office Expenses - Egypt Workers",
+      "native_module_capabilities": [
+        "read",
+        "draft"
+      ],
+      "record_scope": "own"
+    },
+    {
+      "user_id": 8,
+      "login": "shanshan",
+      "display_name": "shan shan",
+      "office": "china",
+      "role": "worker",
+      "native_group_id": 7,
+      "native_group_name": "Office Expenses - China Workers",
+      "native_module_capabilities": [
+        "read",
+        "draft"
+      ],
+      "record_scope": "own"
+    }
+  ],
+  "supported_branch_grants": {
+    "expenses": [
+      "read",
+      "create"
+    ],
+    "advances": [
+      "read",
+      "create"
+    ]
+  },
+  "current_native_group_rights": [
+    343
+  ],
+  "current_native_group_rights_description": "Change own password only; no native Office Expenses capabilities granted yet",
+  "activation_preconditions": [
+    "Pin and test complete standalone artifact and scoped deployment/rollback path",
+    "Verify matching PHP8.2.32 MariaDB and native module lifecycle",
+    "Install additive pinned access schema; preserve all historical records",
+    "Register standalone native rights and grant only reviewed group capabilities",
+    "Verify exact native user/group IDs and entity again",
+    "Save independent branch memberships using native authenticated context",
+    "Enable staff mode only after readiness and positive/negative acceptance"
+  ],
+  "credential_handoff": "Passwords were not distributed or stored in source; use native administrator password flow before staff login acceptance"
+}
