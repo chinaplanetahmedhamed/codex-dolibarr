@@ -78,6 +78,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           docker build --pull=false -f deploy/releases/m119/Dockerfile.ci -t m119-ci:"$GITHUB_SHA" deploy/releases/m119
+      - name: Verify immutable release artifact boundaries
+        run: python3 deploy/tests/test_m119_release_artifact.py
       - name: Verify syntax and scoped source whitespace
         run: |
           set -Eeuo pipefail

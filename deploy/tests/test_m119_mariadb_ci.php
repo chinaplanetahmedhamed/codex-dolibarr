@@ -9,7 +9,7 @@ define('DOL_DOCUMENT_ROOT',realpath($argv[1]));define('MAIN_DB_PREFIX','llx_');d
 require DOL_DOCUMENT_ROOT.'/version.inc.php';
 if(DOL_VERSION!=='24.0.1'||!extension_loaded('bcmath')||!extension_loaded('gd')||!extension_loaded('mysqli')){fwrite(STDERR,"FAIL native version/extensions differ\n");exit(1);}
 $conf=(object)array('entity'=>1,'currency'=>'USD','global'=>(object)array('SYSLOG_LEVEL'=>0,'MAIN_MAX_DECIMALS_TOT'=>2,'MAIN_MAX_DECIMALS_UNIT'=>8),
-    'db'=>(object)array('character_set'=>'utf8mb4','dolibarr_main_db_collation'=>'utf8mb4_unicode_ci'),'expensereport'=>(object)array('enabled'=>1),'loghandlers'=>array(),'modules_parts'=>array());
+    'db'=>(object)array('character_set'=>'utf8mb4','dolibarr_main_db_collation'=>'utf8mb4_unicode_ci'),'expensereport'=>(object)array('enabled'=>1),'modules'=>array('expensereport'=>1),'loghandlers'=>array(),'modules_parts'=>array());
 $langs=new class {public function trans($key,...$args){return $key;}};
 require DOL_DOCUMENT_ROOT.'/core/lib/functions.lib.php';require DOL_DOCUMENT_ROOT.'/core/db/DoliDB.class.php';require DOL_DOCUMENT_ROOT.'/core/db/mysqli.class.php';require DOL_DOCUMENT_ROOT.'/user/class/user.class.php';
 $module=dirname(__DIR__,2).'/custom/chinaplanetoperations/office_expenses';
@@ -19,7 +19,7 @@ $password=(string)getenv('M119_CI_DB_PASSWORD');
 mysqli_report(MYSQLI_REPORT_OFF);
 function qcheck($actual,$expected): void {if($actual!==$expected)throw new RuntimeException('Synthetic integration assertion differs.');}
 function qreject(callable $action,string $type=Throwable::class): void {try{$action();}catch(Throwable $e){if($e instanceof $type)return;throw $e;}throw new RuntimeException('Expected integration denial.');}
-function qtest(string $name,callable $action): void {global $passed; $action();echo "PASS $name\n";$passed++;}
+function qtest(string $name,callable $action): void {global $passed,$activeTest;$activeTest=$name;$action();echo "PASS $name\n";$passed++;}
 function qdb(): DoliDBMysqli {global $name,$password;$d=new DoliDBMysqli('mysqli','127.0.0.1','root',$password,$name,13306);if(!$d->ok||!$d->database_selected)throw new RuntimeException('Synthetic native connection unavailable.');return $d;}
 function quser(int $id=2001): User {global $db;$u=new User($db);$u->id=$id;$u->admin=1;$u->status=1;$u->socid=0;$u->rights->expensereport=(object)array('creer'=>1);return $u;}
 function qservice($d,int $owner=2001,array $offices=array('egypt'=>array('EGP'),'china'=>array('CNY'))): OfficeExpenseDraftService {return new OfficeExpenseDraftService(new OfficeExpenseNativeDraftStore($d),new OfficeExpenseMoney(),quser($owner),1,$offices,'USD');}
@@ -43,6 +43,7 @@ try {
     $drafts=qservice($db);$draft=null;
     qtest('native mysqli preserves exact original quote and scoped immutable source',function()use($drafts,&$draft){$draft=$drafts->submit(qpayload(),'synthetic-ci-original');qcheck($draft['amount'],'180.29');qcheck($draft['conversion']['base_amount'],'25.24');qcheck($draft['conversion']['rate'],'0.14000000');qcheck($draft['owner_id'],2001);});
     qtest('administrator without the required native expense right is still denied',function()use($db){$u=quser();$u->rights->expensereport->creer=0;$s=new OfficeExpenseDraftService(new OfficeExpenseNativeDraftStore($db),new OfficeExpenseMoney(),$u,1,array('china'=>array('CNY')),'USD');qreject(function()use($s){$s->submit(qpayload(),'synthetic-ci-no-native-right');},DomainException::class);});
+    qtest('disabled native module denies source writes even for an administrator',function()use($drafts){global $conf;$before=$conf->modules;$conf->modules=array();try{qreject(function()use($drafts){$drafts->submit(qpayload(),'synthetic-ci-module-disabled');},DomainException::class);}finally{$conf->modules=$before;}});
     qtest('real unique constraints recover identical retry and reject changed intent',function()use($drafts,$draft){qcheck($drafts->submit(qpayload(),'synthetic-ci-original'),$draft);$p=qpayload();$p['amount']='180.30';qreject(function()use($drafts,$p){$drafts->submit($p,'synthetic-ci-original');});});
     qtest('native case-sensitive submission keys remain distinct',function()use($drafts){$a=$drafts->submit(qpayload(),'SYNTHETIC-case-key');$b=$drafts->submit(qpayload(),'synthetic-case-key');qcheck($a['id']===$b['id'],false);});
     qtest('fresh physical connection recovers exact persisted source',function()use($draft){$fresh=qdb();try{qcheck(qservice($fresh)->getOwn($draft['id']),$draft);}finally{$fresh->close();}});
@@ -56,7 +57,7 @@ try {
     qtest('lost commit acknowledgement quarantines the handle and fresh retry recovers once',function()use($name,$password){$lost=new M119CiLostCommit('mysqli','127.0.0.1','root',$password,$name,13306);$s=qservice($lost);$lost->loseNext=true;qreject(function()use($s){$s->submit(qpayload(),'synthetic-ci-lost-commit');},RuntimeException::class);qreject(function()use($s){$s->listOwn();},RuntimeException::class);$lost->close();$fresh=qdb();try{$s=qservice($fresh);$one=$s->submit(qpayload(),'synthetic-ci-lost-commit');qcheck($s->submit(qpayload(),'synthetic-ci-lost-commit'),$one);}finally{$fresh->close();}});
     qtest('no native accounting expense payment bank or ledger table exists in the fixture',function()use($db){$r=$db->query("SELECT TABLE_NAME AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()");$names=array();while($o=$db->fetch_object($r))$names[]=$o->n;sort($names);qcheck($names,array('llx_cpo_oe_draft','llx_cpo_oe_draft_audit','llx_cpo_oe_receipt','llx_cpo_oe_receipt_audit','llx_cpo_oe_schema','m119_ci_owner'));});
 } catch(Throwable $error) {
-    $failed++;fwrite(STDERR,'FAIL real MariaDB integration: '.get_class($error)." (dependency details withheld)\n");
+    $failed++;$detail=$error instanceof DomainException?$error->getMessage():'dependency details withheld';fwrite(STDERR,'FAIL real MariaDB integration ['.($activeTest??'fixture setup').']: '.get_class($error).' '.$detail."\n");
     if($schema){foreach(array('llx_cpo_oe_schema','llx_cpo_oe_draft','llx_cpo_oe_draft_audit')as$t){try{echo 'OWNED_SCHEMA_METADATA '.json_encode(array('table'=>$t,'metadata'=>$schema->describe($t)),JSON_THROW_ON_ERROR)."\n";}catch(Throwable $ignored){}}}
 } finally {
     if($db)$db->close();
