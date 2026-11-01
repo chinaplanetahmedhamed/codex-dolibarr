@@ -42,7 +42,7 @@ Operational drafts have no double-entry impact. Actual deposits, receipt payment
 ## Execution sequence
 
 - [x] Add typed document validation and exact payroll arithmetic; test malformed and cross-currency input.
-- [ ] Add manifested operational persistence, optimistic revisions, idempotency and revision audit; test native transactions and actual MariaDB.
+- [x] Add manifested operational persistence, optimistic revisions, idempotency and revision audit; test native transactions and actual MariaDB.
 - [x] Extend section permission handling without granting existing memberships new rights; test delegation and revocation.
 - [x] Wire native employee reads, settings/logo, category forms and scoped reports/CSV. Account binding is held for the financial decision.
 - [x] Wire deposit/voucher/payroll draft creation, updates, reversible archival and print routes with the original styling.
