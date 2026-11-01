@@ -10,6 +10,7 @@ on:
         options:
           - m043-c02
           - m045-r01
+          - m119-check
         default: m043-c02
       confirmation:
         description: Type the exact confirmation for the selected release
@@ -36,6 +37,82 @@ env:
   REMOTE_INBOX: /home/codex-deploy/staging-inbox
 
 jobs:
+  check_m119:
+    if: ${{ inputs.release == 'm119-check' }}
+    name: Office Expenses native storage release checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      mariadb:
+        image: mariadb:10.6.27
+        env:
+          MARIADB_ROOT_PASSWORD: m119-synthetic-ci-only
+        ports:
+          - 127.0.0.1:13306:3306
+        options: >-
+          --health-cmd="mariadb-admin ping -uroot -pm119-synthetic-ci-only --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      M119_CI_DB_HOST: 127.0.0.1
+      M119_CI_DB_PORT: '13306'
+      M119_CI_DB_USER: root
+      M119_CI_DB_PASSWORD: m119-synthetic-ci-only
+    steps:
+      - name: Require the staging check request
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = 'CHECK_M119_BACKUP_ERP'
+      - name: Check out this immutable workflow revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Check out official version-matched native source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: Dolibarr/dolibarr
+          ref: b7958385f00a92219f76a4dfea67dae93df97a25
+          path: native-dolibarr-ci
+          persist-credentials: false
+      - name: Prepare official runner PHP extensions
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y php-cli php-bcmath php-gd php-mysql php-sqlite3
+          php -r 'foreach (["bcmath","gd","mysqli","pdo_sqlite","sqlite3"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR,"Missing extension\n"); exit(1); } }'
+      - name: Verify syntax and scoped source whitespace
+        run: |
+          set -Eeuo pipefail
+          while IFS= read -r file; do php -l "$file" >/dev/null; done < <(rg --files custom/chinaplanetoperations/office_expenses deploy/tools/office_expenses deploy/tests | rg '(office_expenses/.+\.php|m119[^/]*\.php|m119_http/.+\.php)$')
+          node --check custom/chinaplanetoperations/office_expenses/employee.js
+          git diff-tree --check HEAD
+      - name: Run complete Office Expenses CLI regression
+        run: |
+          set -Eeuo pipefail
+          native="$GITHUB_WORKSPACE/native-dolibarr-ci/htdocs"
+          php deploy/tests/test_m119_office_expenses.php
+          php deploy/tests/test_m119_employee_ui.php
+          php deploy/tests/test_m119_native_drafts.php "$native"
+          php deploy/tests/test_m119_native_identity.php "$native" --without-auth
+          php deploy/tests/test_m119_native_capabilities.php "$native"
+          php deploy/tests/test_m119_native_provenance.php "$native"
+          php deploy/tests/test_m119_native_workflow.php "$native"
+          php deploy/tests/test_m119_native_storage.php "$native"
+          php deploy/tests/test_m119_receipts.php
+          php deploy/tests/test_m119_receipt_ui.php
+          php deploy/tests/test_m119_native_migration.php "$native"
+          php deploy/tests/test_m119_native_receipts.php "$native"
+          php deploy/tests/test_m119_pilot_configuration.php "$native"
+          python3 deploy/tests/test_m119_employee_http.py
+      - name: Verify actual private configuration permissions as www-data
+        run: sudo --preserve-env=CI,GITHUB_ACTIONS php deploy/tests/test_m119_pilot_filesystem_ci.php
+      - name: Verify real MariaDB migrations storage locks receipts and cleanup
+        run: php deploy/tests/test_m119_mariadb_ci.php "$GITHUB_WORKSPACE/native-dolibarr-ci/htdocs"
+      - name: Record check boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Office Expenses checks only. No VPS connection, credentials read, server migration, deployment or accounting posting.' >> "$GITHUB_STEP_SUMMARY"
+
   deploy:
     if: ${{ inputs.release == 'm043-c02' }}
     name: Validate and deploy pinned M043-C02 release

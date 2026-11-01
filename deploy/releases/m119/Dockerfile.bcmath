@@ -1,0 +1,8 @@
+# Staging-only dependency layer. Verified base image ID before build:
+# sha256:56e459f0d2e7be2c9d809015b922624234f2899cc9f36e74fab1c5254913e482
+# No app/config/data or runtime package changes; retain the base image for rollback.
+FROM local/dolibarr:24.0.1
+RUN test -x /usr/local/bin/docker-php-ext-install \
+    && test -f /usr/src/php.tar.xz \
+    && docker-php-ext-install -j1 bcmath \
+    && php -r 'if (PHP_VERSION !== "8.2.32" || !extension_loaded("bcmath") || !extension_loaded("mysqli") || !extension_loaded("gd") || bcadd("0.10", "0.20", 2) !== "0.30" || bcmul("999999999999.99", "1.00000000", 2) !== "999999999999.99") { exit(1); } require "/var/www/html/version.inc.php"; if (DOL_VERSION !== "24.0.1") { exit(1); } echo "M119_BCMATH_IMAGE_CHECK=PASS\n";'
