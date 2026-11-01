@@ -40,10 +40,24 @@ Application package: 59 runtime files plus the release declaration, source `6fa6
 
 Restricted SSH as `codex-deploy` to `srv1011043` works. Its installed helper is still the exact R03 checksum `b51706fff210aba0022502aff7b74b698ed6a6f11b5e0286bd9b5f1a3aaa1674`; that helper cannot accept the new schema-bearing package. No attempt was made to send it a mismatched package or broaden sudo.
 
-The existing Termius root terminal can be observed, but attempted identity input did not produce visible command output and coordinate interaction reported `noWindowsAvailable`. Therefore root installation has not run. This is a tool/access blocker, not missing deployment authorization. A single checksum-pinned administrative installer command will be staged after its independent CI checks pass; it updates only this reviewed helper and performs preflight, not schema/role activation. The release job then performs backup/apply/verify through the existing restricted identity.
+The existing Termius root terminal can be observed, but attempted identity input did not produce visible command output and coordinate interaction reported `noWindowsAvailable`. Therefore root installation has not run. This is a tool/access blocker, not missing deployment authorization. A single checksum-pinned administrative installer command and application package have been staged after their independent CI checks passed; it updates only this reviewed helper and performs preflight, not schema/role activation. The release job then performs backup/apply/verify through the existing restricted identity.
 
 ## Rollback, parity and unverified gates
 
 Disable only the workspace flag; retain compatible code, operational schema, documents, grants and audit. Never restore the old grant parser or an old database over new submissions. A partial failure is retained with an explicit disabled/reconciliation state; no automatic retry or destructive cleanup is offered. Source backups and DB dump are private evidence/recovery inputs, not permission to erase subsequent records.
 
 Admin ERP: operational code implemented, activation pending. Customer Center: not applicable and no data exposed. Mobile app: not implemented; responsive web AR/EN source/DOM checks exist, activated web acceptance remains pending. Financial native posting and staff password login remain untested/unimplemented as described above.
+
+## Pinned administrator step
+
+Delivery tooling source: `c5bb284` (the application bytes remain pinned to6fa6caf). [Tooling check run41359665711](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41359665711) passed in full, including all12 release cases inside the isolated Linux container, the complete frozen-library chain and actual root-owned inode/drift/symlink tests. `FAILED_SUITES=0`. No VPS deployment job ran. The following command runs only in the existing **root terminal on srv1011043**, reads the staged installer with no symlink following, verifies its exact checksum in memory and then invokes its bounded preflight/install. It does not apply the workspace schema or assignments.
+
+```sh
+python3 -I -c 'import hashlib,os,stat; p="/home/codex-deploy/staging-inbox/m119-workspace-r04/install_workspace_helper.py"; f=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK); s=os.fstat(f); b=os.read(f,65537); os.close(f); assert stat.S_ISREG(s.st_mode) and s.st_uid==1002 and s.st_nlink==1 and stat.S_IMODE(s.st_mode)==0o600 and 0<len(b)==s.st_size<=65536; assert hashlib.sha256(b).hexdigest()=="4d1b908d0dda42fd98c9fd6e6b85c8c48f60e5e9d767bc751f2989019f1ea010"; exec(compile(b,p,"exec"),{"__name__":"__main__","__file__":p})'
+```
+
+Expected output is `HELPER_UPDATED_PREFLIGHT_PASS`, with `application_applied`, `schema_changed`, `roles_changed` and `sudoers_changed` allfalse. On any STOP or uncertain result, retain the state and inspect; do not repeat the installer. After confirming successful helper installation, use the pinned GitHub workflow release `m119-workspace-r04`, confirmation `DEPLOY_M119_WORKSPACE_TO_BACKUP_ERP`, on the reviewed branch. It must pass preflight, backup/apply and verify before browser acceptance.
+
+## Transfer evidence
+
+Restricted SSH upload completed. All six files were read back with exact SHA256 values and mode0600 under the existing codex-deploy inbox; none was executed. Staged installer SHA256 `4d1b908d0dda42fd98c9fd6e6b85c8c48f60e5e9d767bc751f2989019f1ea010`; deployer `709c2221968b17219c87e260b55ca1cd5601e9f7e70031515774ff759fc1d1c6`; worker `2e53c9eddeb7d20895e2bf01d786b48dd4d5707da65bdc6efc6f8b10e6cac689`; bounded reader `2e3a02083f15986706f38e6eab2d6a4d143dad7d7b943681b04cfcd6d6d5e64e`. Package/manifest match the application pins above. The installed administrative helper remains R03; source transfer does not establish helper installation, schema/role activation, runtime acceptance or production readiness.
