@@ -1,6 +1,7 @@
 FROM php:8.2.32-cli@sha256:d806e07fee6d5dd333d3728bcaa4bf201071e037ada3cb31963445999ac1af9c
 RUN apt-get update -qq \
-    && apt-get install -y --no-install-recommends libpng-dev libsqlite3-dev python3 \
+    && apt-get install -y --no-install-recommends libpng-dev libjpeg62-turbo-dev libsqlite3-dev python3 \
+    && docker-php-ext-configure gd --with-jpeg \
     && docker-php-ext-install -j2 bcmath gd mysqli \
-    && php -r 'if (PHP_VERSION !== "8.2.32") exit(1); foreach (["bcmath","gd","mysqli","pdo_sqlite","sqlite3","posix"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR,"Missing required CI extension\n"); exit(1); } }'
+    && php -r 'if (PHP_VERSION !== "8.2.32" || !function_exists("imagejpeg") || !function_exists("imagecreatefromjpeg")) exit(1); foreach (["bcmath","gd","mysqli","pdo_sqlite","sqlite3","posix"] as $e) { if (!extension_loaded($e)) { fwrite(STDERR,"Missing required CI extension\n"); exit(1); } }'
 WORKDIR /work
