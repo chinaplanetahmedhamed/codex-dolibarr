@@ -11,6 +11,7 @@ on:
           - m043-c02
           - m045-r01
           - m119-check
+          - m119-r01
         default: m043-c02
       confirmation:
         description: Type the exact confirmation for the selected release
@@ -38,7 +39,7 @@ env:
 
 jobs:
   check_m119:
-    if: ${{ inputs.release == 'm119-check' }}
+    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' }}
     name: Office Expenses native storage release checks
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -61,7 +62,14 @@ jobs:
       - name: Require the staging check request
         env:
           CONFIRMATION: ${{ inputs.confirmation }}
-        run: test "$CONFIRMATION" = 'CHECK_M119_BACKUP_ERP'
+          SELECTED_RELEASE: ${{ inputs.release }}
+        run: |
+          set -Eeuo pipefail
+          if [ "$SELECTED_RELEASE" = m119-r01 ]; then
+            test "$CONFIRMATION" = DEPLOY_M119_TO_BACKUP_ERP
+          else
+            test "$CONFIRMATION" = CHECK_M119_BACKUP_ERP
+          fi
       - name: Check out this immutable workflow revision
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -82,6 +90,7 @@ jobs:
         run: |
           python3 deploy/tests/test_m119_release_artifact.py
           python3 deploy/tests/test_m119_runtime_preparation.py
+          python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
         run: |
           set -Eeuo pipefail
@@ -99,6 +108,92 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '%s\n' 'Office Expenses checks only. No VPS connection, credentials read, server migration, deployment or accounting posting.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_m119:
+    if: ${{ inputs.release == 'm119-r01' }}
+    needs: check_m119
+    name: Deploy Office Expenses administrator pilot to backup-erp
+    runs-on: ubuntu-24.04
+    environment: backup-erp
+    timeout-minutes: 20
+    env:
+      M119_SOURCE: 8b14b9e9c609ed296cb18368f576bbf86fffadbb
+      M119_ARTIFACT: faa869ec8d05b6e631887bb1dbe0c403deb9d97909cea84ede492ee172bca698
+      M119_MANIFEST: 19aa7af9ebc3f6f0dadb6708dec5b182f5dc55a884a42157abc79bb60ef329a7
+      M119_HELPER_SHA: 845e497f2828df927ce14e5431d180a747c62bae264fbcee244183696cb967d9
+      M119_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-deploy
+      M119_TAG: m119-backup-pilot-8b14b9e
+    steps:
+      - name: Check out the immutable verified delivery revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require exact release confirmation and source closure
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = DEPLOY_M119_TO_BACKUP_ERP
+          test "$(sha256sum deploy/releases/m119/deploy_helper.py | cut -d' ' -f1)" = "$M119_HELPER_SHA"
+          python3 - <<'PY'
+          import importlib.util, os, subprocess
+          spec=importlib.util.spec_from_file_location('m119_builder','deploy/releases/m119/build_artifact.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          for path in m.SOURCE_FILES:
+              assert subprocess.check_output(['git','show','HEAD:'+path]) == subprocess.check_output(['git','show',os.environ['M119_SOURCE']+':'+path]), 'Runtime changed outside the pinned source.'
+          PY
+      - name: Download and verify the frozen private release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m119"
+          gh release download "$M119_TAG" --repo "$GITHUB_REPOSITORY" --pattern "artifact-$M119_ARTIFACT.tar.gz" --dir "$RUNNER_TEMP/m119"
+          gh release download "$M119_TAG" --repo "$GITHUB_REPOSITORY" --pattern "manifest-$M119_ARTIFACT.json" --dir "$RUNNER_TEMP/m119"
+          test "$(sha256sum "$RUNNER_TEMP/m119/artifact-$M119_ARTIFACT.tar.gz" | cut -d' ' -f1)" = "$M119_ARTIFACT"
+          test "$(sha256sum "$RUNNER_TEMP/m119/manifest-$M119_ARTIFACT.json" | cut -d' ' -f1)" = "$M119_MANIFEST"
+          python3 - <<'PY'
+          import importlib.util, os, pathlib
+          spec=importlib.util.spec_from_file_location('m119_helper','deploy/releases/m119/deploy_helper.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'m119'
+          m.validate_package((root/('manifest-'+m.ARTIFACT_SHA+'.json')).read_bytes(),(root/('artifact-'+m.ARTIFACT_SHA+'.tar.gz')).read_bytes())
+          PY
+      - name: Configure the existing restricted staging SSH identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify installed helper and stage the exact code package
+        run: |
+          set -Eeuo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = 845e497f2828df927ce14e5431d180a747c62bae264fbcee244183696cb967d9'
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$M119_ARTIFACT.tar.gz" "$RUNNER_TEMP/m119/manifest-$M119_ARTIFACT.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'chmod 0600 /home/codex-deploy/staging-inbox/artifact-faa869ec8d05b6e631887bb1dbe0c403deb9d97909cea84ede492ee172bca698.tar.gz /home/codex-deploy/staging-inbox/manifest-faa869ec8d05b6e631887bb1dbe0c403deb9d97909cea84ede492ee172bca698.json'
+      - name: Preflight the fixed backup environment
+        run: bash deploy/releases/m119/run_remote_action.sh preflight
+      - name: Apply with backup schema verification and entrypoint last
+        id: apply
+        run: |
+          echo 'attempted=true' >> "$GITHUB_OUTPUT"
+          bash deploy/releases/m119/run_remote_action.sh apply
+      - name: Verify installed source native storage permissions and login wall
+        run: bash deploy/releases/m119/run_remote_action.sh verify
+      - name: Disable only this recorded pilot if apply or verification fails
+        if: ${{ failure() && steps.apply.outputs.attempted == 'true' }}
+        run: bash deploy/releases/m119/run_remote_action.sh rollback
+      - name: Record the server deployment boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Target backup-erp only. Approved administrator1/entity1, Egypt/EGP and China/CNY, native baseUSD. Financial posting disabled. Authenticated browser/save/receipt acceptance is a separate required check.' >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     if: ${{ inputs.release == 'm043-c02' }}
