@@ -2,8 +2,9 @@
 declare(strict_types=1);
 // Private release tool, never installed under the web root. Existing native context only.
 if(PHP_SAPI!=='cli'||!in_array($argv[1]??'',array('inspect','migrate','verify'),true)){fwrite(STDERR,"M119_NATIVE_OPERATION_REFUSED\n");exit(1);}
-$mode=$argv[1];ob_start();
+$mode=$argv[1];$phase='native_identity';ob_start();
 try {
+    if(!function_exists('posix_geteuid')||posix_geteuid()!==33||posix_getegid()!==33)throw new RuntimeException('The existing service identity is required.');
     require '/var/www/html/master.inc.php';
     if(DOL_VERSION!=='24.0.1'||PHP_VERSION!=='8.2.32'||$db->type!=='mysqli'||$conf->entity!==1
         ||!in_array($conf->currency,array('EGP','CNY','USD'),true)||DOL_DATA_ROOT!=='/var/www/documents'
@@ -16,14 +17,23 @@ try {
     $tables=array();foreach(array('cpo_oe_schema','cpo_oe_draft','cpo_oe_draft_audit','cpo_oe_receipt','cpo_oe_receipt_audit')as$table){$r=$db->query("SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='".$db->escape(MAIN_DB_PREFIX.$table)."'");if(!$r)throw new RuntimeException('Owned schema inspection failed.');$tables[$table]=(int)$db->fetch_object($r)->n;}
     $out=array('status'=>'native_context_verified','dolibarr'=>DOL_VERSION,'php'=>PHP_VERSION,'database_version'=>$version,'database_name'=>$db->database_name,'prefix'=>MAIN_DB_PREFIX,'entity'=>$conf->entity,'base_currency'=>$conf->currency,'administrator_id'=>(int)$user->id,'bcmath'=>extension_loaded('bcmath'),'jpeg'=>function_exists('imagejpeg')&&function_exists('imagecreatefromjpeg'),'owned_table_presence'=>$tables);
     if($mode!=='inspect') {
+        $phase='runtime_capabilities';
         if(!$out['bcmath']||!$out['jpeg'])throw new RuntimeException('Required exact-money/image capability is unavailable.');
         $module=DOL_DOCUMENT_ROOT.'/custom/chinaplanetoperations/office_expenses';require $module.'/class/OfficeExpenseNativeStorageFactory.php';require $module.'/class/OfficeExpensePilotConfiguration.php';
         $hashes=array($argv[2]??'', $argv[3]??'');foreach($hashes as$hash)if(!preg_match('/^[a-f0-9]{64}$/D',$hash))throw new RuntimeException('Reviewed migration pins are required.');
         if(!hash_equals(hash_file('sha256',$module.'/schema/manifest.json'),$hashes[0])||!hash_equals(hash_file('sha256',$module.'/schema/receipts/manifest.json'),$hashes[1]))throw new RuntimeException('Installed migration pins differ.');
+        $phase='private_configuration';
+        $pilot=OfficeExpensePilotConfiguration::read(OfficeExpensePilotConfiguration::PATH,DOL_DOCUMENT_ROOT);$offices=$pilot->scope($user,$conf);
+        $root=$pilot->privateRoot();$s=@lstat($root);$marker=$root.'/.cpo-office-expenses-private';$m=@lstat($marker);
+        if(realpath($root)!==$root||is_link($root)||!$s||($s['mode']&0777)!==0700||$s['uid']!==33||$s['gid']!==33
+            ||!is_readable($root)||!is_writable($root)||strpos($root,DOL_DOCUMENT_ROOT.'/')===0||strpos($root,DOL_DATA_ROOT.'/')===0
+            ||is_link($marker)||!$m||($m['mode']&0170000)!==0100000||($m['mode']&0777)!==0600||$m['uid']!==33||$m['nlink']!==1
+            ||@file_get_contents($marker)!=='cpo-office-expenses-private-v1')throw new RuntimeException('The service identity cannot use verified private storage.');
+        $phase='owned_schema';
         $backend=new OfficeExpenseMysqliSchemaBackend($db);$base=new OfficeExpenseNativeSchemaMigration($backend);$receipt=OfficeExpenseNativeSchemaMigration::forReceipts($backend);
         if($mode==='migrate'){$base->install($hashes[0]);$receipt->install($hashes[1]);}
         $base->assertReady();$receipt->assertReady();
-        $pilot=OfficeExpensePilotConfiguration::read(OfficeExpensePilotConfiguration::PATH,DOL_DOCUMENT_ROOT);$offices=$pilot->scope($user,$conf);
+        $phase='native_binding';
         $factory=new OfficeExpenseNativeStorageFactory($db,$user,$conf,$offices,$pilot->privateRoot(),DOL_DOCUMENT_ROOT,array(),10,26214400,$pilot->precision());
         $drafts=$factory->draftFactory($db,$user,$conf);$receipts=$factory->receiptFactory($db,$user,$conf,$drafts);
         if(!$drafts->usesNativeContext($user,$conf->entity)||!$receipts->usesDraftService($drafts))throw new RuntimeException('Native storage binding differs.');
@@ -35,4 +45,4 @@ try {
         $out['status']='native_storage_verified';$out['base_schema']='installed';$out['receipt_schema']='installed';$out['unapproved_identity_denied']=true;$out['financial_posting_disabled']=true;$out['owned_pilot_draft_count']=count($drafts->listOwn());
     }
     ob_end_clean();echo json_encode($out,JSON_THROW_ON_ERROR);
-}catch(Throwable $error){ob_end_clean();echo json_encode(array('status'=>'blocked','error_class'=>get_class($error),'reason'=>'Native release context/storage verification failed; no success is claimed.'),JSON_THROW_ON_ERROR);exit(1);}
+}catch(Throwable $error){ob_end_clean();echo json_encode(array('status'=>'blocked','phase'=>$phase,'error_class'=>get_class($error),'reason'=>'Native release context/storage verification failed; no success is claimed.'),JSON_THROW_ON_ERROR);exit(1);}

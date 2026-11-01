@@ -1,5 +1,17 @@
 # M119 — Administrator pilot and GitHub Actions preparation
 
+## Current verified checkpoint
+
+GitHub Actions run [41304544797](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41304544797), source `720747889d3b15282a4e87043f24d5e3e3061ca1`, completed successfully. Evidence:173 existing CLI cases,9 synthetic HTTP scenarios,7 actual Linux/www-data private-configuration cases,18 real MariaDB10.6.27 cases, and4 immutable-artifact tests. The engine suite verifies removal and absence of its owned disposable database. These are automated synthetic checks; current deployed native login/multipart acceptance remains pending.
+
+The corrected checksum-pinned read-only server probe (`33c16448d33be36c7e6139e39c2829d8c1b35fbe45be01f8ebbd5a751747fb3a`) has now executed. It verifies Dolibarr24.0.1/PHP8.2.32, mysqli, entity1, native base currency **USD**, total precision2, native expense module, and the active valid internal administrator ID1 with its existing expense right. Egypt/EGP and China/CNY are office/original currencies; neither replaces the native USD base. All five owned operational tables remain absent. GD is present and BCMath remains absent in the running application.
+
+Preflight is **BLOCKED**, not denied or pending approval: the Compose label points to `/data/compose/2/docker-compose.yml`, but that file is absent on the host. Host-side Compose validation exits1. No service replacement may rely on that stale/unresolved host path. Reconcile the actual Portainer-owned staging definition before preparing a reviewed immutable deployment helper and changing the running service. Existing Actions SSH environment secrets alone do not make an old M043/M045 helper valid for M119. No M119 deployment job has been dispatched and no runtime migration/activation has occurred.
+
+Independent release-worker hardening now requires the actual UID/GID33 service identity and validates pilot configuration/private-root ownership, modes, marker, location and service access **before** any owned DDL. Installation must keep `index.php` absent until dependencies, private configuration, migrations and native verification have all passed. The worker remains private release support, outside the web root. Only PHP syntax/package checks can be claimed for this worker until a verified target runtime exists.
+
+Remaining release gates: resolve the authoritative staging service definition and preserve native runtime overlays; reviewed/pinned helper and backup/rollback; BCMath and dedicated durable private storage; explicitly pinned additive schema installation; index-last activation; current authenticated pilot UI/transport and negative-access acceptance. Code rollback must preserve all later operational rows, audit evidence and private receipts. Financial posting remains disabled throughout.
+
 2026-11-01, Asia/Shanghai. Ahmed reiterated deployment to canonical `backup-erp` and asked why deployment was not using GitHub Actions directly. Existing authorization remains current-administrator-only, Egypt/China, operational drafts/receipts and disabled financial posting.
 
 ## Prepared application binding
