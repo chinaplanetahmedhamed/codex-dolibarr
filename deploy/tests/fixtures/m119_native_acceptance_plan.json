@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "purpose": "Prepared full native HTTP acceptance cases; no runner, runtime, users or services are created by this file",
+  "execution_status": "not_run_runtime_unavailable",
+  "historical_receipts": [
+    {"component": "dolibarr", "version": "24.0.1", "receipt_date_text": "Oct 27", "verification": "reported_by_parent_not_freshly_verified"},
+    {"component": "php", "version": "8.2.7", "receipt_date_text": "Oct 27", "verification": "reported_by_parent_not_freshly_verified"},
+    {"component": "mariadb", "version": "10.6.27", "receipt_date_text": "Oct 2", "verification": "reported_by_parent_not_freshly_verified"}
+  ],
+  "target_runtime": {"status": "pending_fresh_release_engine_confirmation", "candidate_dolibarr": "24.0.1", "candidate_php": "8.2.7", "candidate_database": "MariaDB 10.6.27; older separate receipt, not co-observed parity"},
+  "excluded_parity_evidence": ["Older README target 23.0.3", "M116 Dolibarr 24.0.2 / MySQL 5.7", "Current local PHP 8.3.21 / synthetic SQLite library harness"],
+  "runtime_requirements": ["Fresh release and database-engine evidence", "Authorized disposable runtime with separately owned empty database/config and temporary synthetic users", "Loopback HTTP and owned session/state directories; no production config or forwarded production endpoint", "No forced user, CSRF bypass, real grants or financial writer", "Record effective native settings and source hashes without logging secrets"],
+  "cases": [
+    {"id": "NHTTP01", "name": "guest", "status": "not_run", "observe": ["Native login path is shown or redirected to", "Employee form, own-draft list and protected values are absent", "Zero module/native financial writes"]},
+    {"id": "NHTTP02", "name": "native_login", "status": "not_run", "observe": ["Normal native login with random temporary fixture credentials and rendered native token", "Following request fetches native user/entity and loads rights", "Record pre/post session-cookie identifiers in redacted comparison only"]},
+    {"id": "NHTTP03", "name": "bad_password", "status": "not_run", "observe": ["Native failure response cannot create an authenticated employee session", "Zero draft writes", "Failed-login delay and event handling remain native"]},
+    {"id": "NHTTP04", "name": "active_employee_save", "status": "not_run", "observe": ["Own scoped form uses next native token", "Native-valid POST saves one exact immutable module draft and redirects", "Native expense/payment/bank/journal counts remain zero"]},
+    {"id": "NHTTP05", "name": "missing_token", "status": "not_run", "observe": ["Module POST without token is rejected by native mandatory-token path", "Zero draft writes"]},
+    {"id": "NHTTP06", "name": "stale_token", "status": "not_run", "observe": ["Native clears POST and marks InvalidToken", "Employee response rejects save without warnings or 503", "Zero writes and no automatic retry"]},
+    {"id": "NHTTP07", "name": "current_next_token", "status": "not_run", "observe": ["Record effective renewal setting", "Real native request roll feeds currentToken to validation and newToken to forms", "Test two-tab/back-button behavior without weakening native checks"]},
+    {"id": "NHTTP08", "name": "disabled_and_validity", "status": "not_run", "observe": ["Fresh request after disabling only the synthetic account denies access", "Expired and future-valid synthetic accounts are denied", "No own-draft contents or new writes"]},
+    {"id": "NHTTP09", "name": "revoked_right", "status": "not_run", "observe": ["Revoke only fixture direct/group creation grant in owned database", "Next native request reloads rights and module denies access", "No stale serialized permission grant"]},
+    {"id": "NHTTP10", "name": "invalidate_existing_session", "status": "not_run", "observe": ["Synthetic flagdelsessionsbefore later than native login date invalidates cookie session", "Subsequent module request has no authenticated draft access", "Earlier invalidation timestamp does not cause a false positive"]},
+    {"id": "NHTTP11", "name": "logout_and_expiry", "status": "not_run", "observe": ["Use native rendered logout URL and verify old-cookie replay loses access", "Record effective logout token behavior rather than assume a macro is active", "Expired/missing owned session state loses access without modifying global PHP settings"]},
+    {"id": "NHTTP12", "name": "identity_and_entity_scope", "status": "not_run", "observe": ["Guest/external/admin-without-rights contexts cannot write", "Forged owner/entity/office fields and another user's draft ID cannot widen scope", "Legitimate entity switch is tested only if the reproduced target enables that feature"]},
+    {"id": "NHTTP13", "name": "retry_and_storage_failure", "status": "not_run", "observe": ["Native-valid same-key retry maps to one immutable module draft", "Changed intent conflicts without replacement", "Owned synthetic storage failure discloses no internal data and creates no partial audit/draft"]},
+    {"id": "NHTTP14", "name": "cookie_and_headers", "status": "not_run", "observe": ["Record actual HttpOnly/Secure/SameSite and session-cookie scope against test transport", "Employee responses use no-store and expected CSP", "Do not infer secure HTTPS acceptance from loopback HTTP"]},
+    {"id": "NHTTP15", "name": "bootstrap_and_factory", "status": "not_run", "observe": ["Module resolves correct native bootstrap under the selected hosting path", "Absent production factory fails closed with zero writes", "Synthetic draft factory is bound to identical fetched native user and entity"]},
+    {"id": "NHTTP16", "name": "cleanup_and_evidence", "status": "not_run", "observe": ["Capture exact source/PHP/engine versions, settings and per-case results without secrets", "Remove only process-owned synthetic users/database/sessions/runtime", "No persistent access, production mutation or financial posting"]}
+  ]
+}

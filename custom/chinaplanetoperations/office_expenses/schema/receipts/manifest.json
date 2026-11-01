@@ -1,0 +1,10 @@
+{
+  "version": "m119_office_expenses_receipts_v1",
+  "requires": {
+    "m119_office_expenses_drafts_v1": "a88a40ae71abc63fa836036488b51d3edef72645e349f396a1ed3a4d4aeef88b"
+  },
+  "files": {
+    "001_receipts.sql": "03d6cac847f81bf474555fc99ecde8fde7e4bc52c60468016acb67e25151e95e",
+    "002_receipt_audit.sql": "bdfdb1c2880a0ddbec600d8ac2af20d46e58fb87be251bed260dcc309b17fd34"
+  }
+}
