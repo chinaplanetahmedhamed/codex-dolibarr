@@ -15,6 +15,7 @@ on:
           - m119-standalone-r01
           - m119-ui-r02
           - m119-sidebar-r03
+          - m119-workspace-r04
           - m119-sidebar-verify
         default: m043-c02
       confirmation:
@@ -43,7 +44,7 @@ env:
 
 jobs:
   check_m119:
-    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' || inputs.release == 'm119-standalone-r01' || inputs.release == 'm119-ui-r02' || inputs.release == 'm119-sidebar-r03' || inputs.release == 'm119-sidebar-verify' }}
+    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' || inputs.release == 'm119-standalone-r01' || inputs.release == 'm119-ui-r02' || inputs.release == 'm119-sidebar-r03' || inputs.release == 'm119-sidebar-verify' || inputs.release == 'm119-workspace-r04' }}
     name: Office Expenses native storage release checks
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -77,6 +78,8 @@ jobs:
             test "$CONFIRMATION" = DEPLOY_M119_UI_TO_BACKUP_ERP
           elif [ "$SELECTED_RELEASE" = m119-sidebar-r03 ]; then
             test "$CONFIRMATION" = DEPLOY_M119_SIDEBAR_TO_BACKUP_ERP
+          elif [ "$SELECTED_RELEASE" = m119-workspace-r04 ]; then
+            test "$CONFIRMATION" = DEPLOY_M119_WORKSPACE_TO_BACKUP_ERP
           elif [ "$SELECTED_RELEASE" = m119-sidebar-verify ]; then
             test "$CONFIRMATION" = VERIFY_M119_SIDEBAR_ON_BACKUP_ERP
           else
@@ -106,6 +109,8 @@ jobs:
           python3 -B deploy/tests/test_m119_standalone_deployer.py
           python3 -B deploy/tests/test_m119_ui_updater.py
           python3 -B deploy/tests/test_m119_sidebar_updater.py
+          python3 -B deploy/tests/test_m119_workspace_deployer.py
+          python3 -B deploy/tests/test_m119_workspace_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 deploy/tests/test_m119_runtime_preparation.py
           python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
@@ -119,8 +124,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           docker run --rm --network host --tmpfs /tmp:rw,noexec,nosuid,nodev \
-            -e CI=true -e GITHUB_ACTIONS=true \
+            -e CI=true -e GITHUB_ACTIONS=true -e M119_WORKSPACE_FIXTURES=/m119-workspace-fixtures \
             -e M119_CI_DB_HOST -e M119_CI_DB_PORT -e M119_CI_DB_USER -e M119_CI_DB_PASSWORD \
+            -v "$RUNNER_TEMP/m119-workspace-fixtures:/m119-workspace-fixtures:ro" \
             -v "$GITHUB_WORKSPACE:/work:ro" m119-ci:"$GITHUB_SHA" bash deploy/releases/m119/run_ci.sh
       - name: Build the complete standalone code package
         run: |
@@ -344,6 +350,75 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '%s\n' 'Backup-erp code-only UI correction: three reviewed files, exact prior deployment inode, private code backups and rollback. No schema, account, grant, password, financial posting, production or service change. Authenticated loader and visual acceptance follow deployment.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_m119_workspace:
+    if: ${{ inputs.release == 'm119-workspace-r04' }}
+    needs: check_m119
+    name: Activate all Office Expenses workspace sections on backup-erp
+    runs-on: ubuntu-24.04
+    environment: backup-erp
+    timeout-minutes: 20
+    env:
+      STANDALONE_SOURCE: 6fa6caf5dde3e3762354ae8faaf4947c49bdb52d
+      STANDALONE_SHA: a367cea37de019749ece5a1d8a2016accad6d24d45efc169e06cd98d737f4192
+      STANDALONE_MANIFEST: 0e2a55e3a9edc624bf154a754c307a1c12ebfc6af8fd9b4c5cf0d3e18bf8f796
+      STANDALONE_HELPER: 709c2221968b17219c87e260b55ca1cd5601e9f7e70031515774ff759fc1d1c6
+    steps:
+      - name: Check out immutable delivery source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify confirmation helper and source closure then build the frozen package
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = DEPLOY_M119_WORKSPACE_TO_BACKUP_ERP
+          test "$(sha256sum deploy/releases/m119/workspace_update_helper.py | cut -d' ' -f1)" = "$STANDALONE_HELPER"
+          python3 -B - <<'PYCODE'
+          import importlib.util, os, pathlib, subprocess
+          spec=importlib.util.spec_from_file_location('standalone','deploy/releases/m119/build_standalone_artifact.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          for path in m.WORKSPACE_RUNTIME_FILES:
+              assert subprocess.check_output(['git','show','HEAD:'+path]) == subprocess.check_output(['git','show',os.environ['STANDALONE_SOURCE']+':'+path]), 'Pinned application source changed.'
+          m.build(os.environ['STANDALONE_SOURCE'],pathlib.Path(os.environ['RUNNER_TEMP'])/'m119')
+          PYCODE
+          test "$(sha256sum "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" | cut -d' ' -f1)" = "$STANDALONE_SHA"
+          test "$(sha256sum "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" | cut -d' ' -f1)" = "$STANDALONE_MANIFEST"
+      - name: Use the existing restricted staging identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify installed helper and upload only the pinned package
+        run: |
+          set -Eeuo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = 709c2221968b17219c87e260b55ca1cd5601e9f7e70031515774ff759fc1d1c6'
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
+      - name: Preflight exact backup runtime identities and staff baseline
+        run: bash deploy/releases/m119/run_workspace_remote_action.sh preflight
+      - name: Back up native database and activate exact workspace schema and branch assignments
+        id: apply
+        run: |
+          echo 'attempted=true' >> "$GITHUB_OUTPUT"
+          bash deploy/releases/m119/run_workspace_remote_action.sh apply
+      - name: Verify workspace CRUD ceilings and Egypt China isolation
+        run: bash deploy/releases/m119/run_workspace_remote_action.sh verify
+      - name: Disable workspace on failure and retain compatible schema code grants and audit
+        if: ${{ failure() && steps.apply.outputs.attempted == 'true' }}
+        run: bash deploy/releases/m119/run_workspace_remote_action.sh rollback
+      - name: Record exact release boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Backup-erp workspace release: exact 59-file closure; full database backup; two additive operational tables; four versioned branch memberships; workspace flag. No native account, password, financial posting, production or service change. Rollback disables workspace and retains compatible code/schema/grants/data. Native credential login and authenticated browser acceptance are separate gates.' >> "$GITHUB_STEP_SUMMARY"
 
   verify_m119_sidebar:
     if: ${{ inputs.release == 'm119-sidebar-verify' }}
