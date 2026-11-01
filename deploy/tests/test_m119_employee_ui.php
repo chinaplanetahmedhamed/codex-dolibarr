@@ -49,7 +49,7 @@ ut('Dolibarr menu keeps pilot administrator default and requires explicit staff 
     $end=strpos($descriptor,"\n        );",$start);
     ueq(is_string($descriptor)&&$start!==false&&$end!==false,true);
     $entry=substr($descriptor,$start,$end-$start);
-    foreach(array("'type'=>'top'","'mainmenu'=>'chinaplanetexpenses'","/chinaplanetofficeexpenses/index.php",'$user->admin && $user->id == 1','$conf->entity == 1',"'user'=>0")as$needle)ueq(strpos($entry,$needle)!==false,true);
+    foreach(array("'type'=>'top'","'mainmenu'=>'chinaplanetexpenses'","/chinaplanetofficeexpenses/index.php",'$user->admin && $user->id == 1','getDolEntity() == 1',"'user'=>0")as$needle)ueq(strpos($entry,$needle)!==false,true);
     ueq(strpos($entry,'getDolGlobalInt("CPO_OE_STAFF_ACCESS_ENABLED") === 1 && $user->hasRight("chinaplanetofficeexpenses", "read")')!==false,true);
     foreach(array('en_US'=>'Office Expenses','ar_SA'=>'مصروفات المكتب','zh_CN'=>'办公费用')as$locale=>$label){
         $language=file_get_contents($root.'/custom/chinaplanetofficeexpenses/langs/'.$locale.'/chinaplanetofficeexpenses.lang');
