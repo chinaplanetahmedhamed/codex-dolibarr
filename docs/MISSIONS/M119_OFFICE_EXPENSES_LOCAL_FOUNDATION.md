@@ -1,6 +1,6 @@
 # M119 — Office expenses local foundation
 
-## Actual branch treasuries and approved opening balances — 2026-11-02 (APPROVED; IN_PROGRESS)
+## Actual branch treasuries and approved opening balances — 2026-11-02 (NATIVE_OPENINGS_VERIFIED; SOURCE_CI_PASSED; WORKSPACE_DEPLOYMENT_PENDING)
 
 Ahmed confirmed actual use with separate branch treasuries, then explicitly instructed: one EGP and one USD cash balance for Egypt, and one CNY and one USD cash balance for China, with exact opening amounts supplied in the conversation and retained in private evidence outside Git. This authorizes four distinct native cash accounts within the same Dolibarr company/entity, branch/currency-separated opening balances using native Account creation and its native SOLD opening line, dated2026-11-02 (today, stated to Ahmed). Reuse an exact matching account after verifying identity and its opening instead of recreating/reposting. Do not add these amounts to unrelated QA account1 or treat openings as operating income; do not convert/combine currencies or guess FX rates. Stable native references: CPO-EG-EGP, CPO-EG-USD, CPO-CN-CNY, CPO-CN-USD. Use the established backup-ERP native administration context; no production action is inferred from “we will use this in real”.
 

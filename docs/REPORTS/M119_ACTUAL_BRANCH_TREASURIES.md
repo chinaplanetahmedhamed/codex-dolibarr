@@ -27,7 +27,9 @@ Branch treasury read permission is required for full cash balances/statements. O
 
 Local PHP 8.4.7 / official Dolibarr 24.0.1 source: all 19 scoped CLI suites pass, including 14 workspace document and 24 workspace/native access cases. Two historical credential/session scenarios remain explicitly skipped. Four-role CRUD/payroll ownership cases, cash metadata rejection, own/branch/entity denial, immediate rights revocation, statement limits, original-currency balances and AR/EN rendering pass with synthetic values. Fourteen synthetic HTTP scenarios and both standalone package tests pass. Every changed/new PHP file passes syntax checks. The HTTP script is executable directly; unittest discovery does not apply to it.
 
-Matching PHP 8.2.32 / MariaDB 10.6.27 checks and fresh browser layout observations are recorded below when available. Native opening-account acceptance is separate from source-only integration tests.
+Matching PHP 8.2.32 / MariaDB 10.6.27 check-only [Actions run 41354595823](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41354595823) succeeded for exact runtime source b61b8c691282be81888876d28c667f1a1d3ba0e7. It includes the native cash reader on copied official native table definitions, signed totals, separate branches/entities, duplicate-reference rejection, SOLD distinction and eight-decimal wire values. All deployment jobs were skipped; this is CI evidence, not a deployment.
+
+Fresh local synthetic browser DOM observations cover Treasury and Settings in Arabic and English at effective 1778, 602 and 355 CSS-pixel widths: 12 cases, no document overflow, duplicate IDs or unlabelled controls; treasury renders two distinct currency cards. Tables scroll internally. These are synthetic snapshots with test balances, not actual native sessions or phone pixel acceptance. Native opening-account acceptance is separate from source-only integration tests.
 
 The existing deployed R03 module has **not** been replaced by this continuation. Expanded workspace schema/feature activation, new branch grants, native web acceptance and real financial posting remain pending. The old R03 helper is not a compatible deployer for the larger dependency closure. The new reader is included only in the expanded workspace package; historical R01/R02/R03 manifests remain unchanged. No core/schema/configuration or new staff rights were changed by this read-only source integration.
 
@@ -35,4 +37,4 @@ Admin ERP: actual native cash accounts/openings verified; expanded workspace sou
 
 Rollback: disable/revert the expanded source package through a compatible pinned release. Retain approved native accounts/openings, all existing documents, receipts, grants and audit history. Do not restore an older database backup over these new financial records or silently delete/repost an opening. Any later opening correction must use a separately reviewed native accounting correction.
 
-Branch: codex/m119-office-expenses-local. Runtime source commit and CI evidence are recorded after the scoped source commit below.
+Branch: codex/m119-office-expenses-local. Runtime source commit: b61b8c691282be81888876d28c667f1a1d3ba0e7, pushed and verified by the check-only run above. This documentation follow-up does not alter runtime bytes.
