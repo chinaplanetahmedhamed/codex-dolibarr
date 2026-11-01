@@ -44,7 +44,7 @@ Consequently nonzero cash-account binding and native payments remain disabled. N
 - Full applicable local Mission suites pass: foundation, standalone module, staff access, employee UI, staff UI regression, menu sync, native drafts/identity/capabilities/provenance/workflow/storage/migration/receipts, receipt UI, pilot configuration. Two credential-dependent identity scenarios remain explicitly skipped.
 - Synthetic HTTP fixture: 14 scenarios pass, including default-deny anonymous/unactivated access to the new route. This does not establish activated native web-session acceptance.
 - Historical release/helper/package tests pass; actual root-owned replacement is reserved for the Linux CI check. Extended package closure/reproducibility and schema hashes pass.
-- Browser: 9 new sections × AR/EN × desktop/compact widths (36 rendered cases), observed effective CSS widths1778 and602. No document overflow, duplicate IDs, unlabelled controls or invalid money input types; native sidebar is absent in these local fixtures. Smaller phone follow-up and exact PHP8.2.32/MariaDB10.6.27 CI are recorded below once complete.
+- Browser: 9 new sections × AR/EN × desktop/compact widths (36 rendered cases), observed effective CSS widths1778 and602. No document overflow, duplicate IDs, unlabelled controls or invalid money input types; native sidebar is absent in these local fixtures. A further18 AR/EN cases at effective355px also have no document overflow or unlabelled controls. Phone compositor screenshots were clipped/stale in the hidden integrated browser, so these phone results establish DOM layout, not pixel acceptance. Exact PHP8.2.32/MariaDB10.6.27 CI is recorded below.
 - Changed PHP syntax, JavaScript syntax and `git diff --check` pass.
 
 ## Parity, limits and rollback
@@ -53,4 +53,11 @@ Admin ERP: implemented operational surface, awaiting native runtime activation/a
 
 No destructive migration or public logo upload is introduced. Logo copies stay in versioned internal documents/audit. Reports fail rather than silently truncate above10,000 matching documents; the UI register will require pagination before that scale. Earlier immutable rows remain read-only. PDFs use browser Print/Save PDF; no automatic outbound sharing or email is added.
 
-Rollback: disable only the workspace feature flag, restore the exact prior code package after verifying the release backup, and retain the new schema, operational documents and audit. Do not drop tables or restore an older database over new submissions. Financial posting remains off throughout.
+Rollback: disable only the workspace feature flag and retain the new schema, operational documents, permission reader and audit. Restoring the prior code package additionally requires verifying that no memberships contain new-section grants; its older grant parser cannot read them. If new grants exist, retain the compatible reader and prepare a reviewed rollback package rather than stripping grants or rewriting their history. Do not drop tables or restore an older database over new submissions. Financial posting remains off throughout.
+
+
+## Immutable preparation and CI follow-up
+
+Application source: `21af5b0339f8f51521244edc17a0e06793e7cb68`, pushed to the working branch. The59-entry code-only package was built from this exact commit (58 runtime files plus declaration). Archive SHA256 `d814bfa19ba5bcf069ca2f791da6cdeddc2a400d04e85cdcd0c9c94ddc7984a3`; checksum-manifest SHA256 `85d8c91989afe71c8d4f8131410040eb41319cc3af1d2fb3853d87d5db4257d2`.
+
+First checks-only Actions run [41351195625](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41351195625) passed the exact PHP container build, package/helper boundaries, syntax, all30 new workspace cases, actual root-owned filesystem checks, and both new MariaDB workspace persistence/migration cases. Its final fixture-only table inventory assertion still listed the old eight tables and therefore failed after the two intentional new operational tables were installed. The assertion was updated to name those exact two owned tables while retaining the explicit exclusion of accounting/payment/bank tables. No runtime code or target environment was changed to resolve that test mismatch. A fresh complete check is required; this failed run is not a release pass.
