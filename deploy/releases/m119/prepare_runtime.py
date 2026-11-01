@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import selectors
 import shutil
 import signal
@@ -188,9 +189,15 @@ def main():
     # Only this dedicated staging DB. Credentials remain in its existing process environment.
     dump_path = BACKUP/'database-before.sql.gz'
     count, database_hash = database_backup(dump_path,database['Config']['Hostname'])
-    snapshot = run(['docker','commit','--pause=true',APP,SNAPSHOT_TAG],timeout=120).decode().strip()
-    if not snapshot.startswith('sha256:'):
+    commit_result = run(['docker','commit','--pause=true',APP,SNAPSHOT_TAG],timeout=120).decode().strip()
+    snapshot = json.loads(run(['docker','image','inspect',SNAPSHOT_TAG]))[0]['Id']
+    if re.fullmatch(r'sha256:[a-f0-9]{64}',snapshot) is None or commit_result not in (snapshot,snapshot[7:]):
         raise RuntimeError('Private current-rootfs snapshot did not return an immutable image.')
+    finish_preparation(before,phase,config_hash,compose_hash,database_hash,count,snapshot)
+
+
+def finish_preparation(before,phase,config_hash,compose_hash,database_hash,count,snapshot):
+    dump_path = BACKUP/'database-before.sql.gz'
     # Preserve the current rootfs/config; copy ONLY the reviewed exact-ABI dependency files.
     dockerfile = ('FROM '+CANDIDATE_TAG+' AS dependency\nFROM '+SNAPSHOT_TAG+'\nCOPY --from=dependency '+EXTENSION+' '+EXTENSION+'\nCOPY --from=dependency '+INI+' '+INI+'\n').encode()
     build_root = BACKUP/'build'
