@@ -8,6 +8,10 @@ Subsequent [release-readiness review](M119_RELEASE_READINESS.md) raises the curr
 
 Latest [native storage/migration milestone](M119_NATIVE_STORAGE_MIGRATION.md): **143/0 failures**, including22 native-storage and17 fresh-owned-database migration cases. Explicit pinned versioned install/readiness/reversal code and shared connection quarantine now exist; no existing database/runtime was migrated or activated. Test metadata/advisory locks are simulated around genuine owned SQLite/native transactions. Matching-engine and native receipt adapters remain pending. All prior totals above are historical checkpoints.
 
+## Latest backup-ERP operational workspace — 2026-11-02
+
+[All-sections activation evidence](M119_ALL_SECTIONS_ACTIVATION.md) supersedes the historical local-only deployment statements below: R04 is deployed on backup-ERP, all nine workspace sections and full users matrix active, two additive operational tables and four audited membership continuations verified. Native administrator HTTP CRUD/print/export, branch cash preservation, anonymous denial and72 AR/EN responsive DOM cases pass. All16 clearly marked synthetic records remain archived. Actual payment/FX/payroll posting, staff password login, physical phone taps and production are not accepted by this release.
+
 ## Delivered
 
 - Private Finens reference retrieved through the authenticated GitHub connector and reconstructed/verified against exact remote Git objects: `2955c7efca00dfac0edc30baa3124ec85944cc71`. The reference stays clean on `main`; original sensitive database/history were never imported.

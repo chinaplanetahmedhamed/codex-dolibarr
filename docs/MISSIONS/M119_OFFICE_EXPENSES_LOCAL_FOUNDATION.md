@@ -1,13 +1,13 @@
 # M119 — Office expenses local foundation
 
-## Activate all remaining branch workspace sections — 2026-11-02 (APPROVED; IN_PROGRESS)
+## Activate all remaining branch workspace sections — 2026-11-02 (READY_FOR_REVIEW; BACKUP_DEPLOYED; ADMIN_UAT_VERIFIED)
 
 Ahmed explicitly requests completing every remaining pending section on the current backup-ERP module. Continue the already approved remaining-sections implementation and established backup-ERP release context: finish scoped forms/reporting, prepare a dependency-closed immutable package, update the existing restricted five-action deployer without widening sudoers, back up current files/database, install only the separately manifested operational workspace tables, enable the workspace flag and verify authenticated CRUD/printing/exports/AR-EN layouts and branch denials. Preserve the native top-bar menu correction, four native cash accounts/openings, existing identities, receipts, grants and audit. No production, core/server-stack replacement, credential reset or arbitrary real financial payment is authorized.
 
 Proposed role continuation for review: Moaz/Egypt and Rina/China keep branch scope and manage the newly available operational sections; Omar/Egypt and Shan Shan/China retain own-record expense/advance creation, category/report reads and personal payslip reads, with no branch cash/salary directory exposure or configuration/access management. Exact role updates require bounded native identity/current-membership preconditions and auditable revisions. Financial approval owner is requested separately while independent rollout work proceeds; actual financial posting adapters may not infer FX rates, chart codes or employee-loan settlement from a draft. Existing source describes this distinction explicitly. Rollback disables the workspace feature and retains compatible code, all records/schema/memberships/audit; after new grants exist, do not restore the older parser or an old database backup.
 
 
-Activation checkpoint: application CI41358979130 and delivery CI41359665711 passed; pinned release/helper files staged and checksum-read back. Administrative helper installation is blocked by unavailable Termius input; workspace flag/schema/role activation and authenticated acceptance remain outstanding. See [all-sections activation handoff](../REPORTS/M119_ALL_SECTIONS_ACTIVATION.md).
+Activation checkpoint: Ahmed installed the pinned helper; release41360160870 passed backup/apply/verify on backup-ERP. All nine sections and full users matrix are active. Actual administrator saves/edits/archives/prints/CSV passed in both branches; all16 marked synthetic records are archived and native cash unchanged. All72 AR/EN desktop/phone DOM cases pass. Staff password login, physical phone taps and native financial posting remain separate unverified/unimplemented boundaries. See [all-sections activation handoff](../REPORTS/M119_ALL_SECTIONS_ACTIVATION.md).
 
 ## Restore the native top-bar module icon — 2026-11-02 (NATIVE_CONFIGURATION_VERIFIED; SOURCE_CI_PASSED)
 
