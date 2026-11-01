@@ -98,6 +98,7 @@ jobs:
           python3 deploy/tests/test_m119_release_artifact.py
           python3 deploy/tests/test_m119_standalone_artifact.py
           python3 -B deploy/tests/test_m119_standalone_deployer.py
+          python3 -B deploy/tests/test_m119_ui_updater.py
           python3 deploy/tests/test_m119_runtime_preparation.py
           python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
