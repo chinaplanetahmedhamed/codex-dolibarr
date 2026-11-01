@@ -1,8 +1,8 @@
 # M119 — Office expenses local foundation
 
-## Approved standalone release continuation — 2026-11-02 (IN_PROGRESS)
+## Approved standalone release continuation — 2026-11-02 (PUSHED_AND_CI_VERIFIED; STAGING_INSTALLER_PENDING)
 
-Ahmed requested “push the new module”. This authorizes committing and pushing the current standalone module and staff integration, matching GitHub Actions checks and the established backup-erp release within the reviewed scope. Production and financial posting remain excluded. The existing installed helper accepts only the historical Operations pilot; prepare the complete immutable standalone package and do not bypass that helper boundary. Module activation, additive access schema and the four reviewed branch roles require the matching scoped staging installer and authenticated acceptance before being reported as active. Earlier local-only restrictions below are superseded for this release.
+Ahmed requested “push the new module”. This authorizes committing and pushing the current standalone module and staff integration, matching GitHub Actions checks and the established backup-erp release within the reviewed scope. Production and financial posting remain excluded. The existing installed helper accepts only the historical Operations pilot; prepare the complete immutable standalone package and do not bypass that helper boundary. Module activation, additive access schema and the four reviewed branch roles require the matching scoped staging installer and authenticated acceptance before being reported as active. Earlier local-only restrictions below are superseded for this release. Source `1b88b88` is pushed; matching Actions run 41338709389 passed and retained the complete standalone archive. Fresh authenticated standalone users-route readback is still 404. [Release evidence](../REPORTS/M119_STANDALONE_RELEASE.md).
 
 ## Approved named branch roles — 2026-11-02 (ACCOUNTS_AND_GROUPS_VERIFIED; FINANCE_ACTIVATION_PENDING)
 

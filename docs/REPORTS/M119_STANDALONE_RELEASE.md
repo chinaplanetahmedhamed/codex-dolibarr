@@ -25,3 +25,11 @@ Remaining staging work: a matching narrowly scoped installer with exact package 
 Source rollback is a new revert commit of the scoped change. Future runtime rollback must first disable staff mode and restore the reviewed pilot code/config/menu, preserving all accounts, operational records, private receipts, additive schema and audit history. Do not delete financial/business data for rollback.
 
 Branch: `codex/m119-office-expenses-local`. Commit/run identifiers are recorded in the final handoff and subsequent check evidence.
+
+## Confirmed publication and matching CI
+
+Source commit `1b88b8869e700ad54a441124e980105ca6313cfa` was pushed to the existing branch and verified with remote `ls-remote`. [Actions 41338709389](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41338709389) completed successfully for exactly that commit. PHP 8.2.32/native 24.0.1/MariaDB 10.6.27 checks passed: 23 real MariaDB cases, including all five new access-storage failure/recovery cases; 7 actual Linux/www-data filesystem cases; 21 staff-access scenarios; complete CLI/HTTP suites with `FAILED_SUITES=0`. Two credential-free identity auth/session cases remain intentionally skipped and do not establish real staff login acceptance.
+
+The complete 46-entry standalone archive SHA256 is `3f3254ae3f1fb4bd186b8d37afb7f3b7e31826291a18dad24599dcabf417fd1e`. Independent Mac and GitHub runner builds produced that same digest. [Download code package and manifest](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41338709389/artifacts/13096675548) (Actions retention 14 days). Local copy: `../m119-staging-release/standalone-1b88b88/` relative to this repository root. This is a code archive, not a native module-install wizard or activation script.
+
+After publication, a fresh same-origin authenticated browser GET of the standalone users route still returned 404; the native administrator users page remained authenticated. The available Playwright request context transport did not support its cookies method, so readback used a same-origin browser fetch instead. No deployment attempted, remote code or database changed, or permission/helper boundary bypassed. The matching installer/activation remains the concrete blocker; the current requested source push and matching checks are complete.
