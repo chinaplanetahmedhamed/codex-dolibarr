@@ -1,5 +1,7 @@
 # M119 — Administrator pilot and GitHub Actions preparation
 
+Current outcome: **Actions deployment succeeded** in [run41310975615](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41310975615). Actual schema/application/native verification and administrator browser EGP draft save pass. [Final deployment record](M119_BACKUP_DEPLOYMENT.md) is authoritative for installed pins, recovery and exact remaining browser limitations. The preparation-only/pending/blocker statements below are historical checkpoints.
+
 ## Runtime milestone after renewed deployment instruction
 
 Ahmed reiterated publishing the module into the established backup environment. The authoritative stack2 definition was recovered only in server memory from Portainer's own `/data/compose/2/docker-compose.yml`; with host interpolation/default env disabled, its existing application environment matches the running service. The host-path blocker is resolved: it is a Portainer-internal path.
