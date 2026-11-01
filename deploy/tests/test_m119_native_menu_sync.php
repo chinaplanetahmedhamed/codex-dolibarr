@@ -126,5 +126,8 @@ $staffDb->rows[]=$staffRow;
 $staffService=new OfficeExpenseNativeMenuSyncService($staffDb,$user,$conf);
 menuSyncAssert($staffService->hasMenu(),'The exact dormant staff descriptor was rejected.');
 menuSyncAssert(!$staffService->synchronize()&&$staffDb->insertions===0,'Existing dormant staff menu was modified.');
+$staffRow->perms=str_replace('"',"'",$staffRow->perms);
+menuSyncAssert($staffService->hasMenu(),'Native single-quoted staff permission was rejected.');
+menuSyncAssert(!$staffService->synchronize()&&$staffDb->insertions===0,'Native-normalized staff menu was modified.');
 
-echo "M119 menu sync: 18 assertions passed; synthetic DB only.\n";
+echo "M119 menu sync: 20 assertions passed; synthetic DB only.\n";

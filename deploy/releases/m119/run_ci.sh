@@ -15,6 +15,7 @@ check php deploy/tests/test_m119_workspace_documents.php
 check php deploy/tests/test_m119_workspace_native.php "$native"
 check php deploy/tests/test_m119_office_expenses.php
 check php deploy/tests/test_m119_standalone_module.php "$native"
+check php deploy/tests/test_m119_native_menu_conditions.php "$native"
 check php deploy/tests/test_m119_staff_access.php "$native"
 check php deploy/tests/test_m119_employee_ui.php
 check php deploy/tests/test_m119_staff_ui_regression.php

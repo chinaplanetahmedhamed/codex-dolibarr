@@ -57,7 +57,7 @@ final class OfficeExpenseNativeMenuSyncService
         $menu->prefix='fa-receipt';
         $menu->langs='chinaplanetofficeexpenses@chinaplanetofficeexpenses';
         $menu->perms='$user->admin && $user->id == 1';
-        $menu->enabled='$conf->chinaplanetofficeexpenses->enabled && empty($user->socid) && $conf->entity == 1';
+        $menu->enabled='isModEnabled(\'chinaplanetofficeexpenses\') && !$user->socid && getDolEntity() == 1';
         $menu->user=0;
 
         $result=$menu->create($this->user);
@@ -97,14 +97,16 @@ final class OfficeExpenseNativeMenuSyncService
             'titre'=>'OfficeExpenses','prefix'=>'fa-receipt',
             'langs'=>'chinaplanetofficeexpenses@chinaplanetofficeexpenses',
             'perms'=>'$user->admin && $user->id == 1',
-            'enabled'=>'$conf->chinaplanetofficeexpenses->enabled && empty($user->socid) && $conf->entity == 1',
+            'enabled'=>'isModEnabled(\'chinaplanetofficeexpenses\') && !$user->socid && getDolEntity() == 1',
             'usertype'=>0,
         );
         foreach($expected as $field=>$value){
             $actual=$row->$field??null;
             // The reviewed standalone descriptor can include the dormant staff phase.
             // Accept only this exact opt-in expression; never adopt arbitrary menu permissions.
-            if($field==='perms'&&$actual==='($user->admin && $user->id == 1) || (getDolGlobalInt("CPO_OE_STAFF_ACCESS_ENABLED") === 1 && $user->hasRight("chinaplanetofficeexpenses", "read"))')continue;
+            $staffPerms='($user->admin && $user->id == 1) || (getDolGlobalInt("CPO_OE_STAFF_ACCESS_ENABLED") === 1 && $user->hasRight("chinaplanetofficeexpenses", "read"))';
+            // Native module registration normalizes double quotes to single quotes.
+            if($field==='perms'&&in_array($actual,[$staffPerms,str_replace('"',"'",$staffPerms)],true))continue;
             if($value===null?($actual!==null&&$actual!==''):(string)$actual!==(string)$value){
                 throw new RuntimeException('Existing Office Expenses menu row differs from the approved entry.');
             }

@@ -33,7 +33,7 @@ class modChinaPlanetOfficeExpenses extends DolibarrModules
             'mainmenu'=>'chinaplanetexpenses','leftmenu'=>'0',
             'url'=>'/custom/chinaplanetofficeexpenses/index.php',
             'langs'=>'chinaplanetofficeexpenses@chinaplanetofficeexpenses','position'=>93,
-            'enabled'=>'$conf->chinaplanetofficeexpenses->enabled && empty($user->socid) && $conf->entity == 1',
+            'enabled'=>'isModEnabled(\'chinaplanetofficeexpenses\') && !$user->socid && getDolEntity() == 1',
             'perms'=>'($user->admin && $user->id == 1) || (getDolGlobalInt("CPO_OE_STAFF_ACCESS_ENABLED") === 1 && $user->hasRight("chinaplanetofficeexpenses", "read"))','user'=>0,'prefix'=>'fa-receipt',
         );
     }
