@@ -32,6 +32,8 @@ class SidebarTests(unittest.TestCase):
     m=actual_engine(raw);m.setup=lambda ignored:(old,original,current,c_current);m.package=lambda source,c:packages[source.SOURCE];return m
    with patch.object(h,'engine',side_effect=engine):c,u=h.configure(raw,raw_standalone)
    u.closure();self.assertEqual(c.STATE,h.STATE);self.assertEqual(c.COMMIT,h.SOURCE)
+   self.assertEqual(u.apply.__globals__['SOURCE'],c.COMMIT)
+   self.assertEqual(u.apply.__globals__['ARTIFACT'],c.ARTIFACT_SHA)
    self.assertEqual(u.baseline.verify.__self__.c.STATE,Path('/var/lib/chinaplanetos-backup-erp-deploy/m119-ui-r02'))
    self.assertEqual(u.closure.__globals__['CHANGED'],h.CHANGED)
    self.assertEqual(u.baseline.verify.__self__.closure.__globals__['CHANGED'],factory.CHANGED)

@@ -44,6 +44,7 @@ def configure(raw,raw_standalone):
     prior=baseline.Update(old,original,current,c_current,baseline.package(old,original),baseline.package(current,c_current))
     # Separate module instances keep the prior five-file verification/rollback contract unchanged.
     patch=engine(raw);patch.STATE=STATE;patch.CHANGED=CHANGED
+    patch.SOURCE=SOURCE;patch.ARTIFACT=ARTIFACT;patch.MANIFEST=MANIFEST
     next_source=baseline.module(raw_standalone)
     next_source.SOURCE=SOURCE;next_source.ARTIFACT=ARTIFACT;next_source.MANIFEST=MANIFEST;next_source.STATE=STATE
     c=next_source.configured(old.frozen());c.PHASES=tuple(c.PHASES)+('restored_baseline','failed_restore_unconfirmed')

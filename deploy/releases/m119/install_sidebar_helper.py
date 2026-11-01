@@ -9,7 +9,7 @@ import stat
 import types
 
 OLD='388b8d24178307b790f178aec8c4fadc62a9ce68f993adbfc840f8f7da8a4757'
-NEW='7fb963f8db83af868471afcfa7d7c5b97677904b963bbf0365404aed2bfc0b63'
+NEW='b51706fff210aba0022502aff7b74b698ed6a6f11b5e0286bd9b5f1a3aaa1674'
 READER='2e3a02083f15986706f38e6eab2d6a4d143dad7d7b943681b04cfcd6d6d5e64e'
 TARGET=Path('/usr/local/sbin/chinaplanetos-backup-erp-deploy')
 STATE=Path('/var/lib/chinaplanetos-backup-erp-deploy/m119-sidebar-r03')
