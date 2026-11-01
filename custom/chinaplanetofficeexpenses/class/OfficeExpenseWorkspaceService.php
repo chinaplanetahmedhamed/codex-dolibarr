@@ -30,7 +30,7 @@ final class OfficeExpenseWorkspaceService
         return $allowed;
     }
     public function staff(string $office,string $section): array {$this->context();return $this->access->branchStaff($office,$section);}
-    public function cash(string $office): array {$this->context();return (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->read($office);}
+    public function cash(string $office,?string $from=null,?string $to=null): array {$this->context();return (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->read($office,$from,$to);}
     public function accounts(string $office): array {$this->context();return (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->accounts($office);}
     public function list(string $office,string $kind,?string $from=null,?string $to=null): array
     {
@@ -118,7 +118,15 @@ final class OfficeExpenseWorkspaceService
         }
         foreach($rows as$row){if($row['status']==='archived')continue;$v=$row['content'];$currency=$v['currency'];$kind=$row['kind'];$totals[$currency][$kind]=bcadd($totals[$currency][$kind]??'0',$v[$kind==='payroll'?'net':'amount'],2);}
         usort($rows,fn($a,$b)=>[$b['content']['date'],$b['id']]<=>[$a['content']['date'],$a['id']]);
-        return ['rows'=>$rows,'totals'=>$totals,'from'=>$from,'to'=>$to,'filter'=>$filter,'status'=>$status,'scope'=>$reportScope];
+        $cash=null;if($reportScope==='branch'&&$this->allowed($office,'treasury','read')&&$this->access->recordScope($office,'treasury')==='branch')$cash=$this->cash($office,$from,$to);
+        return ['rows'=>$rows,'totals'=>$totals,'from'=>$from,'to'=>$to,'filter'=>$filter,'status'=>$status,'scope'=>$reportScope,'cash'=>$cash];
+    }
+    public static function cashCsv(array $report): string
+    {
+        if(empty($report['cash'])||$report['cash']['restricted'])throw new DomainException('Branch cash report unavailable.');
+        $stream=fopen('php://temp','w+');fwrite($stream,"\xEF\xBB\xBF");fputcsv($stream,['From','To','Account reference','Currency','Opening before period','Initial balances during period','Cash in excluding initial balances','Cash out','Recorded closing'],';', '"','');
+        foreach($report['cash']['accounts']as$account)fputcsv($stream,[$report['from'],$report['to'],$account['reference'],$account['currency'],$account['period_opening'],$account['period_initial'],$account['period_in'],$account['period_out'],$account['period_closing']],';','"','');
+        rewind($stream);$csv=stream_get_contents($stream);fclose($stream);return $csv;
     }
     public static function csv(array $report): string
     {

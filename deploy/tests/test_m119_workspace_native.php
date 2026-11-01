@@ -126,4 +126,17 @@ wt('future-dated cash is recorded but excluded from native current availability'
     $db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(501,'2099-01-01','2099-01-01',102,2.25,'SOLD','SYNTHETIC future opening')");
     try{$account=$m->cash('egypt')['accounts'][1];we($account['balance'],'19.55');we($account['available_balance'],'17.30');we($account['entries'][0]['future'],true);$state=(new OfficeExpenseWorkspaceController($m,'synthetic'))->handle('GET',['view'=>'treasury','office'=>'egypt','lang'=>'en'],[]);$html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($html,'Future dated · not available yet'),true);we(str_contains($html,'Available as of Dolibarr date'),true);}finally{$db->query('DELETE FROM llx_bank WHERE rowid=501');}
 });
+wt('advance return form renders a linked branch advance rather than failing its select options',function()use($m){
+    foreach(['ar','en']as$lang){$state=(new OfficeExpenseWorkspaceController($m,'synthetic'))->handle('GET',['view'=>'advances','kind'=>'advance_return','office'=>'egypt','lang'=>$lang],[]);we($state['status'],200);$html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($html,'name="payload[settles_ref]"'),true);we(str_contains($html,'value="USD"'),true);}
+});
+wt('native cash period reporting separates opening balances from cash in and out without mixed currencies',function()use($m){
+    $cash=$m->cash('egypt','2001-01-02','2001-01-02');$eg=$cash['accounts'][0];we($eg['period_opening'],'0.00');we($eg['period_initial'],'123.45');we($eg['period_in'],'0.00');we($eg['period_out'],'23.15');we($eg['period_closing'],'100.30');we(count($eg['entries']),2);
+    $later=$m->cash('egypt','2001-01-03','2001-01-03')['accounts'][0];we($later['period_opening'],'100.30');we($later['period_initial'],'0.00');we($later['period_closing'],'100.30');we($later['entries'],[]);
+    wb(fn()=>$m->cash('egypt','2001-02-30','2001-03-01'));wb(fn()=>$m->cash('egypt','2001-01-03','2001-01-02'));
+});
+wt('report export honors branch treasury scope and never exposes cash to an own-record worker',function()use($m,$db,$conf){
+    $report=$m->report('egypt','2001-01-02','2001-01-02');we($report['cash']['accounts'][0]['period_initial'],'123.45');$csv=OfficeExpenseWorkspaceService::cashCsv($report);we(str_contains($csv,'CPO-EG-EGP'),true);we(str_contains($csv,'CPO-EG-USD'),true);we(str_contains($csv,'CPO-CN-CNY'),false);
+    $user=m119FetchIdentity('synthetic-13');$worker=new OfficeExpenseWorkspaceService($db,$user,1,new OfficeExpenseStaffAccess($db,$user,$conf,7));we($worker->report('egypt','2001-01-02','2001-01-02')['cash'],null);
+    $q=['view'=>'reports','office'=>'egypt','from'=>'2001-01-02','to'=>'2001-01-02','export'=>'cash_csv'];we((new OfficeExpenseWorkspaceController($m,'synthetic'))->handle('GET',$q,[])['status'],200);$denied=(new OfficeExpenseWorkspaceController($worker,'synthetic'))->handle('GET',$q,[]);we($denied['status'],403);we($denied['csv'],null);we($denied['report'],null);
+});
 echo "$pass passed, $fail failed\n";exit($fail?1:0);

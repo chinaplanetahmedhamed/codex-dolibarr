@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/OfficeExpenseNativeConnection.php';
 require_once __DIR__.'/OfficeExpenseStaffAccess.php';
+require_once __DIR__.'/OfficeExpenseMoney.php';
 
 /** Read-only bridge to native cash accounts. No balance cache, FX or posting path. */
 final class OfficeExpenseNativeTreasury
@@ -47,24 +48,33 @@ final class OfficeExpenseNativeTreasury
         if(!str_contains($whole,'.'))return $whole.'.00';
         return str_pad($whole,strpos($whole,'.')+3,'0');
     }
-    public function read(string $office): array
+    public function read(string $office,?string $from=null,?string $to=null): array
     {
         $this->authorize($office,'treasury');
+        if($from!==null||$to!==null){if($from===null||$to===null)throw new InvalidArgumentException('Both statement dates are required.');OfficeExpenseMoney::date($from);OfficeExpenseMoney::date($to);if($from>$to)throw new InvalidArgumentException('Invalid statement period.');}
         if($this->access->recordScope($office,'treasury')!=='branch')return ['restricted'=>true,'accounts'=>[]];
         $accounts=[];$cutoff=(string)$this->db->idate(dol_now());
         if(!preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}/D',$cutoff))throw new RuntimeException('Native balance date unavailable.');
         foreach(self::REFERENCES[$office]as$currency=>$reference){
             $account=$this->account($office,$currency);$id=$account['id'];$c=$this->connection;
+            $periodSelect='';$periodFields=[];$entryFilter='';
+            if($from!==null){
+                $first=$c->quote($from);$last=$c->quote($to);$range='dateo >= '.$first.' AND dateo <= '.$last;
+                $entryFilter=' AND '.$range;
+                $expressions=['period_opening'=>'dateo < '.$first,'period_closing'=>'dateo <= '.$last,'period_initial'=>$range." AND fk_type = 'SOLD'",'period_in'=>$range." AND (fk_type <> 'SOLD' OR fk_type IS NULL) AND amount > 0",'period_out'=>$range." AND (fk_type <> 'SOLD' OR fk_type IS NULL) AND amount < 0"];
+                foreach($expressions as$field=>$condition){$periodFields[]=$field;$periodSelect.=',CAST(CAST(COALESCE(SUM(CASE WHEN '.$condition.' THEN '.($field==='period_out'?'-amount':'amount').' ELSE 0 END),0) AS DECIMAL(30,8)) AS CHAR) AS '.$field;}
+            }
             // One statement supplies each account's total and latest entries from the same snapshot.
             // bank has no entity column: both legs are fenced by the validated native account.
-            $rows=$c->rows('SELECT a.rowid AS account_id,totals.balance,totals.available_balance,b.rowid,b.dateo,b.datev,b.fk_type,b.label,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank_account a CROSS JOIN (SELECT CAST(CAST(COALESCE(SUM(amount),0) AS DECIMAL(30,8)) AS CHAR) AS balance,CAST(CAST(COALESCE(SUM(CASE WHEN dateo <= '.$c->quote($cutoff).' THEN amount ELSE 0 END),0) AS DECIMAL(30,8)) AS CHAR) AS available_balance FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.') totals LEFT JOIN (SELECT rowid,dateo,datev,fk_type,label,amount FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.' ORDER BY dateo DESC,rowid DESC LIMIT 101) b ON 1=1 WHERE a.rowid='.$id.' AND a.entity='.$this->entity.' AND a.ref='.$c->quote($reference).' AND a.currency_code='.$c->quote($currency).' AND a.courant=2 AND a.clos=0 ORDER BY b.dateo DESC,b.rowid DESC');
+            $rows=$c->rows('SELECT a.rowid AS account_id,totals.*,b.rowid,b.dateo,b.datev,b.fk_type,b.label,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank_account a CROSS JOIN (SELECT CAST(CAST(COALESCE(SUM(amount),0) AS DECIMAL(30,8)) AS CHAR) AS balance,CAST(CAST(COALESCE(SUM(CASE WHEN dateo <= '.$c->quote($cutoff).' THEN amount ELSE 0 END),0) AS DECIMAL(30,8)) AS CHAR) AS available_balance'.$periodSelect.' FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.') totals LEFT JOIN (SELECT rowid,dateo,datev,fk_type,label,amount FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.$entryFilter.' ORDER BY dateo DESC,rowid DESC LIMIT 101) b ON 1=1 WHERE a.rowid='.$id.' AND a.entity='.$this->entity.' AND a.ref='.$c->quote($reference).' AND a.currency_code='.$c->quote($currency).' AND a.courant=2 AND a.clos=0 ORDER BY b.dateo DESC,b.rowid DESC');
             if(!$rows)throw new RuntimeException('Native cash account changed during read.');
             $account['balance']=self::decimal($rows[0]['balance']);$account['available_balance']=self::decimal($rows[0]['available_balance']);$account['as_of']=substr($cutoff,0,10);$account['has_more']=count($rows)>100;$account['entries']=[];
+            foreach($periodFields as$field)$account[$field]=self::decimal($rows[0][$field]);
             foreach(array_slice($rows,0,100)as$row){if($row['rowid']===null)continue;$account['entries'][]=['id'=>(int)$row['rowid'],'date'=>$row['dateo'],'value_date'=>$row['datev'],'label'=>$row['label'],'opening'=>$row['fk_type']==='SOLD','future'=>$row['dateo']>$account['as_of'],'amount'=>self::decimal($row['amount'])];}
             $accounts[]=$account;
         }
         // Revocation or a scope downgrade during the read must discard all financial results.
         $this->authorize($office,'treasury');if($this->access->recordScope($office,'treasury')!=='branch')throw new DomainException('Branch treasury unavailable.');
-        return ['restricted'=>false,'accounts'=>$accounts];
+        return ['restricted'=>false,'accounts'=>$accounts,'from'=>$from,'to'=>$to];
     }
 }

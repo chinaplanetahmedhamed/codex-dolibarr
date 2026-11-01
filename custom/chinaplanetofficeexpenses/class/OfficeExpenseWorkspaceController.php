@@ -40,7 +40,7 @@ final class OfficeExpenseWorkspaceController
             foreach(['read','create','update','delete']as$action)$state['permissions'][$action]=$this->service->allowed($office,$kind,$action);
             if($view==='reports'){
                 $state['report']=$this->service->report($office,$query['from']??date('Y-m-01'),$query['to']??date('Y-m-t'),$query['kind']??'all',$query['status']??'all');
-                if(isset($query['export'])){if($query['export']!=='csv')throw new InvalidArgumentException('Invalid export.');$state['csv']=OfficeExpenseWorkspaceService::csv($state['report']);}
+                if(isset($query['export'])){if(!in_array($query['export'],['csv','cash_csv'],true))throw new InvalidArgumentException('Invalid export.');$state['csv']=$query['export']==='cash_csv'?OfficeExpenseWorkspaceService::cashCsv($state['report']):OfficeExpenseWorkspaceService::csv($state['report']);$state['csv_name']=$query['export']==='cash_csv'?'office-cash-period.csv':'office-requests.csv';}
                 return $state;
             }
             $state['rows']=$this->service->list($office,$kind);

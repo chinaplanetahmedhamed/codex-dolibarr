@@ -16,7 +16,7 @@ try{
     $result=(new OfficeExpenseWorkspaceController($service,(string)currentToken()))->handle($nativeLogin?'GET':$method,$_GET??[],$nativeLogin?[]:($_POST??[]),$_FILES??[]);
     if($nativeLogin&&$result['status']===200){header('Location: workspace.php?'.http_build_query(['view'=>$result['view'],'office'=>$result['office'],'lang'=>$result['language']]),true,303);exit;}
     http_response_code($result['status']);if($result['redirect']!==null){header('Location: '.$result['redirect'],true,303);exit;}
-    if($result['csv']!==null){header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="office-requests.csv"');echo $result['csv'];exit;}
+    if($result['csv']!==null){header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="'.($result['csv_name']??'office-requests.csv').'"');echo $result['csv'];exit;}
     if($result['status']===405)header('Allow: GET, POST');
     try{$result['manage_staff']=(bool)$access->managedOffices();}catch(DomainException $e){$result['manage_staff']=false;}
     $asset=DOL_URL_ROOT.'/custom/chinaplanetofficeexpenses/';$hasCsp=false;

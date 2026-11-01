@@ -76,6 +76,7 @@ try {
         if(!$db->query("INSERT INTO llx_user(rowid,entity,login,lastname,statut,fk_soc,admin) VALUES(2001,1,'synthetic-cash-admin','SYNTHETIC',1,0,1)"))throw new RuntimeException('Synthetic native admin fixture failed.');
         m119CashSchema($db);m119CashAccounts($db);
         $native=new User($db);qcheck($native->fetch(2001),1);$acl=new OfficeExpenseStaffAccess($db,$native,$conf,2001);$reader=new OfficeExpenseNativeTreasury($db,$native,1,$acl);
+        $period=$reader->read('egypt','2001-01-02','2001-01-02')['accounts'][0];qcheck($period['period_opening'],'0.00');qcheck($period['period_initial'],'123.45');qcheck($period['period_in'],'0.00');qcheck($period['period_out'],'23.15');qcheck($period['period_closing'],'100.30');
         $eg=$reader->read('egypt');qcheck(array_column($eg['accounts'],'balance'),['100.30','17.30']);qcheck($eg['accounts'][0]['entries'][0]['amount'],'-23.15');qcheck($eg['accounts'][0]['entries'][1]['opening'],true);
         qcheck(array_column($reader->read('china')['accounts'],'balance'),['789.01','19.45']);qcheck(array_column($reader->accounts('egypt'),'id'),[101,102]);
         if(!$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(207,'2001-01-03','2001-01-03',102,0.00000001,'LIQ','SYNTHETIC tiny decimal')"))throw new RuntimeException('Synthetic tiny amount failed.');
