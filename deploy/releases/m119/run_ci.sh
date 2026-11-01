@@ -15,6 +15,7 @@ check php deploy/tests/test_m119_office_expenses.php
 check php deploy/tests/test_m119_standalone_module.php "$native"
 check php deploy/tests/test_m119_staff_access.php "$native"
 check php deploy/tests/test_m119_employee_ui.php
+check php deploy/tests/test_m119_staff_ui_regression.php
 check php deploy/tests/test_m119_native_menu_sync.php
 check php deploy/tests/test_m119_native_drafts.php "$native"
 check php deploy/tests/test_m119_native_identity.php "$native" --without-auth

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/OfficeExpenseReceiptPanel.php';
+require_once __DIR__.'/OfficeExpenseStaffPage.php';
 
 final class OfficeExpenseEmployeePage
 {
@@ -44,7 +45,7 @@ final class OfficeExpenseEmployeePage
         if(!empty($state['receipt_enabled'])&&!empty($state['selected_draft']))$languageTarget.=($static?'':'&draft='.$state['selected_draft']['id']).'#receipts';
         $filters=$state['filters']??array('search'=>'','from'=>'','to'=>'','kind'=>'');
         $rows=$state['filtered_drafts']??$state['drafts'];$icon=static function($name){return '<i class="fa-solid fa-'.$name.'" aria-hidden="true"></i>';};
-        $nav=static function()use($view,$url,$language,$t,$icon){$html='';foreach(array('overview'=>'chart-pie','expenses'=>'receipt','advances'=>'hand-holding-dollar')as$key=>$glyph){$html.='<a class="nav-link'.($key===$view?' active':'').'" href="'.$url($key,$language).'"'.($key===$view?' aria-current="page"':'').'>'.$icon($glyph).'<span>'.$t[$key].'</span></a>';}return $html;};
+        $nav=static function()use($view,$language,$state,$values){return OfficeExpenseStaffPage::navigation($language,$view,!empty($state['manage_staff']),(string)($values['office']??''));};
         $totals=array();$summaryKind=$view==='advances'?'advance':'expense_claim';
         foreach($rows as$draft){if($draft['kind']!==$summaryKind)continue;$currency=$draft['currency'];$scale=strlen(explode('.',$draft['amount'])[1]??'');$totals[$currency]=bcadd($totals[$currency]??'0',$draft['amount'],$scale);}
         $canCreate=!empty($state['create_offices']??$state['offices']);
@@ -59,7 +60,7 @@ final class OfficeExpenseEmployeePage
 <?php if($standalone){ ?>
 <!doctype html><html lang="<?= $language ?>" dir="<?= $ar?'rtl':'ltr' ?>"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#4f46e5"><title><?= $e($heading) ?> · ChinaPlanetOS</title><link rel="stylesheet" href="assets/fontawesome.css"><link rel="stylesheet" href="assets/fontawesome-solid.css"><link rel="stylesheet" href="employee.css?v=<?= $styleVersion ?>"><script src="employee.js?v=<?= $scriptVersion ?>" defer></script></head><body class="finens-app">
 <?php } ?>
-<div class="office-expenses-app" lang="<?= $language ?>" dir="<?= $ar?'rtl':'ltr' ?>"><div class="app-layout"><aside class="app-sidebar" aria-label="<?= $e($t['menu']) ?>"><a class="brand" href="<?= $url('overview',$language) ?>"><span class="brand-icon"><?= $icon('coins') ?></span><span><b><?= $e($t['brand']) ?></b><small><?= $e($t['brand_sub']) ?></small></span></a><nav><p class="nav-label"><?= $e($t['menu']) ?></p><?= $nav() ?><?php if(!empty($state['manage_staff'])){ ?><a class="nav-link" href="users.php?lang=<?= $language ?>"><?= $ar?'مستخدمي الشركة':'Company users' ?></a><?php } ?></nav><div class="sidebar-footer"><b>ChinaPlanetOS</b><small><?= $e($t['own']) ?></small></div></aside>
+<div class="office-expenses-app" lang="<?= $language ?>" dir="<?= $ar?'rtl':'ltr' ?>"><div class="app-layout"><aside class="app-sidebar" aria-label="<?= $e($t['menu']) ?>"><a class="brand" href="<?= $url('overview',$language) ?>"><span class="brand-icon"><?= $icon('coins') ?></span><span><b><?= $e($t['brand']) ?></b><small><?= $e($t['brand_sub']) ?></small></span></a><nav><p class="nav-label"><?= $e($t['menu']) ?></p><?= $nav() ?></nav><div class="sidebar-footer"><b>ChinaPlanetOS</b><small><?= $e($t['own']) ?></small></div></aside>
 <div class="app-content"><header class="app-navbar"><div class="company-context"><button type="button" class="icon-button menu-toggle" data-open="navigation-drawer" aria-label="<?= $e($t['open_menu']) ?>"><?= $icon('bars') ?></button><span class="company-icon"><?= $icon('building') ?></span><div><strong>China Planet</strong><small><?= $e($t['profile']) ?></small></div></div><div class="navbar-actions"><?php if(!empty($state['manage_staff'])){ ?><a class="language-link" href="users.php?lang=<?= $language ?>"><?= $ar?'مستخدمي الشركة':'Company users' ?></a><?php } ?><span class="base-pill"><?= $icon('coins') ?> <?= $e($t['base']) ?>: <bdi><?= $e($state['base_currency']) ?></bdi></span><a class="language-link" href="<?= $e($languageTarget) ?>" lang="<?= $ar?'en':'ar' ?>"><?= $icon('globe') ?> <?= $ar?'English':'العربية' ?></a><?php if($canCreate){ ?><button class="button button-rose navbar-add" type="button" data-open="expense-dialog"><?= $icon('circle-plus') ?> <?= $e($t['new_expense']) ?></button><?php } ?></div></header>
 <main><div class="page-heading"><div><h1><?= $e($heading) ?></h1><p><?= $e($t['intro']) ?></p></div><?php if($canCreate){ ?><button class="button button-rose" type="button" data-open="expense-dialog"><?= $icon('circle-plus') ?> <?= $e($view==='advances'?$t['new_advance']:$t['new_expense']) ?></button><?php } ?></div>
 <p class="environment-note"><?= $icon('circle-info') ?> <?= $e($static?$t['read_only']:$t['synthetic']) ?></p>

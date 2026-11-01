@@ -30,3 +30,9 @@
 .office-expenses-app .menu-sync-prompt{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 24px;padding:16px;background:#fff;border:1px solid var(--slate-200);border-radius:12px}
 .office-expenses-app .menu-sync-prompt p{margin:0;color:var(--slate-700);font-size:12px}
 @media(max-width:767px){.office-expenses-app .menu-sync-prompt{align-items:stretch;flex-direction:column}}
+
+/* Original full navigation, with unfinished workflows visibly unavailable. */
+.office-expenses-app .nav-label:not(:first-child){margin-top:24px}
+.office-expenses-app .nav-unavailable{color:#94a3b8;cursor:default;flex-wrap:wrap}
+.office-expenses-app .nav-unavailable:hover{background:transparent;color:#94a3b8}
+.office-expenses-app .nav-unavailable small{margin-inline-start:auto;font-size:10px;color:#cbd5e1}

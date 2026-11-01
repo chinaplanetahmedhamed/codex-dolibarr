@@ -21,9 +21,9 @@ try{
     $hasCsp=false;foreach(headers_list()as$header)if(stripos($header,'Content-Security-Policy:')===0)$hasCsp=true;
     if(!$hasCsp&&!defined('MAIN_SECURITY_FORCECSP')&&(!function_exists('getDolGlobalString')||getDolGlobalString('MAIN_SECURITY_FORCECSP')==='')){
         $nonce=function_exists('getNonce')?(string)getNonce():'';$source=$nonce!==''?" 'nonce-".$nonce."'":'';
-        header("Content-Security-Policy: default-src 'none'; script-src 'self'".$source."; style-src 'self'".$source."; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
+        header("Content-Security-Policy: default-src 'none'; script-src 'self'".$source."; style-src 'self'".$source."; style-src-attr 'unsafe-inline'; manifest-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
     }
-    llxHeader('',$result['language']==='ar'?'مستخدمي الشركة':'Company users','','',0,0,[],[$asset.'assets/fontawesome.css',$asset.'assets/fontawesome-solid.css',$asset.'employee.css',$asset.'staff.css']);
+    llxHeader('',$result['language']==='ar'?'مستخدمي الشركة':'Company users','','',0,0,[],[$asset.'assets/fontawesome.css',$asset.'assets/fontawesome-solid.css',$asset.'employee.css?v='.substr(hash_file('sha256',__DIR__.'/employee.css'),0,12),$asset.'staff.css?v='.substr(hash_file('sha256',__DIR__.'/staff.css'),0,12)]);
     echo (new OfficeExpenseStaffPage())->render($result,(string)newToken());llxFooter();
 }catch(DomainException $error){http_response_code(403);echo 'Staff access is not activated or not authorized.';}
 catch(Throwable $error){http_response_code(503);echo 'Staff access is temporarily unavailable. No assignment was confirmed.';}
