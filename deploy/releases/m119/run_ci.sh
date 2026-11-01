@@ -29,6 +29,7 @@ check php deploy/tests/test_m119_native_migration.php "$native"
 check php deploy/tests/test_m119_native_receipts.php "$native"
 check php deploy/tests/test_m119_pilot_configuration.php "$native"
 check python3 deploy/tests/test_m119_employee_http.py
+check python3 -B deploy/tests/test_m119_ui_updater.py
 check php deploy/tests/test_m119_pilot_filesystem_ci.php
 check php deploy/tests/test_m119_mariadb_ci.php "$native"
 printf 'FAILED_SUITES=%s\n' "$failed_suites"
