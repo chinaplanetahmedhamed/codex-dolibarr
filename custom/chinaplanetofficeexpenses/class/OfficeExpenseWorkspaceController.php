@@ -9,7 +9,7 @@ final class OfficeExpenseWorkspaceController
     public function __construct(OfficeExpenseWorkspaceService $service,string $token){$this->service=$service;$this->token=$token;}
     public function handle(string $method,array $query,array $post,array $files=[]): array
     {
-        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16))];
+        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16))];
         try{
             if(!in_array($method,['GET','POST'],true))return array_replace($state,['status'=>405,'error'=>'method']);
             foreach(['view','office','lang','edit','print','from','to','kind','status','export','saved']as$field)if(isset($query[$field])&&!is_string($query[$field]))throw new InvalidArgumentException('Invalid query.');
@@ -50,6 +50,8 @@ final class OfficeExpenseWorkspaceController
             if($view==='expenses'&&$this->service->allowed($office,'category','read'))$state['categories']=array_values(array_filter($this->service->list($office,'category'),fn($r)=>$r['status']==='active'&&$r['content']['active']));
             if($view==='advances')$state['advances']=array_values(array_filter($this->service->list($office,'advance'),fn($r)=>$r['status']==='draft'));
             if($view==='settings'&&$state['rows'])$state['selected']=$state['rows'][0];
+            if($view==='treasury')$state['cash']=$this->service->cash($office);
+            if($view==='settings')$state['accounts']=$this->service->accounts($office);
             if(isset($query['edit'])){
                 // Return requests carry their own kind in links, and cannot be accessed by substituting a different route kind.
                 $state['selected']=$this->service->get($office,$kind,$query['edit']);
@@ -61,7 +63,7 @@ final class OfficeExpenseWorkspaceController
             if(in_array($view,['receipts','payroll'],true)&&$this->service->allowed($office,'settings','read'))$state['settings']=$this->service->list($office,'settings')[0]['content']??null;
             return $state;
         }catch(InvalidArgumentException $e){return array_replace($state,['status'=>422,'error'=>'invalid']);}
-        catch(DomainException $e){return array_replace($state,['status'=>403,'error'=>'forbidden','rows'=>[],'legacy'=>[],'staff'=>[],'selected'=>null,'history'=>[],'report'=>null]);}
-        catch(Throwable $e){return array_replace($state,['status'=>503,'error'=>'unavailable','rows'=>[],'legacy'=>[],'staff'=>[],'selected'=>null,'history'=>[],'report'=>null]);}
+        catch(DomainException $e){return array_replace($state,['status'=>403,'error'=>'forbidden','rows'=>[],'legacy'=>[],'staff'=>[],'selected'=>null,'history'=>[],'report'=>null,'cash'=>null,'accounts'=>[]]);}
+        catch(Throwable $e){return array_replace($state,['status'=>503,'error'=>'unavailable','rows'=>[],'legacy'=>[],'staff'=>[],'selected'=>null,'history'=>[],'report'=>null,'cash'=>null,'accounts'=>[]]);}
     }
 }

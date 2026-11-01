@@ -6,7 +6,7 @@ final class OfficeExpenseStaffAccessDenied extends DomainException {}
 /** Native identity/capability intersection with independent, default-deny branch grants. */
 final class OfficeExpenseStaffAccess
 {
-    public const OFFICES=['egypt'=>['EGP'],'china'=>['CNY']];
+    public const OFFICES=['egypt'=>['EGP','USD'],'china'=>['CNY','USD']];
     public const ACTIONS=['expenses'=>['read','create','update','delete'],'advances'=>['read','create','update','delete'],
         'treasury'=>['read','create','update','delete'],'receipts'=>['read','create','update','delete'],
         'categories'=>['read','create','update','delete'],'reports'=>['read'],

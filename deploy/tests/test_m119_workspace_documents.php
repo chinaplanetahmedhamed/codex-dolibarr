@@ -20,4 +20,10 @@ wdtest('payroll and profiles have stable uniqueness keys while independent vouch
 wdtest('payroll computed gross cannot overflow the declared money bounds',function()use($d,$pay){wdbad(fn()=>$d->validate('payroll','egypt',array_replace($pay,['base'=>'999999999999.99','bonus'=>'0.01'])));});
 wdtest('multiline notes are accepted but other control characters are refused',function()use($d,$pay){$v=$d->validate('payroll','egypt',array_replace($pay,['notes'=>"Line one\r\nLine two"]));wdeq($v['notes'],"Line one\nLine two");wdbad(fn()=>$d->validate('payroll','egypt',array_replace($pay,['notes'=>"bad\0text"])));});
 wdtest('logos reject SVG executable data invalid base64 and oversized images',function(){foreach(['data:image/svg+xml;base64,'.base64_encode('<svg/>'),'data:image/png;base64,@@@','javascript:alert(1)']as$p)wdbad(fn()=>OfficeExpenseWorkspaceLogo::validate($p));wdbad(fn()=>OfficeExpenseWorkspaceLogo::fromBytes(str_repeat('x',131073)));$im=imagecreatetruecolor(3,2);ob_start();imagepng($im);$bytes=ob_get_clean();imagedestroy($im);$logo=OfficeExpenseWorkspaceLogo::fromBytes($bytes);wdeq(OfficeExpenseWorkspaceLogo::validate($logo),$logo);});
+wdtest('USD is independently available in Egypt and China while primary currencies remain branch-specific',function()use($d){
+    $p=['amount'=>'7.25','currency'=>'USD','date'=>'2026-11-02','source'=>'SYNTHETIC funding','purpose'=>'SYNTHETIC USD request','notes'=>''];
+    foreach(['egypt','china']as$office)wdeq($d->validate('deposit',$office,$p)['currency'],'USD');
+    wdbad(fn()=>$d->validate('deposit','egypt',array_replace($p,['currency'=>'CNY'])));
+    wdbad(fn()=>$d->validate('deposit','china',array_replace($p,['currency'=>'EGP'])));
+});
 echo "$passed passed, $failed failed\n";exit($failed?1:0);

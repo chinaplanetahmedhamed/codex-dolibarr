@@ -29,7 +29,7 @@ final class OfficeExpenseWorkspaceDocument
         $v=[];foreach($fields as$field){
             $value=$p[$field];
             if($field==='logo'){$v[$field]=OfficeExpenseWorkspaceLogo::validate($value);}
-            elseif($field==='currency'){$expected=$office==='egypt'?'EGP':'CNY';if($value!==$expected)throw new InvalidArgumentException('Currency does not match branch configuration.');$v[$field]=$expected;}
+            elseif($field==='currency'){$expected=$office==='egypt'?'EGP':'CNY';$allowed=$kind==='settings'?[$expected]:[$expected,'USD'];if(!in_array($value,$allowed,true))throw new InvalidArgumentException('Currency does not match branch configuration.');$v[$field]=$value;}
             elseif(in_array($field,['amount','salary','base','bonus','deduction','loan_repayment'],true)){$currency=$p['currency']??'';if(!is_string($currency))throw new InvalidArgumentException('Invalid currency.');$v[$field]=$this->money->amount($value,$currency);if($field==='amount'&&bccomp($v[$field],'0',4)<=0)throw new InvalidArgumentException('Amount must be positive.');}
             elseif(in_array($field,['user_id','account_id'],true)){$v[$field]=self::number($value,$field==='account_id');}
             elseif(in_array($field,['date','hired_on'],true)){OfficeExpenseMoney::date($value);$v[$field]=$value;}

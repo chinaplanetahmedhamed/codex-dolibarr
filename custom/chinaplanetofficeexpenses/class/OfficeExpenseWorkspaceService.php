@@ -4,6 +4,7 @@ require_once __DIR__.'/OfficeExpenseWorkspaceDocument.php';
 require_once __DIR__.'/OfficeExpenseWorkspaceStore.php';
 require_once __DIR__.'/OfficeExpenseStaffAccess.php';
 require_once __DIR__.'/OfficeExpenseNativeDraftStore.php';
+require_once __DIR__.'/OfficeExpenseNativeTreasury.php';
 
 /** Operational workflow only. Native bank/payroll payments are never inferred from a draft. */
 final class OfficeExpenseWorkspaceService
@@ -29,6 +30,8 @@ final class OfficeExpenseWorkspaceService
         return $allowed;
     }
     public function staff(string $office,string $section): array {$this->context();return $this->access->branchStaff($office,$section);}
+    public function cash(string $office): array {$this->context();return (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->read($office);}
+    public function accounts(string $office): array {$this->context();return (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->accounts($office);}
     public function list(string $office,string $kind,?string $from=null,?string $to=null): array
     {
         $this->context();$section=OfficeExpenseWorkspaceDocument::SECTIONS[$kind]??null;if(!$section)throw new InvalidArgumentException('Invalid document kind.');
@@ -73,8 +76,8 @@ final class OfficeExpenseWorkspaceService
             if(!in_array($v['user_id'],array_column($staff,'id'),true))throw new DomainException('Employee is not active in this branch.');
         }
         if($kind==='settings'&&$v['account_id']!==0){
-            // Activating money movement requires an approved account/approval policy. A draft-only workspace cannot bind arbitrary accounts.
-            throw new DomainException('Cash-account activation is pending the financial configuration decision.');
+            // Branding metadata cannot redirect the authoritative per-currency native mapping.
+            (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->assertPrimaryAccount($office,$v['account_id']);
         }
         if($kind==='expense'&&$v['category_ref']!==''){
             $category=$this->get($office,'category',$v['category_ref']);if($category['status']!=='active'||!$category['content']['active'])throw new DomainException('Category is inactive.');

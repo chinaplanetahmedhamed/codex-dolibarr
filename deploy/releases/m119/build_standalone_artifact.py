@@ -36,6 +36,7 @@ RUNTIME_FILES = tuple(MODULE + p for p in (
 # Preserve the R01/R02/R03 immutable contract. The extended workspace has its own closure.
 WORKSPACE_RUNTIME_FILES = RUNTIME_FILES + tuple(MODULE + p for p in (
     'workspace.php', 'workspace.css', 'workspace.js',
+    'class/OfficeExpenseNativeTreasury.php',
     'class/OfficeExpenseWorkspaceLogo.php', 'class/OfficeExpenseWorkspaceDocument.php',
     'class/OfficeExpenseWorkspaceStore.php', 'class/OfficeExpenseWorkspaceService.php',
     'class/OfficeExpenseWorkspaceController.php', 'class/OfficeExpenseWorkspacePage.php',

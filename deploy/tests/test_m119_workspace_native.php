@@ -7,6 +7,7 @@ require dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpens
 require dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseWorkspaceService.php';
 require __DIR__.'/fixtures/m119_native_migration.php';
 [$db]=m119IdentityDatabase();$db->db->createFunction('JSON_UNQUOTE',fn($v)=>$v,1);
+require __DIR__.'/fixtures/m119_native_cash.php';m119CashSchema($db);m119CashAccounts($db);
 $conf->chinaplanetofficeexpenses=(object)['enabled'=>1];$conf->modules['chinaplanetofficeexpenses']=1;
 $backend=new M119MigrationBackend($db);$base=new OfficeExpenseNativeSchemaMigration($backend);$base->install($base->plan()['manifest_hash']);
 $am=OfficeExpenseNativeSchemaMigration::forAccess($backend);$am->install($am->plan()['manifest_hash']);
@@ -84,5 +85,41 @@ wt('four staff manager-worker CRUD and payslip matrix isolates Egypt and China',
     $p=$m->save('egypt','payroll',$pay,'omar-workspace-pay');we($o->get('egypt','payroll',$p['id'])['content']['net'],'4000.00');wb(fn()=>$s->get('egypt','payroll',$p['id']));wb(fn()=>$o->save('egypt','payroll',$pay,'worker-pay-forged'));
     $report=$o->report('egypt','2026-11-01','2026-11-30');we($report['totals']['EGP']['expense'],'9.10');we($report['totals']['EGP']['payroll'],'4000.00');
     foreach($report['rows']as$row)we($row['kind']==='payroll'?$row['subject']:$row['owner'],13);
+});
+wt('native treasury reads separate original currencies and openings without cross-branch or entity leakage',function()use($m,$r,$owner,$db){
+    $cash=$m->cash('egypt');we($cash['restricted'],false);we(array_column($cash['accounts'],'currency'),['EGP','USD']);we(array_column($cash['accounts'],'balance'),['100.30','17.30']);
+    we($cash['accounts'][0]['entries'][0]['amount'],'-23.15');we($cash['accounts'][0]['entries'][1]['opening'],true);we($cash['accounts'][0]['has_more'],false);
+    we(array_column($r->cash('china')['accounts'],'balance'),['789.01','19.45']);wb(fn()=>$m->cash('china'));wb(fn()=>$r->cash('egypt'));
+    wb(fn()=>new OfficeExpenseNativeTreasury($db,m119FetchIdentity('synthetic-8'),1,new OfficeExpenseStaffAccess($db,m119FetchIdentity('synthetic-8'),$GLOBALS['conf'],7)));
+});
+wt('own treasury visibility never discloses a full branch balance and revoked grants take effect',function()use($db,$conf,$owner){
+    $user=m119FetchIdentity('synthetic-13');$member=(new OfficeExpenseNativeAccessStore($db))->find(1,13,'egypt');
+    $grants=$member['grants'];$grants['treasury']=['read'];$owner->assign(13,'egypt',$grants,'own',$member['revision']);
+    $service=new OfficeExpenseWorkspaceService($db,$user,1,new OfficeExpenseStaffAccess($db,$user,$conf,7));we($service->cash('egypt'),['restricted'=>true,'accounts'=>[]]);
+    $db->query('DELETE FROM llx_user_rights WHERE fk_user=13 AND fk_id=500603');try{wb(fn()=>$service->cash('egypt'));}finally{$db->query('INSERT INTO llx_user_rights(entity,fk_user,fk_id) VALUES(1,13,500603)');}
+});
+wt('cash mappings fail closed on duplicate missing wrong-currency closed or non-cash accounts',function()use($m,$db){
+    foreach(["currency_code='CNY'","clos=1","courant=1","ref='SYNTHETIC'","entity=2"]as$mutation){
+        $db->query('UPDATE llx_bank_account SET '.$mutation.' WHERE rowid=101');$failed=false;try{$m->cash('egypt');}catch(RuntimeException $e){$failed=true;}finally{$db->query("UPDATE llx_bank_account SET ref='CPO-EG-EGP',entity=1,currency_code='EGP',clos=0,courant=2 WHERE rowid=101");}we($failed,true);
+    }
+    $db->query("INSERT INTO llx_bank_account(rowid,entity,ref,label,courant,clos,currency_code,fk_pays) VALUES(106,1,'CPO-EG-EGP','SYNTHETIC duplicate',2,0,'EGP',1)");
+    $failed=false;try{$m->cash('egypt');}catch(RuntimeException $e){$failed=true;}finally{$db->query('DELETE FROM llx_bank_account WHERE rowid=106');}we($failed,true);
+});
+wt('native treasury statement limit is explicit and its balance still includes older entries',function()use($m,$db){
+    for($i=0;$i<101;$i++)$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(".(300+$i).",'2026-11-03','2026-11-03',102,0.10,'LIQ','SYNTHETIC statement')");
+    try{$account=$m->cash('egypt')['accounts'][1];we($account['balance'],'27.40');we($account['has_more'],true);we(count($account['entries']),100);we($account['entries'][0]['id'],400);}finally{$db->query('DELETE FROM llx_bank WHERE rowid BETWEEN 300 AND 400');}
+});
+wt('settings accepts only the mapped primary account and never changes cash or currency bindings',function()use($m,$r,$db){
+    we(array_column($m->accounts('egypt'),'id'),[101,102]);wb(fn()=>$r->accounts('egypt'));
+    $settings=$m->list('egypt','settings')[0];$payload=$settings['content'];$payload['account_id']='101';
+    $before=$m->cash('egypt');we($m->save('egypt','settings',$payload,'mapped-primary',$settings['id'],$settings['revision'])['content']['account_id'],101);
+    foreach(['102','103','105','1']as$id)wb(fn()=>$m->save('egypt','settings',array_replace($payload,['account_id'=>$id]),'forged-cash'));
+    we($m->cash('egypt'),$before);
+});
+wt('native cash cards render AR EN and operational forms offer USD without combining balances',function()use($m){
+    foreach(['ar','en']as$lang){$controller=new OfficeExpenseWorkspaceController($m,'synthetic');$state=$controller->handle('GET',['view'=>'treasury','office'=>'egypt','lang'=>$lang],[]);we($state['status'],200);
+        $html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($html,'100.30 EGP'),true);we(str_contains($html,'17.30 USD'),true);we(str_contains($html,'value="USD"'),true);we(str_contains($html,'789.01'),false);
+        $state=$controller->handle('GET',['view'=>'settings','office'=>'egypt','lang'=>$lang],[]);we($state['status'],200);$html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($html,'CPO-EG-USD'),true);we(str_contains($html,'17.30 USD'),false);
+    }
 });
 echo "$pass passed, $fail failed\n";exit($fail?1:0);
