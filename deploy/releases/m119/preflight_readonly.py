@@ -1,21 +1,49 @@
 #!/usr/bin/env python3
 """Fixed staging metadata/native-context probe; no writes, secret output or deployment."""
 import json
+import io
 import os
 import subprocess
+import tarfile
 
 BASE = "sha256:56e459f0d2e7be2c9d809015b922624234f2899cc9f36e74fab1c5254913e482"
 APP = "erp-staging-dolibarr-1"
 COMPOSE = "/data/compose/2/docker-compose.yml"
+ENV = {"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "COMPOSE_DISABLE_ENV_FILE": "true"}
 
 
-def run(args):
-    result = subprocess.run(args, capture_output=True, text=True, timeout=30)
+def run(args, input_text=None):
+    fixed = ["docker", "--host", "unix:///var/run/docker.sock"] + args[1:] if args[0] == "docker" else args
+    result = subprocess.run(fixed, input=input_text, capture_output=True, text=True, timeout=30,cwd="/",env=ENV)
     if result.returncode:
         phase = "compose validation" if args[:2] == ["docker", "compose"] else ("native context" if args[:2] == ["docker", "exec"] else "container metadata")
         signature = next((s for s in ("Access denied", "Unknown database", "Permission denied", "Class \"User\" not found", "Call to undefined function", "config file content seems to be not correctly defined") if s in result.stdout + result.stderr), "details withheld")
         raise RuntimeError(phase + " exited " + str(result.returncode) + ": " + signature)
     return result.stdout
+
+
+def staging_definition():
+    if os.path.isfile(COMPOSE):
+        raise RuntimeError("host-side definition appeared; reconcile its provenance before use")
+    # Portainer stores this specific approved stack definition in its own /data.
+    # Read only stack2; never export its secret-bearing bytes or inspect other stacks.
+    result = subprocess.run(["docker", "--host", "unix:///var/run/docker.sock", "cp", "management-portainer-1:" + COMPOSE, "-"], capture_output=True, timeout=30,cwd="/",env=ENV)
+    if result.returncode or len(result.stdout) > 131072:
+        raise RuntimeError("fixed Portainer staging definition is unavailable")
+    with tarfile.open(fileobj=io.BytesIO(result.stdout), mode="r:") as archive:
+        members = archive.getmembers()
+        if len(members) != 1 or not members[0].isfile() or members[0].size > 65536 or members[0].name != "docker-compose.yml":
+            raise RuntimeError("fixed Portainer staging definition is not a bounded ordinary file")
+        definition = archive.extractfile(members[0]).read().decode("utf-8")
+    if "$" in definition or any(key in definition for key in ("env_file", "include:", "extends:")):
+        raise RuntimeError("Portainer interpolation/include dependencies require their original context")
+    compose = json.loads(run(["docker", "compose", "-p", "erp-staging", "--project-directory", "/", "--env-file", "/dev/null", "-f", "-", "config", "--format", "json"], definition))
+    if set(compose.get("services", {})) != {"dolibarr", "mariadb", "mailpit"} or compose.get("configs") or compose.get("secrets"):
+        raise RuntimeError("Portainer staging definition scope differs")
+    for service in compose["services"].values():
+        if any(mount.get("type") != "volume" for mount in service.get("volumes", [])):
+            raise RuntimeError("relative/bind source requires its original project context")
+    return compose, "Portainer-stack2"
 
 
 def selected(name):
@@ -56,7 +84,7 @@ ob_end_clean();echo json_encode($out,JSON_THROW_ON_ERROR);
         raise RuntimeError("owned staging schema already exists; manual reconciliation required")
     # Parse only in server memory; never output environment, command or configuration contents.
     try:
-        compose = json.loads(run(["docker", "compose", "-p", "erp-staging", "-f", COMPOSE, "config", "--format", "json"]))
+        compose, definition_location = staging_definition()
     except Exception as error:
         print(json.dumps({"result": "M119_CONTEXT_ONLY_RELEASE_BLOCKED", "native": native, "compose_file_present_on_host": os.path.isfile(COMPOSE), "compose_error": str(error) if isinstance(error, RuntimeError) else type(error).__name__}))
         return 1
@@ -69,7 +97,7 @@ ob_end_clean();echo json_encode($out,JSON_THROW_ON_ERROR);
     env_matches = all(str(value) == actual_env.get(key) for key, value in expected_env.items())
     if desired.get("image") != "local/dolibarr:24.0.1" or not env_matches:
         raise RuntimeError("compose image/environment differs from the verified running service")
-    print(json.dumps({"result": "M119_READONLY_CONTEXT_VERIFIED", "application_image": app["image"], "mounts": {p: {k: mounts[p][k] for k in ("Type", "Name", "Source", "RW")} for p in ("/var/www/html/custom", "/var/www/documents")}, "native": native, "compose": {"file": COMPOSE, "service": "dolibarr", "image": desired.get("image"), "image_matches": desired.get("image") == "local/dolibarr:24.0.1", "environment_matches": env_matches}}, indent=2))
+    print(json.dumps({"result": "M119_READONLY_CONTEXT_VERIFIED", "application_image": app["image"], "mounts": {p: {k: mounts[p][k] for k in ("Type", "Name", "Source", "RW")} for p in ("/var/www/html/custom", "/var/www/documents")}, "native": native, "compose": {"file": COMPOSE, "definition_location": definition_location, "service": "dolibarr", "image": desired.get("image"), "image_matches": desired.get("image") == "local/dolibarr:24.0.1", "environment_matches": env_matches}}, indent=2))
 
 
 if __name__ == "__main__":
