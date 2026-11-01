@@ -44,7 +44,10 @@ final class OfficeExpensePilotConfiguration
         $before=@lstat($path);
         if(!$before||is_link($path)||($before['mode']&0170000)!==0100000||$before['uid']!==0||($before['mode']&0027)!==0||$before['nlink']!==1||$before['size']<2||$before['size']>8192)throw new RuntimeException('Unsafe pilot configuration file.');
         $raw=@file_get_contents($path);clearstatcache(true,$path);$after=@lstat($path);
-        if(!is_string($raw)||strlen($raw)!==$before['size']||$before!==$after)throw new RuntimeException('Pilot configuration changed during read.');
+        // Reading can legitimately update atime. Identity, content metadata and protections must remain stable.
+        $unchanged=is_array($after);
+        foreach(array('dev','ino','mode','uid','gid','nlink','size','mtime','ctime')as$field)if(!is_array($after)||$before[$field]!==$after[$field])$unchanged=false;
+        if(!is_string($raw)||strlen($raw)!==$before['size']||!$unchanged)throw new RuntimeException('Pilot configuration changed during read.');
         try{$config=json_decode($raw,true,32,JSON_THROW_ON_ERROR);}catch(Throwable $error){throw new RuntimeException('Invalid private pilot configuration.',0,$error);}
         if(!is_array($config))throw new RuntimeException('Invalid private pilot configuration.');
         return new self($config);

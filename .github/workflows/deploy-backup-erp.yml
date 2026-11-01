@@ -81,7 +81,7 @@ jobs:
       - name: Verify syntax and scoped source whitespace
         run: |
           set -Eeuo pipefail
-          while IFS= read -r file; do php -l "$file" >/dev/null; done < <(rg --files custom/chinaplanetoperations/office_expenses deploy/tools/office_expenses deploy/tests | rg '(office_expenses/.+\.php|m119[^/]*\.php|m119_http/.+\.php)$')
+          while IFS= read -r file; do php -l "$file" >/dev/null; done < <(rg --files custom/chinaplanetoperations/office_expenses deploy/tools/office_expenses deploy/tests deploy/releases/m119 | rg '(office_expenses/.+\.php|m119[^/]*\.php|m119_http/.+\.php|m119/.+\.php)$')
           node --check custom/chinaplanetoperations/office_expenses/employee.js
           git diff-tree --check HEAD
       - name: Run complete CLI real MariaDB and private-filesystem checks
