@@ -1,0 +1,21 @@
+# M119 standalone deployer update — 2026-11-02
+
+Ahmed explicitly requested updating the deployer after source publication. Scope: backup-erp only, same five exact commands and existing sudoers/SSH identity; no production, service lifecycle, password change or financial posting. The current existing administrative session was verified as root on srv1011043 and the installed helper checksum matched the historical 845e497f pin.
+
+## Fixed release closure
+
+Application source remains 1b88b8869e700ad54a441124e980105ca6313cfa; deterministic code archive 3f3254ae3f1fb4bd186b8d37afb7f3b7e31826291a18dad24599dcabf417fd1e and manifest b8a62ae39a372018f5fed3bccdab701de65be6e80ebf4420797368d032d6f7c1 already passed matching CI. New private worker and helper/installer are separately checksum-pinned delivery sources. The immutable archive is not relabeled as containing these installer components.
+
+The updated launcher imports only a root-private checksum-verified copy of the historical helper, preserving its tested filesystem, context, backup and state utilities. The new target/state is separate; it never adopts an existing standalone directory. It verifies the complete historical pilot tree and administrator config/image/container/mount identities before migration, and native staff/group/rights/module/schema baselines before any application write. The full native database is privately backed up using the previously pinned bounded dump routine. Root-private audit/state retain all outcomes. PHP lint runs inside the exact app before publishing. Entry index publishes last; the old index is atomically replaced with a compatibility include only after successful role activation, with exact prior byte checks and recorded backup. Nested module dependencies are verified recursively through held descriptors.
+
+The native worker registers the standalone descriptor using standard native activation, checks/grants only group4/5 manager capabilities500601,500603,500604 and group6/7 worker capabilities500601,500603, saves four exact audited branch memberships, disables only the known legacy menu and enables staff mode last. Private storage/base/receipt schemas remain unchanged; only the reviewed additive access schema is installed. Directory/group/account baselines fail closed, including existing module constants/permission collisions. No arbitrary user, branch, permission, path or command is supplied by requests.
+
+## Acceptance and recovery
+
+The one-time acceptance step retains four explicitly marked synthetic 1-unit operational expense drafts, one per named identity, with fixed synthetic USD conversion quotes. It checks manager branch visibility, worker own visibility, foreign branch/direct-ID/list denial, unsupported Delete denial, worker management denial, bad CSRF and a tiny private PNG receipt readable by Omar and Moaz but denied to Rina. Financial posting remains unavailable; these are not accounting expenses or cash entries. Subsequent verify reads these retained fixtures without creating more. Native credential/login UAT remains distinct and pending; passwords are not managed here.
+
+Recovery first turns off staff and module constants, restores only the exact recorded legacy menu/entry, then disables only the recorded standalone inode. It retains groups/grants (inactive without the module), accounts, memberships/revisions, additive schema, audit, drafts and private receipts. It never restores an older full database over later writes or deletes records. Any unconfirmed disable remains explicitly failed_disable_unconfirmed and stops replay. The old helper is retained root-private for an exact administrative rollback of the helper itself; no sudoers expansion occurs.
+
+## Verification checkpoint
+
+Seven new local release tests pass: exact source/helper/worker/archive pins; malformed action/request rejection; corruption/duplicate manifest JSON; missing/symlink/traversal archive rejection; backup failure before installation; unconfirmed disable state; worker CLI guard. Historical helper, immutable package and full matching-runtime tests run through Actions before installation. Source syntax and diff checks pass. Installation, apply, authenticated UI and actual staged outcomes must be recorded below when observed; no success is inferred from preparation.

@@ -12,6 +12,7 @@ on:
           - m045-r01
           - m119-check
           - m119-r01
+          - m119-standalone-r01
         default: m043-c02
       confirmation:
         description: Type the exact confirmation for the selected release
@@ -39,7 +40,7 @@ env:
 
 jobs:
   check_m119:
-    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' }}
+    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' || inputs.release == 'm119-standalone-r01' }}
     name: Office Expenses native storage release checks
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -67,6 +68,8 @@ jobs:
           set -Eeuo pipefail
           if [ "$SELECTED_RELEASE" = m119-r01 ]; then
             test "$CONFIRMATION" = DEPLOY_M119_TO_BACKUP_ERP
+          elif [ "$SELECTED_RELEASE" = m119-standalone-r01 ]; then
+            test "$CONFIRMATION" = DEPLOY_M119_STANDALONE_TO_BACKUP_ERP
           else
             test "$CONFIRMATION" = CHECK_M119_BACKUP_ERP
           fi
@@ -91,6 +94,7 @@ jobs:
         run: |
           python3 deploy/tests/test_m119_release_artifact.py
           python3 deploy/tests/test_m119_standalone_artifact.py
+          python3 -B deploy/tests/test_m119_standalone_deployer.py
           python3 deploy/tests/test_m119_runtime_preparation.py
           python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
@@ -121,6 +125,75 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '%s\n' 'Office Expenses checks only. No VPS connection, credentials read, server migration, deployment or accounting posting.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_m119_standalone:
+    if: ${{ inputs.release == 'm119-standalone-r01' }}
+    needs: check_m119
+    name: Deploy standalone Office Expenses and approved branch roles to backup-erp
+    runs-on: ubuntu-24.04
+    environment: backup-erp
+    timeout-minutes: 20
+    env:
+      STANDALONE_SOURCE: 1b88b8869e700ad54a441124e980105ca6313cfa
+      STANDALONE_SHA: 3f3254ae3f1fb4bd186b8d37afb7f3b7e31826291a18dad24599dcabf417fd1e
+      STANDALONE_MANIFEST: b8a62ae39a372018f5fed3bccdab701de65be6e80ebf4420797368d032d6f7c1
+      STANDALONE_HELPER: 471df8d4985121ed6b512f2ed4361c459dd080c30e4b71ffaf40aaf3fb6ce7de
+    steps:
+      - name: Check out immutable delivery source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify confirmation helper and source closure then build the frozen package
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = DEPLOY_M119_STANDALONE_TO_BACKUP_ERP
+          test "$(sha256sum deploy/releases/m119/standalone_deploy_helper.py | cut -d' ' -f1)" = "$STANDALONE_HELPER"
+          python3 -B - <<'PYCODE'
+          import importlib.util, os, pathlib, subprocess
+          spec=importlib.util.spec_from_file_location('standalone','deploy/releases/m119/build_standalone_artifact.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          for path in m.RUNTIME_FILES:
+              assert subprocess.check_output(['git','show','HEAD:'+path]) == subprocess.check_output(['git','show',os.environ['STANDALONE_SOURCE']+':'+path]), 'Pinned application source changed.'
+          m.build(os.environ['STANDALONE_SOURCE'],pathlib.Path(os.environ['RUNNER_TEMP'])/'m119')
+          PYCODE
+          test "$(sha256sum "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" | cut -d' ' -f1)" = "$STANDALONE_SHA"
+          test "$(sha256sum "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" | cut -d' ' -f1)" = "$STANDALONE_MANIFEST"
+      - name: Use the existing restricted staging identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify installed helper and upload only the pinned package
+        run: |
+          set -Eeuo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = 471df8d4985121ed6b512f2ed4361c459dd080c30e4b71ffaf40aaf3fb6ce7de'
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
+      - name: Preflight exact backup runtime identities and staff baseline
+        run: bash deploy/releases/m119/run_standalone_remote_action.sh preflight
+      - name: Back up install activate and accept branch isolation
+        id: apply
+        run: |
+          echo 'attempted=true' >> "$GITHUB_OUTPUT"
+          bash deploy/releases/m119/run_standalone_remote_action.sh apply
+      - name: Independently verify persisted roles receipts source and login wall
+        run: bash deploy/releases/m119/run_standalone_remote_action.sh verify
+      - name: Disable the recorded new release on failure and retain all data
+        if: ${{ failure() && steps.apply.outputs.attempted == 'true' }}
+        run: bash deploy/releases/m119/run_standalone_remote_action.sh rollback
+      - name: Record exact release boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Backup-erp only; approved four native users/groups, additive membership schema, branch/own read-create operational drafts. Four marked synthetic 1-unit drafts and one private image retained for acceptance. No password change, financial posting, production or container lifecycle. Actual staff credential/login acceptance remains separate.' >> "$GITHUB_STEP_SUMMARY"
 
   deploy_m119:
     if: ${{ inputs.release == 'm119-r01' }}
