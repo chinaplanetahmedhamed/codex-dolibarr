@@ -1,5 +1,10 @@
 # M119 — Office expenses local foundation
 
+## Approved module-only sidebar correction — 2026-11-02 (IN_PROGRESS)
+
+Ahmed explicitly requested removing the main Dolibarr/ChinaPlanetOS sidebar from Office Expenses so the module sidebar occupies the correct right-hand position. Use native request-local `dol_hide_leftmenu` on the two module entry points, retaining native authentication/top bar and normal sidebars elsewhere. No session/global persistent setting, core edit, access/data/schema change or production action is included. Deploy a pinned code-only follow-up to the now-verified R02 staging baseline and verify both module pages plus an ordinary Dolibarr page. Correct the staff mobile first header visibility alongside the scoped responsive layout.
+
+
 ## Approved loading and interface correction — 2026-11-02 (IN_PROGRESS)
 
 Ahmed reported the deployed page stuck on Loading and missing the full options from the original local design. This narrowly authorizes fixing the reproduced Company Users CSP/native-shell incompatibility, restoring the original navigation and complete permission overview without enabling unsupported workflows, and updating the existing backup-erp module with a pinned, tested code-only follow-up and rollback. Preserve native accounts, branch grants/revisions, schema, private files, service configuration, production and financial posting. Unsupported financial sections and update/delete remain explicitly unavailable. Local design previews remain review-only and must be identified separately from authenticated runtime.

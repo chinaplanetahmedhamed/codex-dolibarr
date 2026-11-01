@@ -17,3 +17,10 @@ foreach(['ar','en']as$lang){
  checkUi(strpos($html,'class="staff-mobile-menu"')!==false,$lang.' navigation remains accessible on mobile without JavaScript');
  checkUi(substr_count($html,'aria-disabled="true"')>=7,$lang.' original menu options visible without false functional links');
 }
+
+foreach(['index.php','users.php']as$route){
+ $entry=file_get_contents($root.'/custom/chinaplanetofficeexpenses/'.$route);
+ $flag=strpos($entry,'$conf->dol_hide_leftmenu=1;');
+ checkUi($flag!==false&&$flag<strpos($entry,'llxHeader('),$route.' hides the native sidebar before rendering');
+ checkUi(strpos($entry,"\$_SESSION['dol_hide_leftmenu']")===false,$route.' does not persist sidebar hiding into other ERP pages');
+}

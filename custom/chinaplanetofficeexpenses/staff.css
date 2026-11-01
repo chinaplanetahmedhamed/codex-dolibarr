@@ -30,3 +30,6 @@
  .office-expenses-app.staff-access .staff-fields>div{max-width:none}
  .office-expenses-app.staff-access .app-content{padding-bottom:0}
 }
+
+/* The staff register's first column is a name, not the expense row number. */
+.office-expenses-app.staff-access table th:first-child{display:table-cell}

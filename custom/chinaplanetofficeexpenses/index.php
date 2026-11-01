@@ -83,6 +83,9 @@ try {
         $nonceSource=$nonce!==''?" 'nonce-".$nonce."'":'';
         header("Content-Security-Policy: default-src 'none'; script-src 'self'".$nonceSource."; style-src 'self'".$nonceSource."; style-src-attr 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
     }
+    // This module supplies its own sidebar. Keep the native top bar and authentication.
+    // Request-local only: never persist Dolibarr's hide-menu session option.
+    $conf->dol_hide_leftmenu=1;
     llxHeader('', $langs->trans('OfficeExpenses'), '', '', 0, 0, array(), array(
         $assetRoot.'assets/fontawesome.css',
         $assetRoot.'assets/fontawesome-solid.css',
