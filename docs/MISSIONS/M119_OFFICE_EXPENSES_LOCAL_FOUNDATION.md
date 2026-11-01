@@ -1,7 +1,14 @@
 # M119 — Office expenses local foundation
 
+## Complete remaining sections — 2026-11-02 (APPROVED_LOCAL_IMPLEMENTATION; FINANCIAL_POLICY_PENDING)
+
+Ahmed requested completing every remaining section and making all options available. This authorizes reversible local implementation of the original workspace inside the same native module, with functional branch-scoped forms, persistent operational documents, category/profile/settings management, reports/exports, payroll/voucher/deposit preparation and granular CRUD. Preserve all original drafts, private files, native accounts and entity/branch restrictions. [Concrete section design and execution sequence](../REPORTS/M119_ALL_SECTIONS_DESIGN.md) records the scope and fresh native account discovery. Do not infer real cash posting, reuse unrelated EUR QA account1, choose employee-loan accounts, grant global native finance privileges or access production. Branch account/approval policy was requested from Ahmed asynchronously while independent operational work continues. Actual financial activation and its ledger/account mappings remain a separate business decision.
+
+
 Latest verified UI release: application26ce07f/artifact87c828b, fixed helperb51706f, successful verification-only Actions41346537136 attempt2 plus independent restricted verification and authenticated native rendering/route checks. R03 application was already applied by41345667084; its release-identity defect was corrected with the original state/helper/audit retained and no application/data replay. Native sidebar absent only within both module routes, original module sidebar right-aligned in Arabic, native top bar retained, ordinary Dolibarr user-list sidebar preserved. Loading overlay hidden; AR/EN effective1280/433px checks pass. [Complete loading/sidebar correction report](../REPORTS/M119_LOADING_UI_CORRECTION.md). Actual staff password login and successful browser assignment/revoke remain separate acceptance gates; unsupported financial workflows remain disabled.
 
+
+Local operational implementation and acceptance evidence: [remaining sections report](../REPORTS/M119_ALL_SECTIONS_IMPLEMENTATION.md). The expanded package is code-only and inactive by default; account/approval policy, real financial adapters and native backup-ERP activation are still pending.
 
 ## Approved module-only sidebar correction — 2026-11-02 (DEPLOYED_RUNTIME_VERIFIED)
 

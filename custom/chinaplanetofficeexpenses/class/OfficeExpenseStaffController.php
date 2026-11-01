@@ -21,7 +21,11 @@ final class OfficeExpenseStaffController
                 $id=self::number($post['staff_id']??null,false);$revision=self::number($post['revision']??null,true);
                 if($post['action']==='assign'){
                     $permissions=$post['permissions']??null;if(!is_array($permissions)||array_diff(array_keys($permissions),array_keys(OfficeExpenseStaffAccess::ACTIONS)))throw new InvalidArgumentException('Invalid permissions.');
-                    $grants=[];foreach($permissions as$section=>$level){if(!in_array($level,['none','read','create'],true))throw new InvalidArgumentException('Invalid level.');if($level!=='none')$grants[$section]=$level==='create'?['read','create']:['read'];}
+                    $grants=[];foreach($permissions as$section=>$level){
+                        // Existing read/create form submissions stay compatible. The expanded matrix submits exact action arrays.
+                        if(is_array($level)){if($level)$grants[$section]=$level;}
+                        else{if(!in_array($level,['none','read','create'],true))throw new InvalidArgumentException('Invalid level.');if($level!=='none')$grants[$section]=$level==='create'?['read','create']:['read'];}
+                    }
                     if(!is_string($post['record_scope']??null))throw new InvalidArgumentException('Invalid scope.');
                     $this->access->assign($id,$office,$grants,$post['record_scope'],$revision);
                 }else{

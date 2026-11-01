@@ -21,7 +21,7 @@ class StandaloneArtifactTests(unittest.TestCase):
         repo = root / 'repo'
         repo.mkdir()
         subprocess.run(['git', 'init', '-q'], cwd=repo, check=True)
-        for relative in builder.RUNTIME_FILES:
+        for relative in builder.WORKSPACE_RUNTIME_FILES:
             target = repo / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((ROOT / relative).read_bytes())
@@ -33,13 +33,13 @@ class StandaloneArtifactTests(unittest.TestCase):
         return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip()
 
     def test_package_closes_local_dependencies_and_schema_hashes(self):
-        paths = set(builder.RUNTIME_FILES)
+        paths = set(builder.WORKSPACE_RUNTIME_FILES)
         for path in paths:
             if path.endswith('.php'):
                 for relative in re.findall(r"__DIR__\s*\.\s*'([^']+)'", (ROOT / path).read_text()):
                     required = (ROOT / path).parent / relative.lstrip('/')
                     self.assertIn(required.resolve().relative_to(ROOT).as_posix(), paths)
-        for folder in ('schema', 'schema/receipts', 'schema/access'):
+        for folder in ('schema', 'schema/receipts', 'schema/access', 'schema/workspace'):
             manifest = json.loads((ROOT / builder.MODULE / folder / 'manifest.json').read_text())
             for name, expected in manifest['files'].items():
                 path = builder.MODULE + folder + '/' + name

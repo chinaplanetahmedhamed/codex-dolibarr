@@ -132,7 +132,9 @@ final class OfficeExpenseDraftService
     private function readScopes(): array
     {
         if(!$this->access->usesContext($this->user,$this->entity))throw new OfficeExpenseStaffAccessDenied('Staff context differs.');
-        $scopes=array_intersect_key($this->access->readScopes(),$this->offices);if(!$scopes)throw new OfficeExpenseStaffAccessDenied('No authorized staff branch.');return $scopes;
+        $scopes=array_intersect_key($this->access->readScopes(),$this->offices);
+        foreach($scopes as$office=>$sections){$scopes[$office]=array_intersect_key($sections,['expenses'=>true,'advances'=>true]);if(!$scopes[$office])unset($scopes[$office]);}
+        if(!$scopes)throw new OfficeExpenseStaffAccessDenied('No authorized staff branch.');return $scopes;
     }
     public function officeOptions(): array {if($this->access!==null)return array_intersect_key($this->offices,$this->readScopes());$this->authorize();return $this->offices;}
     public function baseCurrency(): string { $this->authorize(); return $this->base; }

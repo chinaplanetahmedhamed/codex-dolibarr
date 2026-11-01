@@ -50,7 +50,7 @@ testAccess('branches isolate Moaz and Rina with independent native read ceiling'
 });
 testAccess('different roles never union across branches',function()use($owner,$egypt,$reader){$owner->assign(8,'china',$reader,'own',0);$egypt->assertAction('egypt','expenses','create');denied(fn()=>$egypt->assertAction('china','expenses','create'));aeq($egypt->recordScope('china','expenses'),'own');});
 testAccess('self promotion unsupported actions and stale edits rejected',function()use($owner,$egypt,$writer,$reader){
-    denied(fn()=>$egypt->assign(8,'egypt',$writer,'branch',1));denied(fn()=>$owner->assign(8,'egypt',['expenses'=>['read','delete']],'branch',1));
+    denied(fn()=>$egypt->assign(8,'egypt',$writer,'branch',1));denied(fn()=>$owner->assign(8,'egypt',['expenses'=>['read','approve']],'branch',1));
     denied(fn()=>$owner->assign(8,'egypt',$reader,'branch',0));denied(fn()=>$owner->assign(8,'egypt',['expenses'=>['create']],'branch',1));
 });
 testAccess('delegated manager cannot exceed own branch scope or grant ceiling',function()use($egypt,$writer){denied(fn()=>$egypt->assign(12,'china',$writer,'branch',0));denied(fn()=>$egypt->assign(12,'china',['expenses'=>['read']],'branch',1));});
@@ -71,7 +71,7 @@ testAccess('assignment controller enforces CSRF forged fields branch and stale r
     $post=['action'=>'assign','token'=>'synthetic-token','staff_id'=>'12','office'=>'china','revision'=>'1','permissions'=>['expenses'=>'read','advances'=>'read'],'record_scope'=>'branch'];
     foreach(['',[], 'expired']as$token){$bad=$post;$bad['token']=$token;aeq($controller->handle('POST',[],$bad)['status'],403);}
     $bad=$post;$bad['entity']='2';aeq($controller->handle('POST',[],$bad)['status'],422);
-    $bad=$post;$bad['permissions']=['payroll'=>'read'];aeq($controller->handle('POST',[],$bad)['status'],422);
+    $bad=$post;$bad['permissions']=['accounting'=>'read'];aeq($controller->handle('POST',[],$bad)['status'],422);
     $bad=$post;$bad['office']='other';aeq($controller->handle('POST',[],$bad)['status'],403);
     aeq($controller->handle('POST',[],$post,['receipt'=>[]])['status'],403);
     aeq((new OfficeExpenseStaffController($china,'synthetic-token'))->handle('GET',[],[])['status'],403);

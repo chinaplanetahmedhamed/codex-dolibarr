@@ -86,6 +86,12 @@ def run_tests(state, base):
         status, _, body = employee.request(staff_route, data)
         assert status == 403 and "not activated" in body and "<form" not in body
     count += 1
+    workspace_route = "/custom/chinaplanetofficeexpenses/workspace.php?view=payroll&office=egypt"
+    assert guest.request(workspace_route)[0] == 401
+    for data in (None, {"action": "save", "view": "payroll", "office": "egypt", "token": "forged"}):
+        status, _, body = employee.request(workspace_route, data)
+        assert status == 403 and "not activated" in body and "<form" not in body
+    count += 1
     for actor in ("module_disabled", "native_only"):
         denied = Client(base); denied.sign_in(state, actor)
         for path in ("/index.php", "/custom/chinaplanetofficeexpenses/index.php", "/custom/chinaplanetoperations/office_expenses/index.php"):

@@ -45,7 +45,7 @@ final class OfficeExpenseEmployeePage
         if(!empty($state['receipt_enabled'])&&!empty($state['selected_draft']))$languageTarget.=($static?'':'&draft='.$state['selected_draft']['id']).'#receipts';
         $filters=$state['filters']??array('search'=>'','from'=>'','to'=>'','kind'=>'');
         $rows=$state['filtered_drafts']??$state['drafts'];$icon=static function($name){return '<i class="fa-solid fa-'.$name.'" aria-hidden="true"></i>';};
-        $nav=static function()use($view,$language,$state,$values){return OfficeExpenseStaffPage::navigation($language,$view,!empty($state['manage_staff']),(string)($values['office']??''));};
+        $nav=static function()use($view,$language,$state,$values){return OfficeExpenseStaffPage::navigation($language,$view,!empty($state['manage_staff']),(string)($values['office']??''),!empty($state['workspace_ready']));};
         $totals=array();$summaryKind=$view==='advances'?'advance':'expense_claim';
         foreach($rows as$draft){if($draft['kind']!==$summaryKind)continue;$currency=$draft['currency'];$scale=strlen(explode('.',$draft['amount'])[1]??'');$totals[$currency]=bcadd($totals[$currency]??'0',$draft['amount'],$scale);}
         $canCreate=!empty($state['create_offices']??$state['offices']);

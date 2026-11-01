@@ -19,16 +19,19 @@ final class OfficeExpenseNativeSchemaMigration
     public const VERSION='m119_office_expenses_drafts_v1';
     public const RECEIPT_VERSION='m119_office_expenses_receipts_v1';
     public const ACCESS_VERSION='m119_office_expenses_access_v1';
+    public const WORKSPACE_VERSION='m119_office_expenses_workspace_v1';
+    private bool $workspaceStage;
     private bool $accessStage;
     private $backend;private $directory;private $receiptStage;private $version;
-    public function __construct(OfficeExpenseSchemaBackend $backend,?string $directory=null,bool $receiptStage=false,bool $accessStage=false)
+    public function __construct(OfficeExpenseSchemaBackend $backend,?string $directory=null,bool $receiptStage=false,bool $accessStage=false,bool $workspaceStage=false)
     {
         if(!preg_match('/^[A-Za-z0-9_]{1,40}$/D',$backend->prefix()))throw new InvalidArgumentException('Invalid native schema prefix.');
-        $this->backend=$backend;$this->accessStage=$accessStage;$this->receiptStage=$receiptStage;$this->version=$accessStage?self::ACCESS_VERSION:($receiptStage?self::RECEIPT_VERSION:self::VERSION);
-        $this->directory=$directory??dirname(__DIR__).'/schema'.($accessStage?'/access':($receiptStage?'/receipts':''));
+        $this->workspaceStage=$workspaceStage;$this->backend=$backend;$this->accessStage=$accessStage;$this->receiptStage=$receiptStage;$this->version=$workspaceStage?self::WORKSPACE_VERSION:($accessStage?self::ACCESS_VERSION:($receiptStage?self::RECEIPT_VERSION:self::VERSION));
+        $this->directory=$directory??dirname(__DIR__).'/schema'.($workspaceStage?'/workspace':($accessStage?'/access':($receiptStage?'/receipts':'')));
     }
     public static function forReceipts(OfficeExpenseSchemaBackend $backend,?string $directory=null): self {return new self($backend,$directory,true);}
     public static function forAccess(OfficeExpenseSchemaBackend $backend,?string $directory=null): self {return new self($backend,$directory,true,true);}
+    public static function forWorkspace(OfficeExpenseSchemaBackend $backend,?string $directory=null): self {return new self($backend,$directory,true,false,true);}
     public function plan(): array
     {
         $artifact=$this->artifact();if($this->receiptStage)(new self($this->backend))->assertReady();$tables=array();$present=0;$matches=true;
@@ -71,10 +74,10 @@ final class OfficeExpenseNativeSchemaMigration
     {
         $raw=@file_get_contents($this->directory.'/manifest.json');if(!is_string($raw))throw new RuntimeException('Native migration manifest is unavailable.');
         try{$manifest=json_decode($raw,true,512,JSON_THROW_ON_ERROR);}catch(Throwable $error){throw new RuntimeException('Invalid native migration manifest.',0,$error);}
-        $names=$this->accessStage?array('001_membership.sql','002_access_audit.sql'):($this->receiptStage?array('001_receipts.sql','002_receipt_audit.sql'):array('003_schema_state.sql','001_drafts.sql','002_draft_audit.sql'));
+        $names=$this->workspaceStage?array('001_documents.sql','002_audit.sql'):($this->accessStage?array('001_membership.sql','002_access_audit.sql'):($this->receiptStage?array('001_receipts.sql','002_receipt_audit.sql'):array('003_schema_state.sql','001_drafts.sql','002_draft_audit.sql')));
         if(!is_array($manifest)||($manifest['version']??null)!==$this->version||!is_array($manifest['files']??null)||array_keys($manifest['files'])!==$names)throw new RuntimeException('Unexpected native migration artifact.');
         if($this->receiptStage&&($manifest['requires'][self::VERSION]??null)!==hash_file('sha256',dirname(__DIR__).'/schema/manifest.json'))throw new RuntimeException('Receipt migration dependency differs.');
-        $statements=array();$catalog=array();$allowed=$this->accessStage?array('llx_cpo_oe_membership','llx_cpo_oe_access_audit'):($this->receiptStage?array('llx_cpo_oe_receipt','llx_cpo_oe_receipt_audit'):array('llx_cpo_oe_schema','llx_cpo_oe_draft','llx_cpo_oe_draft_audit'));
+        $statements=array();$catalog=array();$allowed=$this->workspaceStage?array('llx_cpo_oe_workspace','llx_cpo_oe_workspace_audit'):($this->accessStage?array('llx_cpo_oe_membership','llx_cpo_oe_access_audit'):($this->receiptStage?array('llx_cpo_oe_receipt','llx_cpo_oe_receipt_audit'):array('llx_cpo_oe_schema','llx_cpo_oe_draft','llx_cpo_oe_draft_audit')));
         foreach($names as $name){
             $bytes=@file_get_contents($this->directory.'/'.$name);$hash=$manifest['files'][$name];
             if(!is_string($bytes)||!is_string($hash)||!preg_match('/^[a-f0-9]{64}$/D',$hash)||!hash_equals($hash,hash('sha256',$bytes)))throw new RuntimeException('Native migration SQL checksum mismatch.');
@@ -95,7 +98,7 @@ final class OfficeExpenseNativeSchemaMigration
                 $statements[]=str_replace('llx_',$this->backend->prefix(),$sql);
             }
         }
-        if(array_keys($catalog)!==$allowed||count($statements)!==($this->accessStage?4:($this->receiptStage?5:7)))throw new RuntimeException('Incomplete native migration artifact.');
+        if(array_keys($catalog)!==$allowed||count($statements)!==($this->workspaceStage?7:($this->accessStage?4:($this->receiptStage?5:7))))throw new RuntimeException('Incomplete native migration artifact.');
         $prefixed=array();foreach($catalog as $name=>$description)$prefixed[str_replace('llx_',$this->backend->prefix(),$name)]=$description;
         return array('manifest_hash'=>hash('sha256',$raw),'statements'=>$statements,'catalog'=>$prefixed);
     }
@@ -124,7 +127,7 @@ final class OfficeExpenseMysqliSchemaBackend implements OfficeExpenseSchemaBacke
     }
     private function table(string $table): string
     {
-        if(!in_array($table,array(MAIN_DB_PREFIX.'cpo_oe_schema',MAIN_DB_PREFIX.'cpo_oe_draft',MAIN_DB_PREFIX.'cpo_oe_draft_audit',MAIN_DB_PREFIX.'cpo_oe_receipt',MAIN_DB_PREFIX.'cpo_oe_receipt_audit',MAIN_DB_PREFIX.'cpo_oe_membership',MAIN_DB_PREFIX.'cpo_oe_access_audit'),true))throw new InvalidArgumentException('Unknown owned migration table.');return $table;
+        if(!in_array($table,array(MAIN_DB_PREFIX.'cpo_oe_schema',MAIN_DB_PREFIX.'cpo_oe_draft',MAIN_DB_PREFIX.'cpo_oe_draft_audit',MAIN_DB_PREFIX.'cpo_oe_receipt',MAIN_DB_PREFIX.'cpo_oe_receipt_audit',MAIN_DB_PREFIX.'cpo_oe_membership',MAIN_DB_PREFIX.'cpo_oe_access_audit',MAIN_DB_PREFIX.'cpo_oe_workspace',MAIN_DB_PREFIX.'cpo_oe_workspace_audit'),true))throw new InvalidArgumentException('Unknown owned migration table.');return $table;
     }
     public function describe(string $table): ?array
     {
@@ -176,7 +179,7 @@ final class OfficeExpenseMysqliSchemaBackend implements OfficeExpenseSchemaBacke
     public function marker(string $version='m119_office_expenses_drafts_v1'): ?array {return $this->connection->one('SELECT schema_key,manifest_hash,status,date_creation,date_modification FROM '.MAIN_DB_PREFIX.'cpo_oe_schema WHERE schema_key='.$this->connection->quote($version));}
     public function writeMarker(string $version,string $hash,string $status): void
     {
-        if(!in_array($version,array(OfficeExpenseNativeSchemaMigration::VERSION,OfficeExpenseNativeSchemaMigration::RECEIPT_VERSION,OfficeExpenseNativeSchemaMigration::ACCESS_VERSION),true)||!preg_match('/^[a-f0-9]{64}$/D',$hash)||!in_array($status,array('installing','ready'),true))throw new InvalidArgumentException('Invalid migration marker.');
+        if(!in_array($version,array(OfficeExpenseNativeSchemaMigration::VERSION,OfficeExpenseNativeSchemaMigration::RECEIPT_VERSION,OfficeExpenseNativeSchemaMigration::ACCESS_VERSION,OfficeExpenseNativeSchemaMigration::WORKSPACE_VERSION),true)||!preg_match('/^[a-f0-9]{64}$/D',$hash)||!in_array($status,array('installing','ready'),true))throw new InvalidArgumentException('Invalid migration marker.');
         $this->assertContext();
         $this->connection->beginOwned();
         try{

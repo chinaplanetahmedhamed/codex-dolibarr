@@ -8,7 +8,7 @@ $module=dirname(__DIR__,4).'/custom/chinaplanetofficeexpenses';
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
 $assetPrefix='/custom/chinaplanetofficeexpenses/';
 $relative=strpos($path,$assetPrefix)===0?substr($path,strlen($assetPrefix)):'';
-$assets=array('employee.js'=>'text/javascript','employee.css'=>'text/css','assets/fontawesome.css'=>'text/css','assets/fontawesome-solid.css'=>'text/css','assets/fa-solid-900.woff2'=>'font/woff2','assets/Cairo.ttf'=>'font/ttf');
+$assets=array('workspace.js'=>'text/javascript','workspace.css'=>'text/css','staff.css'=>'text/css','employee.js'=>'text/javascript','employee.css'=>'text/css','assets/fontawesome.css'=>'text/css','assets/fontawesome-solid.css'=>'text/css','assets/fa-solid-900.woff2'=>'font/woff2','assets/Cairo.ttf'=>'font/ttf');
 if(isset($assets[$relative])){header('Content-Type: '.$assets[$relative]);readfile($module.'/'.$relative);exit;}
 if($path==='/employee.js'){header('Content-Type: text/javascript');readfile($module.'/employee.js');exit;}
 if ($path==='/__fixture/session') {
@@ -20,6 +20,7 @@ if ($path==='/__fixture/session') {
     header('Cache-Control: no-store');header('Location: /index.php',true,303);exit;
 }
 if($path==='/custom/chinaplanetoperations/office_expenses/index.php'){require dirname(__DIR__,4).'/custom/chinaplanetoperations/office_expenses/index.php';exit;}
+if($path==='/custom/chinaplanetofficeexpenses/workspace.php'){require $module.'/workspace.php';exit;}
 if($path==='/custom/chinaplanetofficeexpenses/users.php'){require $module.'/users.php';exit;}
 if ($path!=='/index.php'&&$path!=='/'&&$path!=='/custom/chinaplanetofficeexpenses/index.php') {http_response_code(404);exit;}
 require $module.'/index.php';

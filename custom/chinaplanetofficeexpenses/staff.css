@@ -33,3 +33,5 @@
 
 /* The staff register's first column is a name, not the expense row number. */
 .office-expenses-app.staff-access table th:first-child{display:table-cell}
+
+.office-expenses-app.staff-access .staff-action-check{display:inline-flex;gap:8px;align-items:center;margin:4px 10px;font-size:12px;min-height:36px}.office-expenses-app.staff-access .staff-action-check input{width:18px;height:18px;accent-color:#4f46e5}

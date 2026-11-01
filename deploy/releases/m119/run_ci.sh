@@ -11,6 +11,8 @@ check() {
     failed_suites=$((failed_suites + 1))
     printf 'FAILED_SUITE %s\n' "$2"
 }
+check php deploy/tests/test_m119_workspace_documents.php
+check php deploy/tests/test_m119_workspace_native.php "$native"
 check php deploy/tests/test_m119_office_expenses.php
 check php deploy/tests/test_m119_standalone_module.php "$native"
 check php deploy/tests/test_m119_staff_access.php "$native"

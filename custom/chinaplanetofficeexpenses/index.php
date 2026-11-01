@@ -9,6 +9,7 @@ require_once __DIR__.'/class/OfficeExpensePilotConfiguration.php';
 require_once __DIR__.'/class/OfficeExpenseNativeMenuSyncService.php';
 require_once __DIR__.'/class/OfficeExpenseModuleAccess.php';
 require_once __DIR__.'/class/OfficeExpenseStaffRuntime.php';
+require_once __DIR__.'/class/OfficeExpenseWorkspaceRuntime.php';
 header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');header('Content-Type: text/html; charset=UTF-8');
 // Trusted native bootstrap may supply a factory. Otherwise only the explicitly
@@ -64,6 +65,7 @@ try {
     if ($nativeLoginPost && $result['status']===200) {
         $result['status']=303;$result['redirect']='index.php?lang='.$result['language'].'&view='.$result['view'];
     }
+    $result['workspace_ready']=OfficeExpenseWorkspaceRuntime::ready($db,$conf);
     http_response_code($result['status']);
     if ($result['redirect']!==null) {header('Location: '.$result['redirect'],true,303);exit;}
     if($result['download']!==null){foreach(OfficeExpenseReceiptHttpResponse::headers($result['download'],$result['download_id']) as $name=>$value)header($name.': '.$value);echo $result['download']['bytes'];exit;}

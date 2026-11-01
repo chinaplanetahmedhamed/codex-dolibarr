@@ -3,6 +3,7 @@ declare(strict_types=1);
 define('CSRFCHECK_WITH_TOKEN',1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/class/OfficeExpenseStaffRuntime.php';
+require_once __DIR__.'/class/OfficeExpenseWorkspaceRuntime.php';
 require_once __DIR__.'/class/OfficeExpenseStaffController.php';
 require_once __DIR__.'/class/OfficeExpenseStaffPage.php';
 header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: same-origin');
@@ -15,6 +16,7 @@ try{
     if($nativeLogin&&!empty($_FILES)){http_response_code(415);exit;}
     $result=(new OfficeExpenseStaffController($access,(string)currentToken()))->handle($nativeLogin?'GET':$method,$_GET??[],$nativeLogin?[]:($_POST??[]),$_FILES??[]);
     if($nativeLogin&&$result['status']===200){header('Location: users.php',true,303);exit;}
+    $result['workspace_ready']=OfficeExpenseWorkspaceRuntime::ready($db,$conf);
     http_response_code($result['status']);if($result['redirect']!==null){header('Location: '.$result['redirect'],true,303);exit;}
     if($result['status']===405)header('Allow: GET, POST');
     $asset=DOL_URL_ROOT.'/custom/chinaplanetofficeexpenses/';

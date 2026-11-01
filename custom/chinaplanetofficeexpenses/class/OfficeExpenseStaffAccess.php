@@ -7,7 +7,11 @@ final class OfficeExpenseStaffAccessDenied extends DomainException {}
 final class OfficeExpenseStaffAccess
 {
     public const OFFICES=['egypt'=>['EGP'],'china'=>['CNY']];
-    public const ACTIONS=['expenses'=>['read','create'],'advances'=>['read','create']];
+    public const ACTIONS=['expenses'=>['read','create','update','delete'],'advances'=>['read','create','update','delete'],
+        'treasury'=>['read','create','update','delete'],'receipts'=>['read','create','update','delete'],
+        'categories'=>['read','create','update','delete'],'reports'=>['read'],
+        'employees'=>['read','create','update','delete'],'payroll'=>['read','create','update','delete'],
+        'settings'=>['read','update']];
     private $db;private $user;private $conf;private int $actor;private int $entity;private int $bootstrap;private OfficeExpenseNativeAccessStore $store;
     public function __construct($db,$user,$conf,int $bootstrap,?OfficeExpenseNativeAccessStore $store=null)
     {
@@ -89,6 +93,15 @@ final class OfficeExpenseStaffAccess
     {
         if(!isset($this->managedOffices()[$office]))throw new DomainException('Branch unavailable.');
         $rows=$this->store->members($this->entity,$office);foreach($rows as&$row){$native=new User($this->db);$row['login']='';$row['name']='';if($native->fetch($row['user_id'],'','',0,$this->entity)===1&&(int)$native->entity===$this->entity){$row['login']=(string)$native->login;$row['name']=trim((string)$native->firstname.' '.(string)$native->lastname);}}return $rows;
+    }
+    /** Safe native identities actually assigned to this branch; never the global staff directory. */
+    public function branchStaff(string $office,string $section): array
+    {
+        $scope=$this->recordScope($office,$section);$rows=$this->store->members($this->entity,$office);$out=[];
+        foreach($rows as$row){if(!$row['active']||($scope==='own'&&$row['user_id']!==$this->actor))continue;
+            try{$native=$this->native($row['user_id']);}catch(DomainException $e){continue;}
+            $out[]=['id'=>(int)$native->id,'login'=>(string)$native->login,'name'=>trim((string)$native->firstname.' '.(string)$native->lastname)];
+        }return $out;
     }
     public function assign(int $target,string $office,array $grants,string $scope,int $expected): array
     {

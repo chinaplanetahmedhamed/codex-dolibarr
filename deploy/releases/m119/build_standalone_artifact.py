@@ -3,6 +3,7 @@
 import argparse
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 MODULE = 'custom/chinaplanetofficeexpenses/'
@@ -32,13 +33,30 @@ RUNTIME_FILES = tuple(MODULE + p for p in (
 ))
 
 
+# Preserve the R01/R02/R03 immutable contract. The extended workspace has its own closure.
+WORKSPACE_RUNTIME_FILES = RUNTIME_FILES + tuple(MODULE + p for p in (
+    'workspace.php', 'workspace.css', 'workspace.js',
+    'class/OfficeExpenseWorkspaceLogo.php', 'class/OfficeExpenseWorkspaceDocument.php',
+    'class/OfficeExpenseWorkspaceStore.php', 'class/OfficeExpenseWorkspaceService.php',
+    'class/OfficeExpenseWorkspaceController.php', 'class/OfficeExpenseWorkspacePage.php',
+    'class/OfficeExpenseWorkspaceRuntime.php', 'schema/workspace/001_documents.sql',
+    'schema/workspace/002_audit.sql', 'schema/workspace/manifest.json',
+))
+
+
 def build(commit, output, repo=None):
     spec = importlib.util.spec_from_file_location('m119_package_format', Path(__file__).with_name('build_artifact.py'))
     package = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(package)
-    return package.build(commit, output, repo, runtime_files=RUNTIME_FILES, source_files=RUNTIME_FILES,
-                         release_metadata={'package_kind': 'standalone-code-only', 'staff_activation': False,
-                                           'installer_included': False})
+    repo = Path(repo or Path(__file__).resolve().parents[3])
+    if not isinstance(commit, str) or re.fullmatch('[a-f0-9]{40}', commit) is None:
+        raise ValueError('Use an immutable full Git commit.')
+    extended = bool(package.git(repo, 'ls-tree', commit, '--', MODULE + 'class/OfficeExpenseWorkspaceRuntime.php').strip())
+    files = WORKSPACE_RUNTIME_FILES if extended else RUNTIME_FILES
+    metadata = {'package_kind': 'standalone-code-only', 'staff_activation': False, 'installer_included': False}
+    if extended:
+        metadata['workspace_activation'] = False
+    return package.build(commit, output, repo, runtime_files=files, source_files=files, release_metadata=metadata)
 
 
 if __name__ == '__main__':

@@ -113,6 +113,7 @@ jobs:
           set -Eeuo pipefail
           while IFS= read -r file; do php -l "$file" >/dev/null; done < <(rg --files custom/chinaplanetofficeexpenses custom/chinaplanetoperations/office_expenses deploy/tools/office_expenses deploy/tests deploy/releases/m119 | rg '(chinaplanetofficeexpenses/.+\.php|office_expenses/.+\.php|m119[^/]*\.php|m119_http/.+\.php|m119/.+\.php)$')
           node --check custom/chinaplanetofficeexpenses/employee.js
+          node --check custom/chinaplanetofficeexpenses/workspace.js
           git diff-tree --check HEAD
       - name: Run complete CLI real MariaDB and private-filesystem checks
         run: |
