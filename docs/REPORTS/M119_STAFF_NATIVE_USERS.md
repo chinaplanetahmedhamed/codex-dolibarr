@@ -1,5 +1,7 @@
 # M119 — Native staging staff creation
 
+Current 2026-11-02: **standalone deployed on backup-erp; native branch roles verified; staff login UAT pending**. [Current deployment evidence](M119_STANDALONE_DEPLOYER_UPDATE.md) supersedes the earlier pending/uncommitted checkpoints below.
+
 2026-11-02. Ahmed requested linking to Dolibarr/checking staff and then explicitly requested new users Moaz and rina.
 
 Target: `https://backup-erp.visiontrading.biz` only, authenticated native Dolibarr 24.0.1 administrator session. All-status native user list initially contained only admin, a QA worker, a customer QA login and the staging website gateway; neither requested login existed. No production access.

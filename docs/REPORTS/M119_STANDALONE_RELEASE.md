@@ -1,5 +1,7 @@
 # M119 standalone source release — 2026-11-02
 
+Current 2026-11-02: **standalone deployed on backup-erp; native branch roles verified; staff login UAT pending**. [Current deployment evidence](M119_STANDALONE_DEPLOYER_UPDATE.md) supersedes the earlier pending/uncommitted checkpoints below.
+
 Ahmed requested “push the new module”; target remains the established backup-erp trial. Production and financial posting are excluded. This checkpoint supersedes earlier uncommitted/local-only statements only for source publication and verified release preparation.
 
 ## Scope

@@ -21,8 +21,8 @@ def users(lang):
                  t('شركة واحدة في Dolibarr · تعيين الموظفين لفروع مصر والصين وتحديد صلاحياتهم', 'One Dolibarr company · Assign existing staff to Egypt/China branches and define their permissions'),
                  button(t('تعيين موظف من Dolibarr', 'Assign Dolibarr staff'), 'user-plus', 'staff-assignment'))]
     out.append('<section class="staff-native-note">' + icon('link') + '<div><strong>' + t('نفس حساب الموظف في Dolibarr', 'The same Dolibarr staff account')
-               + '</strong><p>' + t('أُنشئت الحسابات ومجموعات الأدوار أدناه فعليًا في Dolibarr التجريبي. هذه لقطة مراجعة مؤكدة؛ تفعيل صلاحيات وحدة المصروفات وعزل الفروع ما زال بانتظار نشر الحزمة الجديدة.',
-                                   'The accounts and role groups below exist in staging Dolibarr. This is a verified review snapshot; finance permissions and branch isolation await deployment of the new module.') + '</p></div></section>')
+               + '</strong><p>' + t('الحسابات والأدوار أدناه مفعّلة في Dolibarr التجريبي بعد فحص عزل الفروع. هذه لقطة تصميم ثابتة؛ إدارة التعيينات الفعلية تتم من صفحة الوحدة على الخادم.',
+                                   'These accounts and branch roles are active in staging Dolibarr with verified branch isolation. This is a static design snapshot; manage actual assignments through the deployed module.') + '</p></div></section>')
     out.append('<section class="staff-branch-examples"><div><span>' + icon('building') + '</span><strong>' + t('معاذ → فرع مصر', 'Moaz → Egypt branch') + '</strong><small>'
                + t('يرى بيانات مصر المسموح بها فقط', 'Sees permitted Egypt data only') + '</small></div><div><span>' + icon('building') + '</span><strong>' + t('رينا → فرع الصين', 'Rina → China branch')
                + '</strong><small>' + t('ترى بيانات الصين المسموح بها فقط', 'Sees permitted China data only') + '</small></div><div><span>' + icon('user-shield') + '</span><strong>'
@@ -48,12 +48,12 @@ def users(lang):
             row += button(t('الصلاحيات والتعيين', 'Permissions & assignment'), 'user-gear', 'staff-assignment', 'muted', details)
             row += button(t('إزالة من الفرع', 'Remove from branch'), 'user-minus', 'staff-remove', 'muted', prefill({'staff-remove-name': person + ' · ' + branch})) + '</div></td></tr>'
             rows += row
-        out.append(table([t('موظف Dolibarr', 'Dolibarr staff member'), t('اسم الدخول', 'Login'), t('الفرع', 'Branch'), t('الدور المطلوب', 'Requested role'), t('النطاق بعد التفعيل', 'Scope after activation'), t('إجراءات', 'Actions')], rows,
-                         t('حسابات ومجموعات الفرع — تفعيل الوحدة معلّق', 'Native branch accounts and groups — module activation pending')))
+        out.append(table([t('موظف Dolibarr', 'Dolibarr staff member'), t('اسم الدخول', 'Login'), t('الفرع', 'Branch'), t('الدور المفعّل', 'Activated role'), t('نطاق السجلات', 'Record scope'), t('إجراءات', 'Actions')], rows,
+                         t('حسابات وصلاحيات الفرع — لقطة من النسخة التجريبية', 'Native branch roles — staging snapshot')))
         out.append('</div>')
     out.append('<p class="staff-boundary-note">' + icon('shield-halved') + t('الفرع الآخر لا يظهر للموظف. الروابط المباشرة والبحث والتقارير والملفات يجب أن تخضع لنفس فحص الفرع على الخادم.',
                                                                                   'The other branch is not shown to staff. Direct routes, search, reports and files must enforce the same branch check on the server.') + '</p>')
-    fields = '<p class="business-form-note">' + t('الحسابات مؤكدة من نسخة Dolibarr التجريبية. الحفظ هنا معطّل؛ إعداد صلاحيات المصروفات يحتاج نشر وتفعيل الوحدة الجديدة.', 'Accounts were verified in staging Dolibarr. Saving here is disabled; finance access requires deployment and activation of the new module.') + '</p>'
+    fields = '<p class="business-form-note">' + t('هذه صفحة مراجعة ثابتة والحفظ هنا معطّل. إدارة صلاحيات الموظفين متاحة داخل وحدة المصروفات المنشورة على نسخة Dolibarr التجريبية.', 'Saving is disabled in this static review. Manage actual staff access in the deployed staging Dolibarr Office Expenses module.') + '</p>'
     fields += field('staff-person', t('اختيار موظف Dolibarr داخلي', 'Select internal Dolibarr staff'), options=[('', t('-- اختر موظفًا موجودًا --', '-- Select existing staff --')), ('5', 'Moaz · moaz'), ('6', 'rina · rina'), ('7', 'omar · omar'), ('8', 'shan shan · shanshan')])
     fields += '<div class="business-two-fields">' + field('staff-branch', t('الفرع لهذا التعيين', 'Branch for this assignment'), options=[('egypt', t('مصر', 'Egypt')), ('china', t('الصين', 'China'))])
     fields += field('staff-role', t('قالب الصلاحيات', 'Permission template'), value='viewer', options=[('viewer', t('مشاهد', 'Viewer')), ('entry', t('موظف فرع', 'Branch worker')), ('manager', t('مدير فرع', 'Branch manager')), ('custom', t('مخصص', 'Custom'))]) + '</div>'

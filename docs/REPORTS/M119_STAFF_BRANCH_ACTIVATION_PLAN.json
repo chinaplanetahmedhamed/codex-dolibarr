@@ -4,7 +4,7 @@
   "environment": "backup-erp",
   "host": "backup-erp.visiontrading.biz",
   "entity": 1,
-  "status": "native_accounts_and_groups_created_finance_activation_pending",
+  "status": "activated_on_backup_erp_native_branch_checks_passed_staff_login_pending",
   "financial_posting": false,
   "system_administrator": false,
   "subjects": [
@@ -77,10 +77,7 @@
       "create"
     ]
   },
-  "current_native_group_rights": [
-    343
-  ],
-  "current_native_group_rights_description": "Change own password only; no native Office Expenses capabilities granted yet",
+  "current_native_group_rights_description": "Self-password right retained; native module read/create capabilities granted to workers and managers; delegated access management only to managers.",
   "activation_preconditions": [
     "Pin and test complete standalone artifact and scoped deployment/rollback path",
     "Verify matching PHP8.2.32 MariaDB and native module lifecycle",
@@ -90,5 +87,31 @@
     "Save independent branch memberships using native authenticated context",
     "Enable staff mode only after readiness and positive/negative acceptance"
   ],
-  "credential_handoff": "Passwords were not distributed or stored in source; use native administrator password flow before staff login acceptance"
+  "credential_handoff": "Passwords were not distributed or stored in source; use native administrator password flow before staff login acceptance",
+  "verified_native_group_rights": {
+    "4": [
+      343,
+      500601,
+      500603,
+      500604
+    ],
+    "5": [
+      343,
+      500601,
+      500603,
+      500604
+    ],
+    "6": [
+      343,
+      500601,
+      500603
+    ],
+    "7": [
+      343,
+      500601,
+      500603
+    ]
+  },
+  "deployment_run": "https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41340894837",
+  "native_branch_checks": 41
 }

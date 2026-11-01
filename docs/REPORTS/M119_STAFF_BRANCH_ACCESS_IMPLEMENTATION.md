@@ -1,5 +1,7 @@
 # M119 — Native staff and branch access: local implementation
 
+Current 2026-11-02: **standalone deployed on backup-erp; native branch roles verified; staff login UAT pending**. [Current deployment evidence](M119_STANDALONE_DEPLOYER_UPDATE.md) supersedes the earlier pending/uncommitted checkpoints below.
+
 2026-11-02 · LOCAL_READY_FOR_REVIEW · No deployment or real staff assignment
 
 Ahmed approved local integration and isolation testing with “yes, do it”, following confirmation that Dolibarr has one company/entity and Egypt/China are finance branches. The [approved design](M119_STAFF_BRANCH_ACCESS_DESIGN.md) and [Mission amendment](../MISSIONS/M119_OFFICE_EXPENSES_LOCAL_FOUNDATION.md) record this scope.

@@ -1,5 +1,7 @@
 # M119 standalone Office Expenses — 2026-11-02
 
+Current 2026-11-02: **standalone deployed on backup-erp; native branch roles verified; staff login UAT pending**. [Current deployment evidence](M119_STANDALONE_DEPLOYER_UPDATE.md) supersedes the earlier pending/uncommitted checkpoints below.
+
 Status: local refactor READY_FOR_REVIEW; no activation or deployment.
 
 ## Result
