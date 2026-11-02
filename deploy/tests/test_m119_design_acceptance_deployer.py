@@ -54,7 +54,7 @@ class ReceiptDeployerTests(unittest.TestCase):
         prior_validator=h.pinned(Path(w.__file__).read_bytes(),h.WORKSPACE,'prior_validator');prior_validator.SOURCE=p5.SOURCE;prior_validator.ARTIFACT=p5.ARTIFACT;prior_validator.MANIFEST=p5.MANIFEST
         prior=prior_validator.validate_package(self.c,Path(self.prior['manifest_path']).read_bytes(),Path(self.prior['artifact']).read_bytes())
         changed={p[len(w.MODULE):]for p in self.files if p.startswith(w.MODULE)and self.files[p]!=prior[p]}
-        self.assertEqual(changed,set(h.CHANGED));self.assertEqual(len(changed),3)
+        self.assertEqual(changed,set(h.CHANGED));self.assertEqual(len(changed),4)
         self.assertFalse(any(p.startswith('schema/')or 'StaffAccess' in p or 'NativeTreasury' in p for p in changed))
         engine=h.pinned((ROOT/'deploy/releases/m119/ui_update_helper.py').read_bytes(),h.REPLACER,'test_replacer');engine.CHANGED=h.CHANGED
         u=engine.Update.__new__(engine.Update);u.old=types.SimpleNamespace(RUNTIME=w.RUNTIME,MODULE=w.MODULE);u.before=prior;u.after=self.files

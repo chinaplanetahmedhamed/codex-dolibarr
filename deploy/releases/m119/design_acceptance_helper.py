@@ -9,15 +9,15 @@ import stat
 import sys
 import types
 
-SOURCE='a08a0177848091bd4b1aedf6e0d683632ac437bf'
-ARTIFACT='42432dc04b4a51a79c096454a16e2d88b001678177a731cd05fdf6a2c10c8bd5'
-MANIFEST='7d087b1e5fbfaeef7363349e6d4f5df9be494abde7c03be3195b68a7656dd5bd'
+SOURCE='6f73b1234bd3fd440d3b98f840432ef0134963e2'
+ARTIFACT='818ed00aed4f925abf2d7e4465b3b5eed34112d62674ce598cca251fd3e3db9c'
+MANIFEST='f600dd187b0fdcdccdda242c7373d34b9912afdd9d79f1cc9df853ae0191e1d1'
 PREVIOUS='6155d463de43cd429a0be573d08bc95307ce643d78f2c8da9d6ba1c0d8f69f16'
 WORKSPACE='709c2221968b17219c87e260b55ca1cd5601e9f7e70031515774ff759fc1d1c6'
 REPLACER='388b8d24178307b790f178aec8c4fadc62a9ce68f993adbfc840f8f7da8a4757'
 STANDALONE='471df8d4985121ed6b512f2ed4361c459dd080c30e4b71ffaf40aaf3fb6ce7de'
 STATE=Path('/var/lib/chinaplanetos-backup-erp-deploy/m119-design-r08')
-CHANGED=('class/OfficeExpenseWorkspaceController.php','class/OfficeExpenseWorkspacePage.php','workspace.css')
+CHANGED=('class/OfficeExpenseWorkspaceController.php','class/OfficeExpenseWorkspacePage.php','workspace.css','employee.css')
 ACTIONS=('preflight','apply','verify','rollback','status')
 
 

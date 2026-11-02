@@ -6,9 +6,9 @@ export M119_ACTION="$1"
 python3 - <<'PY'
 import json,os,pathlib
 action=os.environ['M119_ACTION']
-sha='42432dc04b4a51a79c096454a16e2d88b001678177a731cd05fdf6a2c10c8bd5'
+sha='818ed00aed4f925abf2d7e4465b3b5eed34112d62674ce598cca251fd3e3db9c'
 path=pathlib.Path(os.environ['RUNNER_TEMP'])/'m119'/('request-'+action+'.json')
-data={'schema':1,'action':action,'mission_id':'M119','commit':'a08a0177848091bd4b1aedf6e0d683632ac437bf','artifact_sha256':sha,'artifact_name':'artifact-'+sha+'.tar.gz','manifest_name':'manifest-'+sha+'.json'}
+data={'schema':1,'action':action,'mission_id':'M119','commit':'6f73b1234bd3fd440d3b98f840432ef0134963e2','artifact_sha256':sha,'artifact_name':'artifact-'+sha+'.tar.gz','manifest_name':'manifest-'+sha+'.json'}
 with path.open('x') as f:json.dump(data,f)
 path.chmod(0o600)
 PY

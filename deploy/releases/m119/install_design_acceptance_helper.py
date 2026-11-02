@@ -10,7 +10,7 @@ import subprocess
 import types
 
 OLD='6155d463de43cd429a0be573d08bc95307ce643d78f2c8da9d6ba1c0d8f69f16'
-NEW='10e70456968018abfac3122c8385298cd1ed50fad4aa57946010cda96678f7c1'
+NEW='8fa571823ab8974e58ac6cd344b875436b27f3cacab1cba1cbf84361abb2ab8e'
 READER='2e3a02083f15986706f38e6eab2d6a4d143dad7d7b943681b04cfcd6d6d5e64e'
 TARGET=Path('/usr/local/sbin/chinaplanetos-backup-erp-deploy')
 STATE=Path('/var/lib/chinaplanetos-backup-erp-deploy/m119-design-r08')
