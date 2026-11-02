@@ -18,6 +18,46 @@ document.addEventListener('DOMContentLoaded', () => {
           searching: () => ar ? 'جارٍ البحث…' : 'Searching…'
         }
       });
+      // Select2 measures the viewport, but a modal's scrollport is a smaller boundary.
+      // Keep its result list scrollable within that boundary, including short phone dialogs.
+      const fitModalDropdown = () => {
+        const widget = jq(select).data('select2');
+        if (!widget || !widget.isOpen()) return;
+        const dialog = select.closest('dialog[open]');
+        const popup = dialog && dialog.querySelector('.select2-dropdown');
+        const options = popup && popup.querySelector('.select2-results > .select2-results__options');
+        const control = jq(select).next('.select2')[0];
+        if (!popup || !options || !control) return;
+        popup.addEventListener('input', scheduleFit);
+        options.style.removeProperty('max-height');
+        const field = control.getBoundingClientRect();
+        const bounds = dialog.getBoundingClientRect();
+        const top = Math.max(0, bounds.top) + 8;
+        const bottom = Math.min(window.innerHeight, bounds.bottom) - 8;
+        const below = Math.max(0, bottom - field.bottom);
+        const above = Math.max(0, field.top - top);
+        const openAbove = popup.getBoundingClientRect().height > below && above > below;
+        const available = Math.min(openAbove ? above : below, Math.max(0, bottom - top));
+        const chrome = popup.getBoundingClientRect().height - options.getBoundingClientRect().height;
+        options.style.maxHeight = Math.max(0, Math.min(Math.ceil(options.getBoundingClientRect().height), Math.floor(available - chrome))) + 'px';
+        const placedField = control.getBoundingClientRect();
+        popup.style.width = placedField.width + 'px';
+        const rect = popup.getBoundingClientRect();
+        const wrapper = popup.closest('.select2-container');
+        const desiredTop = Math.max(top, Math.min(openAbove ? placedField.top - rect.height : placedField.bottom, bottom - rect.height));
+        const desiredLeft = Math.max(bounds.left + 8, Math.min(placedField.left, bounds.right - rect.width - 8));
+        wrapper.style.left = (parseFloat(wrapper.style.left) || 0) + desiredLeft - rect.left + 'px';
+        wrapper.style.top = (parseFloat(wrapper.style.top) || 0) + desiredTop - rect.top + 'px';
+        popup.classList.toggle('select2-dropdown--above', openAbove);
+        popup.classList.toggle('select2-dropdown--below', !openAbove);
+        control.classList.toggle('select2-container--above', openAbove);
+        control.classList.toggle('select2-container--below', !openAbove);
+      };
+      const scheduleFit = () => queueMicrotask(() => { fitModalDropdown(); fitModalDropdown(); });
+      jq(select).on('select2:open', () => {
+        scheduleFit();
+        window.addEventListener('resize', scheduleFit);
+      }).on('select2:close', () => window.removeEventListener('resize', scheduleFit));
       const label = select.labels && select.labels[0];
       if (label && select.id) {
         if (!label.id) label.id = select.id + '-label';

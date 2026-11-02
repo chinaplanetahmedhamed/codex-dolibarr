@@ -49,3 +49,6 @@
 
 /* Native desktop Select2 enforces 300px !important, which clips narrow modal fields. */
 :is(#mainbody .office-expenses-app,.office-expenses-app) .select2-dropdown{min-width:0!important;max-width:calc(100vw - 32px)}
+
+/* Opening an absolute popup must not resize the modal fields when its scrollbar changes. */
+.office-expenses-app dialog{scrollbar-gutter:stable}
