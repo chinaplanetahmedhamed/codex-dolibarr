@@ -76,9 +76,9 @@ final class OfficeExpenseFinanceSettings
         $old=$this->internal($office);$check=function()use($office){if(!$this->access->isFinanceAdministrator())throw new DomainException('Configuration authority revoked.');$this->access->assertAction($office,'settings','update');};
         return $old['id']===''?$this->store->create((int)$this->conf->entity,$this->access->financeActorId(),$office,'finance_settings',$key,bin2hex(random_bytes(16)),'finance_settings',$v,$check):$this->store->change((int)$this->conf->entity,$this->access->financeActorId(),$old['id'],$expected,'update',$v,fn($r)=>$check());
     }
-    public function assertReady(string $office,array $v): void
+    public function assertReady(string $office,array $v,bool $opening=false): void
     {
-        if(!$v['enabled']||!$this->coreEnabled()||$v['base_currency']!==$this->base())throw new DomainException('Native double-entry accounting and reviewed branch mappings are required.');
+        if((!$v['enabled']&&!$opening)||!$this->coreEnabled()||$v['base_currency']!==$this->base())throw new DomainException('Native double-entry accounting and reviewed branch mappings are required.');
         if($v['expense_tax_mode']!=='gross_no_tax_recovery')throw new DomainException('Review the gross expense/no automatic input-tax-recovery policy first.');
         $fee=$this->c->one('SELECT id FROM '.MAIN_DB_PREFIX.'c_type_fees WHERE id='.$v['expense_type_id'].' AND active=1');if(!$fee)throw new DomainException('Select the native expense type.');
         $offset=$this->paymentType($v['offset_payment_id']);if((int)$offset['type']!==3)throw new DomainException('Select an explicit noncash compensation payment type.');
@@ -87,6 +87,9 @@ final class OfficeExpenseFinanceSettings
         foreach(self::ROLES as$role){if($v['accounts'][$role]<1)$this->missing($role);$this->account($v['accounts'][$role]);}
         foreach(OfficeExpenseStaffAccess::OFFICES[$office]as$currency){$map=$v['money'][$currency]['cash']??null;if(!$map||$map['native_id']<1||$map['gl_id']<1)$this->missing($currency.' cash');$this->moneyAccount($office,$currency,'cash',$map);}
         foreach($v['money']as$currency=>$channels)foreach($channels as$channel=>$map)if($map['native_id']>0||$map['gl_id']>0){$a=$this->moneyAccount($office,$currency,$channel,$map);if((int)$a['fk_accountancy_journal']!==$v['journal_id'])throw new DomainException('Native cash/bank journal differs from the reviewed branch journal.');}
+        if(!$opening)foreach($v['money']as$currency=>$channels)foreach($channels as$channel=>$map)if($map['native_id']>0){
+            $gl=$this->account($map['gl_id']);$missing=$this->c->one('SELECT COUNT(*) AS n FROM '.MAIN_DB_PREFIX.'bank AS b WHERE b.fk_account='.$map['native_id']." AND b.fk_type='SOLD' AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."accounting_bookkeeping AS g WHERE g.entity=".(int)$this->conf->entity." AND g.doc_type='bank' AND g.fk_doc=b.rowid AND g.numero_compte=".$this->c->quote($gl['account_number']).' HAVING SUM(g.debit-g.credit)>0)' );if((int)$missing['n']>0)throw new DomainException('Reconcile the existing native opening into GL before enabling payments; never create another cash opening.');
+        }
         foreach($v['category_accounts']as$id)if($id>0)$this->account($id);
         $cashIds=[];foreach($v['money']as$channels)foreach($channels as$map)if($map['gl_id']>0)$cashIds[]=$map['gl_id'];
         if(array_intersect(array_values($v['accounts']),$cashIds)||array_intersect(array_values($v['category_accounts']),$cashIds))throw new DomainException('A cash-control account cannot also be its own expense/liability counterpart.');

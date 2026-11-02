@@ -23,7 +23,8 @@ try{
         if(!empty($_FILES)||isset($p['payload'])||!is_string($p['file_id']??null))throw new InvalidArgumentException('Invalid evidence request.');$file=$evidence->download($p['office'],$p['kind'],$p['id'],$p['file_id']);foreach(OfficeExpenseWorkspaceEvidence::headers($file,$p['file_id'])as$k=>$value)header($k.': '.$value);echo $file['bytes'];exit;
     }else{
         if(!empty($_FILES)||isset($p['file_id'])||!is_array($p['payload']??null))throw new InvalidArgumentException('Invalid financial request.');
-        if($p['action']==='configure'){
+        if($p['action']==='prepare_opening'){if($p['kind']!=='opening'||$p['id']!==''||array_keys($p['payload'])!==['bank_id']||!is_string($p['payload']['bank_id']))throw new InvalidArgumentException('Invalid opening preparation.');$opening=$finance->prepareOpening($p['office'],$p['payload']['bank_id'],$p['key']);$target='workspace.php?'.http_build_query(['lang'=>$p['lang'],'office'=>$p['office'],'view'=>'treasury','kind'=>'opening','edit'=>$opening['id']]);}
+        elseif($p['action']==='configure'){
             if($p['kind']!=='settings'||$p['id']!=='')throw new InvalidArgumentException('Invalid setup request.');foreach(['customer_ids','invoice_ids','category_accounts']as$list)if(!isset($p['payload'][$list]))$p['payload'][$list]=[];if(!isset($p['payload']['roles']))$p['payload']['roles']=[];if(!is_array($p['payload']['roles']))throw new InvalidArgumentException('Invalid delegates.');foreach(['approve','post','reverse']as$role)if(!isset($p['payload']['roles'][$role]))$p['payload']['roles'][$role]=[];$finance->settings()->save($p['office'],$p['payload'],$p['key'],$revision);
         }else $finance->transition($p['office'],$p['kind'],$p['id'],$revision,$p['action'],$p['key'],$p['payload']);
     }

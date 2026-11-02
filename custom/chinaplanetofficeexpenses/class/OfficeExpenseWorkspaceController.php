@@ -24,6 +24,7 @@ final class OfficeExpenseWorkspaceController
             $offices=$this->service->offices($view==='overview'?'expenses':$view);$office=$post['office']??$query['office']??array_key_first($offices);
             if(!is_string($office)||!isset($offices[$office]))throw new DomainException('Branch unavailable.');
             $kind=self::VIEWS[$view];if($view==='advances'&&in_array($post['kind']??$query['kind']??'advance',['advance_return','advance_settlement'],true))$kind=$post['kind']??$query['kind'];
+            if($view==='treasury'&&($post['kind']??$query['kind']??'deposit')==='opening')$kind='opening';
             $state=array_replace($state,['view'=>$view,'kind'=>$kind,'office'=>$office,'language'=>$lang,'offices'=>$offices]);
             $state['navigation_views']=$this->service->navigationViews($office);
             if($method==='POST'){
@@ -68,6 +69,7 @@ final class OfficeExpenseWorkspaceController
             if(in_array($view,['employees','payroll'],true))$state['staff']=$this->service->staff($office,$view);
             if(in_array($view,['expenses','advances'],true)&&$this->service->allowed($office,'category','read'))$state['categories']=array_values(array_filter($this->service->list($office,'category'),fn($r)=>$r['status']==='active'&&$r['content']['active']));
             if($view==='advances')$state['advances']=array_values(array_filter($this->service->list($office,'advance'),fn($r)=>in_array($r['status'],['draft','posted'],true)));
+            if($view==='treasury'&&$kind==='deposit')$state['rows']=array_merge($state['rows'],$this->service->list($office,'opening'));
             if($view==='settings'&&$state['rows'])$state['selected']=$state['rows'][0];
             if($view==='treasury')$state['cash']=$this->service->cash($office,$query['from']??date('Y-m-01'),$query['to']??date('Y-m-t'));
             if($view==='settings')$state['accounts']=$this->service->accounts($office);
@@ -80,7 +82,7 @@ final class OfficeExpenseWorkspaceController
                 foreach(array_merge($state['rows'],$state['selected']?[$state['selected']]:[])as$r)if(!isset($state['receivers'][$r['owner']]))$state['receivers'][$r['owner']]=$this->service->receiptOwnerName($office,$r['id']);
             }
             if(isset($query['print'])){
-                if($query['print']!=='1'||!$state['selected']||!in_array($kind,['receipt','deposit','payroll','expense','advance','advance_return','advance_settlement'],true))throw new InvalidArgumentException('Invalid printable document.');$state['print']=true;
+                if($query['print']!=='1'||!$state['selected']||!in_array($kind,['opening','receipt','deposit','payroll','expense','advance','advance_return','advance_settlement'],true))throw new InvalidArgumentException('Invalid printable document.');$state['print']=true;
             }
             if($view==='receipts')$state['settings']=$this->service->receiptBrand($office);
             if($view==='payroll'&&$this->service->allowed($office,'settings','read'))$state['settings']=$this->service->list($office,'settings')[0]['content']??null;

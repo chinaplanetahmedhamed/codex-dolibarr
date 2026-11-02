@@ -14,12 +14,12 @@ final class OfficeExpenseWorkspacePage
         'categories'=>['بنود وتصنيفات المصروفات','Expense categories & classifications'],'reports'=>['التقارير المالية وتحليل النفقات','Financial reports & expense analysis'],
         'employees'=>['إدارة الموظفين والكوادر','Employee & staff management'],'payroll'=>['مسيرات وصرف الرواتب','Payroll runs'],
         'settings'=>['إعدادات الشركة والمقر','Company & office settings'],
-        'category'=>['بند مصروف','Expense category'],'employee'=>['ملف موظف','Employee profile'],'deposit'=>['طلب إيداع','Deposit request'],
+        'category'=>['بند مصروف','Expense category'],'employee'=>['ملف موظف','Employee profile'],'opening'=>['قيد افتتاحي · دون حركة نقدية جديدة','Opening GL · no new cash movement'],'deposit'=>['طلب إيداع','Deposit request'],
         'receipt'=>['سند قبض','Cash receipt voucher'],'expense'=>['طلب مصروف','Expense request'],'advance'=>['طلب عهدة','Advance request'],'advance_return'=>['طلب مرتجع عهدة','Advance return request'],'advance_settlement'=>['تسوية عهدة بمصروف','Advance expense settlement']];
     private function t(string $ar,string $en): string{return $this->ar?$ar:$en;}
     private static function e($v): string{return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
     private function label(string $key): string{return self::LABELS[$key][$this->ar?0:1]??$key;}
-    private function url(array $extra=[]): string{$base=['lang'=>$this->lang,'office'=>$this->s['office'],'view'=>$this->s['view']];if($this->s['view']==='advances')$base['kind']=$this->s['kind'];if($this->s['view']==='reports'&&$this->s['report'])$base+=['from'=>$this->s['report']['from'],'to'=>$this->s['report']['to'],'kind'=>$this->s['report']['filter'],'status'=>$this->s['report']['status'],'currency'=>$this->s['report_currency'],'month'=>$this->s['month']];return 'workspace.php?'.http_build_query(array_replace($base,$extra));}
+    private function url(array $extra=[]): string{$base=['lang'=>$this->lang,'office'=>$this->s['office'],'view'=>$this->s['view']];if($this->s['view']==='advances'||($this->s['view']==='treasury'&&$this->s['kind']==='opening'))$base['kind']=$this->s['kind'];if($this->s['view']==='reports'&&$this->s['report'])$base+=['from'=>$this->s['report']['from'],'to'=>$this->s['report']['to'],'kind'=>$this->s['report']['filter'],'status'=>$this->s['report']['status'],'currency'=>$this->s['report_currency'],'month'=>$this->s['month']];return 'workspace.php?'.http_build_query(array_replace($base,$extra));}
     private function status(string $status): string {return ['draft'=>$this->t('مسودة · غير مسجلة ماليًا','Draft · not posted'),'active'=>$this->t('نشط','Active'),'archived'=>$this->t('مؤرشف','Archived'),'submitted'=>$this->t('بانتظار الاعتماد','Submitted'),'approved'=>$this->t('معتمد · لم يُدفع بعد','Approved · unpaid'),'posted'=>$this->t('منفذ ومرحل ماليًا','Paid / received & posted'),'rejected'=>$this->t('مُعاد للتصحيح','Returned for correction'),'reversed'=>$this->t('معكوس ماليًا','Reversed')][$status]??$status;}
     private function name(int $id): string {foreach($this->s['staff']as$p)if($p['id']===$id)return trim($p['name'])!==''?$p['name']:$p['login'];return '#'.$id;}
     private function money(string $value,string $currency): string{return '<bdi>'.self::e($value.' '.$currency).'</bdi>';}
@@ -78,7 +78,7 @@ if($state['history']){ ?><details class="workspace-card"><summary><?= $this->t('
     private function editor(): void
     {
         if($this->s['kind']==='settings'){$this->form();return;}
-        $row=$this->s['selected'];if(($row&&(!($this->s['permissions']['update']??false)||!in_array($row['status'],['draft','rejected','active'],true)))||(!$row&&!($this->s['permissions']['create']??false)))return;
+        $row=$this->s['selected'];if($this->s['kind']==='opening')return;if(($row&&(!($this->s['permissions']['update']??false)||!in_array($row['status'],['draft','rejected','active'],true)))||(!$row&&!($this->s['permissions']['create']??false)))return;
         ?><dialog class="workspace-modal" id="workspace-editor" aria-labelledby="workspace-editor-title"<?= $row?' data-workspace-auto-open':'' ?>><header><h2 id="workspace-editor-title"><?= self::e(($row?$this->t('تعديل · ','Edit · '):$this->t('إضافة · ','Add · ')).$this->label($this->s['kind'])) ?></h2><button type="button" class="button button-muted" data-workspace-close aria-label="<?= $this->t('إغلاق','Close') ?>"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></header><?php $this->form(); ?><button type="button" class="button button-muted workspace-cancel" data-workspace-close><?= $this->t('إلغاء','Cancel') ?></button></dialog><?php
     }
     private function cashAccounts(): void

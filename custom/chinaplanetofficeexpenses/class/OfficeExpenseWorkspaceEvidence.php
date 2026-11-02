@@ -47,8 +47,8 @@ final class OfficeExpenseWorkspaceEvidence
     }
     private function canAttach(array $source): void
     {
-        $this->service->get($source['office'],$source['kind'],$source['id']);
-        if(!in_array($source['kind'],['expense','advance','advance_return','advance_settlement','receipt','deposit','payroll'],true)||!in_array($source['status'],['draft','rejected'],true))throw new DomainException('Only unsubmitted financial drafts accept evidence.');
+        $this->service->get($source['office'],$source['kind'],$source['id']);if($source['kind']==='opening'&&$source['owner']!==$this->actor)throw new DomainException('Only the opening reconciliation owner can attach its evidence.');
+        if(!in_array($source['kind'],['opening','expense','advance','advance_return','advance_settlement','receipt','deposit','payroll'],true)||!in_array($source['status'],['draft','rejected'],true))throw new DomainException('Only unsubmitted financial drafts accept evidence.');
         if(!(($source['owner']===$this->actor&&$this->service->allowed($source['office'],$source['kind'],'create'))||$this->service->allowed($source['office'],$source['kind'],'update')))throw new DomainException('Evidence attachment is not permitted.');
     }
     private function validateRow(array $row,string $office,string $kind,string $parent): void

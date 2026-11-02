@@ -21,7 +21,7 @@ final class OfficeExpenseNativeFinance
     public function post(array $row,array $plan,array $config,bool $reverse=false): array
     {
         if($this->db->transaction_opened!==1)throw new LogicException('Native financial writer requires the source outer transaction.');
-        $this->settings->assertReady($row['office'],$config);$this->period($plan['date']);
+        $opening=$row['kind']==='opening';$this->settings->assertReady($row['office'],$config,$opening);$this->period($plan['date']);
         foreach($plan['lines']as$line){$this->nativeAmount($line['debit']);$this->nativeAmount($line['credit']);if(in_array($line['role'],['fx_gain','fx_loss'],true)&&$config['fx_policy']!=='historical_with_realized_difference')throw new DomainException('Review the realized FX policy before creating native documents.');}
 
         require_once DOL_DOCUMENT_ROOT.'/compta/bank/class/account.class.php';
@@ -30,13 +30,15 @@ final class OfficeExpenseNativeFinance
         $sourceRow=$this->c->one('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_oe_workspace WHERE entity='.(int)$this->conf->entity.' AND record_ref='.$this->c->quote($row['id']));if(!$sourceRow)throw new DomainException('Financial source unavailable.');
         $native=['resolved_accounts'=>[],'resolved_journals'=>[]];foreach(array_unique(array_merge(array_values($config['accounts']),array_values($config['category_accounts'])))as$glId)if($glId>0)$native['resolved_accounts'][$glId]=$this->settings->account($glId)['account_number'];foreach(['journal_id','expense_journal_id','adjustment_journal_id','opening_journal_id']as$journalKey)$native['resolved_journals'][$config[$journalKey]]=$this->settings->journal($config[$journalKey])['code'];$account=null;$map=null;$bankId=0;$payment=null;$expense=null;$expenseLine=0;
         $sign=$reverse?-1:1;$baseAmount=$this->nativeAmount($plan['valuation']['base_amount']);
-        if(bccomp($plan['cash_amount'],'0',2)!==0){
+        if($opening||bccomp($plan['cash_amount'],'0',2)!==0){
             $map=$config['money'][$plan['currency']][$plan['method']]??null;if(!$map)throw new DomainException('Review the branch payment-channel account before posting.');
             $mapped=$this->settings->moneyAccount($row['office'],$plan['currency'],$plan['method'],$map);$id=(int)$mapped['rowid'];
             $locked=$this->c->one('SELECT rowid FROM '.MAIN_DB_PREFIX.'bank_account WHERE rowid='.$id.' AND entity='.(int)$this->conf->entity.' FOR UPDATE');if(!$locked)throw new DomainException('Native money account unavailable.');
             $account=new Account($this->db);$this->ok($account->fetch($id),'Native money account fetch');
             if($account->currency_code!==$plan['currency']||(int)$account->status!==0)throw new DomainException('Native money account changed.');
-            $this->funds($id,$plan['date'],$plan['cash_amount']);$native['account_id']=$id;
+            $this->funds($id,$plan['date'],$plan['cash_amount']);$native['account_id']=$id;$native['resolved_accounts'][$map['gl_id']]=$mapped['gl']['account_number'];
+            if($opening){$bankId=$plan['source_bank_id'];$native['bank_id']=$bankId;$this->verifyOpening($bankId,$id,$plan);$existing=$this->c->one('SELECT CAST(COALESCE(SUM(debit-credit),0) AS DECIMAL(30,8)) AS balance FROM '.MAIN_DB_PREFIX.'accounting_bookkeeping WHERE entity='.(int)$this->conf->entity." AND doc_type='bank' AND fk_doc=".$bankId.' AND numero_compte='.$this->c->quote($mapped['gl']['account_number']));if(!$reverse&&bccomp($existing['balance'],'0',8)!==0)throw new DomainException('This existing opening already has native GL value. Reconcile it before creating another entry.');}
+
         }
         if(in_array($row['kind'],['expense','advance_settlement'],true)){
             [$expense,$expenseLine]=$this->expense($row,$plan,$config,$sign);$native['expense_id']=(int)$expense->id;$native['expense_line_id']=$expenseLine;
@@ -54,7 +56,7 @@ final class OfficeExpenseNativeFinance
         }elseif($row['kind']==='receipt'&&$plan['invoice_id']>0){
             [$payment,$invoice]=$this->invoicePayment($row,$plan,$config,$reverse);$native['customer_payment_id']=(int)$payment->id;$native['invoice_id']=(int)$invoice->id;
         }
-        if($account){
+        if($account&&!$opening){
             $roles=array_values(array_filter(array_column($plan['lines'],'role'),static fn($r)=>$r!=='cash'));$counter=count($roles)===1?$roles[0]:'';if($expense)$counter='employee_payable';$counterCode=$counter===''?'':$this->settings->account($config['accounts'][$counter])['account_number'];
             $native['resolved_accounts'][$map['gl_id']]=$mapped['gl']['account_number'];
             $bankId=$account->addline(self::timestamp($plan['date']),$mapped['payment']['code'],'CPO '.$row['office'].' '.$row['kind'].' '.$row['id'].($reverse?' REV':''),$this->nativeAmount($plan['cash_amount']),'',0,$this->user,'','',$counterCode,self::timestamp($plan['date']),'',$this->nativeAmount($plan['cash_base']),'Source '.$row['id']);$this->ok($bankId,'Native bank movement create');$native['bank_id']=$bankId;
@@ -76,7 +78,7 @@ final class OfficeExpenseNativeFinance
             $groups[]=['type'=>'expense_report','source'=>(int)$expense->id,'detail'=>$expenseLine,'journal'=>$config['expense_journal_id'],'lines'=>$expenseLines];
             foreach($lines as&$line)if($line['role']==='expense')$line['role']='employee_payable';unset($line);
         }
-        $groups[]=['type'=>$bankId>0?'bank':'cpo_office','source'=>$bankId>0?$bankId:(int)$workspace['rowid'],'detail'=>$bankId>0?$bankId:$row['revision'],'journal'=>$bankId>0?$config['journal_id']:$config['adjustment_journal_id'],'lines'=>$lines];
+        $groups[]=['type'=>$bankId>0?'bank':'cpo_office','source'=>$bankId>0?$bankId:(int)$workspace['rowid'],'detail'=>$bankId>0?$bankId:$row['revision'],'journal'=>$opening?$config['opening_journal_id']:($bankId>0?$config['journal_id']:$config['adjustment_journal_id']),'lines'=>$lines];
         $native['journals']=[];
         foreach($groups as$group){OfficeExpenseFinancialPlan::assertBalanced($group['lines']);$native['journals'][]=$this->journal($row,$plan,$config,$group,$mapped['gl']??null,$party,$reverse);}
         if($this->db->transaction_opened!==1)throw new RuntimeException('Native API changed the outer transaction boundary.');
@@ -111,7 +113,7 @@ final class OfficeExpenseNativeFinance
     {
         foreach($posting['resolved_accounts']??[]as$id=>$number){$a=$this->c->one('SELECT account_number FROM '.MAIN_DB_PREFIX.'accounting_account WHERE rowid='.(int)$id.' AND entity='.(int)$this->conf->entity);if(!$a||$a['account_number']!==$number)throw new DomainException('Posted native account mapping changed; reconcile before reversal.');}
         foreach($posting['resolved_journals']??[]as$id=>$code){$j=$this->c->one('SELECT code FROM '.MAIN_DB_PREFIX.'accounting_journal WHERE rowid='.(int)$id.' AND entity='.(int)$this->conf->entity);if(!$j||$j['code']!==$code)throw new DomainException('Posted native journal mapping changed; reconcile before reversal.');}
-        $plan=$posting['plan'];if(!empty($posting['bank_id']))$this->verifyBank($posting['bank_id'],$posting['account_id'],$plan);
+        $plan=$posting['plan'];if(!empty($posting['bank_id'])){if($plan['kind']==='opening')$this->verifyOpening($posting['bank_id'],$posting['account_id'],$plan);else $this->verifyBank($posting['bank_id'],$posting['account_id'],$plan);}
         $sign=!empty($plan['reversal'])?'-1':'1';$bank=(int)($posting['bank_id']??0);
         if(!empty($posting['expense_id'])){
             $r=$this->c->one('SELECT fk_user_author,paid,fk_statut,CAST(CAST(total_ttc AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'expensereport WHERE rowid='.(int)$posting['expense_id'].' AND entity='.(int)$this->conf->entity);
@@ -175,6 +177,11 @@ final class OfficeExpenseNativeFinance
     {
         if(bccomp($amount,'0',2)>=0)return;$rows=$this->c->rows('SELECT rowid,dateo,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.' ORDER BY dateo,rowid FOR UPDATE');$balance='0.00';$applied=false;foreach($rows as$r){if(substr($r['dateo'],0,10)>$date&&!$applied){$balance=bcadd($balance,$amount,8);$applied=true;if(bccomp($balance,'0',8)<0)throw new DomainException('Insufficient funds on the selected posting date.');}$balance=bcadd($balance,$r['amount'],8);if($applied&&bccomp($balance,'0',8)<0)throw new DomainException('This backdated movement would overdraw a later recorded balance.');}
         if(!$applied&&bccomp(bcadd($balance,$amount,8),'0',8)<0)throw new DomainException('The selected branch account has insufficient available funds on this date.');
+    }
+    private function verifyOpening(int $id,int $account,array $plan): void
+    {
+        $b=$this->c->one('SELECT fk_account,dateo,fk_type,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank WHERE rowid='.$id);
+        if(!$b||(int)$b['fk_account']!==$account||$b['fk_type']!=='SOLD'||substr($b['dateo'],0,10)!==$plan['source_bank_date']||bccomp($b['amount'],$plan['source_bank_amount'],8)!==0)throw new DomainException('The existing native opening differs from its reviewed source.');
     }
     private function verifyBank(int $id,int $account,array $plan): void
     {

@@ -6,7 +6,7 @@ require_once __DIR__.'/OfficeExpenseWorkspaceDocument.php';
 /** Exact posting preview; account roles are resolved against reviewed native mappings later. */
 final class OfficeExpenseFinancialPlan
 {
-    public const KINDS=['expense','deposit','receipt','advance','advance_return','advance_settlement','payroll'];
+    public const KINDS=['opening','expense','deposit','receipt','advance','advance_return','advance_settlement','payroll'];
     public static function intent(array $row,array $input,string $base,string $today): array
     {
         if(!in_array($row['kind'],self::KINDS,true))throw new DomainException('Document has no financial operation.');
@@ -38,7 +38,8 @@ final class OfficeExpenseFinancialPlan
         $convert=static fn(string $amount):string=>$money->convert($amount,$currency,$base,$quote)['base_amount'];
         $lines=[];$line=static function(string $role,string $amount,string $side)use(&$lines):void{if(bccomp($amount,'0',2)!==0)$lines[]=['role'=>$role,'debit'=>$side==='debit'?$amount:'0.00','credit'=>$side==='credit'?$amount:'0.00'];};
         $amount=$valuation['base_amount'];$cash=$v[$kind==='payroll'?'net':'amount'];$cashBase=$convert($cash);$direction=1;
-        if($kind==='expense'){$direction=-1;$line('expense',$amount,'debit');$line('cash',$amount,'credit');}
+        if($kind==='opening'){$line('cash',$amount,'debit');$line('opening_equity',$amount,'credit');$cash='0.00';$cashBase='0.00';}
+        elseif($kind==='expense'){$direction=-1;$line('expense',$amount,'debit');$line('cash',$amount,'credit');}
         elseif($kind==='deposit'){$line('cash',$amount,'debit');$line($intent['funding_type']==='owner'?'owner_funding':'transfer_clearing',$amount,'credit');}
         elseif($kind==='receipt'){
             $line('cash',$amount,'debit');$receivable=$intent['invoice_id']>0?($allocation['base_amount']??null):$amount;if($receivable===null)throw new DomainException('Verified native invoice valuation is required.');
@@ -58,7 +59,7 @@ final class OfficeExpenseFinancialPlan
             self::balance($lines,$line,'rounding');
         }else throw new DomainException('Unsupported financial document.');
         self::assertBalanced($lines);
-        return ['document'=>$row['id'],'kind'=>$kind,'office'=>$row['office'],'date'=>$intent['date'],'currency'=>$currency,'base_currency'=>$base,'cash_amount'=>$direction<0?bcsub('0',$cash,2):$cash,'cash_base'=>$direction<0?bcsub('0',$cashBase,2):$cashBase,'valuation'=>$valuation,'lines'=>$lines,'staff_id'=>$kind==='payroll'?$v['user_id']:$intent['staff_id'],'party_id'=>$intent['party_id'],'invoice_id'=>$intent['invoice_id'],'allocation_ref'=>$v['settles_ref']??$intent['loan_ref'],'allocation_original'=>$kind==='payroll'?$v['loan_repayment']:(in_array($kind,['advance_return','advance_settlement'],true)?$v['amount']:'0.00'),'allocation_base'=>$carrying??'0.00','setup_revision'=>$intent['setup_revision'],'method'=>$intent['method'],'invoice_base_amount'=>$kind==='receipt'&&$intent['invoice_id']>0?$allocation['base_amount']:'0.00','invoice_original_amount'=>$kind==='receipt'&&$intent['invoice_id']>0?$allocation['original_amount']:'0.00','invoice_aux'=>$kind==='receipt'&&$intent['invoice_id']>0?($allocation['aux']??''):''];
+        return ['source_bank_id'=>$kind==='opening'?$v['bank_id']:0,'source_bank_date'=>$kind==='opening'?$v['date']:'','source_bank_amount'=>$kind==='opening'?$v['amount']:'0.00','document'=>$row['id'],'kind'=>$kind,'office'=>$row['office'],'date'=>$intent['date'],'currency'=>$currency,'base_currency'=>$base,'cash_amount'=>$direction<0?bcsub('0',$cash,2):$cash,'cash_base'=>$direction<0?bcsub('0',$cashBase,2):$cashBase,'valuation'=>$valuation,'lines'=>$lines,'staff_id'=>$kind==='payroll'?$v['user_id']:$intent['staff_id'],'party_id'=>$intent['party_id'],'invoice_id'=>$intent['invoice_id'],'allocation_ref'=>$v['settles_ref']??$intent['loan_ref'],'allocation_original'=>$kind==='payroll'?$v['loan_repayment']:(in_array($kind,['advance_return','advance_settlement'],true)?$v['amount']:'0.00'),'allocation_base'=>$carrying??'0.00','setup_revision'=>$intent['setup_revision'],'method'=>$intent['method'],'invoice_base_amount'=>$kind==='receipt'&&$intent['invoice_id']>0?$allocation['base_amount']:'0.00','invoice_original_amount'=>$kind==='receipt'&&$intent['invoice_id']>0?$allocation['original_amount']:'0.00','invoice_aux'=>$kind==='receipt'&&$intent['invoice_id']>0?($allocation['aux']??''):''];
     }
     private static function allocation(?array $a,string $amount,string $currency): void
     {

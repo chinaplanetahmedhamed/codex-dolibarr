@@ -6,7 +6,7 @@ require_once __DIR__.'/OfficeExpenseWorkspaceLogo.php';
 /** Validated operational documents. This class never writes a cash balance or native payment. */
 final class OfficeExpenseWorkspaceDocument
 {
-    public const SECTIONS=['category'=>'categories','employee'=>'employees','payroll'=>'payroll','settings'=>'settings','deposit'=>'treasury','receipt'=>'receipts','expense'=>'expenses','advance'=>'advances','advance_return'=>'advances','advance_settlement'=>'advances'];
+    public const SECTIONS=['category'=>'categories','employee'=>'employees','payroll'=>'payroll','settings'=>'settings','deposit'=>'treasury','opening'=>'treasury','receipt'=>'receipts','expense'=>'expenses','advance'=>'advances','advance_return'=>'advances','advance_settlement'=>'advances'];
     public const ICONS=['folder','building','bolt','truck-fast','utensils','print','bullhorn','wrench','receipt','users'];
     private OfficeExpenseMoney $money;
     public function __construct(OfficeExpenseMoney $money){$this->money=$money;}
@@ -19,6 +19,7 @@ final class OfficeExpenseWorkspaceDocument
             'employee'=>['user_id','job','phone','salary','currency','hired_on','active','notes'],
             'payroll'=>['user_id','month','base','bonus','deduction','loan_repayment','currency','date','notes'],
             'settings'=>['name','phone','currency','account_id','logo'],
+            'opening'=>['bank_id','amount','currency','date','purpose','notes'],
             'deposit'=>['amount','currency','date','source','purpose','notes'],
             'receipt'=>['amount','currency','date','payer','phone','method','purpose','notes'],
             'expense'=>['amount','currency','date','category_ref','purpose','source_ref','notes'],
@@ -32,7 +33,7 @@ final class OfficeExpenseWorkspaceDocument
             if($field==='logo'){$v[$field]=OfficeExpenseWorkspaceLogo::validate($value);}
             elseif($field==='currency'){$expected=$office==='egypt'?'EGP':'CNY';$allowed=$kind==='settings'?[$expected]:[$expected,'USD'];if(!in_array($value,$allowed,true))throw new InvalidArgumentException('Currency does not match branch configuration.');$v[$field]=$value;}
             elseif(in_array($field,['amount','salary','base','bonus','deduction','loan_repayment'],true)){$currency=$p['currency']??'';if(!is_string($currency))throw new InvalidArgumentException('Invalid currency.');$v[$field]=$this->money->amount($value,$currency);if($field==='amount'&&bccomp($v[$field],'0',4)<=0)throw new InvalidArgumentException('Amount must be positive.');}
-            elseif(in_array($field,['user_id','account_id'],true)){$v[$field]=self::number($value,$field==='account_id');}
+            elseif(in_array($field,['user_id','account_id','bank_id'],true)){$v[$field]=self::number($value,$field==='account_id');}
             elseif(in_array($field,['date','hired_on'],true)){OfficeExpenseMoney::date($value);$v[$field]=$value;}
             elseif($field==='month'){if(!is_string($value)||!preg_match('/^[0-9]{4}-(0[1-9]|1[0-2])$/D',$value))throw new InvalidArgumentException('Invalid salary month.');OfficeExpenseMoney::date($value.'-01');$v[$field]=$value;}
             elseif($field==='active'){if(!in_array($value,['0','1'],true))throw new InvalidArgumentException('Invalid enabled state.');$v[$field]=$value==='1';}
@@ -50,6 +51,7 @@ final class OfficeExpenseWorkspaceDocument
     public function objectKey(string $kind,array $v,string $ref): string
     {
         if($kind==='payroll')return 'payroll:'.$v['user_id'].':'.$v['month'];
+        if($kind==='opening')return 'opening:'.$v['bank_id'].':'.$ref;
         if($kind==='employee')return 'employee:'.$v['user_id'];
         return $kind==='settings'?'settings':$kind.':'.$ref;
     }

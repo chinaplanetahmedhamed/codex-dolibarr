@@ -71,6 +71,7 @@ final class OfficeExpenseWorkspaceService
     }
     public function save(string $office,string $kind,array $payload,string $key,?string $id=null,int $revision=0): array
     {
+        if($kind==='opening'&&!$this->access->isFinanceAdministrator())throw new DomainException('Only the finance administrator can reconcile native openings.');
         $v=$this->documents->validate($kind,$office,$payload);$ref=$id??bin2hex(random_bytes(16));
         $row=['office'=>$office,'kind'=>$kind,'owner'=>$this->actor,'subject'=>(int)($v['user_id']??0)];
         $action=$id===null?($kind==='settings'?'update':'create'):'update';
@@ -81,11 +82,18 @@ final class OfficeExpenseWorkspaceService
     }
     public function change(string $office,string $kind,string $id,int $revision,string $action): array
     {
+        if($kind==='opening'&&!$this->access->isFinanceAdministrator())throw new DomainException('Opening reconciliation requires administrator authority.');
         if(!in_array($action,['archive','restore'],true)||$kind==='settings')throw new InvalidArgumentException('Unsupported document action.');
         return $this->store->change($this->entity,$this->actor,$id,$revision,$action,null,function($old)use($office,$kind,$action){if($old['office']!==$office||$old['kind']!==$kind)throw new DomainException('Document unavailable.');$this->authorize($old,'delete');if($action==='restore')$this->references($office,$kind,$old['content']);});
     }
     private function references(string $office,string $kind,array $v): void
     {
+        if($kind==='opening'){
+            if(!$this->access->isFinanceAdministrator())throw new DomainException('Opening reconciliation requires administrator authority.');
+            $account=null;foreach($this->accounts($office)as$a)if($a['currency']===$v['currency'])$account=$a;if(!$account)throw new DomainException('Native branch account unavailable.');
+            $c=new OfficeExpenseNativeConnection($this->db);$line=$c->one('SELECT dateo,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank WHERE rowid='.$v['bank_id'].' AND fk_account='.(int)$account['id']." AND fk_type='SOLD'");
+            if(!$line||substr($line['dateo'],0,10)!==$v['date']||bccomp($line['amount'],$v['amount'],8)!==0)throw new DomainException('Opening source differs from the existing native cash movement.');
+        }
         if(isset($v['user_id'])){
             $staff=$this->staff($office,OfficeExpenseWorkspaceDocument::SECTIONS[$kind]);
             if(!in_array($v['user_id'],array_column($staff,'id'),true))throw new DomainException('Employee is not active in this branch.');
@@ -103,6 +111,7 @@ final class OfficeExpenseWorkspaceService
             // These are requests, not a settled balance. Never present multiple pending returns as posted settlement.
         }
     }
+    public function validateOpening(array $row): void {$this->get($row['office'],'opening',$row['id']);$this->references($row['office'],'opening',$row['content']);}
     public function history(string $office,string $kind,string $id): array
     {
         $this->get($office,$kind,$id);$c=new OfficeExpenseNativeConnection($this->db);
