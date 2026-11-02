@@ -19,6 +19,7 @@ on:
           - m119-receipt-r05
           - m119-receipt-r06
           - m119-design-r07
+          - m119-design-r08
           - m119-sidebar-verify
         default: m043-c02
       confirmation:
@@ -47,7 +48,7 @@ env:
 
 jobs:
   check_m119:
-    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' || inputs.release == 'm119-standalone-r01' || inputs.release == 'm119-ui-r02' || inputs.release == 'm119-sidebar-r03' || inputs.release == 'm119-sidebar-verify' || inputs.release == 'm119-workspace-r04' || inputs.release == 'm119-receipt-r05' || inputs.release == 'm119-receipt-r06' || inputs.release == 'm119-design-r07' }}
+    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' || inputs.release == 'm119-standalone-r01' || inputs.release == 'm119-ui-r02' || inputs.release == 'm119-sidebar-r03' || inputs.release == 'm119-sidebar-verify' || inputs.release == 'm119-workspace-r04' || inputs.release == 'm119-receipt-r05' || inputs.release == 'm119-receipt-r06' || inputs.release == 'm119-design-r07' || inputs.release == 'm119-design-r08' }}
     name: Office Expenses native storage release checks
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -89,6 +90,8 @@ jobs:
             test "$CONFIRMATION" = DEPLOY_M119_RECEIPT_R06_TO_BACKUP_ERP
           elif [ "$SELECTED_RELEASE" = m119-design-r07 ]; then
             test "$CONFIRMATION" = DEPLOY_M119_DESIGN_R07_TO_BACKUP_ERP
+          elif [ "$SELECTED_RELEASE" = m119-design-r08 ]; then
+            test "$CONFIRMATION" = DEPLOY_M119_DESIGN_R08_TO_BACKUP_ERP
           elif [ "$SELECTED_RELEASE" = m119-sidebar-verify ]; then
             test "$CONFIRMATION" = VERIFY_M119_SIDEBAR_ON_BACKUP_ERP
           else
@@ -122,10 +125,12 @@ jobs:
           python3 -B deploy/tests/test_m119_receipt_deployer.py
           python3 -B deploy/tests/test_m119_receipt_acceptance_deployer.py
           python3 -B deploy/tests/test_m119_design_deployer.py
+          python3 -B deploy/tests/test_m119_design_acceptance_deployer.py
           python3 -B deploy/tests/test_m119_workspace_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_receipt_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_receipt_acceptance_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_design_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
+          python3 -B deploy/tests/test_m119_design_acceptance_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 deploy/tests/test_m119_runtime_preparation.py
           python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
@@ -786,6 +791,75 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '%s\n' 'Backup-erp original design release: exact 59-file closure; nine source-file backups and atomic replacement. No schema, grants, native account, financial posting, credential, production or service change. Rollback restores the nine R06 source files while retaining all data.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_m119_design_acceptance:
+    if: ${{ inputs.release == 'm119-design-r08' }}
+    needs: check_m119
+    name: Complete treasury period and dashboard design acceptance on backup-erp
+    runs-on: ubuntu-24.04
+    environment: backup-erp
+    timeout-minutes: 20
+    env:
+      STANDALONE_SOURCE: a08a0177848091bd4b1aedf6e0d683632ac437bf
+      STANDALONE_SHA: 42432dc04b4a51a79c096454a16e2d88b001678177a731cd05fdf6a2c10c8bd5
+      STANDALONE_MANIFEST: 7d087b1e5fbfaeef7363349e6d4f5df9be494abde7c03be3195b68a7656dd5bd
+      STANDALONE_HELPER: 10e70456968018abfac3122c8385298cd1ed50fad4aa57946010cda96678f7c1
+    steps:
+      - name: Check out immutable delivery source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify confirmation helper and source closure then build the frozen package
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = DEPLOY_M119_DESIGN_R08_TO_BACKUP_ERP
+          test "$(sha256sum deploy/releases/m119/design_acceptance_helper.py | cut -d' ' -f1)" = "$STANDALONE_HELPER"
+          python3 -B - <<'PYCODE'
+          import importlib.util, os, pathlib, subprocess
+          spec=importlib.util.spec_from_file_location('standalone','deploy/releases/m119/build_standalone_artifact.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          for path in m.WORKSPACE_RUNTIME_FILES:
+              assert subprocess.check_output(['git','show','HEAD:'+path]) == subprocess.check_output(['git','show',os.environ['STANDALONE_SOURCE']+':'+path]), 'Pinned application source changed.'
+          m.build(os.environ['STANDALONE_SOURCE'],pathlib.Path(os.environ['RUNNER_TEMP'])/'m119')
+          PYCODE
+          test "$(sha256sum "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" | cut -d' ' -f1)" = "$STANDALONE_SHA"
+          test "$(sha256sum "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" | cut -d' ' -f1)" = "$STANDALONE_MANIFEST"
+      - name: Use the existing restricted staging identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify installed helper and upload only the pinned package
+        run: |
+          set -Eeuo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = 10e70456968018abfac3122c8385298cd1ed50fad4aa57946010cda96678f7c1'
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
+      - name: Preflight exact backup runtime identities and staff baseline
+        run: bash deploy/releases/m119/run_design_acceptance_remote_action.sh preflight
+      - name: Back up and replace only three design source files
+        id: apply
+        run: |
+          echo 'attempted=true' >> "$GITHUB_OUTPUT"
+          bash deploy/releases/m119/run_design_acceptance_remote_action.sh apply
+      - name: Verify complete receipt closure and unchanged native branch access
+        run: bash deploy/releases/m119/run_design_acceptance_remote_action.sh verify
+      - name: Restore exact three predecessor source files on failure
+        if: ${{ failure() && steps.apply.outputs.attempted == 'true' }}
+        run: bash deploy/releases/m119/run_design_acceptance_remote_action.sh rollback
+      - name: Record exact release boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Backup-erp original design release: exact 59-file closure; three source-file backups and atomic replacement. No schema, grants, native account, financial posting, credential, production or service change. Rollback restores the three R07 source files while retaining all data.' >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     if: ${{ inputs.release == 'm043-c02' }}
