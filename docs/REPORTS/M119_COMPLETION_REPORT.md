@@ -16,6 +16,10 @@ Latest [native storage/migration milestone](M119_NATIVE_STORAGE_MIGRATION.md): *
 
 [Receipt design acceptance](M119_RECEIPT_DESIGN_CORRECTION.md) records current R06 backup-ERP application1be58db, exact source backup/apply/verify and independent verification,32 component cases plus full matching-engine Mission CI, native AR/EN branch print/denial checks,392px/1280px layouts, and one-page A4 PDF exports with three independently decoded local QR. No native finance/schema/role writes. Actual payment activation has been requested; approval ownership and statutory-posting scope remain pending in the [proposed activation contract](../M119_NATIVE_PAYMENT_ACTIVATION.md).
 
+## Original design and report charts — 2026-11-02
+
+[Final design acceptance](M119_DESIGN_PARITY_CORRECTION.md) records deployed R08 application `afeb72b1c0e69233c59e99afb18609fd7e3053dc`, full matching-engine CI with zero failed suites, 88 native responsive cases, original font/color controls, Back navigation, six-month/category charts, explicit treasury periods and a fresh one-page three-copy native receipt PDF with three decoded QR. No schema, grants, financial posting or production change.
+
 ## Delivered
 
 - Private Finens reference retrieved through the authenticated GitHub connector and reconstructed/verified against exact remote Git objects: `2955c7efca00dfac0edc30baa3124ec85944cc71`. The reference stays clean on `main`; original sensitive database/history were never imported.
