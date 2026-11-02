@@ -416,7 +416,7 @@ jobs:
     timeout-minutes: 30
     env:
       BOARDS_INBOX: /home/codex-deploy/staging-inbox/boards-backup-9b11ede
-      BOARDS_SHA: 75fc5e2bccf13ecf266ada483b9d5b51e3dc31cd371d84c0a206f7655dbad8c1
+      BOARDS_SHA: 42226e7921ea56a61ab383e632ac5556111aa4bf453d35009c832f78a0b17d3a
     steps:
       - name: Require exact approved backup-only scope
         env:
