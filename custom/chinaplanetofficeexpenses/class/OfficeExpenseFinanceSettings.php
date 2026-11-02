@@ -79,6 +79,7 @@ final class OfficeExpenseFinanceSettings
     public function assertReady(string $office,array $v,bool $opening=false): void
     {
         if((!$v['enabled']&&!$opening)||!$this->coreEnabled()||$v['base_currency']!==$this->base())throw new DomainException('Native double-entry accounting and reviewed branch mappings are required.');
+        if(trim((string)($this->conf->global->BOOKKEEPING_ADDON??''))===''||trim((string)($this->conf->global->EXPENSEREPORT_ADDON??''))==='')throw new DomainException('Configure native bookkeeping and expense numbering before enabling financial operations.');
         if($v['expense_tax_mode']!=='gross_no_tax_recovery')throw new DomainException('Review the gross expense/no automatic input-tax-recovery policy first.');
         $fee=$this->c->one('SELECT id FROM '.MAIN_DB_PREFIX.'c_type_fees WHERE id='.$v['expense_type_id'].' AND active=1');if(!$fee)throw new DomainException('Select the native expense type.');
         $offset=$this->paymentType($v['offset_payment_id']);if((int)$offset['type']!==3)throw new DomainException('Select an explicit noncash compensation payment type.');

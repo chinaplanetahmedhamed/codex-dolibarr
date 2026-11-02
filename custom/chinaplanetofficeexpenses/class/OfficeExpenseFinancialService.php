@@ -42,7 +42,13 @@ final class OfficeExpenseFinancialService
     }
     public function state(string $office,?array $row=null): array
     {
-        $config=$this->settings->internal($office);$v=$config['content'];$out=['enabled'=>$v['enabled']&&$this->settings->coreEnabled(),'opening_enabled'=>$this->settings->coreEnabled(),'base'=>$this->settings->base(),'revision'=>$config['revision'],'administrator'=>$this->access->isFinanceAdministrator(),'evidence_available'=>$this->evidence!==null,'openings'=>[]];
+        $config=$this->settings->internal($office);$v=$config['content'];$out=['enabled'=>$v['enabled']&&$this->settings->coreEnabled(),'opening_enabled'=>$this->settings->coreEnabled(),'base'=>$this->settings->base(),'revision'=>$config['revision'],'administrator'=>$this->access->isFinanceAdministrator(),'evidence_available'=>$this->evidence!==null,'openings'=>[],'payment_accounts'=>[]];
+        if($this->source->allowed($office,'treasury','read')&&$this->access->recordScope($office,'treasury')==='branch'){
+            $c=new OfficeExpenseNativeConnection($this->db);$seen=[];foreach($v['money']as$currency=>$channels)foreach($channels as$channel=>$map){if($channel==='cash'||$map['native_id']<1||isset($seen[$map['native_id']]))continue;$a=$this->settings->moneyIdentity($office,$currency,$channel,$map['native_id']);$seen[$map['native_id']]=true;
+                $r=$c->one('SELECT CAST(CAST(COALESCE(SUM(amount),0) AS DECIMAL(30,8)) AS CHAR) AS balance,CAST(CAST(COALESCE(SUM(CASE WHEN dateo<='.$c->quote($this->native->today()).' THEN amount ELSE 0 END),0) AS DECIMAL(30,8)) AS CHAR) AS available FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.(int)$a['rowid']);$out['payment_accounts'][]=['reference'=>$a['ref'],'label'=>$a['label'],'currency'=>$currency,'balance'=>$r['balance'],'available'=>$r['available'],'as_of'=>$this->native->today()];
+            }
+            if($this->access->recordScope($office,'treasury')!=='branch')throw new DomainException('Branch treasury access changed.');
+        }
         if($out['administrator']&&$this->settings->coreEnabled()){
             $c=new OfficeExpenseNativeConnection($this->db);foreach($v['money']as$currency=>$channels){$map=$channels['cash']??null;if(!$map||$map['native_id']<1||$map['gl_id']<1)continue;try{$a=$this->settings->moneyAccount($office,$currency,'cash',$map);}catch(DomainException $unready){continue;}$rows=$c->rows('SELECT b.rowid,b.dateo,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank AS b WHERE b.fk_account='.(int)$a['rowid']." AND b.fk_type='SOLD' AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX.'accounting_bookkeeping AS g WHERE g.entity='.(int)$this->conf->entity." AND g.doc_type='bank' AND g.fk_doc=b.rowid AND g.numero_compte=".$c->quote($a['gl']['account_number']).' HAVING SUM(g.debit-g.credit)>0)');foreach($rows as$r)$out['openings'][]=['id'=>(int)$r['rowid'],'currency'=>$currency,'amount'=>bcadd($r['amount'],'0',2),'date'=>substr($r['dateo'],0,10)];}
         }
@@ -100,7 +106,7 @@ final class OfficeExpenseFinancialService
                     }else{
                         self::fields($input,['date','reason']);$reason=$input['reason']??'';if(!is_string($reason))throw new InvalidArgumentException('Reversal reason required.');OfficeExpenseMoney::text(trim($reason),1000);
                         $posting=$f['posting']??null;if(!$posting)throw new DomainException('Original native posting evidence missing.');$this->native->verifyPosted($posting);if($row['kind']==='opening'&&$config['content']['enabled'])throw new DomainException('Disable financial posting before correcting its opening GL representation.');$this->noDependents($row);
-                        $plan=OfficeExpenseFinancialPlan::reverse($posting['plan'],$input['date']??'',$this->native->today());
+                        $plan=OfficeExpenseFinancialPlan::reverse($posting['plan'],$input['date']??'',$this->native->today());$plan['journal_preview']=$this->native->preview($row,$plan,$posting['configuration']);
                         $f['reversal']=$this->native->post($row,$plan,$posting['configuration'],true);$f['reversal']['reason']=trim($reason);
                     }
                     $content['_finance']=$f;return $content;
@@ -136,7 +142,7 @@ final class OfficeExpenseFinancialService
         $allocation=null;$ref=$row['content']['settles_ref']??$intent['loan_ref'];
         if(in_array($row['kind'],['advance_return','advance_settlement'],true)||($row['kind']==='payroll'&&bccomp($row['content']['loan_repayment'],'0',2)>0))$allocation=$this->advance($row,$ref,$staff);
         if($row['kind']==='receipt')$allocation=$this->native->invoiceValuation($row,$intent,$config['content']);
-        return OfficeExpenseFinancialPlan::build($row,$intent,$allocation);
+        $plan=OfficeExpenseFinancialPlan::build($row,$intent,$allocation);$plan['journal_preview']=$this->native->preview($row,$plan,$config['content']);return $plan;
     }
     private function advance(array $row,string $ref,int $staff,bool $lock=true): array
     {
