@@ -1,0 +1,15 @@
+# M107-C02 backup-only Boards installation
+
+Application7bb0686140da488a3d73ef4ae92d6a9cda686249 ports cumulative customer/project Boards and the tested48856ac scrolling fix to the verified old backup baseline.45runtime paths;35preserved dependency paths. No task-hub, supplier, M116 finance activation, Office code, core upgrade or grants.
+
+Target is only srv1011043 erp-staging containers/volumes, loopback18088, native24.0.1/PHP8.2.32/MariaDB10.6.27. Strict source/core/image/config/DB identity guards precede writes. Seven additive feature tables/customer boolean option, six feature flags, existing hook contexts plus leftblock. No migration of existing tasks, records, memberships or rights; no module initialization.
+
+Workflow uses existing backup-erp environment and backup-erp-deployment concurrency. It uploads immutable package/helper and holds a bounded workflow lease; no sudoers grant or Office helper. Authorized root Termius executes exact pinned helper after independently checking the active job and commit. No other live writer.
+
+Before application writes, root-private per-file originals (existence/hash/UID/GID/mode), native fingerprints and a full transaction-consistent gzip DB dump are retained under /root/boards-backup-release-20261103. DB dump streams only server-side, is0600, CRC/footer/table-count verified; no agent or GitHub DB export. No database restore.
+
+Three Boards entrypoints briefly return503 while dependencies/schema/settings are installed. Caller entrypoints are exposed last. Before exposure a failed install may restore original code/settings only when all new tables are empty and protected data fingerprints unchanged. The exposure boundary is persisted before opening the first entry. Once exposed, failures retain compatible new backend/schema/settings for reconciliation. Never restore old pre-workspace parsers after user writes.
+
+After installation, `rollback_ui` is a data-preserving seven-file UI fallback to known-compatiblec2ad887. It retains feature backend/schema/flags/new data. It validates pinned source/metadata, records progress, and restores coherent current UI after an injected mid-fallback error. Unknown concurrent edits cause refusal. It does not uninstall the feature.
+
+Verification:276native synthetic assertions on exact24.0.1 core;34runtime syntax checks; existing scrolling20checks; additional sound/live-pointer/workspace suites. Controller18fault/safety tests and preflight7tests. Native HTTP test uses normal existingM097identity; no new accounts/grants. Physical touchscreen remains manual acceptance. Browser loopback connection became unavailable after native24.0.1 Englishgallery rendered; do not call remaining native UI acceptance passed until actual backup browser verification.

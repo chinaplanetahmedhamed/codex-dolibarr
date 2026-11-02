@@ -1,0 +1,679 @@
+{
+  "schema": 1,
+  "mission": "M107-C02",
+  "application_commit": "7bb0686140da488a3d73ef4ae92d6a9cda686249",
+  "fallback_commit": "c2ad8875619b201655dd115fb00bf9e67497301c",
+  "target_images": {
+    "erp-staging-dolibarr-1": "sha256:36e95f5a6ae4308c3fda7ea7b1b93bb845ce45cbdd0ddd0a990131bc6ffadcb9",
+    "erp-staging-mariadb-1": "sha256:daacc2f260f8ec999daa5e03a017a23a7e6fa3fb982aaf26e8b72f24daf03bc9",
+    "erp-staging-mailpit-1": "sha256:81370195cd4a0eab9604d17c2617a7525b0486f9365555253b6c5376c6350f1a"
+  },
+  "core_pins": {
+    "version.inc.php": "8c88004ffcb86780a6dce9d0d67ba738f2ce2a0816ab2c60ab83dc30d5a6b6da",
+    "projet/class/task.class.php": "efcd0d3a0aea351a5b663cf5cfab1eb6c3a940fa28ab0ee37cc35c1d921fadc9",
+    "projet/class/project.class.php": "b77612b38fc7830ad4a9c8439b42e92629faecf06fd106b4effcf74a491896d4"
+  },
+  "files": [
+    {
+      "path": "chinaplanetoperations/class/InternalTaskAuthorizationService.class.php",
+      "sha256": "db9c4d5037ff572fedf716c15108a0b0b42ff940e091b60c0303c9940d0548dc",
+      "size": 17411,
+      "before_sha256": "fbb6a5ba0a243b61ac8ed104203f00ce1f455ebe00d38d58e8662240b3986401",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardCounts.class.php",
+      "sha256": "8b6d9b4e8a777ba8ba37d9dbb29aa3346a0d278fb1e381f48a1dad329c027406",
+      "size": 935,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardLifecycle.class.php",
+      "sha256": "051b905a952cb707f31800a4647aa106992bec45cbfa33a806ce06bac75d8837",
+      "size": 3814,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardLifecycleMigration.class.php",
+      "sha256": "d09f5bca8919dd7502922e2ae27495cb5c8158c0f326750d6aa530748a4aaf7d",
+      "size": 1531,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardPolicy.class.php",
+      "sha256": "33ebc22bee020749008ea9068c4a6f72dd27b148b1748d4263698803b848f494",
+      "size": 2407,
+      "before_sha256": "c09ff0f11a032cb468beeed42eb48d9d0c7c261182ae3801258ea7532688185d",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardsService.class.php",
+      "sha256": "5c52ccf95f58bb6057d08cc21f6f6f0bc0d520dcfc54ae80d4ccca96bde29585",
+      "size": 29944,
+      "before_sha256": "0dc1b300d1e6039cd7187d0d52459a55a11091bf8a8e00b43eff9aaaa833540d",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardsShortcutMigration.class.php",
+      "sha256": "2e3f7368cf84bcfd3534d386df10cebc6cb1b0131885744be0a7568d53df9fd5",
+      "size": 1208,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskCompletionMigration.class.php",
+      "sha256": "34edf1c0d54ae2cb598e8b7840231c3f5ba97117b6d7a7009122e26337797766",
+      "size": 1552,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskCompletionService.class.php",
+      "sha256": "e94e3df23595d64400af1c5d839d2be06e56aeaa38885d5fed442eb15986e242",
+      "size": 7537,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskContextService.class.php",
+      "sha256": "a7564b3ae7a6397ccf26062f6c0178fb326c43c52135e222131ed5efb10eac83",
+      "size": 20535,
+      "before_sha256": "626c57ca9ddac1fbaf4c3b2d69f4d3eb8377b69402bfb5468210421c01114210",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskProjectDeadline.class.php",
+      "sha256": "e33db857efa0d5fc8093f82977a1485a93bafff62fb53b011f8b0a8cb8257efb",
+      "size": 1084,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskProjectTaskMigration.class.php",
+      "sha256": "0bc1353f920de58b2b2d38b1c1efc1aa16e01f837c2440a50327fc02f0688908",
+      "size": 1861,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskProjectTaskService.class.php",
+      "sha256": "a03eb1e30631f6ba0841b87b4138390f75cdf89285f5a31c5884a3002f1af02a",
+      "size": 9745,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskService.class.php",
+      "sha256": "acacacfdfd6c162d88c896377f4d13d140ff28d25d23492fdbb50300594fe862",
+      "size": 46810,
+      "before_sha256": "e50ea740f7e671378a60f1b09d3717918b5ad33d0867c048559237042e50117a",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskWorkspaceAppearance.class.php",
+      "sha256": "7e0cecee9c929b689a5de46a4914e4b06e92b5349c715853d3ce31c36aeea586",
+      "size": 5351,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskWorkspaceAppearanceMigration.class.php",
+      "sha256": "183af8e1f5d6bffccc82e804f2497d5d48381882efd7ac244b8940b1324b1253",
+      "size": 1685,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskWorkspaceGalleryMigration.class.php",
+      "sha256": "2f94f2411cdee988e2dbd8760386b814a554402fcfe01680dc7592a926a33f10",
+      "size": 1825,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskWorkspaceGalleryService.class.php",
+      "sha256": "cda3a9cc5bb5560f0086f749a68aae5d3e8e0fbac6b9706a96a4d2d8c5f74940",
+      "size": 9380,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskWorkspaceMigration.class.php",
+      "sha256": "dd175c2a543bde9c03f121ded280f600c4ffcde03c9f752d38b9fb796197bd2f",
+      "size": 2410,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskWorkspaceService.class.php",
+      "sha256": "00d9ded215eabcf96766175dfdb20958bc95b3d3c0808996e4f7b88af7e70885",
+      "size": 12664,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/actions_chinaplanetoperations.class.php",
+      "sha256": "ba289e12e54580634040eee2181e61b3f9bbeda71065a0d78b934469700fe7b9",
+      "size": 5734,
+      "before_sha256": "3c8f8359b09b684546893d33577d9a4b14ca60ec01e88ebcee4c3dda4c7aa415",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php",
+      "sha256": "52ebaf360be3345af1e35e75ee170966abe4f98e11a3b5b757d92512a71cfb16",
+      "size": 16390,
+      "before_sha256": "ce05c198a9224fef482a15d3d5c71bd11eae120f9ee69dfad8e769d8f38425e9",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/css/boards.css",
+      "sha256": "f8bb83b329892d0746736c91e4565554554f04b1fb999e2d8fc87fc4fbe9fe3f",
+      "size": 35125,
+      "before_sha256": "750dc4ecdf8425020e95d2ee020d0e057279315820b0995bfae1cdba4c2e7fcc",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/css/card_board.css",
+      "sha256": "7dad411f1d07cda500eb52e790df88c29381b5cfd6fa7f9d6271bec855a76044",
+      "size": 21098,
+      "before_sha256": "883e8714df0efbfd15620155f20774b7057b56f32aa57dc5ff3b5785bc62bbbe",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/css/card_operation.css",
+      "sha256": "4babf81598957b0ded6f0bf09153c6a9d3ea774d407349cfaf5994a5a79fac1b",
+      "size": 4856,
+      "before_sha256": "673f768e2c81118f18c389155a89f992a33aa8d24d36fc32acb2a3675a7fb7aa",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/boards.js",
+      "sha256": "3c5262c707e0edcd2e28e6616fcf3eb96624123c147ff3bd4306e7b4ac747b3c",
+      "size": 91780,
+      "before_sha256": "56121c14b0d9dbf36e5c004d3e0a21fa3185a45562eae3b02055ca1d1fd266a9",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/boards_geometry.js",
+      "sha256": "604ce5f3bd4e2262b756cc1a3d826dd397e4a3088000c90f39dbb2d64cae25f0",
+      "size": 5018,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/boards_live_runtime.js",
+      "sha256": "01a57890e4ea586f609d7acd8755fce8c5ea5f097ac38be8c5abcafb57371394",
+      "size": 6053,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/boards_sounds.js",
+      "sha256": "c7771109161e2dfb35b88f4d37a52daf4e10d52432150faaa1eedc63dd34bcd3",
+      "size": 5909,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/card_board.js",
+      "sha256": "5290914e36bdaf6a7a7c6331b707926677a5e180b3613fc0471bf5bd2ce9c798",
+      "size": 20455,
+      "before_sha256": "172c874a1f5bc522b049396351a032f11eddb740c63608090f7aa075484c6904",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/card_operation.js",
+      "sha256": "a9a50af945b9778d2e9974308fce06c004735ff4ebeaa1dac51772bb89631659",
+      "size": 25028,
+      "before_sha256": "43663089b67dbb690f3d861e8f95690b22452d9592ee4d38ea79c0ea52e8cc30",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang",
+      "sha256": "175bb23b8ed563959b81ec7357478cf16333f91bb061b89662cf4d11a1047e28",
+      "size": 50438,
+      "before_sha256": "c4c53625053ad8282d35e5be2f34c9d6cfdcafc373e25732834bd6f6a86c1ebb",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang",
+      "sha256": "6ac9c5bec96641caedbc959128a236ef2dc23e5fad39a94bc525f9a5d08713af",
+      "size": 39256,
+      "before_sha256": "ac3a6be185e82621ecd8416ac091461fb31e2bb7749f01f42d5732cca0a24fb8",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang",
+      "sha256": "c79de87ac622fa97c7cb61ec13f40e8c4f76ab8789a1f21dbb8d1b344b9e0927",
+      "size": 31420,
+      "before_sha256": "c037a26b937e43c8d213a952143e69c68b3d9c09b24c88c0eb68472412d043f1",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/sql/llx_cpo_board_completion.sql",
+      "sha256": "b84b8acd8c5929b13151acf7aecd464fe454430e76b4479511835507de78dc0a",
+      "size": 304,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/sql/llx_cpo_board_deleted.sql",
+      "sha256": "305f787e6b4bb35444477a588e4eec0281585656506aef9cf895e1f2b0d1a574",
+      "size": 259,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/sql/llx_cpo_customer_workspace_appearance.sql",
+      "sha256": "16e927972b23200e378b1c07d9c8ac2e82c2332f64d470296d6fa3e0cda5d240",
+      "size": 459,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/sql/llx_cpo_customer_workspace_meta.sql",
+      "sha256": "2231fdb5e407fd5308e18930088195bc440d1a723f71b4fabc3fdad9d5ef26d8",
+      "size": 427,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/sql/llx_cpo_customer_workspace_pref.sql",
+      "sha256": "f07fc9c552455ee7885e60d983ffa8ad062815972815347a02b9b99293d299dd",
+      "size": 392,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/sql/llx_cpo_project_board.sql",
+      "sha256": "603ee7c75583bb52fa83c7a44b8471118d6f0ca498c6e6bcb50932fa782baf4d",
+      "size": 296,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/sql/llx_cpo_project_task.sql",
+      "sha256": "6466e28a3b7683df98789adf7c6262f5116200b2be9cde75f42de57a1182756a",
+      "size": 445,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/boards.php",
+      "sha256": "d66240e2e264021e5447fe44fada89a92ca9b113c9a98b0436ed5a3db3710fc6",
+      "size": 3466,
+      "before_sha256": "87e8d83a96f93cead11af7fe56fbc25735817f7e3937a8abf4086771ab492d32",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/boards_api.php",
+      "sha256": "5443205f5f821749e098dd88b87ae13d983dac107a8ac9deb0eab27e7ba1d5f7",
+      "size": 3211,
+      "before_sha256": "ba69d1710132f2714a5a161a1bd5b5a6b667fa3c5fe9fcb154500e17a259f6ff",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/card.php",
+      "sha256": "46f3c16dd687d39a6d3a7f6d005d611a2356e901b570f5f180a3d8047e321740",
+      "size": 40817,
+      "before_sha256": "604dd2475af1d5383f0f134cd5c9ce232a7897753d5023c76ae391b0ab2b4047",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/workspace_background.php",
+      "sha256": "7e51d637e2c51d448f53f2e7e37522189e99a253a3b2aa9cf2444b17efc1ac04",
+      "size": 1670,
+      "before_sha256": null,
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    }
+  ],
+  "protected": [
+    {
+      "path": "chinaplanetcustomercenter/css/admin_dashboard.css",
+      "sha256": "435218a9294e1fd435b62a8b0f5984adbbd377c33326bd4ece467fddc4b43145",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetcustomercenter/js/kanban_pointer.js",
+      "sha256": "ae770dc6781be7907167b42f78e061422adffd568b049918ef7f02f1befca637",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetcustomercenter/lib/admin_shell.lib.php",
+      "sha256": "1fdc8e41fac131425f0bf42cb88d02ed58a15254761eb8955c5a5d2850e5321b",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetcustomercenter/lib/portal.lib.php",
+      "sha256": "0d7302284f2edbe440985ced41122fb9eed6b705616e9734fc0b58902b0f6278",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetcustomercenter/lib/ui.lib.php",
+      "sha256": "86a4f4266ac71880d3a4f6fec6691fb60962073c7bc51430ed95365ea48e8f25",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetlogistics/class/ShipmentDocumentMigration.class.php",
+      "sha256": "7ec450d046dcdbf5bc6b3521607910a8c1f3fcb879379432284816fbef5fca68",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetlogistics/class/ShipmentDocumentService.class.php",
+      "sha256": "ba8425b081827b14ec858c7f77659515b09d6fb7226c5066569bdc35fe48f3e4",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskAgendaService.class.php",
+      "sha256": "9f67788044be4e5c5567f60a630c4062e97bbf1a4bbc7ff69d17b19a91f615f5",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskAssetService.class.php",
+      "sha256": "bfb6e4d883e07b32bb478f8029ad55e11a80a13add21c3d341524176648dd8a1",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardBackground.class.php",
+      "sha256": "dca636c0d9f7252fbef8a01c59d03706b1f5664066f24489071814396ae363bd",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskBoardPresentation.class.php",
+      "sha256": "6e5dbc79d1e8d9bd60b4a69fe9a5684fc23df21ef7fc5ed67ad5495c80e6f842",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskCollaborationService.class.php",
+      "sha256": "3a7c81b0e1f6fef655a5e3a2cccf196bf66174d8c3200ffd2120c1a8e93a4c76",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskDetailsService.class.php",
+      "sha256": "8e5aee2c6c117170a90e26b96b25f15eb3eeb98041fb7f8f303af0add57dd915",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskFileValidator.class.php",
+      "sha256": "8d7747a50dbf641a2c46951b55568abd561c33e3c71ec315cca094f5e03217c9",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskMigration.class.php",
+      "sha256": "252c52be436268bcab505f6a0c79a65cc47bcc8f835ed18b09b0072d05d2975d",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskPersonalBoard.class.php",
+      "sha256": "d0500a413a8dfee813d4400bc8e63ae5ecff3f6c568dcd1eb32fdbbd2fe1aa64",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskRichText.class.php",
+      "sha256": "1230f3b7b0d4cf86af763c8e9aee91c513d35c0d6d4dfbed2f0545f4d925925a",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskSchedule.class.php",
+      "sha256": "86a0489d588351571be92ef21223b44388a6a671f902feff4cf8f173f91b7479",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/InternalTaskStageService.class.php",
+      "sha256": "f9ea28fad1b5ed0e42bafd3cf66eefc2472f2957b7989b8ef772bdaf366c8595",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/class/OperationsSopService.class.php",
+      "sha256": "71d381d06938f13ec4be01ff4afcc0581e315585403d75c881d1be6e26b4acce",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/css/card_editor.css",
+      "sha256": "d2ce92fc4e0efaef61f194dbec2083bccc672d4fb9e6cfd01d6ff4699b622bad",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/css/operations.css",
+      "sha256": "ea2c66b4945d60ff48d7547ce384867bf33fbdb6d10b1eb181ebb8e77ee1458f",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/css/task_experience.css",
+      "sha256": "a9504c117f77a9ee4a6140b0768f8ccd79823bc6f2a86714bcd8f8a1429dd6ae",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/internal_tasks.js",
+      "sha256": "7acda663f08eb1eae3c7581400fd9977b623ed67f2a1d175300ac6f174dd158d",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/js/task_experience.js",
+      "sha256": "7cdc672966453b9451c4a66e0b35d8d1de5732202281efb26e3cd780a8d21c28",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/lib/main.lib.php",
+      "sha256": "acbe61d637a6da356240296371fbe1219aa8b6490632e58bf601b1b49ad39243",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/lib/task_experience.lib.php",
+      "sha256": "fa2078dd80ab4a872749915e436a22608fc0a2052188075a43950a669021ce64",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/action.php",
+      "sha256": "48b996819667ef9a5f4adb3ab1032b55ecd865204958428895a3c78baaa683fe",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/asset.php",
+      "sha256": "7ad91aaf9a10cab5f9d91cf859b714d85c3594ed0cc4024b5c6ab69eeef80e45",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/board_background.php",
+      "sha256": "c1719afe5ab045b24be9df795ddc344f0aa423c209d6dd90a2f4b35676533f56",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/collaboration_action.php",
+      "sha256": "dffd27e05711deb5dd7690b0fbf6fd82279d1d0274e347254492b2a9f308fc21",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/context_api.php",
+      "sha256": "a3ad422b68a6fb0fe6fcaa1800160c7e440d4a3aa0e147cdacff1a2049f12247",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/inbox.php",
+      "sha256": "84f5ea480b84f4dbdd385de5de5b8ee8ef7e8ae5e5e62ded15df1a96a17ce5ac",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/new.php",
+      "sha256": "94449f4ec9194c412264fa854b9aa036e93a263b230a387a4ffc2f4a840c9555",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    },
+    {
+      "path": "chinaplanetoperations/tasks/personal_action.php",
+      "sha256": "50ce35fefd39bf748c93400484629dbdd6820527e7a5477afb4b36c3e6805cb3",
+      "uid": 33,
+      "gid": 33,
+      "mode": "0644"
+    }
+  ],
+  "fallback": [
+    "chinaplanetoperations/tasks/boards.php",
+    "chinaplanetoperations/tasks/card.php",
+    "chinaplanetoperations/js/boards.js",
+    "chinaplanetoperations/js/card_board.js",
+    "chinaplanetoperations/js/card_operation.js",
+    "chinaplanetoperations/css/boards.css",
+    "chinaplanetoperations/css/card_board.css"
+  ]
+}

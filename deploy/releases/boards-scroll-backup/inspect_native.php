@@ -35,7 +35,8 @@ try {
         while ($v=$r->fetch_assoc()) $columns[$v['Field']] = ['type'=>$v['Type'],'null'=>$v['Null'],'default'=>$v['Default']];
         $keys=[]; $r=$c->query('SHOW INDEX FROM `'.$p.$name.'`');
         while ($v=$r->fetch_assoc()) if (!(int)$v['Non_unique']) $keys[$v['Key_name']][(int)$v['Seq_in_index']]=$v['Column_name'];
-        $out['schema'][$name]=['engine'=>$table['ENGINE'],'columns'=>$columns,'unique'=>$keys];
+        $rows = $name === 'societe_extrafields' ? null : (int)$c->query('SELECT COUNT(*) n FROM `'.$p.$name.'`')->fetch_assoc()['n'];
+        $out['schema'][$name]=['engine'=>$table['ENGINE'],'columns'=>$columns,'unique'=>$keys,'rows'=>$rows];
     }
     // Values never leave this process. Include all preexisting business/access rows.
     $tables=['societe','projet','projet_task','projet_task_extrafields','element_contact','cpo_board','cpo_board_list','cpo_board_card','cpo_board_member','cpo_card_grant','cpo_board_pref','cpo_task','cpo_task_context','cpo_task_comment','cpo_task_asset','cpo_task_details','cpo_activity','cpo_board_request','user','user_rights','rights_def','usergroup','usergroup_user','usergroup_rights'];
