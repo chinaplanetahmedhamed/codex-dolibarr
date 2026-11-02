@@ -92,7 +92,7 @@ try {
     // This module supplies its own sidebar. Keep the native top bar and authentication.
     // Request-local only: never persist Dolibarr's hide-menu session option.
     $conf->dol_hide_leftmenu=1;
-    llxHeader('', $langs->trans('OfficeExpenses'), '', '', 0, 0, array(), array(
+    llxHeader('', $langs->trans('OfficeExpenses'), '', '', 0, 0, array($assetRoot.'workspace.js?v='.substr(hash_file('sha256',__DIR__.'/workspace.js'),0,12)), array(
         $assetRoot.'assets/fontawesome.css',
         $assetRoot.'assets/fontawesome-solid.css',
         $assetRoot.'employee.css?v='.$styleVersion,

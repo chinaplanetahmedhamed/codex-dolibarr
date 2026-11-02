@@ -1,5 +1,38 @@
 'use strict';
 document.addEventListener('DOMContentLoaded', () => {
+  // Reuse Dolibarr's loaded Select2: its popup stays inside the scaled web page.
+  // Keep the native select and its name/options as the server-side form contract.
+  const app = document.querySelector('.office-expenses-app');
+  const jq = window.jQuery;
+  if (app && typeof jq === 'function' && typeof jq.fn.select2 === 'function') {
+    const ar = app.getAttribute('dir') === 'rtl';
+    app.querySelectorAll('select').forEach(select => {
+      if (select.multiple || jq(select).data('select2')) return;
+      jq(select).select2({
+        width: '100%',
+        dir: ar ? 'rtl' : 'ltr',
+        dropdownParent: jq(select.closest('dialog') || app),
+        minimumResultsForSearch: select.id === 'native-staff' || select.options.length > 7 ? 0 : Infinity,
+        language: {
+          noResults: () => ar ? 'لا توجد نتائج مطابقة' : 'No matching results',
+          searching: () => ar ? 'جارٍ البحث…' : 'Searching…'
+        }
+      });
+      const label = select.labels && select.labels[0];
+      if (label && select.id) {
+        if (!label.id) label.id = select.id + '-label';
+        const selection = jq(select).next('.select2').find('.select2-selection');
+        selection.attr('aria-labelledby', label.id + ' ' + selection.attr('aria-labelledby'));
+      }
+      // Select2 emits jQuery change; existing module code uses native listeners.
+      jq(select).on('select2:select select2:unselect', () => {
+        select.dispatchEvent(new Event('change', {bubbles: true}));
+      });
+      select.addEventListener('invalid', () => {
+        if (!select.disabled) jq(select).select2('open');
+      });
+    });
+  }
   const root = document.querySelector('.workspace-app');
   if (!root) return;
   root.querySelectorAll('[data-workspace-print]').forEach(button => {

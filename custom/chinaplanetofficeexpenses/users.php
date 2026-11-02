@@ -28,7 +28,7 @@ try{
     // This module supplies its own sidebar. Keep the native top bar and authentication.
     // Request-local only: never persist Dolibarr's hide-menu session option.
     $conf->dol_hide_leftmenu=1;
-    llxHeader('',$result['language']==='ar'?'مستخدمي الشركة':'Company users','','',0,0,[],[$asset.'assets/fontawesome.css',$asset.'assets/fontawesome-solid.css',$asset.'employee.css?v='.substr(hash_file('sha256',__DIR__.'/employee.css'),0,12),$asset.'staff.css?v='.substr(hash_file('sha256',__DIR__.'/staff.css'),0,12)]);
+    llxHeader('',$result['language']==='ar'?'مستخدمي الشركة':'Company users','','',0,0,[$asset.'workspace.js?v='.substr(hash_file('sha256',__DIR__.'/workspace.js'),0,12)],[$asset.'assets/fontawesome.css',$asset.'assets/fontawesome-solid.css',$asset.'employee.css?v='.substr(hash_file('sha256',__DIR__.'/employee.css'),0,12),$asset.'staff.css?v='.substr(hash_file('sha256',__DIR__.'/staff.css'),0,12)]);
     echo (new OfficeExpenseStaffPage())->render($result,(string)newToken());llxFooter();
 }catch(DomainException $error){http_response_code(403);echo 'Staff access is not activated or not authorized.';}
 catch(Throwable $error){http_response_code(503);echo 'Staff access is temporarily unavailable. No assignment was confirmed.';}
