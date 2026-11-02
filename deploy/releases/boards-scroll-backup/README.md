@@ -1,3 +1,11 @@
+# Boards backup release — installed and verified
+
+Current verified release: cumulative Boards application `7bb0686`, support `a6e23d1`, delivery `7f4eec3`, protected workflow [41522847329](https://github.com/chinaplanetahmedhamed/codex-dolibarr/actions/runs/41522847329) successful.45runtime paths/seven additive tables/customer option/six flags; original data/access,35dependencies and M119R13 preserved. Private backups/state `/root/boards-backup-release-20261103-retry1`; no production changes. See `INSTALL.md` and `docs/REPORTS/M107_C02_BACKUP_BOARDS_INSTALLATION.md` for current scope, receipts, guarded rollback and acceptance limits. Do not replayapply on existing state.
+
+The following is the retained historical preparation checkpoint. Ahmed subsequently authorized the cumulative backup-only install after the old-source mismatch was explained and offered a dedicated existing administrative session. Its missing-prerequisite/NOTSTARTED/R11 wording below is historical and superseded by the verified report above.
+
+---
+
 # Backup-only Boards scrolling release — preparation checkpoint
 
 Application candidate: `48856acfd44b333469ed5574e992a0c36293c94c` (base `c2ad887`). Ahmed approved deploying the tested scrolling correction to **backup-erp only**, for his inspection. Production and Office Expenses changes are excluded.
