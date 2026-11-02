@@ -19,7 +19,7 @@ import time
 
 INBOX=Path('/home/codex-deploy/staging-inbox/boards-backup-9b11ede')
 ROOT=Path('/var/lib/docker/volumes/erp-staging_erp-staging_custom/_data')
-STATE=Path('/root/boards-backup-release-20261103')
+STATE=Path('/root/boards-backup-release-20261103-retry1')
 ARTIFACT_SHA='@ARTIFACT_SHA@'
 MANIFEST_SHA='@MANIFEST_SHA@'
 APPLICATION='7bb0686140da488a3d73ef4ae92d6a9cda686249'
@@ -157,6 +157,11 @@ def unpack(manifest,compressed):
     return plan,result
 
 
+def backup_command(user_hash):
+    need(re.fullmatch('[a-f0-9]{64}',user_hash)is not None,'Invalid existing account hash.')
+    return ("set -eu\n[ \"${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}\" = dolibarr_db ]\nu=\"${MARIADB_USER:-${MYSQL_USER:-}}\"\np=\"${MARIADB_PASSWORD:-${MYSQL_PASSWORD:-}}\"\n[ -n \"$u\" ] && [ -n \"$p\" ]\nh=$(printf %s \"$u\" | sha256sum)\n[ \"${h%% *}\" = "+user_hash+" ]\nexport MYSQL_PWD=\"$p\"\nexec mariadb-dump --protocol=tcp --host=127.0.0.1 --port=3306 --user=\"$u\" --single-transaction --skip-lock-tables --quick --hex-blob --no-tablespaces --routines --events --triggers --default-character-set=utf8mb4 dolibarr_db\n").encode()
+
+
 class Release:
     def __init__(self):
         self.inbox=open_directory(INBOX);s=os.fstat(self.inbox);need(s.st_uid==1002 and stat.S_IMODE(s.st_mode)==0o700,'Private fixed inbox differs.')
@@ -248,10 +253,14 @@ class Release:
         self.save_state(value)
         # Stream SQL only through private pipes into a root-only compressed backup.
         need(os.statvfs(STATE).f_bavail*os.statvfs(STATE).f_frsize>3*1024**3,'Insufficient private backup capacity.')
-        process=subprocess.Popen(self.php_args(),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,cwd='/',env=ENV)
+        admission=subprocess.run(self.php_args(),input=self.files['support/database_backup.php'],capture_output=True,timeout=20,cwd='/',env=ENV)
+        need(admission.returncode==0 and len(admission.stdout)<1024,'Read-only backup admission failed; application untouched.')
+        admitted=json.loads(admission.stdout);need(type(admitted['tables'])is int and admitted['tables']>0 and re.fullmatch('[a-f0-9]{64}',admitted['user_sha256'])is not None,'Invalid backup admission metadata.')
+        script=backup_command(admitted['user_sha256'])
+        process=subprocess.Popen(['docker','--host','unix:///var/run/docker.sock','exec','-i',self.ctx['DB'],'sh'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,cwd='/',env=ENV)
         total=0
         try:
-            process.stdin.write(self.files['support/database_backup.php']);process.stdin.close()
+            process.stdin.write(script);process.stdin.close()
             output=os.open(STATE/'database-before.sql.gz',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
             with os.fdopen(output,'wb')as private:
                 with gzip.GzipFile(filename='',fileobj=private,mode='wb',mtime=0)as compressed:
@@ -270,13 +279,12 @@ class Release:
                     finally:streams.close()
                 private.flush();os.fsync(private.fileno())
             code=process.wait(timeout=max(1,deadline-time.monotonic()))
-            count=re.search(rb'BOARDS_PRIVATE_BACKUP_TABLES=(\d+)',error)
-            need(code==0 and count is not None and total>1024,'Private database backup failed; application untouched.')
+            need(code==0 and total>1024,'Private database backup failed; application untouched.')
             tail=b'';creates=0
             with gzip.open(STATE/'database-before.sql.gz','rb')as checked:
                 for line in checked:
                     creates+=line.startswith(b'CREATE TABLE ');tail=(tail+line)[-8192:]
-            need(creates>=int(count[1]) and b'Dump completed on'in tail,'SQL backup structure/completion/CRC validation failed.')
+            need(creates>=admitted['tables'] and b'Dump completed on'in tail,'SQL backup structure/completion/CRC validation failed.')
         except BaseException:
             if process.poll()is None:
                 process.terminate()

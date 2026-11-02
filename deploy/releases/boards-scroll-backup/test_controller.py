@@ -86,6 +86,29 @@ class ControllerTest(unittest.TestCase):
  def test_cancelled_workflow_hold_fences_not_started_apply(self):
   r=self.release();r.inbox=self.tree.fd;(self.root/'reconciliation-hold.json').write_text('{}')
   with self.assertRaises(c.Refused):r.lease()
+ def test_database_native_backup_avoids_disabled_php_execution(self):
+  import subprocess
+  script=c.backup_command('a'*64);self.assertEqual(subprocess.run(['sh','-n'],input=script,capture_output=True).returncode,0)
+  self.assertIn(b'exec mariadb-dump',script);self.assertIn(b'export MYSQL_PWD="$p"',script);self.assertNotIn(b'--password',script)
+  php=Path(c.__file__).with_name('database_backup.php').read_text();self.assertNotIn('proc_open(',php);self.assertNotIn('disable_functions',php)
+  with self.assertRaises(c.Refused):c.backup_command('shell;injection')
+ def backup_case(self,style='MARIADB',wrong_db=False,wrong_user=False,missing=False):
+  import subprocess
+  binary=self.root/'bin';binary.mkdir(exist_ok=True)
+  (binary/'sha256sum').write_text('#!/usr/bin/env python3\nimport hashlib,sys\nprint(hashlib.sha256(sys.stdin.buffer.read()).hexdigest()+"  -")\n');os.chmod(binary/'sha256sum',0o755)
+  (binary/'mariadb-dump').write_text('#!/usr/bin/env python3\nimport os,sys,json\nprint(json.dumps({"args":sys.argv[1:],"password_match":os.environ.get("MYSQL_PWD")==os.environ.get("FIXTURE_EXPECTED")}))\n');os.chmod(binary/'mariadb-dump',0o755)
+  password='synthetic;$(touch '+str(self.root/'unexpected')+');"literal'
+  env={'PATH':str(binary)+':'+os.environ['PATH'],'FIXTURE_EXPECTED':password,style+'_DATABASE':'wrong'if wrong_db else'dolibarr_db',style+'_USER':'wrong'if wrong_user else'fixture',style+'_PASSWORD':''if missing else password}
+  result=subprocess.run(['sh'],input=c.backup_command(c.sha(b'fixture')),capture_output=True,env=env)
+  self.assertNotIn(password.encode(),result.stdout+result.stderr);self.assertFalse((self.root/'unexpected').exists())
+  if wrong_db or wrong_user or missing:self.assertNotEqual(result.returncode,0);self.assertFalse(result.stdout)
+  else:
+   self.assertEqual(result.returncode,0);reply=json.loads(result.stdout);self.assertTrue(reply['password_match']);self.assertIn('--single-transaction',reply['args']);self.assertFalse(any('--password'in a for a in reply['args']))
+ def test_db_backup_mariadb_environment(self):self.backup_case()
+ def test_db_backup_mysql_environment_fallback(self):self.backup_case(style='MYSQL')
+ def test_db_backup_wrong_database_rejected(self):self.backup_case(wrong_db=True)
+ def test_db_backup_wrong_user_rejected(self):self.backup_case(wrong_user=True)
+ def test_db_backup_missing_password_rejected(self):self.backup_case(missing=True)
  def test_unsealed_package_refused(self):
   with self.assertRaises(c.Refused):c.unpack({},b'bad')
  def test_fixed_fallback_and_root_private_lock_contract(self):
