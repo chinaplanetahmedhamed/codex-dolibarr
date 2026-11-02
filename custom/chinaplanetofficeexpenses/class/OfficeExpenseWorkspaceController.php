@@ -68,7 +68,7 @@ final class OfficeExpenseWorkspaceController
             if($view==='expenses'&&$this->service->allowed($office,'category','read'))$state['categories']=array_values(array_filter($this->service->list($office,'category'),fn($r)=>$r['status']==='active'&&$r['content']['active']));
             if($view==='advances')$state['advances']=array_values(array_filter($this->service->list($office,'advance'),fn($r)=>$r['status']==='draft'));
             if($view==='settings'&&$state['rows'])$state['selected']=$state['rows'][0];
-            if($view==='treasury')$state['cash']=$this->service->cash($office,$query['from']??null,$query['to']??null);
+            if($view==='treasury')$state['cash']=$this->service->cash($office,$query['from']??date('Y-m-01'),$query['to']??date('Y-m-t'));
             if($view==='settings')$state['accounts']=$this->service->accounts($office);
             if(isset($query['edit'])){
                 // Return requests carry their own kind in links, and cannot be accessed by substituting a different route kind.
