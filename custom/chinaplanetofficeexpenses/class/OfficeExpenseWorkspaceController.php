@@ -4,7 +4,7 @@ require_once __DIR__.'/OfficeExpenseWorkspaceService.php';
 
 final class OfficeExpenseWorkspaceController
 {
-    public const VIEWS=['expenses'=>'expense','advances'=>'advance','treasury'=>'deposit','receipts'=>'receipt','categories'=>'category','employees'=>'employee','payroll'=>'payroll','settings'=>'settings','reports'=>'reports'];
+    public const VIEWS=['overview'=>'overview','expenses'=>'expense','advances'=>'advance','treasury'=>'deposit','receipts'=>'receipt','categories'=>'category','employees'=>'employee','payroll'=>'payroll','settings'=>'settings','reports'=>'reports'];
     private OfficeExpenseWorkspaceService $service;private string $token;
     public function __construct(OfficeExpenseWorkspaceService $service,string $token){$this->service=$service;$this->token=$token;}
     public static function receiptBaseUrl(string $configuredRoot): string
@@ -15,20 +15,20 @@ final class OfficeExpenseWorkspaceController
     }
     public function handle(string $method,array $query,array $post,array $files=[]): array
     {
-        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false];
+        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false,'report_currency'=>'','month'=>''];
         try{
             if(!in_array($method,['GET','POST'],true))return array_replace($state,['status'=>405,'error'=>'method']);
-            foreach(['view','office','lang','edit','print','from','to','kind','status','export','saved','search']as$field)if(isset($query[$field])&&!is_string($query[$field]))throw new InvalidArgumentException('Invalid query.');
+            foreach(['view','office','lang','edit','print','from','to','kind','status','export','saved','search','currency','month']as$field)if(isset($query[$field])&&!is_string($query[$field]))throw new InvalidArgumentException('Invalid query.');
             $view=$post['view']??$query['view']??'categories';if(!is_string($view)||!isset(self::VIEWS[$view]))throw new InvalidArgumentException('Unknown section.');
             $lang=$post['lang']??$query['lang']??'ar';if(!in_array($lang,['ar','en'],true))throw new InvalidArgumentException('Unknown language.');
-            $offices=$this->service->offices($view);$office=$post['office']??$query['office']??array_key_first($offices);
+            $offices=$this->service->offices($view==='overview'?'expenses':$view);$office=$post['office']??$query['office']??array_key_first($offices);
             if(!is_string($office)||!isset($offices[$office]))throw new DomainException('Branch unavailable.');
             $kind=self::VIEWS[$view];if($view==='advances'&&($post['kind']??$query['kind']??'advance')==='advance_return')$kind='advance_return';
             $state=array_replace($state,['view'=>$view,'kind'=>$kind,'office'=>$office,'language'=>$lang,'offices'=>$offices]);
             if($method==='POST'){
                 if($this->token===''||!is_string($post['token']??null)||!hash_equals($this->token,$post['token']))return array_replace($state,['status'=>403,'error'=>'csrf']);
                 if(array_diff(array_keys($post),['view','kind','office','lang','token','action','id','revision','submission_key','payload','print_after']))throw new InvalidArgumentException('Unexpected fields.');
-                $action=$post['action']??null;if(!in_array($action,['save','archive','restore'],true)||$view==='reports')throw new InvalidArgumentException('Unsupported action.');
+                $action=$post['action']??null;if(!in_array($action,['save','archive','restore'],true)||in_array($view,['reports','overview'],true))throw new InvalidArgumentException('Unsupported action.');
                 if(isset($post['print_after'])&&($view!=='receipts'||$post['print_after']!=='1'||$action!=='save'))throw new InvalidArgumentException('Invalid print request.');
                 $id=$post['id']??'';if(!is_string($id)||($id!==''&&!preg_match('/^[a-f0-9]{32}$/D',$id)))throw new InvalidArgumentException('Invalid reference.');
                 $revision=OfficeExpenseWorkspaceDocument::number($post['revision']??'0',true);
@@ -45,8 +45,11 @@ final class OfficeExpenseWorkspaceController
                 return array_replace($state,['status'=>303,'redirect'=>'workspace.php?'.http_build_query(['lang'=>$lang,'office'=>$office,'view'=>$view,'kind'=>$kind,'saved'=>'1','edit'=>$saved['id']]+(isset($post['print_after'])?['print'=>'1']:[]))]);
             }
             foreach(['read','create','update','delete']as$action)$state['permissions'][$action]=$this->service->allowed($office,$kind,$action);
+            if($view==='overview'){$state['report']=$this->service->overview($office);$state['actor_name']=$this->service->actorName();foreach(['expense','receipt','deposit']as$action)$state['overview_actions'][$action]=$this->service->allowed($office,$action,'create');return $state;}
             if($view==='reports'){
-                $state['report']=$this->service->report($office,$query['from']??date('Y-m-01'),$query['to']??date('Y-m-t'),$query['kind']??'all',$query['status']??'all');
+                $month=$query['month']??date('Y-m');OfficeExpenseMoney::date($month.'-01');if(!preg_match('/^[0-9]{4}-[0-9]{2}$/D',$month))throw new InvalidArgumentException('Invalid reporting month.');
+                $state['month']=$month;$currency=$query['currency']??OfficeExpenseStaffAccess::OFFICES[$office][0];if(!in_array($currency,OfficeExpenseStaffAccess::OFFICES[$office],true))throw new InvalidArgumentException('Invalid branch currency.');$state['report_currency']=$currency;
+                $state['report']=$this->service->report($office,$query['from']??$month.'-01',$query['to']??date('Y-m-t',strtotime($month.'-01')),$query['kind']??'all',$query['status']??'all');
                 if(isset($query['export'])){if(!in_array($query['export'],['csv','cash_csv'],true))throw new InvalidArgumentException('Invalid export.');$state['csv']=$query['export']==='cash_csv'?OfficeExpenseWorkspaceService::cashCsv($state['report']):OfficeExpenseWorkspaceService::csv($state['report']);$state['csv_name']=$query['export']==='cash_csv'?'office-cash-period.csv':'office-requests.csv';}
                 return $state;
             }
@@ -58,13 +61,14 @@ final class OfficeExpenseWorkspaceController
                 $state['rows']=array_values(array_filter($this->service->list($office,$kind,$from,$to),static function($r)use($search,$status){$v=$r['content'];return ($status==='all'||$r['status']===$status)&&($search===''||stripos('REC-'.$r['id'].' '.$v['payer'].' '.$v['phone'].' '.$v['purpose'],$search)!==false);}));
                 $state['actor_name']=$this->service->actorName();$state['can_edit_receipt_settings']=$this->service->allowed($office,'settings','update');
             }else $state['rows']=$this->service->list($office,$kind);
+            if($view==='payroll'){$month=$query['month']??date('Y-m');OfficeExpenseMoney::date($month.'-01');if(!preg_match('/^[0-9]{4}-[0-9]{2}$/D',$month))throw new InvalidArgumentException('Invalid payroll month.');$state['month']=$month;$state['rows']=array_values(array_filter($state['rows'],static fn($r)=>$r['content']['month']===$month));}
             if($view==='advances')$state['rows']=array_merge($state['rows'],$this->service->list($office,'advance_return'));
             if(in_array($view,['expenses','advances'],true))$state['legacy']=$this->service->legacy($office,$view);
             if(in_array($view,['employees','payroll'],true))$state['staff']=$this->service->staff($office,$view);
             if($view==='expenses'&&$this->service->allowed($office,'category','read'))$state['categories']=array_values(array_filter($this->service->list($office,'category'),fn($r)=>$r['status']==='active'&&$r['content']['active']));
             if($view==='advances')$state['advances']=array_values(array_filter($this->service->list($office,'advance'),fn($r)=>$r['status']==='draft'));
             if($view==='settings'&&$state['rows'])$state['selected']=$state['rows'][0];
-            if($view==='treasury')$state['cash']=$this->service->cash($office);
+            if($view==='treasury')$state['cash']=$this->service->cash($office,$query['from']??null,$query['to']??null);
             if($view==='settings')$state['accounts']=$this->service->accounts($office);
             if(isset($query['edit'])){
                 // Return requests carry their own kind in links, and cannot be accessed by substituting a different route kind.

@@ -66,6 +66,10 @@ try {
         $result['status']=303;$result['redirect']='index.php?lang='.$result['language'].'&view='.$result['view'];
     }
     $result['workspace_ready']=OfficeExpenseWorkspaceRuntime::ready($db,$conf);
+    if($method==='GET'&&$result['status']===200&&$result['view']==='overview'&&$result['workspace_ready']&&isset($staffAccess)&&$staffAccess!==null){
+        $dashboardOffice=is_string($_GET['office']??null)&&isset($result['offices'][$_GET['office']])?$_GET['office']:array_key_first($result['offices']);
+        if($dashboardOffice!==null){header('Location: workspace.php?'.http_build_query(['lang'=>$result['language'],'office'=>$dashboardOffice,'view'=>'overview']),true,303);exit;}
+    }
     http_response_code($result['status']);
     if ($result['redirect']!==null) {header('Location: '.$result['redirect'],true,303);exit;}
     if($result['download']!==null){foreach(OfficeExpenseReceiptHttpResponse::headers($result['download'],$result['download_id']) as $name=>$value)header($name.': '.$value);echo $result['download']['bytes'];exit;}

@@ -112,7 +112,7 @@ final class OfficeExpenseWorkspaceService
         $scope=$this->access->recordScope($office,$section);
         return (new OfficeExpenseNativeDraftStore($this->db))->listBranch($this->entity,$office,$section,$scope==='own'?$this->actor:null);
     }
-    public function report(string $office,string $from,string $to,string $filter='all',string $status='all'): array
+    public function report(string $office,string $from,string $to,string $filter='all',string $status='all',bool $withCharts=true): array
     {
         $reportScope=$this->access->recordScope($office,'reports');OfficeExpenseMoney::date($from);OfficeExpenseMoney::date($to);
         if($from>$to||!in_array($filter,['all','expense','advance','advance_return','deposit','receipt','payroll'],true)||!in_array($status,['all','draft','archived'],true))throw new InvalidArgumentException('Invalid reporting filters.');
@@ -131,7 +131,28 @@ final class OfficeExpenseWorkspaceService
         foreach($rows as$row){if($row['status']==='archived')continue;$v=$row['content'];$currency=$v['currency'];$kind=$row['kind'];$totals[$currency][$kind]=bcadd($totals[$currency][$kind]??'0',$v[$kind==='payroll'?'net':'amount'],2);}
         usort($rows,fn($a,$b)=>[$b['content']['date'],$b['id']]<=>[$a['content']['date'],$a['id']]);
         $cash=null;if($reportScope==='branch'&&$this->allowed($office,'treasury','read')&&$this->access->recordScope($office,'treasury')==='branch')$cash=$this->cash($office,$from,$to);
-        return ['rows'=>$rows,'totals'=>$totals,'from'=>$from,'to'=>$to,'filter'=>$filter,'status'=>$status,'scope'=>$reportScope,'cash'=>$cash];
+        $result=['rows'=>$rows,'totals'=>$totals,'from'=>$from,'to'=>$to,'filter'=>$filter,'status'=>$status,'scope'=>$reportScope,'cash'=>$cash];
+        if($withCharts){
+            $end=new DateTimeImmutable(substr($to,0,7).'-01');$start=$end->modify('-5 months')->format('Y-m-d');
+            $history=$this->report($office,$start,$to,$filter,$status,false);$labels=[];
+            if($this->allowed($office,'category','read'))foreach($this->list($office,'category')as$category)$labels[$category['id']]=$category['content']['name'];
+            $series=[];foreach(OfficeExpenseStaffAccess::OFFICES[$office]as$currency){
+                $months=[];for($i=0;$i<6;$i++){$month=(new DateTimeImmutable($start))->modify('+'.$i.' months')->format('Y-m');$months[$month]=['month'=>$month,'deposit'=>'0.00','expense'=>'0.00','payroll'=>'0.00'];}
+                foreach($history['rows']as$row){$v=$row['content'];$month=substr($v['date'],0,7);if($row['status']==='archived'||$v['currency']!==$currency||!isset($months[$month][$row['kind']]))continue;$kind=$row['kind'];$months[$month][$kind]=bcadd($months[$month][$kind],$v[$kind==='payroll'?'net':'amount'],2);}
+                $categories=[];foreach($rows as$row){$v=$row['content'];if($row['status']==='archived'||$row['kind']!=='expense'||$v['currency']!==$currency)continue;$key=$v['category_ref']??'';$name=$labels[$key]??null;$bucket=$name===null?'uncategorized':$key;$categories[$bucket]=['name'=>$name,'amount'=>bcadd($categories[$bucket]['amount']??'0.00',$v['amount'],2)];}
+                foreach($months as&$month)$month['net']=bcsub(bcsub($month['deposit'],$month['expense'],2),$month['payroll'],2);unset($month);
+                $series[$currency]=['months'=>array_values($months),'categories'=>array_values($categories)];
+            }
+            $result['charts']=$series;
+        }
+        return $result;
+    }
+    public function overview(string $office): array
+    {
+        if($this->allowed($office,'reports','read'))return $this->report($office,date('Y-m-01'),date('Y-m-t'));
+        $rows=$this->list($office,'expense',date('Y-m-01'),date('Y-m-t'));$totals=[];
+        foreach($rows as$row)if($row['status']!=='archived'){$v=$row['content'];$totals[$v['currency']]['expense']=bcadd($totals[$v['currency']]['expense']??'0.00',$v['amount'],2);}
+        return ['rows'=>$rows,'totals'=>$totals,'from'=>date('Y-m-01'),'to'=>date('Y-m-t'),'scope'=>'own','cash'=>null,'charts'=>[]];
     }
     public static function cashCsv(array $report): string
     {
