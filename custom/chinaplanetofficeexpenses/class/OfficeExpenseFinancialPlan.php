@@ -23,7 +23,7 @@ final class OfficeExpenseFinancialPlan
         $valuation=$money->convert($amount,$currency,$base,$quote);
         if(bccomp($valuation['base_amount'],'0',2)<=0)throw new DomainException('Positive base-currency valuation is required.');
         $reason=trim($input['reason']??'');if($reason!=='')OfficeExpenseMoney::text($reason,1000);
-        $method=$row['kind']==='receipt'?$row['content']['method']:($input['method']??'cash');if(!in_array($method,['cash','wallet','transfer','cheque'],true))throw new InvalidArgumentException('Invalid payment channel.');
+        $method=$row['kind']==='receipt'?$row['content']['method']:($input['method']??'cash');if($row['kind']==='opening'&&$method!=='cash')throw new InvalidArgumentException('This opening must remain bound to its native branch cash drawer.');if(!in_array($method,['cash','wallet','transfer','cheque'],true))throw new InvalidArgumentException('Invalid payment channel.');
         $out=['method'=>$method,'date'=>$date,'valuation'=>$valuation,'reason'=>$reason,'loan_ref'=>$input['loan_ref']??'','funding_type'=>$input['funding_type']??'','setup_revision'=>OfficeExpenseWorkspaceDocument::number($input['setup_revision']??'0',true)];
         foreach(['party_id','invoice_id','staff_id']as$key)$out[$key]=OfficeExpenseWorkspaceDocument::number($input[$key]??'0',true);
         if($out['loan_ref']!==''&&!preg_match('/^[a-f0-9]{32}$/D',$out['loan_ref']))throw new InvalidArgumentException('Invalid advance reference.');

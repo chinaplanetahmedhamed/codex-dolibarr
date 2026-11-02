@@ -62,11 +62,22 @@ final class OfficeExpenseWorkspaceService
         if(!$row||$row['office']!==$office||$row['kind']!==$kind)throw new DomainException('Document unavailable.');
         $this->authorize($row,'read');return $row;
     }
+    public function recordScope(string $office,string $kind): string {return $this->access->recordScope($office,OfficeExpenseWorkspaceDocument::SECTIONS[$kind]??$kind);}
+    public function isActorRecord(array $row): bool
+    {
+        if(in_array($row['kind'],['employee','payroll'],true))return $row['subject']===$this->actor;
+        return $row['owner']===$this->actor||(in_array($row['kind'],['expense','advance','advance_return','advance_settlement'],true)&&$row['subject']===$this->actor);
+    }
+    public function canPrepareFinance(array $row): bool
+    {
+        if($row['kind']==='opening'&&!$this->access->isFinanceAdministrator())return false;
+        try{$this->authorize($row,'read');if($row['owner']===$this->actor&&$this->allowed($row['office'],$row['kind'],'create'))return true;$this->authorize($row,'update');return true;}catch(DomainException $denied){return false;}
+    }
     private function authorize(array $row,string $action): void
     {
         $this->context();$section=OfficeExpenseWorkspaceDocument::SECTIONS[$row['kind']];
         $this->access->assertAction($row['office'],$section,$action);$scope=$this->access->recordScope($row['office'],$section);
-        if($scope==='own'&&!in_array($row['kind'],['category','settings'],true)&&(in_array($row['kind'],['employee','payroll'],true)?$row['subject']!==$this->actor:$row['owner']!==$this->actor))throw new DomainException('Document unavailable.');
+        if($scope==='own'&&!in_array($row['kind'],['category','settings'],true)&&!($action==='read'?$this->isActorRecord($row):(in_array($row['kind'],['employee','payroll'],true)?$row['subject']===$this->actor:$row['owner']===$this->actor)))throw new DomainException('Document unavailable.');
         if($scope==='own'&&in_array($row['kind'],['settings','category'],true)&&$action!=='read')throw new DomainException('Branch configuration requires branch visibility.');
     }
     public function save(string $office,string $kind,array $payload,string $key,?string $id=null,int $revision=0): array
@@ -132,7 +143,7 @@ final class OfficeExpenseWorkspaceService
         foreach(['expense','advance','advance_return','advance_settlement','deposit','receipt','payroll']as$kind){
             if($filter!=='all'&&$filter!==$kind)continue;
             if(!$this->allowed($office,$kind,'read'))continue;
-            foreach($this->list($office,$kind,$from,$to)as$row){$v=$row['content'];if($v['date']<$from||$v['date']>$to||($status!=='all'&&$row['status']!==$status))continue;if($reportScope==='own'&&($kind==='payroll'?$row['subject']!==$this->actor:$row['owner']!==$this->actor))continue;$rows[]=$row;}
+            foreach($this->list($office,$kind,$from,$to)as$row){$v=$row['content'];if($v['date']<$from||$v['date']>$to||($status!=='all'&&$row['status']!==$status))continue;if($reportScope==='own'&&!$this->isActorRecord($row))continue;$rows[]=$row;}
         }
         foreach(['expenses'=>'expense','advances'=>null]as$section=>$mapped){
             if(!$this->allowed($office,$section,'read')||$status==='archived')continue;

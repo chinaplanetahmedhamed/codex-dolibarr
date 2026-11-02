@@ -5,12 +5,21 @@ require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/class/OfficeExpenseWorkspaceRuntime.php';
 require_once __DIR__.'/class/OfficeExpenseFinancialService.php';
 header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: same-origin');
-$target='workspace.php';
+function cpoOfficeFinanceError(int $status,string $message,string $language,string $target): void
+{
+    http_response_code($status);header('Content-Type: text/html; charset=UTF-8');$ar=$language==='ar';$e=static fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
+    $copy=$status===503?'لم تتأكد نتيجة العملية. أعد فتح السجل وطابق مراجع الترحيل قبل إرسال دفعة أخرى.':($status===403?'انتهت صلاحية النموذج. أعد فتح السجل قبل المحاولة.':'لم تُؤكد العملية. راجع حالة الطلب والصلاحيات وإعدادات المحاسبة، ثم أعد فتح السجل.');
+    if(str_contains(strtolower($message),'funds')||str_contains(strtolower($message),'overdraw'))$copy='الرصيد المتاح لا يكفي لهذه الحركة في تاريخها. راجع كشف الحساب قبل المحاولة.';
+    elseif(str_contains(strtolower($message),'period'))$copy='لا توجد فترة محاسبية مفتوحة ومطابقة لتاريخ الترحيل. راجع إعدادات الفترات في Dolibarr.';
+    $asset=DOL_URL_ROOT.'/custom/chinaplanetofficeexpenses/';
+    echo '<!doctype html><html lang="'.($ar?'ar':'en').'" dir="'.($ar?'rtl':'ltr').'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.($ar?'العملية المالية':'Financial operation').'</title><link rel="stylesheet" href="'.$e($asset.'employee.css').'"><link rel="stylesheet" href="'.$e($asset.'workspace.css').'"></head><body><main class="office-expenses-app workspace-finance-error"><section class="workspace-card"><h1>'.($ar?'لم يتم تأكيد العملية المالية':'Financial operation not confirmed').'</h1><p>'.$e($ar?$copy:$message).'</p>'.($ar?'<details><summary>التفاصيل</summary><p dir="ltr">'.$e($message).'</p></details>':'').'<a class="button button-brand" href="'.$e($target).'">'.($ar?'رجوع إلى السجل':'Back to record').'</a></section></main></body></html>';
+}
+$target='index.php';
 try{
     if(($_SERVER['REQUEST_METHOD']??'')!=='POST'){header('Allow: POST');http_response_code(405);exit;}
     if(!OfficeExpenseWorkspaceRuntime::ready($db,$conf))throw new DomainException('Branch workspace is not activated.');
     $p=$_POST;if(array_diff(array_keys($p),['token','action','office','lang','kind','id','revision','key','payload','file_id']))throw new InvalidArgumentException('Unexpected request fields.');
-    if(!is_string($p['token']??null)||(string)currentToken()===''||!hash_equals((string)currentToken(),$p['token'])){http_response_code(403);echo 'Session expired. Reopen the record before retrying.';exit;}
+    if(!is_string($p['token']??null)||(string)currentToken()===''||!hash_equals((string)currentToken(),$p['token'])){cpoOfficeFinanceError(403,'Session expired. Reopen the record before retrying.',is_string($p['lang']??null)&&$p['lang']==='en'?'en':'ar',$target);exit;}
     foreach(['action','office','lang','kind','id','key']as$key)if(!is_string($p[$key]??null))throw new InvalidArgumentException('Incomplete request.');
     if(!in_array($p['lang'],['ar','en'],true)||!isset(OfficeExpenseStaffAccess::OFFICES[$p['office']])||(!in_array($p['kind'],OfficeExpenseFinancialPlan::KINDS,true)&&$p['kind']!=='settings'))throw new InvalidArgumentException('Invalid branch or document kind.');
     $target='workspace.php?'.http_build_query(['lang'=>$p['lang'],'office'=>$p['office'],'view'=>OfficeExpenseWorkspaceDocument::SECTIONS[$p['kind']],'kind'=>$p['kind']]+($p['id']!==''?['edit'=>$p['id']]:[]));
@@ -29,7 +38,7 @@ try{
         }else $finance->transition($p['office'],$p['kind'],$p['id'],$revision,$p['action'],$p['key'],$p['payload']);
     }
     header('Location: '.$target,true,303);exit;
-}catch(InvalidArgumentException $e){http_response_code(422);$message='Check the submitted fields and reopen the record. No operation was confirmed.';}
-catch(DomainException $e){http_response_code(409);$message=$e->getMessage().' Reopen the record before retrying.';}
-catch(Throwable $e){http_response_code(503);$message='The result was not confirmed. Reopen the source and reconcile its native references before submitting another payment.';}
-header('Content-Type: text/html; charset=UTF-8');echo '<!doctype html><meta charset="utf-8"><title>Financial operation</title><p>'.htmlspecialchars($message,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8').'</p><a href="'.htmlspecialchars($target,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8').'">Back to record / رجوع إلى السجل</a>';
+}catch(InvalidArgumentException $e){$errorStatus=422;$message='Check the submitted fields and reopen the record. No operation was confirmed.';}
+catch(DomainException $e){$errorStatus=409;$message=$e->getMessage().' Reopen the record before retrying.';}
+catch(Throwable $e){$errorStatus=503;$message='The result was not confirmed. Reopen the source and reconcile its native references before submitting another payment.';}
+cpoOfficeFinanceError($errorStatus,$message,is_string($_POST['lang']??null)&&$_POST['lang']==='en'?'en':'ar',$target);

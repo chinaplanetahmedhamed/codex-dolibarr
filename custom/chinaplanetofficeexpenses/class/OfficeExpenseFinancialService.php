@@ -29,7 +29,7 @@ final class OfficeExpenseFinancialService
         foreach(OfficeExpenseFinancialPlan::KINDS as$kind){
             if(!$this->source->allowed($office,$kind,'read'))continue;
             foreach($this->source->list($office,$kind)as$row){
-                if($scope==='own'&&($kind==='payroll'?$row['subject']!==$this->source->actorId():$row['owner']!==$this->source->actorId()))continue;
+                if($scope==='own'&&!$this->source->isActorRecord($row))continue;
                 if(!in_array($row['status'],['posted','reversed'],true))continue;
                 foreach(['posting','reversal']as$phase){$p=$row['content']['_finance'][$phase]??null;if(!$p||$p['plan']['date']<$from||$p['plan']['date']>$to)continue;$this->native->verifyPosted($p);$plan=$p['plan'];$c=$plan['currency'];
                     if(!isset($totals[$c]))$totals[$c]=['cash_in'=>'0.00','cash_out'=>'0.00','net'=>'0.00'];
@@ -52,12 +52,13 @@ final class OfficeExpenseFinancialService
         if($out['administrator']&&$this->settings->coreEnabled()){
             $c=new OfficeExpenseNativeConnection($this->db);foreach($v['money']as$currency=>$channels){$map=$channels['cash']??null;if(!$map||$map['native_id']<1||$map['gl_id']<1)continue;try{$a=$this->settings->moneyAccount($office,$currency,'cash',$map);}catch(DomainException $unready){continue;}$rows=$c->rows('SELECT b.rowid,b.dateo,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank AS b WHERE b.fk_account='.(int)$a['rowid']." AND b.fk_type='SOLD' AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX.'accounting_bookkeeping AS g WHERE g.entity='.(int)$this->conf->entity." AND g.doc_type='bank' AND g.fk_doc=b.rowid AND g.numero_compte=".$c->quote($a['gl']['account_number']).' HAVING SUM(g.debit-g.credit)>0)');foreach($rows as$r)$out['openings'][]=['id'=>(int)$r['rowid'],'currency'=>$currency,'amount'=>bcadd($r['amount'],'0',2),'date'=>substr($r['dateo'],0,10)];}
         }
+        $out['readiness_issue']='';try{$this->settings->assertReady($office,$v,$row&&$row['kind']==='opening');}catch(DomainException $unready){$out['enabled']=false;$out['readiness_issue']=$unready->getMessage();}
         if(!$row)return $out;
-        if($row['kind']==='opening')$out['enabled']=$this->settings->coreEnabled()&&$this->access->isFinanceAdministrator();
+        if($row['kind']==='opening')$out['enabled']=$out['readiness_issue']===''&&$this->access->isFinanceAdministrator();
 
         $this->source->get($office,$row['kind'],$row['id']);$out['confirmation']=$this->confirmation($row);$out['permissions']=[];
         foreach(['approve','post','reverse']as$action)$out['permissions'][$action]=$this->permitted($office,$row['kind'],$action);if($row['kind']==='opening'&&$v['enabled'])$out['permissions']['reverse']=false;
-        $out['submit']=($row['owner']===$this->access->financeActorId()&&$this->source->allowed($office,$row['kind'],'create'))||$this->source->allowed($office,$row['kind'],'update');
+        $out['submit']=$this->source->canPrepareFinance($row);
         $out['staff']=$this->source->staff($office,OfficeExpenseWorkspaceDocument::SECTIONS[$row['kind']]);$out['customers']=[];$out['invoices']=[];$out['advances']=[];
         if($row['kind']==='receipt'&&$this->settings->coreEnabled()){
             $c=new OfficeExpenseNativeConnection($this->db);$where=$this->access->isFinanceAdministrator()||$v['customer_mode']==='all_company_customers'?'':' AND rowid IN ('.implode(',',array_merge([0],$v['customer_ids'])).')';
@@ -80,7 +81,7 @@ final class OfficeExpenseFinancialService
                     if($row['office']!==$office||$row['kind']!==$kind)throw new DomainException('Financial source differs.');
                     $this->source->get($office,$kind,$row['id']);
                     if($action==='submit'){
-                        if(!(($row['owner']===$this->access->financeActorId()&&$this->source->allowed($office,$kind,'create'))||$this->source->allowed($office,$kind,'update')))throw new DomainException('Document submission unavailable.');
+                        if(!$this->source->canPrepareFinance($row))throw new DomainException('Document submission unavailable.');
                     }else $this->access->assertFinancial($office,OfficeExpenseWorkspaceDocument::SECTIONS[$kind],$action==='reject'?'approve':$action,$config['content']['roles']);
                 },
                 function($row)use($action,$input,$config){
@@ -89,7 +90,7 @@ final class OfficeExpenseFinancialService
                         $intent=OfficeExpenseFinancialPlan::intent($row,$input,$this->settings->base(),$this->native->today());
                         if($intent['setup_revision']!==$config['revision'])throw new DomainException('Financial settings changed; refresh the preview.');
                         $this->settings->assertReady($row['office'],$config['content'],$row['kind']==='opening');
-                        $proof=$this->proof($row,$config['content']['require_evidence']);$plan=$this->plan($row,$intent,$config);
+                        $proof=$this->proof($row,$config['content']['require_evidence']);if(in_array($row['kind'],['expense','advance','advance_return','advance_settlement'],true)){$assigned=$intent['staff_id'];if($row['subject']!==0&&$row['subject']!==$assigned)throw new DomainException('Financial staff subject is immutable; prepare a new request for another employee.');$row['subject']=$assigned;}$plan=$this->plan($row,$intent,$config);
                         $f=['operations'=>$f['operations']??[],'intent'=>$intent,'submitted_by'=>$actor,'submitted_at'=>gmdate('Y-m-d H:i:s'),'proof'=>$proof,'source_hash'=>self::sourceHash($row),'plan'=>$plan];
                     }elseif($action==='reject'){
                         self::fields($input,['reason']);$reason=$input['reason']??'';if(!is_string($reason))throw new InvalidArgumentException('Rejection reason required.');OfficeExpenseMoney::text(trim($reason),1000);
@@ -120,6 +121,7 @@ final class OfficeExpenseFinancialService
     }
     public function permitted(string $office,string $kind,string $action): bool
     {
+        if($kind==='opening'&&!$this->access->isFinanceAdministrator())return false;
         try{$config=$this->settings->internal($office);$this->access->assertFinancial($office,OfficeExpenseWorkspaceDocument::SECTIONS[$kind],$action,$config['content']['roles']);return true;}catch(DomainException $e){return false;}
     }
     private function unchanged(array $row,array $f,array $config): void

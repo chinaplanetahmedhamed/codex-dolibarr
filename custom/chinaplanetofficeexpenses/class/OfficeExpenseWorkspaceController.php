@@ -15,7 +15,7 @@ final class OfficeExpenseWorkspaceController
     }
     public function handle(string $method,array $query,array $post,array $files=[]): array
     {
-        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false,'report_currency'=>'','month'=>'','navigation_views'=>[]];
+        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false,'report_currency'=>'','month'=>'','navigation_views'=>[],'actor_id'=>0,'record_scope'=>'own'];
         try{
             if(!in_array($method,['GET','POST'],true))return array_replace($state,['status'=>405,'error'=>'method']);
             foreach(['view','office','lang','edit','print','from','to','kind','status','export','saved','search','currency','month']as$field)if(isset($query[$field])&&!is_string($query[$field]))throw new InvalidArgumentException('Invalid query.');
@@ -26,7 +26,7 @@ final class OfficeExpenseWorkspaceController
             $kind=self::VIEWS[$view];if($view==='advances'&&in_array($post['kind']??$query['kind']??'advance',['advance_return','advance_settlement'],true))$kind=$post['kind']??$query['kind'];
             if($view==='treasury'&&($post['kind']??$query['kind']??'deposit')==='opening')$kind='opening';
             $state=array_replace($state,['view'=>$view,'kind'=>$kind,'office'=>$office,'language'=>$lang,'offices'=>$offices]);
-            $state['navigation_views']=$this->service->navigationViews($office);
+            $state['navigation_views']=$this->service->navigationViews($office);$state['actor_id']=$this->service->actorId();$state['record_scope']=$this->service->recordScope($office,$view==='overview'?'expense':$kind);
             if($method==='POST'){
                 if($this->token===''||!is_string($post['token']??null)||!hash_equals($this->token,$post['token']))return array_replace($state,['status'=>403,'error'=>'csrf']);
                 if(array_diff(array_keys($post),['view','kind','office','lang','token','action','id','revision','submission_key','payload','print_after']))throw new InvalidArgumentException('Unexpected fields.');

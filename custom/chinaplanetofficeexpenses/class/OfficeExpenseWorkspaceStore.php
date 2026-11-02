@@ -50,7 +50,7 @@ final class OfficeExpenseWorkspaceStore
             $content=$action==='update'?$payload:$old['content'];
             // Rejected edits retain the complete operation history, while invalidating prior approval.
             if($action==='update'&&isset($old['content']['_finance']))$content['_finance']=['operations'=>$old['content']['_finance']['operations']??[]];
-            if((int)($content['user_id']??0)!==$old['subject']||($old['kind']==='payroll'&&$content['month']!==$old['content']['month']))throw new DomainException('Document subject and payroll period cannot change.');
+            if((!in_array($old['kind'],['expense','advance','advance_return','advance_settlement'],true)&&(int)($content['user_id']??0)!==$old['subject'])||($old['kind']==='payroll'&&$content['month']!==$old['content']['month']))throw new DomainException('Document subject and payroll period cannot change.');
             $status=$action==='archive'?'archived':($action==='restore'?(in_array($old['kind'],['settings','finance_settings','category','employee'],true)?'active':'draft'):$old['status']);
             $q=$c->quote(...);$c->query('UPDATE '.MAIN_DB_PREFIX.'cpo_oe_workspace SET content_json='.$q(self::json($content)).',status='.$q($status).',revision='.($expected+1).',date_modification='.$q(gmdate('Y-m-d H:i:s')).' WHERE entity='.$entity.' AND record_ref='.$q($ref).' AND revision='.$expected);
             $saved=$this->find($entity,$ref);
@@ -107,10 +107,11 @@ final class OfficeExpenseWorkspaceStore
             $content=$apply($old);if(!is_array($content)||!isset($content['_finance'])||!is_array($content['_finance']))throw new RuntimeException('Financial evidence missing.');
             // Domain fields are immutable during a financial transition.
             $before=$old['content'];unset($before['_finance']);$after=$content;unset($after['_finance']);if($before!==$after)throw new RuntimeException('Financial transition changed its source.');
+            $subject=$old['subject'];if($action==='submit'&&in_array($old['kind'],['expense','advance','advance_return','advance_settlement'],true)&&isset($content['_finance']['intent']['staff_id'])){$assigned=$content['_finance']['intent']['staff_id'];if(!is_int($assigned)||$assigned<1||($subject!==0&&$subject!==$assigned))throw new DomainException('A submitted financial staff subject cannot be reassigned.');$subject=$assigned;}
             $operations=$old['content']['_finance']['operations']??[];
             $operations[]=['key'=>$key,'hash'=>$hash,'actor'=>$actor,'action'=>$action,'at'=>gmdate('Y-m-d H:i:s')];$content['_finance']['operations']=$operations;
-            $q=$c->quote(...);$c->query('UPDATE '.MAIN_DB_PREFIX.'cpo_oe_workspace SET content_json='.$q(self::json($content)).',status='.$q($next[1]).',revision='.($expected+1).',date_modification='.$q(gmdate('Y-m-d H:i:s')).' WHERE entity='.$entity.' AND record_ref='.$q($ref).' AND revision='.$expected);
-            $saved=$this->find($entity,$ref);if(!$saved||$saved['revision']!==$expected+1||$saved['status']!==$next[1]||$saved['content']!==$content)throw new RuntimeException('Financial state readback differs.');
+            $q=$c->quote(...);$c->query('UPDATE '.MAIN_DB_PREFIX.'cpo_oe_workspace SET fk_subject='.$subject.',content_json='.$q(self::json($content)).',status='.$q($next[1]).',revision='.($expected+1).',date_modification='.$q(gmdate('Y-m-d H:i:s')).' WHERE entity='.$entity.' AND record_ref='.$q($ref).' AND revision='.$expected);
+            $saved=$this->find($entity,$ref);if(!$saved||$saved['revision']!==$expected+1||$saved['status']!==$next[1]||$saved['subject']!==$subject||$saved['content']!==$content)throw new RuntimeException('Financial state readback differs.');
             $this->audit($actor,$action,$old,$saved);$c->commitOwned();return $saved;
         }catch(Throwable $error){$c->rollbackOwnedOnFailure($error);throw $error;}
     }

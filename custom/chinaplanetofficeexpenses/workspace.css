@@ -77,3 +77,8 @@
 .office-expenses-app .workspace-finance select { max-width:100%; }
 @media(max-width:640px) { .office-expenses-app .workspace-finance-grid { grid-template-columns:minmax(0,1fr); } }
 @media print { .office-expenses-app .workspace-finance { display:none; } }
+.office-expenses-app.workspace-finance-error { min-height:100vh; display:grid; align-content:center; padding:24px; }
+.office-expenses-app.workspace-finance-error>.workspace-card { width:min(100%,640px); margin-inline:auto; }
+.office-expenses-app.workspace-finance-error h1 { font-size:24px; }
+.office-expenses-app.workspace-finance-error p { line-height:1.8; overflow-wrap:anywhere; }
+.office-expenses-app.workspace-finance-error details { margin-block:16px; }
