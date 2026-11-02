@@ -147,7 +147,7 @@ class FinanceDeployerTests(unittest.TestCase):
     @unittest.skipUnless(os.geteuid()==0,'Root-owned private installer preparation is checked in Linux CI')
     def test_installer_resumes_only_exact_failed_preflight_and_preserves_prior_verifier(self):
         reader=load('finance_installer_reader','deploy/releases/m119/install_standalone_helper.py');old=Path(e.__file__).read_bytes();worker=(ROOT/'deploy/releases/m119/finance_native_verify.php').read_bytes()
-        with tempfile.TemporaryDirectory()as tmp:
+        with tempfile.TemporaryDirectory(prefix='m119-finance-installer-',dir='/var/lib')as tmp:
             state=Path(tmp)/'private-state'
             with patch.object(i,'STATE',state):
                 i.prepare_state(reader,old,worker);self.assertEqual((state/'previous_helper.py').read_bytes(),old)
