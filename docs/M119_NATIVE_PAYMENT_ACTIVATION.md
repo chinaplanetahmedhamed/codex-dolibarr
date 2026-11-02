@@ -1,6 +1,6 @@
 # Native payment and financial posting activation
 
-Status: PROPOSED; required approval-role and accounting-level decisions are pending. Ahmed requested activation on2026-11-02. No financial adapter is enabled by this document or the receipt-design release.
+Status: CODE DEPLOYED AND VERIFIED ON BACKUP-ERP; reviewed business accounting configuration and live posting acceptance remain pending. Ahmed confirmed manager approval and native cash plus GL. Historical proposal wording below is retained as context; the confirmed decisions and current checkpoint take precedence.
 
 ## Workflow to implement after the decisions
 
@@ -56,6 +56,17 @@ For non-USD money, retain the original amount and require an explicit approved U
 
 Local implementation is in progress; backup-ERP remains on R10. New default-disabled financial configuration, explicit submission/approval/post/reverse authority, exact original/base posting plans, native money/GL bridge, private evidence, and compatible immutable source/audit handling are implemented for review. The source does not enable accounting or guess native mappings. Existing openings and older drafts are preserved.
 
-Local checks currently pass: 38 workspace/native identity tests, 21 staff-access tests, 14 document tests, 10 exact financial-plan tests, standalone dependency closure/reproducibility, and PHP syntax. These do not establish native money/GL acceptance. A new isolated MariaDB CI suite exercises actual native ExpenseReport, Salary, payment, bank and BookKeeping APIs; execution and resulting fixes are pending. Native banking/GL activation, opening-GL reconciliation, approved accounting mappings, Ahmed's exact identity and authenticated branch staff acceptance remain open. Do not mark this Mission completed or the module ready for real financial use from this checkpoint.
+Application a6d1893b46db0cd9349533fdd15461d93ad32f9a passed the full matching-engine check in Actions 41468853234 (FAILED_SUITES=0): 41 workspace tests, 10 financial-plan tests, and 20 actual native finance cases on PHP8.2.32/Dolibarr24.0.1/MariaDB10.6.27, in addition to the existing full module suites. The native suite covers actual ExpenseReport/Salary/customer payments, bank linkage, balanced BookKeeping, opening GL without duplicate cash, historical loan FX, reversal, closed periods, audit rollback, lost-commit recovery, manager isolation and worker denials. Test fixtures now use genuine Conf/Translate/HookManager objects; invoice PDF auto-update is explicitly disabled only in the disposable CI configuration. These are isolated synthetic tests and do not establish live business acceptance. Native banking/GL activation, opening-GL reconciliation, approved accounting mappings, Ahmed's exact identity and authenticated branch staff acceptance remain open. Do not mark this Mission completed or the module ready for real financial use from this checkpoint.
 
 Runtime rollback for the financial release must disable actions while keeping the compatible parser, immutable financial states, evidence and native records. R10's older source-store/parser cannot be restored over financial state. Customer Center/Mobile App parity: not applicable, finance remains internal native ERP only.
+
+
+### Release preparation checkpoint
+
+R11 prepares a complete 69-file runtime plus release declaration. The business configuration remains disabled; deploying code does not enable native accounting, choose a chart, assign financial roles, or post cash/GL. The pinned application package is d648078b62e491082bdf7869f1a7a0a283306e44ac29d38fe27be5587983b1d9; manifest c5b2f2b27ab6235febdb0b8d294f7b3b546e24e20212864865d0b02ed660d369. The five-action finance updater verifies the existing R10 closure, backs up the full database and exact source, installs a paused compatible closure, verifies unchanged native records, and only then permits reviewed business setup. Rollback pauses the release, drains financial work and retains all compatible files and financial history. It never restores the older R10 parser or an old database.
+
+The finance report CSV contains original and base amounts, posted cash, historical FX provenance, native bank reference and detailed balanced journal pieces. It follows the existing branch/own-report permissions and protects exported text from spreadsheet formula interpretation.
+
+Expanded reversal and release verification: Actions 41472562164 succeeded with 22 native finance cases and 11 release-helper cases, including native payroll and customer-invoice payment reversals. Corrected helper installation passed actual backup-ERP preflight; application apply remains separately pending at this checkpoint.
+
+Final R11 checkpoint: complete69-file application a6d1893 was deployed after full database/source backup and passed separate restricted verification. Both branches retain disabled financial business settings; native records were unchanged. The complete deployment/evidence/rollback boundary is recorded in [M119 native finance report](REPORTS/M119_NATIVE_FINANCE_IMPLEMENTATION.md). Authenticated UI verification awaits native sign-in.

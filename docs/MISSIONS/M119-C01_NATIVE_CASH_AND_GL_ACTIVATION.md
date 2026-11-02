@@ -1,6 +1,6 @@
 # M119-C01 — Native branch cash and general-ledger activation
 
-Status: APPROVED objective and branch authority; accounting mappings and activation acceptance remain gated.
+Status: IN_PROGRESS — approved objective and branch authority. Financial code is deployed/verified on backup-ERP; accounting mappings and live activation acceptance remain gated.
 Owner: Agent007, one writer. Requester: Ahmed Hamed,2026-11-02.
 Environment: local development and established backup-ERP trial only. Production not authorized.
 
@@ -32,3 +32,5 @@ Connect private evidence uploads to new workspace expense records, retain native
 Matching PHP8.2.32/Dolibarr24.0.1/MariaDB10.6.27 tests must cover branch/own/role/CSRF/revision denials, concurrency/idempotency, lost commit response, currencies/valuation, balanced native GL, one linked bank movement, loan/gross-net allocation, reversal, closed periods/accounts and attachment isolation. Require complete target DB/source backup and explicit bounded synthetic posting details before native write acceptance. Rollback disables new actions and preserves records/audit/native money; never restore an old DB over subsequent business transactions.
 
 Admin ERP only; Customer Center and native Mobile App excluded. Completion requires actual native finance reconciliation and staff login/workflow acceptance, not HTTP200 or a rendered button.
+
+Implementation and R11 deployment evidence: [native finance report](../REPORTS/M119_NATIVE_FINANCE_IMPLEMENTATION.md). Actual business activation, native acceptance posting and staff credential-login remain pending; this Mission is not completed.
