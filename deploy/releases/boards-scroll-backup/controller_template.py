@@ -27,6 +27,7 @@ SUPPORT_COMMIT='@SUPPORT_COMMIT@'
 RUNTIME=()  # @RUNTIME@
 PROTECTED=()  # @PROTECTED@
 FALLBACK=()  # @FALLBACK@
+SHARED_LOCKS=tuple(Path('/var/lib/chinaplanetos-backup-erp-deploy')/name/'lock'for name in ('m119-standalone-r01','m119-ui-r02','m119-sidebar-r03','m119-workspace-r04','m119-receipt-r05','m119-receipt-r06','m119-design-r07','m119-design-r08','m119-dropdown-r09','m119-entry-r10','m119-finance-r11','m119-menu-r12','m119-menu-r13'))
 ENTRIES=tuple('chinaplanetoperations/tasks/'+p for p in ('boards.php','boards_api.php','card.php'))
 FLAGS=('CPO_CUSTOMER_WORKSPACES_ENABLED','CPO_PROJECT_TASK_BRIDGE_ENABLED','CPO_WORKSPACE_GALLERY_ENABLED','CPO_BOARD_DELETE_ENABLED','CPO_BOARD_COMPLETION_ENABLED','CPO_BOARDS_SHORTCUT_ENABLED')
 TABLES=('cpo_project_board','cpo_project_task','cpo_customer_workspace_meta','cpo_customer_workspace_pref','cpo_customer_workspace_appearance','cpo_board_deleted','cpo_board_completion')
@@ -199,7 +200,7 @@ class Release:
     def lease(self):
         raw,_=bounded_file(self.inbox,'workflow-lease.json',4096,1002,0o600);lease=json.loads(raw)
         need(set(lease)=={'mission','artifact_sha256','application_commit','workflow_commit','run_id','expires'}and lease['mission']=='M107-C02'and lease['artifact_sha256']==ARTIFACT_SHA and lease['application_commit']==APPLICATION,'Scoped workflow lease differs.')
-        need(re.fullmatch('[a-f0-9]{40}',lease['workflow_commit'])is not None and type(lease['run_id'])is int and lease['run_id']>0 and time.time()<lease['expires']<time.time()+1800,'Workflow lease expired or invalid.')
+        need(re.fullmatch('[a-f0-9]{40}',lease['workflow_commit'])is not None and type(lease['run_id'])is int and lease['run_id']>0 and time.time()+300<lease['expires']<time.time()+1800,'Workflow lease expired or invalid.')
         return lease
     def health(self):
         connection=http.client.HTTPConnection('127.0.0.1',18088,timeout=15)
@@ -384,7 +385,7 @@ class Release:
                 value.update(phase='failed_retained_reconciliation_required',ui_restore_failure=type(restore_error).__name__)
             self.save_state(value);raise
     def receipt(self,value):
-        result={'mission':'M107-C02','phase':value['phase'],'application_commit':APPLICATION,'artifact_sha256':ARTIFACT_SHA,'manifest_sha256':MANIFEST_SHA,'database_backup_sha256':value.get('database_backup_sha256'),'backup_directory':str(STATE),'runtime_files':45,'protected_dependencies':35,'core':'24.0.1','php':'8.2.32','permissions_changed':False,'existing_business_records_changed':False,'authenticated_ui_acceptance':'pending'}
+        result={'mission':'M107-C02','phase':value['phase'],'application_commit':APPLICATION,'artifact_sha256':ARTIFACT_SHA,'manifest_sha256':MANIFEST_SHA,'run_id':value['lease']['run_id'],'workflow_commit':value['lease']['workflow_commit'],'database_backup_sha256':value.get('database_backup_sha256'),'backup_directory':str(STATE),'runtime_files':45,'protected_dependencies':35,'core':'24.0.1','php':'8.2.32','permissions_changed':False,'existing_business_records_changed':False,'authenticated_ui_acceptance':'pending'}
         temporary='deployment-receipt.next';raw=(json.dumps(result,sort_keys=True)+'\n').encode()
         out=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=self.inbox)
         with os.fdopen(out,'wb')as f:os.fchown(f.fileno(),1002,1002);f.write(raw);f.flush();os.fsync(f.fileno())
@@ -405,12 +406,22 @@ def main():
             if action!='apply':
                 need(STATE.exists(),'No private release state.');s=STATE.lstat();need(stat.S_ISDIR(s.st_mode)and s.st_uid==0 and stat.S_IMODE(s.st_mode)==0o700,'Unsafe private release state.')
             # GitHub serializes shared backup deployments; this lock prevents own replays.
+            shared_locks=[]
+            for path in SHARED_LOCKS:
+                parent=open_directory(path.parent)
+                try:fd=os.open(path.name,os.O_RDWR|os.O_NOFOLLOW,dir_fd=parent)
+                finally:os.close(parent)
+                shared_locks.append(fd);m=os.fstat(fd)
+                need(stat.S_ISREG(m.st_mode)and m.st_uid==0 and m.st_nlink==1 and stat.S_IMODE(m.st_mode)==0o600,'Established backup operation lock differs.')
+                fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
             lock=os.open(STATE.with_suffix('.lock'),os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW,0o600)
             try:
                 s=os.fstat(lock);need(stat.S_ISREG(s.st_mode)and s.st_uid==0 and s.st_nlink==1 and stat.S_IMODE(s.st_mode)==0o600,'Unsafe Boards operation lock.')
                 fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 value=getattr(release,action)();result=release.receipt(value)
-            finally:os.close(lock)
+            finally:
+                os.close(lock)
+                for fd in reversed(shared_locks):os.close(fd)
         print(json.dumps(result,sort_keys=True))
     finally:release.close()
 

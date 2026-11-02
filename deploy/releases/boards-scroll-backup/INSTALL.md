@@ -4,7 +4,7 @@ Application7bb0686140da488a3d73ef4ae92d6a9cda686249 ports cumulative customer/pr
 
 Target is only srv1011043 erp-staging containers/volumes, loopback18088, native24.0.1/PHP8.2.32/MariaDB10.6.27. Strict source/core/image/config/DB identity guards precede writes. Seven additive feature tables/customer boolean option, six feature flags, existing hook contexts plus leftblock. No migration of existing tasks, records, memberships or rights; no module initialization.
 
-Workflow uses existing backup-erp environment and backup-erp-deployment concurrency. It uploads immutable package/helper and holds a bounded workflow lease; no sudoers grant or Office helper. Authorized root Termius executes exact pinned helper after independently checking the active job and commit. No other live writer.
+Workflow uses existing backup-erp environment and backup-erp-deployment concurrency. It uploads immutable package/helper and holds a bounded workflow lease; no sudoers grant or Office helper invocation. Root also holds the13already-established backup release locks, so workflow cancellation cannot allow a concurrent Office write while root is still running. Existing locks are opened without creation or metadata changes. Receipts bind run_id and workflow_commit; a minimum five-minute lease margin is required. Authorized root Termius executes exact pinned helper after independently checking the active job and commit. No other live writer.
 
 Before application writes, root-private per-file originals (existence/hash/UID/GID/mode), native fingerprints and a full transaction-consistent gzip DB dump are retained under /root/boards-backup-release-20261103. DB dump streams only server-side, is0600, CRC/footer/table-count verified; no agent or GitHub DB export. No database restore.
 
