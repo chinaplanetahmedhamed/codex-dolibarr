@@ -93,7 +93,8 @@ $db->begin();try{
 
     $customerLimit=$conf->global->MAIN_UPLOAD_DOC??null;$conf->global->MAIN_UPLOAD_DOC=1;
     try{
-        $large=$dir.'/staff-large.txt';file_put_contents($large,str_repeat('a',4069994));chmod($large,0640);$largeKey=basename($dir).'/staff-large.txt';$largeHash=hash_file('sha256',$large);
+        // Newline-delimited text keeps the fixture text/plain across libmagic versions.
+        $large=$dir.'/staff-large.txt';file_put_contents($large,substr(str_repeat("Synthetic staff QA text\n",200000),0,4069994));chmod($large,0640);$largeKey=basename($dir).'/staff-large.txt';$largeHash=hash_file('sha256',$large);
         ok99(empty(cpcc_portal_gallery_file_metadata((object)['rowid'=>$sid,'ref'=>'M099-'.$suffix],$largeKey)['ok']),'default metadata retains customer size limit');
         $largeDoc=$docs->registerExisting($sid,$largeKey);$largeVersion=$docs->document($largeDoc)['version_id'];
         ok99($largeDoc===$docs->registerExisting($sid,$largeKey)&&$docs->document($largeDoc)['version_id']===$largeVersion,'existing staff document above customer limit registers idempotently');

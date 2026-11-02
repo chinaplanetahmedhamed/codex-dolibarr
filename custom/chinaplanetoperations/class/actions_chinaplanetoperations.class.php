@@ -8,8 +8,6 @@ class ActionsChinaplanetoperations
     public $results = array();
     public $resprints = '';
     public $errors = array();
-    public $error = '';
-    public $warnings = array();
     private $db;
     public function __construct($db) { $this->db = $db; }
     /** Global native left-menu hook; append once without changing existing entries. */
@@ -81,36 +79,6 @@ class ActionsChinaplanetoperations
         if ($auth->isInternalActive() && !$auth->isAdministrator() && $auth->hasRight('task_read_own')) {
             if (!isset($object->conf) || !is_object($object->conf)) $object->conf = new stdClass();
             $object->conf->MAIN_LANDING_PAGE = '/custom/chinaplanetoperations/workspace.php?view=my&mainmenu=home';
-        }
-        return 0;
-    }
-
-    /** Native footer hook executes inside the current tab's content area. */
-    public function llxFooter($parameters, &$object, &$action, $hookmanager)
-    {
-        global $db, $conf, $user, $langs;
-        $contexts = explode(':', $parameters['context'] ?? '');
-        $side = in_array('pricesuppliercard', $contexts, true) ? 'product'
-            : (in_array('thirdpartyconsumption', $contexts, true) ? 'supplier' : null);
-        if (!$side) return 0;
-        $this->resprints = '';
-        require_once __DIR__.'/SupplierProductCandidate.class.php';
-        require_once __DIR__.'/SupplierProductCandidateView.class.php';
-        require_once __DIR__.'/SupplierCategorySourcing.class.php';
-        $advanced = (bool) getDolGlobalString('MAIN_USE_ADVANCED_PERMS');
-        if (!$side || !is_object($object) || empty($object->id) || (int) $object->entity !== (int) $conf->entity
-            || !SupplierProductCandidate::canRead($user, (int) $conf->entity, $advanced)) return 0;
-        if (($side === 'supplier' && empty($object->fournisseur))
-            || ($side === 'product' && isset($object->type) && (int) $object->type !== 0)) return 0;
-        $langs->load('supplier_sourcing@chinaplanetoperations');
-        try {
-            $service = new SupplierCategorySourcing($db, (int) $conf->entity, $advanced);
-            $page = max(0, min(100000, (int) GETPOST('cpo_sourcing_page', 'int')));
-            $result = $service->candidates($side, (int) $object->id, $user, $page);
-            $this->resprints = SupplierProductCandidateView::render($result['rows'], $side, $langs, DOL_URL_ROOT, $result);
-        } catch (Throwable $e) {
-            // No SQL, record identifiers or internal error messages in the response.
-            $this->resprints = '<p class="warning">'.htmlspecialchars($langs->trans('SourcingUnavailable'), ENT_QUOTES, 'UTF-8').'</p>';
         }
         return 0;
     }

@@ -757,4 +757,6 @@ PublicMachines=台
 PublicSets=套
 PublicPrivacyEvidence=隐私确认记录
 
+CPOBoardsShortcut=看板
+
 InternalTaskActivity_task_reopened=任务已重新打开

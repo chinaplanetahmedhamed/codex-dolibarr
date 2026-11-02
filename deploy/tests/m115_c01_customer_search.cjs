@@ -14,7 +14,7 @@ class Node {
 }
 const select=new Node('select'),submit=new Node('button'),error=new Node('p');
 const form={isConnected:true,prepend(){},querySelector(s){return {'[name=customer]':select,'[type=submit]':submit,'.cb-error':error}[s]}};
-const ctx={URLSearchParams,cfg:{token:'synthetic-token',board:0,customer:0,mode:'customers'},search:{value:'unrelated gallery text'},archiveGallery:false,
+const ctx={URLSearchParams,cfg:{token:'synthetic-token',board:0,customer:0,mode:'customers'},search:{value:'unrelated gallery text'},archiveGallery:false,liveSync:null,boardSounds:null,
  dialog:{querySelector(){return form},addEventListener(){}},wsText:(ar,en)=>en,formModal(){},
  el(tag,cls,text){const n=new Node(tag,text);nodes.push(n);return n},
  setTimeout(fn){timers.push(fn);return timers.length},clearTimeout(){},
