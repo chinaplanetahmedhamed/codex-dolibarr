@@ -1,0 +1,14 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');const p='custom/chinaplanetoperations/';
+for(const f of ['tasks/boards.php','tasks/card.php'])assert.ok(fs.readFileSync(p+f,'utf8').includes('boards_geometry.js'),f+' must load the shared geometry dependency');
+for(const f of ['js/boards.js','js/card_board.js','js/card_operation.js'])assert.ok(fs.readFileSync(p+f,'utf8').includes('CPBoardsGeometry.position('),f+' must use visible-area menu placement');
+assert.ok(fs.readFileSync(p+'js/boards.js','utf8').includes('CPBoardsGeometry.bindFrame('));
+assert.ok(fs.readFileSync(p+'css/boards.css','utf8').includes('Natural document scrolling'));
+assert.ok(fs.readFileSync(p+'css/card_board.css','utf8').includes('.cbo-natural-height'));
+console.log('SCROLL_INTEGRATION_PASS dependency closure and all menu surfaces');
+const css=fs.readFileSync(p+'css/boards.css','utf8');
+assert.ok(css.includes('#cp-boards .cb-card,#cp-boards .cb-card-title{touch-action:manipulation!important}'));
+assert.ok(css.includes('.cb-card-handle{pointer-events:auto;min-width:56px;min-height:48px'));
+console.log('PASS free panning outside existing dedicated drag handles');
+const cardCss=fs.readFileSync(p+'css/card_board.css','utf8');
+assert.ok(cardCss.includes('body.cpo-board-card .cke_dialog{'),'CKEditor div-based modal must use the visible parent clip too');
+console.log('PASS CKEditor dialog visible-area integration');

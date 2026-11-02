@@ -19,3 +19,28 @@ body.cpo-board-card{--card-menu:#fff;--card-hover:#f1f2f4;--card-soft-line:#dfe1
 @media(pointer:coarse){.cpo-board-card .cbo-tool,.cpo-board-card .cbo-add-menu>summary,.cpo-board-card .cbo-actions-menu>summary,.cpo-board-card .cbo-floating-menu :is(.cbo-tool,.button){min-height:44px}}
 .cpo-board-card .cbo-floating-menu:not(:popover-open){display:none!important}
 .cpo-board-card #cpo-task-title:focus-visible{outline:2px solid var(--card-focus);outline-offset:4px}
+
+/* Enabled only by the authorized same-origin Boards host; standalone cards stay unchanged. */
+html.cbo-natural-height,html.cbo-natural-height body.cpo-board-card{height:auto!important;min-height:0!important;overflow:visible}
+html.cbo-natural-height body.cpo-board-card .cpo-task-detail{min-height:0!important}
+/* Child dialogs belong to the visible part of the card, not the full content-height frame. */
+html.cbo-natural-height body.cpo-board-card dialog{position:fixed;inset:auto;margin:0;left:calc(var(--cbo-visible-left,0px) + var(--cbo-visible-width,100vw)/2);top:calc(var(--cbo-visible-top,0px) + 12px);transform:translateX(-50%);max-height:calc(var(--cbo-visible-height,100dvh) - 24px);max-width:calc(var(--cbo-visible-width,100vw) - 24px);overflow:auto;overscroll-behavior:contain}
+/* CKEditor uses div-based dialogs, not <dialog>; keep them in the same visible clip. */
+html.cbo-natural-height body.cpo-board-card .cke_dialog{position:fixed!important;inset:auto!important;margin:0!important;left:calc(var(--cbo-visible-left,0px) + var(--cbo-visible-width,100vw)/2)!important;top:calc(var(--cbo-visible-top,0px) + 12px)!important;transform:translateX(-50%);max-height:calc(var(--cbo-visible-height,100dvh) - 24px)!important;max-width:calc(var(--cbo-visible-width,100vw) - 24px)!important;overflow:auto!important}
+html.cbo-natural-height .cke_dialog .cke_dialog_body,html.cbo-natural-height .cke_dialog .cke_dialog_contents_body{min-width:0!important;max-width:100%}
+html.cbo-natural-height .cke_dialog :is(.cke_dialog_body,.cke_dialog_title,.cke_dialog_contents,.cke_dialog_footer){background:var(--card-bg);color:var(--card-ink);border-color:var(--card-line)}
+html.cbo-natural-height .cke_dialog .cke_dialog_title{min-height:44px;padding-inline-end:48px}
+html.cbo-natural-height .cke_dialog .cke_dialog_tabs a{background:var(--card-control);color:var(--card-ink);border-color:var(--card-line)}
+html.cbo-natural-height .cke_dialog .cke_dialog_tabs a.cke_dialog_tab_selected{background:var(--card-surface)}
+html.cbo-natural-height .cke_dialog a.cke_dialog_close_button{width:44px;height:44px;top:0;inset-inline-end:0;background-position:center}
+html.cbo-natural-height .cke_dialog a.cke_dialog_ui_button{display:inline-flex;align-items:center;min-height:44px;padding:6px 14px;background:var(--card-control);border-color:var(--card-line)}
+html.cbo-natural-height .cke_dialog a.cke_dialog_ui_button span{color:var(--card-ink)}
+html.cbo-natural-height .cke_dialog a.cke_dialog_ui_button_ok{background:#0c66e4;border-color:#0c66e4}
+html.cbo-natural-height .cke_dialog a.cke_dialog_ui_button_ok span{color:#fff}
+/* Fixed-position shrink-to-fit must not halve the editor dialog on a phone. */
+html.cbo-natural-height body.cpo-board-card .cke_dialog{width:min(480px,calc(var(--cbo-visible-width,100vw) - 24px))!important}
+html.cbo-natural-height .cke_dialog .cke_dialog_tabs{display:flex;padding-inline:0;min-width:0}
+html.cbo-natural-height .cke_dialog .cke_dialog_tabs a{float:none;flex:1 1 0;min-width:0;padding-inline:8px;white-space:normal;overflow-wrap:anywhere;text-align:center}
+html.cbo-natural-height .cke_dialog .cke_dialog_tabs{width:100%;height:auto;min-height:36px;left:0;right:0;margin-inline:0;box-sizing:border-box}
+html.cbo-natural-height .cke_dialog .cke_dialog_tabs a{white-space:nowrap;box-sizing:border-box}
+html.cbo-natural-height body.cpo-board-card.is-dark .cke_dialog a.cke_dialog_close_button{filter:invert(1);opacity:.9}

@@ -184,3 +184,21 @@ body.cpo-board-canvas{overflow:hidden;margin:0}body.cpo-board-canvas .fiche{marg
 .cb-sound-preview{display:flex;flex-wrap:wrap;gap:8px}#cb-dialog .cb-sound-form :is(button,select){min-height:44px}#cb-dialog .cb-sound-preview button{padding:8px 12px}
 .cb-sound-feedback{display:block;min-height:24px;line-height:1.5}
 @media(max-width:600px){#cp-boards .cb-sound-tools{flex:1 0 100%}#cp-boards .cb-sound-tools button{flex:1;justify-content:center}}
+
+/* Natural document scrolling: tall lists grow instead of competing for a tiny viewport. */
+body.cpo-board-canvas{overflow-x:hidden;overflow-y:auto}
+body.cpo-board-canvas #cp-boards{position:relative;inset:auto;top:auto;bottom:auto;height:auto;min-height:calc(100vh - var(--cb-canvas-top,56px));display:block;overflow:visible}
+body.cpo-board-canvas #cb-content,body.cpo-board-canvas #cb-content:has(>.cb-workspace){display:block;overflow:visible}
+body.cpo-board-canvas .cb-workspace{display:block;height:auto;min-height:65vh}
+body.cpo-board-canvas .cb-lanes{min-height:40vh;height:auto;max-height:none;overflow-x:auto;overflow-y:hidden;align-items:flex-start}
+body.cpo-board-canvas .cb-list{height:auto;max-height:none;overflow:visible}
+/* One vertical scroll owner for the open card; its same-origin content fits naturally. */
+#cb-card-dialog{height:auto;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain}
+#cb-card-dialog>header{position:sticky;top:0;z-index:3;height:auto;min-height:56px}
+#cb-card-dialog iframe{display:block;height:600px;min-height:320px;width:100%;border:0}
+body.cpo-board-canvas:has(#cb-card-dialog[open]){overflow:hidden}
+@media(max-width:700px){#cb-card-dialog{width:100vw;max-width:100vw;max-height:100vh;max-height:100dvh;border-radius:0;margin-block:0}}
+/* Outside the dedicated Move handles, both page and cross-list panning remain available. */
+#cp-boards .cb-card,#cp-boards .cb-card-title{touch-action:manipulation!important}
+/* Keep existing save/error feedback visible when the document is longer than the screen. */
+body.cpo-board-canvas #cb-status:not(:empty){position:fixed;inset-inline:0;bottom:0;z-index:5;max-height:25vh;overflow:auto}
