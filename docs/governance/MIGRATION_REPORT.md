@@ -64,3 +64,14 @@ No runtime rollback is needed because this migration changes no application/runt
 ## Overall readiness
 Shared governance migration can be published independently; full Mac/technical-access reconciliation is BLOCKED by unavailable access and dependency evidence. It is not globally complete.
 Begin only the authorized read-only architecture review. Reuse the existing M121 source audit record, compare current accessible source variants, and obtain the full Master Improvement & Integration Instructions before feature implementation. Preserve staging isolation, runtime/schema/grant parity and financial source-of-truth questions as open gates.
+
+## Execution evidence — 2026-11-03
+- ERP governance PR https://github.com/chinaplanetahmedhamed/codex-dolibarr/pull/56 was merged to main at `563838275f49ac73fcb468fe2ff0c6af6c0f9ba5`; canonical AGENTS.md readback matched the approved replacement.
+- ERP remote compare verified exactly 75 documentation/archive paths, zero application/workflow changes. All 35 archived blob SHAs equal the originals. Historical content and technical safeguards were compared; local `git diff --cached --check` passed.
+- Related React correction: https://github.com/chinaplanetahmedhamed/Moaz/pull/81, draft/unmerged, commit `a57e0a8fa919390efc860229e361563a7b2c0588`. Four documentation/archive paths; both original archive SHAs verified. Main remains physically unreconciled because of automatic staging dependency.
+- Three Drive archive copies were read back and matched pre-reset text; three current governance notices and preserved document content were verified. Shared policy readback and project-folder placement were verified.
+- Read-only architecture review has begun; see [source audit addendum](../architecture/2026-11-03-SOURCE-AUDIT-ADDENDUM.md). Existing M121 records remain preserved.
+- Overall: ERP main and shared Drive governance updated; React main, Mac governance, actual technical identity/grant revocation and full cross-environment consistency remain incomplete. No runtime/server/production action or credential revocation occurred.
+
+## Dot local work authorization and delivery
+Ahmed explicitly authorized Work to ask Dot to perform Mac tasks. The bounded local handoff is [DOT_MAC_HANDOFF.md](DOT_MAC_HANDOFF.md). No direct Dot messaging capability was exposed after tool/plugin discovery in this session. The shared task is prepared; delivery/receipt/execution are NOT VERIFIED. Mac reconciliation remains pending until actual evidence arrives.

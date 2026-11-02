@@ -1,10 +1,13 @@
-# Governance reset execution plan
-Authority: Ahmed Hamed's 2026-11-03 reset. Scope: governance/documentation only.
-- [x] Read repository and shared-document instructions; inventory legacy role assignments, workflows, task records and accessible automation/configuration.
-- [x] Prepare exact pre-reset archives and replacement authority; preserve technical/security safeguards.
-- [x] Archive affected Drive documents and add scoped precedence notices plus a shared policy.
-- [ ] Validate exact archives, role consistency and documentation-only diff.
-- [ ] Publish ERP change on isolated governance branch, inspect PR and merge only the authorized documentation scope.
-- [ ] Prepare related React PR without merging because main triggers staging.
-- [ ] Verify publication and record remaining Mac/access revocation blockers.
-- [ ] Start read-only architecture review by reconciling accessible source with the existing M121 record; no application implementation or deployment.
+# Governance reset execution status — 2026-11-03
+
+- [x] Inventory accessible instructions, workflow triggers, task records, automations and cloud configuration.
+- [x] Archive 35 ERP originals and replace/deactivate legacy management authority.
+- [x] Archive shared Drive documents; add policy and notices; verify readback.
+- [x] Validate archives, safeguards and documentation-only diff; merge ERP PR #56.
+- [x] Prepare React draft PR #81 and verify its exact archives; do not merge due automatic staging.
+- [x] Record technical-access revocation plan and current blockers.
+- [x] Begin read-only architecture review, preserving M121 continuity.
+- [ ] Read/archive/reconcile inaccessible Mac governance and local agent/task configurations.
+- [ ] Verify identity ownership/dependencies and perform only approved technical-access revocation.
+- [ ] Publish React main correction through an approved deployment-safe path.
+- [ ] Obtain full Master Improvement & Integration Instructions and missing M121 deliverables; complete source/runtime/schema/isolation audit before implementation.
