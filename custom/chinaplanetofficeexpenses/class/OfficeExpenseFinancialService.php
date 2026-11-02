@@ -16,7 +16,7 @@ final class OfficeExpenseFinancialService
     public function settings(): OfficeExpenseFinanceSettings {return $this->settings;}
     public function prepareOpening(string $office,string $bank,string $key): array
     {
-        if(!$this->access->isFinanceAdministrator())throw new DomainException('Opening reconciliation requires administrator authority.');$id=OfficeExpenseWorkspaceDocument::number($bank);$accountIds=array_column($this->source->accounts($office),'id');$c=new OfficeExpenseNativeConnection($this->db);
+        OfficeExpenseFinanceGate::assertEnabled();if(!$this->access->isFinanceAdministrator())throw new DomainException('Opening reconciliation requires administrator authority.');$id=OfficeExpenseWorkspaceDocument::number($bank);$accountIds=array_column($this->source->accounts($office),'id');$c=new OfficeExpenseNativeConnection($this->db);
         $r=$c->one('SELECT b.dateo,a.currency_code,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank AS b JOIN '.MAIN_DB_PREFIX.'bank_account AS a ON a.rowid=b.fk_account WHERE b.rowid='.$id.' AND a.entity='.(int)$this->conf->entity." AND b.fk_type='SOLD' AND a.rowid IN (".implode(',',array_map('intval',$accountIds)).')');if(!$r)throw new DomainException('Native branch opening unavailable.');
         return $this->source->save($office,'opening',['bank_id'=>$bank,'amount'=>bcadd($r['amount'],'0',2),'currency'=>$r['currency_code'],'date'=>substr($r['dateo'],0,10),'purpose'=>'Native cash opening GL reconciliation #'.$id,'notes'=>'GL representation only; the original native cash movement is retained.'],$key);
     }
@@ -52,7 +52,7 @@ final class OfficeExpenseFinancialService
         if($out['administrator']&&$this->settings->coreEnabled()){
             $c=new OfficeExpenseNativeConnection($this->db);foreach($v['money']as$currency=>$channels){$map=$channels['cash']??null;if(!$map||$map['native_id']<1||$map['gl_id']<1)continue;try{$a=$this->settings->moneyAccount($office,$currency,'cash',$map);}catch(DomainException $unready){continue;}$rows=$c->rows('SELECT b.rowid,b.dateo,CAST(CAST(b.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank AS b WHERE b.fk_account='.(int)$a['rowid']." AND b.fk_type='SOLD' AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX.'accounting_bookkeeping AS g WHERE g.entity='.(int)$this->conf->entity." AND g.doc_type='bank' AND g.fk_doc=b.rowid AND g.numero_compte=".$c->quote($a['gl']['account_number']).' HAVING SUM(g.debit-g.credit)>0)');foreach($rows as$r)$out['openings'][]=['id'=>(int)$r['rowid'],'currency'=>$currency,'amount'=>bcadd($r['amount'],'0',2),'date'=>substr($r['dateo'],0,10)];}
         }
-        $out['readiness_issue']='';try{$this->settings->assertReady($office,$v,$row&&$row['kind']==='opening');}catch(DomainException $unready){$out['enabled']=false;$out['readiness_issue']=$unready->getMessage();}
+        $out['readiness_issue']='';try{OfficeExpenseFinanceGate::assertEnabled();$this->settings->assertReady($office,$v,$row&&$row['kind']==='opening');}catch(DomainException $unready){$out['enabled']=false;$out['readiness_issue']=$unready->getMessage();}
         if(!$row)return $out;
         if($row['kind']==='opening')$out['enabled']=$out['readiness_issue']===''&&$this->access->isFinanceAdministrator();
 
@@ -71,11 +71,11 @@ final class OfficeExpenseFinancialService
     }
     public function transition(string $office,string $kind,string $id,int $revision,string $action,string $key,array $input): array
     {
-        $this->source->get($office,$kind,$id);if($kind==='opening'&&!$this->access->isFinanceAdministrator())throw new DomainException('Opening reconciliation requires administrator authority.');
+        OfficeExpenseFinanceGate::assertEnabled();$this->source->get($office,$kind,$id);if($kind==='opening'&&!$this->access->isFinanceAdministrator())throw new DomainException('Opening reconciliation requires administrator authority.');
         if(!in_array($kind,OfficeExpenseFinancialPlan::KINDS,true))throw new DomainException('Financial document required.');
         if(!in_array($action,['submit','approve','reject','post','reverse'],true))throw new InvalidArgumentException('Invalid financial action.');
         return OfficeExpenseFinancialLock::run($this->db,(int)$this->conf->entity,function()use($office,$kind,$id,$revision,$action,$key,$input){
-            $config=$this->settings->internal($office);
+            OfficeExpenseFinanceGate::assertEnabled();$config=$this->settings->internal($office);
             return $this->store->financial((int)$this->conf->entity,$this->access->financeActorId(),$id,$revision,$action,$key,$input,
                 function($row)use($office,$kind,$action,$config){
                     if($row['office']!==$office||$row['kind']!==$kind)throw new DomainException('Financial source differs.');
@@ -110,7 +110,7 @@ final class OfficeExpenseFinancialService
                         $plan=OfficeExpenseFinancialPlan::reverse($posting['plan'],$input['date']??'',$this->native->today());$plan['journal_preview']=$this->native->preview($row,$plan,$posting['configuration']);
                         $f['reversal']=$this->native->post($row,$plan,$posting['configuration'],true);$f['reversal']['reason']=trim($reason);
                     }
-                    $content['_finance']=$f;return $content;
+                    OfficeExpenseFinanceGate::assertEnabled();$content['_finance']=$f;return $content;
                 });
         });
     }

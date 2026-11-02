@@ -46,7 +46,7 @@ WORKSPACE_RUNTIME_FILES = RUNTIME_FILES + tuple(MODULE + p for p in (
 
 
 FINANCE_RUNTIME_FILES = WORKSPACE_RUNTIME_FILES + tuple(MODULE + p for p in (
-    'finance.php', 'class/OfficeExpenseFinanceSettings.php',
+    'finance.php', 'finance-bridge.json', 'class/OfficeExpenseFinanceGate.php', 'class/OfficeExpenseFinanceSettings.php',
     'class/OfficeExpenseFinancialLock.php', 'class/OfficeExpenseFinancialPlan.php',
     'class/OfficeExpenseNativeFinance.php', 'class/OfficeExpenseFinancialService.php',
     'class/OfficeExpenseWorkspaceEvidence.php', 'class/OfficeExpenseFinancialPage.php',

@@ -18,6 +18,7 @@ check python3 -B deploy/tests/test_m119_design_deployer.py
 check python3 -B deploy/tests/test_m119_design_acceptance_deployer.py
 check python3 -B deploy/tests/test_m119_dropdown_deployer.py
 check python3 -B deploy/tests/test_m119_entry_deployer.py
+check php deploy/tests/test_m119_finance_gate.php
 check php deploy/tests/test_m119_financial_plan.php
 check php deploy/tests/test_m119_workspace_documents.php
 check php deploy/tests/test_m119_workspace_native.php "$native"

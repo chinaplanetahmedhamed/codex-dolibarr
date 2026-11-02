@@ -4,6 +4,7 @@ require_once __DIR__.'/OfficeExpenseWorkspaceStore.php';
 require_once __DIR__.'/OfficeExpenseStaffAccess.php';
 require_once __DIR__.'/OfficeExpenseWorkspaceDocument.php';
 require_once __DIR__.'/OfficeExpenseFinancialLock.php';
+require_once __DIR__.'/OfficeExpenseFinanceGate.php';
 
 /** Reviewed branch mappings; never creates accounts, changes base currency or enables core modules. */
 final class OfficeExpenseFinanceSettings
@@ -72,7 +73,7 @@ final class OfficeExpenseFinanceSettings
         foreach($v['invoice_ids']as$id){$invoice=$this->c->one('SELECT fk_soc FROM '.MAIN_DB_PREFIX.'facture WHERE rowid='.$id.' AND entity='.(int)$this->conf->entity);if(!$invoice||($v['customer_mode']==='selected'&&!in_array((int)$invoice['fk_soc'],$v['customer_ids'],true)))throw new DomainException('Assigned invoice is outside the reviewed branch customer scope.');}
         $v['_money_bindings']=$old['content']['_money_bindings']??[];
         foreach($v['money']as$channels)foreach($channels as$map)if($map['native_id']>0){$id=(string)$map['native_id'];if(isset($v['_money_bindings'][$id])&&$v['_money_bindings'][$id]!==$map['gl_id'])throw new DomainException('A previously enabled native money/GL binding requires a separate reviewed migration.');if($v['enabled'])$v['_money_bindings'][$id]=$map['gl_id'];}
-        if($v['enabled'])$this->assertReady($office,$v);
+        if($v['enabled']){OfficeExpenseFinanceGate::assertEnabled();$this->assertReady($office,$v);}
         $old=$this->internal($office);$check=function()use($office){if(!$this->access->isFinanceAdministrator())throw new DomainException('Configuration authority revoked.');$this->access->assertAction($office,'settings','update');};
         return $old['id']===''?$this->store->create((int)$this->conf->entity,$this->access->financeActorId(),$office,'finance_settings',$key,bin2hex(random_bytes(16)),'finance_settings',$v,$check):$this->store->change((int)$this->conf->entity,$this->access->financeActorId(),$old['id'],$expected,'update',$v,fn($r)=>$check());
     }

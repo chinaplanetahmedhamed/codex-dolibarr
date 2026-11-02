@@ -30,7 +30,7 @@ final class OfficeExpenseNativeFinance
     }
     public function post(array $row,array $plan,array $config,bool $reverse=false): array
     {
-        if($this->db->transaction_opened!==1)throw new LogicException('Native financial writer requires the source outer transaction.');
+        OfficeExpenseFinanceGate::assertEnabled();if($this->db->transaction_opened!==1)throw new LogicException('Native financial writer requires the source outer transaction.');
         $opening=$row['kind']==='opening';if(isset($plan['journal_preview'])&&$plan['journal_preview']!==$this->preview($row,$plan,$config))throw new DomainException('Native journal preview changed before execution.');$this->settings->assertReady($row['office'],$config,$opening);$this->period($plan['date']);
         foreach($plan['lines']as$line){$this->nativeAmount($line['debit']);$this->nativeAmount($line['credit']);if(in_array($line['role'],['fx_gain','fx_loss'],true)&&$config['fx_policy']!=='historical_with_realized_difference')throw new DomainException('Review the realized FX policy before creating native documents.');}
 
@@ -59,7 +59,7 @@ final class OfficeExpenseNativeFinance
             if(empty($this->conf->salaries->enabled))throw new DomainException('Enable the native salary module before posting payroll.');
             require_once DOL_DOCUMENT_ROOT.'/salaries/class/salary.class.php';require_once DOL_DOCUMENT_ROOT.'/salaries/class/paymentsalary.class.php';
             // Core Salary represents the net payable; gross/deductions/loan remain distinct in native GL.
-            $salary=new Salary($this->db);$salary->fk_user=$plan['staff_id'];$salary->label='CPO '.($reverse?'REV ':'').$row['content']['month'].' '.$row['id'];$salary->amount=$this->nativeAmount($plan['cash_base']==='0.00'?'0.00':bcsub('0',$plan['cash_base'],2));$salary->datesp=self::timestamp($row['content']['month'].'-01');$salary->dateep=self::timestamp(date('Y-m-t',strtotime($row['content']['month'].'-01')));$salary->note='Office '.$row['office'].'; gross '.$row['content']['gross'].' '.$plan['currency'].'; source '.$row['id'];
+            $salary=new Salary($this->db);$salary->entity=(int)$this->conf->entity;$salary->fk_user=$plan['staff_id'];$salary->label='CPO '.($reverse?'REV ':'').$row['content']['month'].' '.$row['id'];$salary->amount=$this->nativeAmount($plan['cash_base']==='0.00'?'0.00':bcsub('0',$plan['cash_base'],2));$salary->datesp=self::timestamp($row['content']['month'].'-01');$salary->dateep=self::timestamp(date('Y-m-t',strtotime($row['content']['month'].'-01')));$salary->note='Office '.$row['office'].'; gross '.$row['content']['gross'].' '.$plan['currency'].'; source '.$row['id'];
             $this->ok($salary->create($this->user),'Native salary create');$native['salary_id']=(int)$salary->id;$native['salary_month']=$row['content']['month'];
             if(bccomp($plan['cash_base'],'0',2)!==0){$payment=new PaymentSalary($this->db);$payment->datep=self::timestamp($plan['date']);$payment->datev=$payment->datep;$payment->amounts=[$salary->id=>$salary->amount];$payment->fk_typepayment=(int)$mapped['payment']['id'];$payment->num_payment='CPO-'.$row['id'].($reverse?'-R':'');$this->ok($payment->create($this->user,1),'Native salary payment create');$native['salary_payment_id']=(int)$payment->id;}
             else $this->ok($salary->setPaid($this->user),'Native zero-net salary paid state');
@@ -92,7 +92,7 @@ final class OfficeExpenseNativeFinance
         $native['journals']=[];
         foreach($groups as$group){OfficeExpenseFinancialPlan::assertBalanced($group['lines']);$native['journals'][]=$this->journal($row,$plan,$config,$group,$mapped['gl']??null,$party,$reverse);}
         if($this->db->transaction_opened!==1)throw new RuntimeException('Native API changed the outer transaction boundary.');
-        $native['mapping']=['accounts'=>$config['accounts'],'money'=>$config['money'][$plan['currency']][$plan['method']]??null,'journal_id'=>$config['journal_id'],'expense_journal_id'=>$config['expense_journal_id'],'adjustment_journal_id'=>$config['adjustment_journal_id'],'expense_type_id'=>$config['expense_type_id'],'offset_payment_id'=>$config['offset_payment_id'],'expense_account'=>$row['content']['category_ref']??''];$native['plan']=$plan;$native['posted_at']=gmdate('Y-m-d H:i:s');$native['posted_by']=(int)$this->user->id;$this->verifyPosted($native);return $native;
+        $native['mapping']=['accounts'=>$config['accounts'],'money'=>$config['money'][$plan['currency']][$plan['method']]??null,'journal_id'=>$config['journal_id'],'expense_journal_id'=>$config['expense_journal_id'],'adjustment_journal_id'=>$config['adjustment_journal_id'],'expense_type_id'=>$config['expense_type_id'],'offset_payment_id'=>$config['offset_payment_id'],'expense_account'=>$row['content']['category_ref']??''];$native['plan']=$plan;$native['posted_at']=gmdate('Y-m-d H:i:s');$native['posted_by']=(int)$this->user->id;$this->verifyPosted($native);OfficeExpenseFinanceGate::assertEnabled();return $native;
     }
     private function expense(array $row,array $plan,array $config,int $sign): array
     {
@@ -100,7 +100,7 @@ final class OfficeExpenseNativeFinance
         $this->ok($report->create($this->user,1),'Native expense report create');$value=$this->nativeAmount(bcmul($plan['valuation']['base_amount'],(string)$sign,2));$line=$report->addline(1,$value,$config['expense_type_id'],0,self::timestamp($row['content']['date']),htmlspecialchars($row['content']['purpose'],ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'));if(!is_numeric($line)||(int)$line<=0)throw new RuntimeException('Native expense line create failed; transaction must roll back.',0,new RuntimeException((string)$report->error));
         $roleId=$config['category_accounts'][$row['content']['category_ref']??'']??$config['accounts']['expense'];$ledger=$this->settings->account($roleId);
         $detail=new ExpenseReportLine($this->db);$this->ok($detail->fetch($line),'Native expense line fetch');$this->ok($detail->setValueFrom('fk_code_ventilation',$ledger['rowid'],'expensereport_det',$line,'int','rowid',$this->user,'',''),'Native expense account binding');
-        $this->ok($report->setValidate($this->user,1),'Native expense report validation');$this->ok($report->setApproved($this->user,1),'Native expense approval');return [$report,(int)$line];
+        $this->ok($report->fetch((int)$report->id),'Native expense source readback');$this->ok($report->setValidate($this->user,1),'Native expense report validation');$this->ok($report->setApproved($this->user,1),'Native expense approval');return [$report,(int)$line];
     }
     public function invoiceValuation(array $row,array $intent,array $config): ?array
     {
