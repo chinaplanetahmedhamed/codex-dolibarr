@@ -37,7 +37,7 @@ final class OfficeExpenseNativeFinance
             $account=new Account($this->db);$this->ok($account->fetch($id),'Native money account fetch');
             if($account->currency_code!==$plan['currency']||(int)$account->status!==0)throw new DomainException('Native money account changed.');
             $this->funds($id,$plan['date'],$plan['cash_amount']);$native['account_id']=$id;$native['resolved_accounts'][$map['gl_id']]=$mapped['gl']['account_number'];
-            if($opening){$bankId=$plan['source_bank_id'];$native['bank_id']=$bankId;$this->verifyOpening($bankId,$id,$plan);$existing=$this->c->one('SELECT CAST(COALESCE(SUM(debit-credit),0) AS DECIMAL(30,8)) AS balance FROM '.MAIN_DB_PREFIX.'accounting_bookkeeping WHERE entity='.(int)$this->conf->entity." AND doc_type='bank' AND fk_doc=".$bankId.' AND numero_compte='.$this->c->quote($mapped['gl']['account_number']));if(!$reverse&&bccomp($existing['balance'],'0',8)!==0)throw new DomainException('This existing opening already has native GL value. Reconcile it before creating another entry.');}
+            if($opening){$bankId=$plan['source_bank_id'];$bankId=(int)$bankId;$native['bank_id']=$bankId;$this->verifyOpening($bankId,$id,$plan);$existing=$this->c->one('SELECT CAST(COALESCE(SUM(debit-credit),0) AS DECIMAL(30,8)) AS balance FROM '.MAIN_DB_PREFIX.'accounting_bookkeeping WHERE entity='.(int)$this->conf->entity." AND doc_type='bank' AND fk_doc=".$bankId.' AND numero_compte='.$this->c->quote($mapped['gl']['account_number']));if(!$reverse&&bccomp($existing['balance'],'0',8)!==0)throw new DomainException('This existing opening already has native GL value. Reconcile it before creating another entry.');}
 
         }
         if(in_array($row['kind'],['expense','advance_settlement'],true)){
@@ -59,7 +59,7 @@ final class OfficeExpenseNativeFinance
         if($account&&!$opening){
             $roles=array_values(array_filter(array_column($plan['lines'],'role'),static fn($r)=>$r!=='cash'));$counter=count($roles)===1?$roles[0]:'';if($expense)$counter='employee_payable';$counterCode=$counter===''?'':$this->settings->account($config['accounts'][$counter])['account_number'];
             $native['resolved_accounts'][$map['gl_id']]=$mapped['gl']['account_number'];
-            $bankId=$account->addline(self::timestamp($plan['date']),$mapped['payment']['code'],'CPO '.$row['office'].' '.$row['kind'].' '.$row['id'].($reverse?' REV':''),$this->nativeAmount($plan['cash_amount']),'',0,$this->user,'','',$counterCode,self::timestamp($plan['date']),'',$this->nativeAmount($plan['cash_base']),'Source '.$row['id']);$this->ok($bankId,'Native bank movement create');$native['bank_id']=$bankId;
+            $bankId=$account->addline(self::timestamp($plan['date']),$mapped['payment']['code'],'CPO '.$row['office'].' '.$row['kind'].' '.$row['id'].($reverse?' REV':''),$this->nativeAmount($plan['cash_amount']),'',0,$this->user,'','',$counterCode,self::timestamp($plan['date']),'',$this->nativeAmount($plan['cash_base']),'Source '.$row['id']);$this->ok($bankId,'Native bank movement create');$bankId=(int)$bankId;$native['bank_id']=$bankId;
             if($payment){$this->ok($payment->update_fk_bank($bankId),'Native payment-bank link');
                 if($payment instanceof PaymentExpenseReport){$type='payment_expensereport';$path='/expensereport/payment/card.php?rowid=';}
                 elseif($payment instanceof PaymentSalary){$type='payment_salary';$path='/salaries/payment_salary/card.php?id=';}
@@ -69,7 +69,7 @@ final class OfficeExpenseNativeFinance
             $url=DOL_URL_ROOT.'/custom/chinaplanetofficeexpenses/workspace.php?office='.$row['office'].'&view='.OfficeExpenseWorkspaceDocument::SECTIONS[$row['kind']].'&edit='.$row['id'].'#financial-record-';
             $this->ok($account->add_url_line($bankId,(int)$sourceRow['rowid'],$url,$row['id'],'cpo_office'),'Native source-bank URL');
             if($party)$this->ok($account->add_url_line($bankId,(int)$party['rowid'],DOL_URL_ROOT.'/societe/card.php?socid=','Customer #'.$party['rowid'],'company'),'Native customer-bank URL');
-            $this->verifyBank($bankId,$account->id,$plan);
+            $this->verifyBank($bankId,(int)$account->id,$plan);
         }
         $groups=[];$lines=$plan['lines'];$workspace=$this->c->one('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_oe_workspace WHERE entity='.(int)$this->conf->entity.' AND record_ref='.$this->c->quote($row['id']));if(!$workspace)throw new DomainException('Financial source no longer exists.');
         if($expense){
