@@ -27,6 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Select2 emits jQuery change; existing module code uses native listeners.
       jq(select).on('select2:select select2:unselect', () => {
         select.dispatchEvent(new Event('change', {bubbles: true}));
+        // Branch changes can update dependent native values (currency/type).
+        // Refresh only Select2 listeners after those synchronous form rules run.
+        if (select.form) select.form.querySelectorAll('select').forEach(field => {
+          if (jq(field).data('select2')) jq(field).trigger('change.select2');
+        });
       });
       select.addEventListener('invalid', () => {
         if (!select.disabled) jq(select).select2('open');
