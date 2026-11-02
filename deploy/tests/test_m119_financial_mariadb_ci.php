@@ -36,7 +36,7 @@ try{
     $db=new DoliDBMysqli('mysqli','127.0.0.1','root',$password,$name,13306);if(!$db->ok)throw new RuntimeException('Native CI connection unavailable.');
     // Official empty schemas and indexes only. No configuration or business data is copied.
     foreach(glob(DOL_DOCUMENT_ROOT.'/install/mysql/tables/llx_*.sql')as$file){if(str_ends_with($file,'.key.sql'))continue;$sql=preg_replace('/--[^\n]*/','',file_get_contents($file));if(trim($sql)!=='')fsql(trim($sql));}
-    foreach(['expensereport','bank','bank_account','accounting_bookkeeping']as$table){$sql=preg_replace('/--[^\n]*/','',file_get_contents(DOL_DOCUMENT_ROOT.'/install/mysql/tables/llx_'.$table.'.key.sql'));foreach(explode(';',$sql)as$statement)if(trim($statement)!=='')fsql(trim($statement));}
+    foreach(['expensereport','bank','bank_account']as$table){$sql=preg_replace('/--[^\n]*/','',file_get_contents(DOL_DOCUMENT_ROOT.'/install/mysql/tables/llx_'.$table.'.key.sql'));foreach(explode(';',$sql)as$statement)if(trim($statement)!=='')fsql(trim($statement));}
     $schema=new OfficeExpenseMysqliSchemaBackend($db);foreach([new OfficeExpenseNativeSchemaMigration($schema),OfficeExpenseNativeSchemaMigration::forAccess($schema),OfficeExpenseNativeSchemaMigration::forWorkspace($schema)]as$m)$m->install($m->plan()['manifest_hash']);
     fsql("INSERT INTO llx_user(rowid,entity,login,lastname,statut,fk_soc,admin) VALUES(2101,1,'synthetic-finance-admin','SYNTHETIC',1,0,1),(2102,1,'synthetic-finance-staff','SYNTHETIC STAFF',1,0,0)");
     $user=new User($db);fcheck($user->fetch(2101),1);$access=new OfficeExpenseStaffAccess($db,$user,$conf,2101);$access->assign(2102,'egypt',OfficeExpenseStaffAccess::ACTIONS,'branch',0);

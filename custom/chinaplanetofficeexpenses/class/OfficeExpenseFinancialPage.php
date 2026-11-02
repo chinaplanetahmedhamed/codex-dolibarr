@@ -5,7 +5,7 @@ require_once __DIR__.'/OfficeExpenseFinanceSettings.php';
 /** Finance controls reuse the incumbent workspace form and table vocabulary. */
 final class OfficeExpenseFinancialPage
 {
-    private bool $ar;private array $s;private string $csrf;
+    private bool $ar;private array $s;private string $csrf;private int $fieldNumber=0;
     private static function e($v): string {return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
     private function t(string $ar,string $en): string {return $this->ar?$ar:$en;}
     private function hidden(string $name,$value): string {return '<input type="hidden" name="'.self::e($name).'" value="'.self::e($value).'">';}
@@ -14,10 +14,10 @@ final class OfficeExpenseFinancialPage
         $h='';foreach(['token'=>$this->csrf,'action'=>$action,'office'=>$this->s['office'],'lang'=>$this->s['language'],'kind'=>$row['kind']??'settings','id'=>$row['id']??'','revision'=>$row['revision']??($this->s['finance_config']['revision']??0),'key'=>bin2hex(random_bytes(16))]as$k=>$v)$h.=$this->hidden($k,$v);return $h;
     }
     private function input(string $key,string $label,string $value='',string $type='text',bool $required=true): string
-    {return '<label class="workspace-finance-field">'.self::e($label).'<input name="payload['.self::e($key).']" type="'.self::e($type).'" value="'.self::e($value).'"'.($required?' required':'').($type==='number'?' min="0" step="1"':'').'></label>';}
+    {$id='finance-field-'.(++$this->fieldNumber);return '<label class="workspace-finance-field" for="'.$id.'">'.self::e($label).'<input id="'.$id.'" name="payload['.self::e($key).']" type="'.self::e($type).'" value="'.self::e($value).'"'.($required?' required':'').($type==='number'?' min="0" step="1"':'').'></label>';}
     private function select(string $key,string $label,array $options,$selected): string
     {
-        $h='<label class="workspace-finance-field">'.self::e($label).'<select name="payload['.self::e($key).']">';foreach($options as$id=>$name)$h.='<option value="'.self::e($id).'"'.((string)$selected===(string)$id?' selected':'').'>'.self::e($name).'</option>';return $h.'</select></label>';
+        $id='finance-field-'.(++$this->fieldNumber);$h='<label class="workspace-finance-field" for="'.$id.'">'.self::e($label).'<select id="'.$id.'" name="payload['.self::e($key).']">';foreach($options as$id=>$name)$h.='<option value="'.self::e($id).'"'.((string)$selected===(string)$id?' selected':'').'>'.self::e($name).'</option>';return $h.'</select></label>';
     }
     public function render(array $s,string $csrf): string
     {
@@ -81,8 +81,7 @@ final class OfficeExpenseFinancialPage
         foreach(['approve'=>['اعتماد','Approve'],'post'=>['تنفيذ وترحيل','Execute & post'],'reverse'=>['عكس','Reverse']]as$action=>[$ar,$en]){$h.='<fieldset><legend>'.$this->t($ar,$en).'</legend>';foreach($this->s['finance_delegates']as$p)$h.='<label><input type="checkbox" name="payload[roles]['.$action.'][]" value="'.(int)$p['user_id'].'"'.(in_array($p['user_id'],$v['roles'][$action],true)?' checked':'').'> '.self::e($p['name']?:$p['login']).'</label>';$h.='</fieldset>';}
         $h.='</div><h3>'.$this->t('نطاق العملاء والفواتير','Customer & invoice scope').'</h3>'.$this->select('customer_mode',$this->t('ظهور العملاء','Customer visibility'),['selected'=>$this->t('العملاء المحددون لهذا الفرع','Selected branch customers'),'all_company_customers'=>$this->t('جميع عملاء الشركة · اختيار صريح','All company customers · explicit choice')],$v['customer_mode']);
         $h.='<details><summary>'.$this->t('اختيار العملاء والفواتير المسموح بها','Select allowed customers & invoices').'</summary><div class="workspace-finance-grid"><fieldset><legend>'.$this->t('العملاء','Customers').'</legend>';foreach($m['customers']as$p)$h.='<label><input type="checkbox" name="payload[customer_ids][]" value="'.(int)$p['rowid'].'"'.(in_array((int)$p['rowid'],$v['customer_ids'],true)?' checked':'').'> '.self::e($p['nom']).'</label>';$h.='</fieldset><fieldset><legend>'.$this->t('الفواتير','Invoices').'</legend>';foreach($m['invoices']as$p)$h.='<label><input type="checkbox" name="payload[invoice_ids][]" value="'.(int)$p['rowid'].'"'.(in_array((int)$p['rowid'],$v['invoice_ids'],true)?' checked':'').'> '.self::e($p['ref']).'</label>';$h.='</fieldset></div></details>';
-        // Existing per-category mappings are retained by explicit inputs until category-specific editing is needed.
-        foreach($v['category_accounts']as$ref=>$id)$h.=$this->hidden('payload[category_accounts]['.$ref.']',$id);
+        $h.='<details><summary>'.$this->t('تخصيص حساب كل بند مصروف','Expense category account overrides').'</summary><div class="workspace-finance-grid">';$categoryOptions=array_replace($accounts,[0=>$this->t('استخدام حساب المصروفات الافتراضي','Use the default expense account')]);foreach($this->s['finance_categories']??[]as$category)$h.=$this->select('category_accounts]['.$category['id'],$category['content']['name'],$categoryOptions,$v['category_accounts'][$category['id']]??0);$h.='</div></details>';
         return $h.'<button class="button button-brand" type="submit">'.$this->t('حفظ واعتماد إعدادات الفرع','Save & approve branch settings').'</button></form></section>';
     }
 }

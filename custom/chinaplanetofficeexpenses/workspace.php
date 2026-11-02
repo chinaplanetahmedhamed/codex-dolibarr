@@ -24,7 +24,7 @@ try{
         $financialRow=$result['selected']&&in_array($result['selected']['kind'],OfficeExpenseFinancialPlan::KINDS,true)?$result['selected']:null;
         $result['finance']=$finance->state($result['office'],$financialRow);
         if($result['view']==='reports')$result['financial_report']=$finance->report($result['office'],$result['report']['from'],$result['report']['to']);
-        if($result['view']==='settings'&&$result['finance']['administrator']){$result['finance_config']=$finance->settings()->load($result['office']);$result['finance_metadata']=$finance->settings()->metadata();$result['finance_delegates']=array_values(array_filter($access->members($result['office']),static fn($m)=>$m['active']&&$m['record_scope']==='branch'));}
+        if($result['view']==='settings'&&$result['finance']['administrator']){$result['finance_config']=$finance->settings()->load($result['office']);$result['finance_metadata']=$finance->settings()->metadata();$result['finance_categories']=$service->list($result['office'],'category');$result['finance_delegates']=array_values(array_filter($access->members($result['office']),static fn($m)=>$m['active']&&$m['record_scope']==='branch'));}
     }
     if($result['status']===405)header('Allow: GET, POST');
     try{$result['manage_staff']=isset($access->managedOffices()[$result['office']]);}catch(DomainException $e){$result['manage_staff']=false;}

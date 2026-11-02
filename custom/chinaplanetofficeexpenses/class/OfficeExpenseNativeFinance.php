@@ -48,7 +48,7 @@ final class OfficeExpenseNativeFinance
             require_once DOL_DOCUMENT_ROOT.'/salaries/class/salary.class.php';require_once DOL_DOCUMENT_ROOT.'/salaries/class/paymentsalary.class.php';
             // Core Salary represents the net payable; gross/deductions/loan remain distinct in native GL.
             $salary=new Salary($this->db);$salary->fk_user=$plan['staff_id'];$salary->label='CPO '.($reverse?'REV ':'').$row['content']['month'].' '.$row['id'];$salary->amount=$this->nativeAmount($plan['cash_base']==='0.00'?'0.00':bcsub('0',$plan['cash_base'],2));$salary->datesp=self::timestamp($row['content']['month'].'-01');$salary->dateep=self::timestamp(date('Y-m-t',strtotime($row['content']['month'].'-01')));$salary->note='Office '.$row['office'].'; gross '.$row['content']['gross'].' '.$plan['currency'].'; source '.$row['id'];
-            $this->ok($salary->create($this->user),'Native salary create');$native['salary_id']=(int)$salary->id;
+            $this->ok($salary->create($this->user),'Native salary create');$native['salary_id']=(int)$salary->id;$native['salary_month']=$row['content']['month'];
             if(bccomp($plan['cash_base'],'0',2)!==0){$payment=new PaymentSalary($this->db);$payment->datep=self::timestamp($plan['date']);$payment->datev=$payment->datep;$payment->amounts=[$salary->id=>$salary->amount];$payment->fk_typepayment=(int)$mapped['payment']['id'];$payment->num_payment='CPO-'.$row['id'].($reverse?'-R':'');$this->ok($payment->create($this->user,1),'Native salary payment create');$native['salary_payment_id']=(int)$payment->id;}
             else $this->ok($salary->setPaid($this->user),'Native zero-net salary paid state');
         }elseif($row['kind']==='receipt'&&$plan['invoice_id']>0){
@@ -80,7 +80,7 @@ final class OfficeExpenseNativeFinance
         $native['journals']=[];
         foreach($groups as$group){OfficeExpenseFinancialPlan::assertBalanced($group['lines']);$native['journals'][]=$this->journal($row,$plan,$config,$group,$mapped['gl']??null,$party,$reverse);}
         if($this->db->transaction_opened!==1)throw new RuntimeException('Native API changed the outer transaction boundary.');
-        $native['mapping']=['accounts'=>$config['accounts'],'money'=>$config['money'][$plan['currency']][$plan['method']]??null,'journal_id'=>$config['journal_id'],'expense_journal_id'=>$config['expense_journal_id'],'adjustment_journal_id'=>$config['adjustment_journal_id'],'expense_type_id'=>$config['expense_type_id'],'offset_payment_id'=>$config['offset_payment_id'],'expense_account'=>$row['content']['category_ref']??''];$native['plan']=$plan;$native['posted_at']=gmdate('Y-m-d H:i:s');$native['posted_by']=(int)$this->user->id;return $native;
+        $native['mapping']=['accounts'=>$config['accounts'],'money'=>$config['money'][$plan['currency']][$plan['method']]??null,'journal_id'=>$config['journal_id'],'expense_journal_id'=>$config['expense_journal_id'],'adjustment_journal_id'=>$config['adjustment_journal_id'],'expense_type_id'=>$config['expense_type_id'],'offset_payment_id'=>$config['offset_payment_id'],'expense_account'=>$row['content']['category_ref']??''];$native['plan']=$plan;$native['posted_at']=gmdate('Y-m-d H:i:s');$native['posted_by']=(int)$this->user->id;$this->verifyPosted($native);return $native;
     }
     private function expense(array $row,array $plan,array $config,int $sign): array
     {
@@ -109,8 +109,24 @@ final class OfficeExpenseNativeFinance
     }
     public function verifyPosted(array $posting): void
     {
-        foreach($posting['resolved_accounts']??[]as$id=>$number)if($this->settings->account((int)$id)['account_number']!==$number)throw new DomainException('Posted native account mapping changed; reconcile before reversal.');foreach($posting['resolved_journals']??[]as$id=>$code)if($this->settings->journal((int)$id)['code']!==$code)throw new DomainException('Posted native journal mapping changed; reconcile before reversal.');
+        foreach($posting['resolved_accounts']??[]as$id=>$number){$a=$this->c->one('SELECT account_number FROM '.MAIN_DB_PREFIX.'accounting_account WHERE rowid='.(int)$id.' AND entity='.(int)$this->conf->entity);if(!$a||$a['account_number']!==$number)throw new DomainException('Posted native account mapping changed; reconcile before reversal.');}
+        foreach($posting['resolved_journals']??[]as$id=>$code){$j=$this->c->one('SELECT code FROM '.MAIN_DB_PREFIX.'accounting_journal WHERE rowid='.(int)$id.' AND entity='.(int)$this->conf->entity);if(!$j||$j['code']!==$code)throw new DomainException('Posted native journal mapping changed; reconcile before reversal.');}
         $plan=$posting['plan'];if(!empty($posting['bank_id']))$this->verifyBank($posting['bank_id'],$posting['account_id'],$plan);
+        $sign=!empty($plan['reversal'])?'-1':'1';$bank=(int)($posting['bank_id']??0);
+        if(!empty($posting['expense_id'])){
+            $r=$this->c->one('SELECT fk_user_author,paid,fk_statut,CAST(CAST(total_ttc AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'expensereport WHERE rowid='.(int)$posting['expense_id'].' AND entity='.(int)$this->conf->entity);
+            $p=$this->c->one('SELECT fk_expensereport,fk_bank,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'payment_expensereport WHERE rowid='.(int)$posting['expense_payment_id']);$amount=bcmul($plan['valuation']['base_amount'],$sign,2);
+            if(!$r||!$p||(int)$r['fk_user_author']!==$plan['staff_id']||(int)$r['paid']!==1||(int)$r['fk_statut']!==6||(int)$p['fk_expensereport']!==(int)$posting['expense_id']||(int)$p['fk_bank']!==$bank||bccomp($r['amount'],$amount,2)!==0||bccomp($p['amount'],$amount,2)!==0)throw new DomainException('Native expense/payment linkage differs; reconciliation required.');
+        }
+        if(!empty($posting['salary_id'])){
+            $r=$this->c->one('SELECT fk_user,paye,datesp,dateep,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'salary WHERE rowid='.(int)$posting['salary_id'].' AND entity='.(int)$this->conf->entity);$amount=bcsub('0',$plan['cash_base'],2);
+            if(!$r||(int)$r['fk_user']!==$plan['staff_id']||(int)$r['paye']!==1||bccomp($r['amount'],$amount,2)!==0||substr($r['datesp'],0,7)!==$posting['salary_month']||substr($r['dateep'],0,7)!==$posting['salary_month'])throw new DomainException('Native salary source differs; reconciliation required.');
+            if(isset($posting['salary_payment_id'])){$p=$this->c->one('SELECT fk_salary,fk_bank,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'payment_salary WHERE rowid='.(int)$posting['salary_payment_id']);if(!$p||(int)$p['fk_salary']!==(int)$posting['salary_id']||(int)$p['fk_bank']!==$bank||bccomp($p['amount'],$amount,2)!==0)throw new DomainException('Native salary/payment linkage differs; reconciliation required.');}
+        }
+        if(!empty($posting['customer_payment_id'])){
+            $p=$this->c->one('SELECT p.fk_bank,CAST(CAST(pf.amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'paiement AS p JOIN '.MAIN_DB_PREFIX.'paiement_facture AS pf ON pf.fk_paiement=p.rowid JOIN '.MAIN_DB_PREFIX.'facture AS f ON f.rowid=pf.fk_facture WHERE p.rowid='.(int)$posting['customer_payment_id'].' AND pf.fk_facture='.(int)$plan['invoice_id'].' AND f.fk_soc='.(int)$plan['party_id'].' AND f.entity='.(int)$this->conf->entity);
+            if(!$p||(int)$p['fk_bank']!==$bank||bccomp($p['amount'],bcmul($plan['invoice_base_amount'],$sign,2),2)!==0)throw new DomainException('Native invoice/payment linkage differs; reconciliation required.');
+        }
         foreach($posting['journals']as$journal)foreach($journal['lines']as$line){
             $r=$this->c->one('SELECT numero_compte,doc_type,fk_doc,code_journal,CAST(CAST(debit AS DECIMAL(30,8)) AS CHAR) AS debit,CAST(CAST(credit AS DECIMAL(30,8)) AS CHAR) AS credit FROM '.MAIN_DB_PREFIX.'accounting_bookkeeping WHERE rowid='.$line['id'].' AND entity='.(int)$this->conf->entity);
             if(!$r||$r['numero_compte']!==$line['account']||$r['doc_type']!==$line['type']||(int)$r['fk_doc']!==$line['source']||$r['code_journal']!==$line['journal']||bccomp($r['debit'],$line['debit'],2)!==0||bccomp($r['credit'],$line['credit'],2)!==0)throw new DomainException('Native posting drift requires reconciliation before settlement/reversal.');
