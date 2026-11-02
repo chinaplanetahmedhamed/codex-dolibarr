@@ -15,6 +15,7 @@ async function auditOfficeMenus(page, cases) {
       return {lang,office,view,width:innerWidth,overflow:document.documentElement.scrollWidth>innerWidth+2,
         wrongLinks:links.filter(a=>{const u=new URL(a.href);return u.searchParams.get('lang')!==lang||u.searchParams.get('office')!==office}).length,
         current:root.querySelectorAll('nav a[aria-current=page]').length,
+        repeatedNotices:root.querySelectorAll('main > .workspace-notice').length,
         popups:[],errors:[]};
     },test);
     const mobile = page.locator('.workspace-mobile-menu, .staff-mobile-menu');
@@ -53,5 +54,5 @@ async function auditOfficeMenus(page, cases) {
     result.errors=result.popups.filter(p=>p.error||p.clipped||p.widthMismatch||p.misaligned||p.font!=='14px'||p.direction!==(test.lang==='ar'?'rtl':'ltr'));
     results.push(result);
   }
-  return {cases:results.length,popups:results.reduce((n,r)=>n+r.popups.length,0),failures:results.filter(r=>r.overflow||r.wrongLinks||!r.current||r.errors.length),results};
+  return {cases:results.length,popups:results.reduce((n,r)=>n+r.popups.length,0),failures:results.filter(r=>r.overflow||r.wrongLinks||r.repeatedNotices||!r.current||r.errors.length),results};
 }
