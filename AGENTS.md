@@ -129,3 +129,17 @@ This is a handoff snapshot. Re-run restricted compare/status, authenticated UI, 
 - Prefer the GitHub workflow and restricted mission-specific helper. Never broaden sudo or reuse a staging approval for production.
 - Translation-disabled is an explicit policy state, not a temporary error to “repair.”
 - Keep workbook tests as unpublished drafts. Publishing imported shipping prices is a separate business action and requires explicit approval.
+
+## Master product instructions and backup-erp authorization — 2026-11-03
+
+- The full Master Improvement & Integration Instructions have been received. Follow [M121 requirements](docs/architecture/M121_REQUIREMENTS_BASELINE_2026-11-03.md), [architecture review](docs/architecture/M121_CLOUD_ARCHITECTURE_REVIEW_2026-11-03.md), and [implementation plan](docs/architecture/M121_MASTER_IMPLEMENTATION_PLAN_2026-11-03.md).
+- Canonical ERP modules and integration adapters belong in `custom/<module>/` in this repository; SQL in `sql/`, business services in `class/` or `lib/`. No new parallel feature/module trees outside the main project folders.
+- Reconcile existing module variants using reviewed manifests before collecting code. Preserve dirty work, current deployed behavior, IDs and data. Never overlay incomplete main on a newer runtime.
+- Reuse the existing Docs generator/templates through an approved versioned ERP adapter; do not create a competing generator. Register upstream dependencies and ownership.
+- Keep [missions-list.md](missions-list.md) and [resources.md](resources.md) current, distinguishing source, staging, live, version and acceptance. Do not duplicate the existing Drive tracker/manual.
+- Define actual cash, invoice-credit consumption, commitments and available/uncommitted funds separately per currency. Enter a payment once with explicit payer/payee/funding/source identity. Reuse native records and existing idempotency/reversal/audit; no duplicate financial source.
+- Operational Done and financial settlement are independent; default Open plus Closed/History/date filters; no deletion or implicit payment.
+- Boards is the Customer -> Projects -> Tasks daily workspace. Human title/customer prominent, references secondary; no ID changes. Compact/Comfortable, RTL/LTR/mobile and full-width text-labelled priority bands are required.
+- Quick actions write through the owning module's service and permissions, not contradictory Board-only fields. Detailed links open the exact record and preserve return context.
+- Record expected/actual result, exact environment/version, role, synthetic data, screenshot/evidence, defects/retests and the user procedure before advancing a tested step. Do not invent runtime tests or screenshots.
+- Ahmed explicitly authorizes backup, deployment, demo information and test users on backup-erp without routine repeated approval. Follow [the authorization record](docs/governance/STAGING_AUTHORIZATION_2026-11-03.md). Technical/security/backup/isolation safeguards remain mandatory. LIVE PRODUCTION IS PROHIBITED.
