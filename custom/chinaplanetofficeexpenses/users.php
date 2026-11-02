@@ -17,6 +17,7 @@ try{
     $result=(new OfficeExpenseStaffController($access,(string)currentToken()))->handle($nativeLogin?'GET':$method,$_GET??[],$nativeLogin?[]:($_POST??[]),$_FILES??[]);
     if($nativeLogin&&$result['status']===200){header('Location: users.php',true,303);exit;}
     $result['workspace_ready']=OfficeExpenseWorkspaceRuntime::ready($db,$conf);
+    $result['navigation_views']=$result['status']===200?$access->navigationViews($result['office']):[];
     http_response_code($result['status']);if($result['redirect']!==null){header('Location: '.$result['redirect'],true,303);exit;}
     if($result['status']===405)header('Allow: GET, POST');
     $asset=DOL_URL_ROOT.'/custom/chinaplanetofficeexpenses/';

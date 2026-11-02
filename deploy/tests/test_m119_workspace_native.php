@@ -154,7 +154,7 @@ wt('report export honors branch treasury scope and never exposes cash to an own-
 wt('receipt register filters own authorized rows and retains stable reference and original currencies',function()use($m,$r,$receipt){
     $controller=new OfficeExpenseWorkspaceController($m,'receipt-token');$q=['view'=>'receipts','office'=>'egypt','lang'=>'ar','from'=>'2026-11-01','to'=>'2026-11-30','status'=>'all','search'=>$receipt['id']];$state=$controller->handle('GET',$q,[]);we($state['status'],200);we(count($state['rows']),1);we($state['rows'][0]['id'],$receipt['id']);
     $html=(new OfficeExpenseWorkspacePage())->render($state,'receipt-next');we(str_contains($html,'receipt-brand'),true);we(str_contains($html,'receipt-metrics'),true);we(str_contains($html,'receipt-filter'),true);we(str_contains($html,'REC-'.strtoupper($receipt['id'])),true);we(str_contains($html,'type="checkbox" name="deposit_to_safe"'),false);
-    we($controller->handle('GET',array_replace($q,['from'=>'2026-02-30']),[])['status'],422);we($controller->handle('GET',array_replace($q,['status'=>'posted']),[])['status'],422);wb(fn()=>$r->receiptOwnerName('egypt',$receipt['id']));
+    we($controller->handle('GET',array_replace($q,['from'=>'2026-02-30']),[])['status'],422);we($controller->handle('GET',array_replace($q,['status'=>'posted']),[])['status'],200);wb(fn()=>$r->receiptOwnerName('egypt',$receipt['id']));
 });
 wt('receipt print uses three A4 copies cut lines scoped receiver local QR and exact words',function()use($m,$receipt){
     foreach(['ar','en']as$lang){$state=(new OfficeExpenseWorkspaceController($m,'receipt-token'))->handle('GET',['view'=>'receipts','office'=>'egypt','lang'=>$lang,'edit'=>$receipt['id'],'print'=>'1'],[]);we($state['status'],200);$state['selected']['content']['notes']='SYNTHETIC receipt notes';$state['receipt_link']='https://example.invalid/custom/chinaplanetofficeexpenses/workspace.php?office=egypt&view=receipts&edit='.$receipt['id'].'&print=1';$html=(new OfficeExpenseWorkspacePage())->render($state,'receipt-next');we(substr_count($html,'class="receipt-slip"'),3);we(substr_count($html,'class="receipt-cut-line"'),2);we(substr_count($html,'class="receipt-qr-box"'),3);we(str_contains($html,'api.qrserver.com'),false);we(str_contains($html,'=SYNTHETIC formula'),true);$escape=$state;$escape['selected']['content']['payer']='<script>test</script>';we(str_contains((new OfficeExpenseWorkspacePage())->render($escape,'receipt-next'),'&lt;script&gt;test&lt;/script&gt;'),true);we(str_contains($html,'class="receipt-slip-status"'),true);
@@ -166,5 +166,69 @@ wt('receipt print uses three A4 copies cut lines scoped receiver local QR and ex
 wt('receipt QR corrects only the exact trusted staging alias and retains other deployment roots',function(){we(OfficeExpenseWorkspaceController::receiptBaseUrl('https://staging-erp.visiontrading.biz/'),'https://backup-erp.visiontrading.biz');we(OfficeExpenseWorkspaceController::receiptBaseUrl('https://staging-erp.visiontrading.biz/dolibarr/'),'https://backup-erp.visiontrading.biz/dolibarr');we(OfficeExpenseWorkspaceController::receiptBaseUrl('https://erp.visiontrading.biz/'),'https://erp.visiontrading.biz');we(OfficeExpenseWorkspaceController::receiptBaseUrl('https://staging-erp.visiontrading.biz.example.invalid'),'https://staging-erp.visiontrading.biz.example.invalid');});
 wt('receipt save and print share existing CSRF idempotency and branch controls',function()use($m,$rp){
     $c=new OfficeExpenseWorkspaceController($m,'receipt-token');$post=['view'=>'receipts','office'=>'egypt','lang'=>'ar','action'=>'save','id'=>'','revision'=>'0','submission_key'=>'receipt-redesign-save','payload'=>$rp,'token'=>'receipt-token','print_after'=>'1'];$result=$c->handle('POST',[],$post);we($result['status'],303);parse_str(parse_url($result['redirect'],PHP_URL_QUERY),$q);we($q['print'],'1');we($c->handle('GET',$q,[])['print'],true);we($c->handle('POST',[],array_replace($post,['office'=>'china']))['status'],403);we($c->handle('POST',[],array_replace($post,['print_after'=>'bad']))['status'],422);
+});
+wt('financial revisions enforce submit approve post and immutable native-operation retries',function()use($db,$m){
+    $row=$m->save('egypt','deposit',['amount'=>'0.01','currency'=>'USD','date'=>'2026-11-02','source'=>'SYNTHETIC','purpose'=>'SYNTHETIC financial state test','notes'=>''],'finance-state-create');
+    $store=new OfficeExpenseWorkspaceStore($db);$calls=0;$check=static function($r){if($r['office']!=='egypt')throw new DomainException('Branch denied.');};
+    $apply=static function($r){$v=$r['content'];$v['_finance']['checked']=true;return $v;};
+    wb(fn()=>$store->financial(1,8,$row['id'],1,'post','state-post-before',[],$check,$apply));
+    $row=$store->financial(1,8,$row['id'],1,'submit','state-submit',[],$check,$apply);we($row['status'],'submitted');
+    wb(fn()=>$m->change('egypt','deposit',$row['id'],2,'archive'));
+    $row=$store->financial(1,8,$row['id'],2,'approve','state-approve',[],$check,$apply);we($row['status'],'approved');
+    $post=function($r)use(&$calls){$calls++;$v=$r['content'];$v['_finance']['native_ids']=['synthetic'=>1];return $v;};
+    $row=$store->financial(1,8,$row['id'],3,'post','state-post',['amount'=>'0.01'],$check,$post);we($row['status'],'posted');we($calls,1);
+    $retry=$store->financial(1,8,$row['id'],3,'post','state-post',['amount'=>'0.01'],$check,$post);we($retry['revision'],4);we($calls,1);
+    wb(fn()=>$store->financial(1,8,$row['id'],3,'post','state-post',['amount'=>'0.02'],$check,$post));
+    wb(fn()=>$store->financial(1,7,$row['id'],3,'post','state-post',['amount'=>'0.01'],$check,$post));
+    wb(fn()=>$store->financial(1,8,$row['id'],4,'post','different-post',[],$check,$post));
+    $row=$store->financial(1,8,$row['id'],4,'reverse','state-reverse',[],$check,$apply);we($row['status'],'reversed');
+    wb(fn()=>$m->change('egypt','deposit',$row['id'],5,'archive'));we($db->transaction_opened,0);
+});
+wt('financial native effects and state roll back together on audit or source tampering failure',function()use($db,$m){
+    $row=$m->save('egypt','deposit',['amount'=>'0.01','currency'=>'USD','date'=>'2026-11-02','source'=>'SYNTHETIC','purpose'=>'SYNTHETIC rollback test','notes'=>''],'finance-rollback-create');
+    $store=new OfficeExpenseWorkspaceStore($db);$check=static function($r){};$apply=static function($r){$v=$r['content'];$v['_finance']=[];return $v;};
+    $row=$store->financial(1,8,$row['id'],1,'submit','rollback-submit',[],$check,$apply);$row=$store->financial(1,8,$row['id'],2,'approve','rollback-approve',[],$check,$apply);
+    $db->db->exec("CREATE TRIGGER synthetic_finance_audit_failure BEFORE INSERT ON llx_cpo_oe_workspace_audit BEGIN SELECT RAISE(ABORT,'SYNTHETIC'); END");
+    $failed=false;try{$store->financial(1,8,$row['id'],3,'post','rollback-post',[],$check,function($r)use($db){$db->query("INSERT INTO llx_bank(rowid,dateo,datev,fk_account,amount,fk_type,label) VALUES(991,'2026-11-02','2026-11-02',102,'0.01','LIQ','SYNTHETIC atomic callback')");$v=$r['content'];$v['_finance']['bank_id']=991;return $v;});}catch(RuntimeException$e){$failed=true;}finally{$db->db->exec('DROP TRIGGER synthetic_finance_audit_failure');}
+    we($failed,true);we($store->find(1,$row['id'])['status'],'approved');we($db->fetch_object($db->query('SELECT rowid FROM llx_bank WHERE rowid=991')),false);
+    $failed=false;try{$store->financial(1,8,$row['id'],3,'post','tamper-post',[],$check,function($r){$v=$r['content'];$v['amount']='9.00';return $v;});}catch(RuntimeException$e){$failed=true;}we($failed,true);we($store->find(1,$row['id'])['status'],'approved');we($db->transaction_opened,0);
+});
+wt('workspace evidence reuses scoped private storage with retry actor audit and immutable submission',function()use($db,$m,$r,$a){
+    require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseWorkspaceEvidence.php';
+    $root=sys_get_temp_dir().'/m119-workspace-evidence-'.bin2hex(random_bytes(8));mkdir($root,0700);file_put_contents($root.'/.cpo-office-expenses-private','cpo-office-expenses-private-v1');chmod($root.'/.cpo-office-expenses-private',0600);
+    $source=$m->save('egypt','expense',['amount'=>'1.00','currency'=>'USD','date'=>'2026-11-02','category_ref'=>'','purpose'=>'SYNTHETIC evidence parent','source_ref'=>'SYNTHETIC','notes'=>''],'workspace-evidence-parent');
+    $service=new OfficeExpenseWorkspaceEvidence($db,$m,1,8,$root,DOL_DOCUMENT_ROOT);$other=new OfficeExpenseWorkspaceEvidence($db,$r,1,12,$root,DOL_DOCUMENT_ROOT);
+    $png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+    try{
+        $file=$service->attach('egypt','expense',$source['id'],'workspace-evidence-key','proof.png',$png);we($service->attach('egypt','expense',$source['id'],'workspace-evidence-key','proof.png',$png)['id'],$file['id']);we(count($service->list('egypt','expense',$source['id'])),1);
+        we($service->download('egypt','expense',$source['id'],$file['id'])['bytes'],$png);wb(fn()=>$other->download('egypt','expense',$source['id'],$file['id']));
+        wb(fn()=>$service->attach('egypt','expense',$source['id'],'workspace-evidence-key','changed.png',$png));
+        $audit=$db->fetch_object($db->query("SELECT fk_actor FROM llx_cpo_oe_workspace_audit WHERE record_ref='".$file['id']."' AND action='download'"));we((int)$audit->fk_actor,8);
+        $store=new OfficeExpenseWorkspaceStore($db);$store->financial(1,8,$source['id'],1,'submit','evidence-submit',[],static function($row){},static function($row){$v=$row['content'];$v['_finance']=[];return $v;});
+        wb(fn()=>$service->attach('egypt','expense',$source['id'],'submitted-file','later.png',$png));we($service->download('egypt','expense',$source['id'],$file['id'])['bytes'],$png);
+        $path=$root.'/workspace/1/egypt/'.$source['id'].'/'.$file['id'].'.blob';file_put_contents($path,'SYNTHETIC corrupt');$failed=false;try{$service->download('egypt','expense',$source['id'],$file['id']);}catch(RuntimeException$e){$failed=true;}we($failed,true);
+    }finally{ $iterator=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);foreach($iterator as$item){if($item->isDir())rmdir($item->getPathname());else unlink($item->getPathname());}rmdir($root); }
+});
+wt('financial authority is explicit branch-scoped and configuration never enables native accounting',function()use($db,$conf,$owner,$egypt,$china){
+    require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseFinanceSettings.php';
+    wb(fn()=>$egypt->assertFinancial('egypt','expenses','post',['post'=>[]]));$egypt->assertFinancial('egypt','expenses','post',['post'=>[8]]);
+    wb(fn()=>$china->assertFinancial('egypt','expenses','post',['post'=>[12]]));we($owner->isFinanceAdministrator(),true);we($egypt->isFinanceAdministrator(),false);
+    $setup=new OfficeExpenseFinanceSettings($db,$conf,$owner);$default=$setup->load('egypt');we($default['content']['enabled'],false);we($setup->metadata()['enabled'],false);
+    $input=['enabled'=>'0','base_currency'=>$conf->currency,'roles'=>['approve'=>['8'],'post'=>['8'],'reverse'=>[]],'accounts'=>array_fill_keys(OfficeExpenseFinanceSettings::ROLES,'0'),'money'=>[],'category_accounts'=>[],'journal_id'=>'0','expense_journal_id'=>'0','fx_policy'=>'','require_evidence'=>'1','expense_type_id'=>'0','offset_payment_id'=>'0','expense_tax_mode'=>'','customer_mode'=>'selected','customer_ids'=>[],'invoice_ids'=>[],'adjustment_journal_id'=>'0','opening_journal_id'=>'0'];
+    $saved=$setup->save('egypt',$input,'finance-config-staged',0);we($saved['status'],'active');we($saved['content']['roles']['post'],[8]);we($saved['content']['enabled'],false);we(empty($conf->accounting->enabled),true);
+    $manager=new OfficeExpenseFinanceSettings($db,$conf,$egypt);wb(fn()=>$manager->save('egypt',$input,'manager-config-denied',1));
+    $bad=$input;$bad['roles']['post']=['13'];wb(fn()=>$setup->save('egypt',$bad,'own-worker-finance-denied',1));
+    $bad=$input;$bad['enabled']='1';wb(fn()=>$setup->save('egypt',$bad,'missing-core-finance-denied',1));
+    we($setup->load('egypt')['revision'],1);
+});
+wt('scoped navigation and default entry never require a legacy write grant or offer denied sections',function()use($db,$conf,$owner){
+    require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseWorkspaceRuntime.php';
+    $db->query("INSERT INTO llx_user(rowid,entity,login,lastname,statut,fk_soc) VALUES(15,1,'synthetic-readonly-accountant','SYNTHETIC',1,0)");$db->query('INSERT INTO llx_user_rights(entity,fk_user,fk_id) VALUES(1,15,500603)');
+    $owner->assign(15,'china',['reports'=>['read']],'own',0);$user=m119FetchIdentity('synthetic-readonly-accountant');$access=new OfficeExpenseStaffAccess($db,$user,$conf,7);$service=new OfficeExpenseWorkspaceService($db,$user,1,$access);
+    we($access->navigationViews('china'),['reports']);$landing=OfficeExpenseWorkspaceRuntime::landing($access,['office'=>'china','lang'=>'en'],'ar');we($landing,'workspace.php?lang=en&office=china&view=reports');
+    we(OfficeExpenseWorkspaceRuntime::landing($access,['view'=>'expenses'],'en'),null);wb(fn()=>OfficeExpenseWorkspaceRuntime::landing($access,['office'=>'egypt'],'en'));
+    $state=(new OfficeExpenseWorkspaceController($service,'synthetic'))->handle('GET',['office'=>'china','view'=>'reports','lang'=>'en'],[]);we($state['status'],200);$html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');
+    foreach(['treasury','receipts','employees','settings']as$view)we(str_contains($html,'&amp;view='.$view.'"'),false);
+    we((new OfficeExpenseWorkspaceController($service,'synthetic'))->handle('GET',['office'=>'china','view'=>'treasury'],[])['status'],403);
 });
 echo "$pass passed, $fail failed\n";exit($fail?1:0);

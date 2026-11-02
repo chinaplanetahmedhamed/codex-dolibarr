@@ -51,3 +51,11 @@ No account numbers or journals below have been selected or activated.
 | GL opening representation | Mapped cash GL accounts | Approved opening-equity/control account | Reviewed original opening amounts/date and historical USD valuations; never add another native bank opening |
 
 For non-USD money, retain the original amount and require an explicit approved USD valuation, rate date and source. Do not silently change the company base currency or infer realized/unrealized FX policy. Native closed periods, tax/deduction classification and starting staff-loan balances must be resolved where applicable. No real or synthetic money was posted by preparing this proposal.
+
+## M119-C01 implementation checkpoint — 2026-11-02
+
+Local implementation is in progress; backup-ERP remains on R10. New default-disabled financial configuration, explicit submission/approval/post/reverse authority, exact original/base posting plans, native money/GL bridge, private evidence, and compatible immutable source/audit handling are implemented for review. The source does not enable accounting or guess native mappings. Existing openings and older drafts are preserved.
+
+Local checks currently pass: 38 workspace/native identity tests, 21 staff-access tests, 14 document tests, 10 exact financial-plan tests, standalone dependency closure/reproducibility, and PHP syntax. These do not establish native money/GL acceptance. A new isolated MariaDB CI suite exercises actual native ExpenseReport, Salary, payment, bank and BookKeeping APIs; execution and resulting fixes are pending. Native banking/GL activation, opening-GL reconciliation, approved accounting mappings, Ahmed's exact identity and authenticated branch staff acceptance remain open. Do not mark this Mission completed or the module ready for real financial use from this checkpoint.
+
+Runtime rollback for the financial release must disable actions while keeping the compatible parser, immutable financial states, evidence and native records. R10's older source-store/parser cannot be restored over financial state. Customer Center/Mobile App parity: not applicable, finance remains internal native ERP only.

@@ -23,6 +23,13 @@ try {
         $staffAccess=OfficeExpenseStaffRuntime::enabled($conf)?OfficeExpenseStaffRuntime::access($db,$user,$conf,$pilot):null;
         $offices=$staffAccess!==null?$staffAccess->offices():$pilot->scope($user,$conf);
         if($staffAccess!==null&&!$offices)throw new OfficeExpenseStaffAccessDenied('No assigned branch.');
+        $entryMethod=(string)($_SERVER['REQUEST_METHOD']??'GET');
+        $entryLogin=$entryMethod==='POST'&&($_POST['actionlogin']??null)==='login'&&is_string($_POST['username']??null)&&is_string($_POST['password']??null)&&($_SESSION['dol_login']??null)===($user->login??null);
+        if($staffAccess!==null&&($entryMethod==='GET'||$entryLogin)&&OfficeExpenseWorkspaceRuntime::ready($db,$conf)){
+            if($entryLogin&&!empty($_FILES)){http_response_code(415);exit;}
+            $entryLang=strpos((string)($langs->defaultlang??'en_US'),'ar')===0?'ar':'en';$landing=OfficeExpenseWorkspaceRuntime::landing($staffAccess,$_GET??[],$entryLang);
+            if($landing!==null){header('Location: '.$landing,true,303);exit;}
+        }
         $binding=new OfficeExpenseNativeStorageFactory($db,$user,$conf,$offices,$pilot->privateRoot(),DOL_DOCUMENT_ROOT,array(),10,26214400,$pilot->precision(),$staffAccess);
         $factory=array($binding,'draftFactory');$receiptFactory=array($binding,'receiptFactory');
     }
@@ -61,7 +68,8 @@ try {
         && !empty($user->id) && isset($_SESSION['dol_login']) && $_SESSION['dol_login']===($user->login??null);
     if($nativeLoginPost&&!empty($_FILES)){http_response_code(415);echo 'Login does not accept attachments.';exit;}
     $result=$controller->handle($nativeLoginPost?'GET':$method,$_GET??array(),$nativeLoginPost?array():($_POST??array()),$_FILES??array());
-    if(isset($staffAccess)&&$staffAccess!==null){$result['staff_mode']=true;try{$result['manage_staff']=(bool)$staffAccess->managedOffices();}catch(DomainException $e){$result['manage_staff']=false;}}
+    if(isset($staffAccess)&&$staffAccess!==null){$result['staff_mode']=true;try{$result['manage_staff']=isset($staffAccess->managedOffices()[(string)($result['values']['office']??'')]);}catch(DomainException $e){$result['manage_staff']=false;}}
+    if(isset($staffAccess)&&$staffAccess!==null)$result['navigation_views']=$staffAccess->navigationViews((string)($result['values']['office']??''));
     $result['workspace_ready']=OfficeExpenseWorkspaceRuntime::ready($db,$conf);
     if ($nativeLoginPost && $result['status']===200) {
         $result['status']=303;$landing=$result['workspace_ready']&&!isset($_GET['view'])&&!isset($_GET['draft'])?'overview':$result['view'];

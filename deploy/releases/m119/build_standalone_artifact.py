@@ -45,6 +45,13 @@ WORKSPACE_RUNTIME_FILES = RUNTIME_FILES + tuple(MODULE + p for p in (
 ))
 
 
+FINANCE_RUNTIME_FILES = WORKSPACE_RUNTIME_FILES + tuple(MODULE + p for p in (
+    'finance.php', 'class/OfficeExpenseFinanceSettings.php',
+    'class/OfficeExpenseFinancialLock.php', 'class/OfficeExpenseFinancialPlan.php',
+    'class/OfficeExpenseNativeFinance.php', 'class/OfficeExpenseFinancialService.php',
+    'class/OfficeExpenseWorkspaceEvidence.php', 'class/OfficeExpenseFinancialPage.php',
+))
+
 def build(commit, output, repo=None):
     spec = importlib.util.spec_from_file_location('m119_package_format', Path(__file__).with_name('build_artifact.py'))
     package = importlib.util.module_from_spec(spec)
@@ -53,8 +60,11 @@ def build(commit, output, repo=None):
     if not isinstance(commit, str) or re.fullmatch('[a-f0-9]{40}', commit) is None:
         raise ValueError('Use an immutable full Git commit.')
     extended = bool(package.git(repo, 'ls-tree', commit, '--', MODULE + 'class/OfficeExpenseWorkspaceRuntime.php').strip())
-    files = WORKSPACE_RUNTIME_FILES if extended else RUNTIME_FILES
+    finance = bool(package.git(repo, 'ls-tree', commit, '--', MODULE + 'class/OfficeExpenseFinancialService.php').strip())
+    files = FINANCE_RUNTIME_FILES if finance else WORKSPACE_RUNTIME_FILES if extended else RUNTIME_FILES
     metadata = {'package_kind': 'standalone-code-only', 'staff_activation': False, 'installer_included': False}
+    if finance:
+        metadata['financial_activation'] = False
     if extended:
         metadata['workspace_activation'] = False
     return package.build(commit, output, repo, runtime_files=files, source_files=files, release_metadata=metadata)

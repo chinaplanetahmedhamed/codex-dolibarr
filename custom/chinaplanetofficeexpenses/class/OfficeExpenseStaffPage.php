@@ -4,8 +4,15 @@ declare(strict_types=1);
 /** Server-rendered, native-account assignment page. No credentials or independent accounts. */
 final class OfficeExpenseStaffPage
 {
+    public static function homeUrl(string $lang,string $office,?array $views): string
+    {
+        if($views===null)return 'index.php?'.http_build_query(['lang'=>$lang,'office'=>$office,'view'=>'overview']);
+        $allowed=array_values(array_intersect($views,['overview','treasury','receipts','expenses','advances','categories','reports','employees','payroll','settings']));
+        if(!$allowed)return (defined('DOL_URL_ROOT')?DOL_URL_ROOT:'').'/index.php?mainmenu=home';
+        return 'workspace.php?'.http_build_query(['lang'=>$lang,'office'=>$office,'view'=>in_array('overview',$allowed,true)?'overview':$allowed[0]]);
+    }
     /** Original grouped menu. New workflows require separately verified activation. */
-    public static function navigation(string $lang,string $view,bool $manage=true,string $office='',bool $workspace=false): string
+    public static function navigation(string $lang,string $view,bool $manage=true,string $office='',bool $workspace=false,?array $allowedViews=null): string
     {
         $ar=$lang==='ar';$q='?lang='.$lang.($office!==''?'&office='.rawurlencode($office):'');
         $groups=[
@@ -21,15 +28,17 @@ final class OfficeExpenseStaffPage
         ];
         $e=fn($v)=>htmlspecialchars($v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');$html='';
         foreach($groups as[$heading,$items]){
-            $html.='<p class="nav-label">'.$e($heading).'</p>';
+            $links='';
             foreach($items as[$key,$icon,$arabic,$english]){
                 if($key==='users'&&!$manage)continue;
+                if($workspace&&$allowedViews!==null&&$key!=='users'&&!in_array($key,$allowedViews,true))continue;
                 $label=$ar?$arabic:$english;$enabled=$workspace||in_array($key,['overview','expenses','advances','users'],true);
                 $content='<i class="fa-solid fa-'.$icon.'" aria-hidden="true"></i><span>'.$e($label).'</span>';
                 if($enabled){$href=$key==='users'?'users.php'.$q:($workspace?'workspace.php'.$q.'&view='.$key:'index.php'.$q.'&view='.$key);
-                    $html.='<a class="nav-link'.($view===$key?' active':'').'" href="'.$e($href).'"'.($view===$key?' aria-current="page"':'').'>'.$content.'</a>';
-                }else{$html.='<span class="nav-link nav-unavailable" aria-disabled="true">'.$content.'<small>'.($ar?'قريبًا':'Pending').'</small></span>';}
+                    $links.='<a class="nav-link'.($view===$key?' active':'').'" href="'.$e($href).'"'.($view===$key?' aria-current="page"':'').'>'.$content.'</a>';
+                }else{$links.='<span class="nav-link nav-unavailable" aria-disabled="true">'.$content.'<small>'.($ar?'قريبًا':'Pending').'</small></span>';}
             }
+            if($links!=='')$html.='<p class="nav-label">'.$e($heading).'</p>'.$links;
         }
         return $html;
     }
@@ -43,9 +52,9 @@ final class OfficeExpenseStaffPage
         $url=fn($office,$id=null)=>'users.php?lang='.$lang.'&office='.$office.($id!==null?'&staff_id='.$id:'');
         $token=function($action,$id,$revision)use($e,$csrf,$state,$lang){return '<input type="hidden" name="token" value="'.$e($csrf).'"><input type="hidden" name="action" value="'.$action.'"><input type="hidden" name="office" value="'.$e($state['office']).'"><input type="hidden" name="lang" value="'.$lang.'"><input type="hidden" name="staff_id" value="'.$id.'"><input type="hidden" name="revision" value="'.$revision.'">';};
         ob_start(); ?>
-<div class="office-expenses-app staff-access" lang="<?= $lang ?>" dir="<?= $ar?'rtl':'ltr' ?>"><div class="app-layout"><aside class="app-sidebar" aria-label="<?= $ar?'القائمة الرئيسية':'Main menu' ?>"><a class="brand" href="<?= $e('index.php?lang='.$lang.'&office='.$state['office'].'&view=overview') ?>"><span class="brand-icon"><i class="fa-solid fa-coins" aria-hidden="true"></i></span><span><b><?= $ar?'فينانس ساس':'Finens SaaS' ?></b><small><?= $ar?'لوحة تحكم الشركات':'Company dashboard' ?></small></span></a><nav><?= self::navigation($lang,'users',true,$state['office'],!empty($state['workspace_ready'])) ?></nav></aside><div class="app-content"><header class="app-navbar"><div class="company-context"><span class="company-icon"><i class="fa-solid fa-building" aria-hidden="true"></i></span><div><strong>China Planet</strong><small><?= $e($t[$state['office']]??$t['branch']) ?></small></div></div><a class="language-link" href="<?= $e('users.php?lang='.($ar?'en':'ar').'&office='.$state['office'].($selected?'&staff_id='.$selected['id']:'')) ?>"><?= $ar?'English':'العربية' ?></a></header><details class="staff-mobile-menu"><summary><i class="fa-solid fa-bars" aria-hidden="true"></i> <?= $ar?'القائمة الرئيسية':'Main menu' ?></summary><nav><?= self::navigation($lang,'users',true,$state['office'],!empty($state['workspace_ready'])) ?></nav></details><main>
+<div class="office-expenses-app staff-access" lang="<?= $lang ?>" dir="<?= $ar?'rtl':'ltr' ?>"><div class="app-layout"><aside class="app-sidebar" aria-label="<?= $ar?'القائمة الرئيسية':'Main menu' ?>"><a class="brand" href="<?= $e(self::homeUrl($lang,$state['office'],$state['navigation_views']??null)) ?>"><span class="brand-icon"><i class="fa-solid fa-coins" aria-hidden="true"></i></span><span><b><?= $ar?'فينانس ساس':'Finens SaaS' ?></b><small><?= $ar?'لوحة تحكم الشركات':'Company dashboard' ?></small></span></a><nav><?= self::navigation($lang,'users',true,$state['office'],!empty($state['workspace_ready']),$state['navigation_views']??null) ?></nav></aside><div class="app-content"><header class="app-navbar"><div class="company-context"><span class="company-icon"><i class="fa-solid fa-building" aria-hidden="true"></i></span><div><strong>China Planet</strong><small><?= $e($t[$state['office']]??$t['branch']) ?></small></div></div><a class="language-link" href="<?= $e('users.php?lang='.($ar?'en':'ar').'&office='.$state['office'].($selected?'&staff_id='.$selected['id']:'')) ?>"><?= $ar?'English':'العربية' ?></a></header><details class="staff-mobile-menu"><summary><i class="fa-solid fa-bars" aria-hidden="true"></i> <?= $ar?'القائمة الرئيسية':'Main menu' ?></summary><nav><?= self::navigation($lang,'users',true,$state['office'],!empty($state['workspace_ready']),$state['navigation_views']??null) ?></nav></details><main>
 
-<div class="page-heading"><div><h1><?= $e($t['title']) ?></h1><p><?= $e($t['intro']) ?></p></div><a class="button button-muted" href="<?= $e('index.php?lang='.$lang.'&office='.$state['office']) ?>"><i class="fa-solid fa-arrow-<?= $ar?'right':'left' ?>" aria-hidden="true"></i> <?= $ar?'رجوع':'Back' ?></a></div>
+<div class="page-heading"><div><h1><?= $e($t['title']) ?></h1><p><?= $e($t['intro']) ?></p></div><a class="button button-muted" href="<?= $e(self::homeUrl($lang,$state['office'],$state['navigation_views']??null)) ?>"><i class="fa-solid fa-arrow-<?= $ar?'right':'left' ?>" aria-hidden="true"></i> <?= $ar?'رجوع':'Back' ?></a></div>
 <?php if($state['error']){ ?><div class="flash error" role="alert"><?= $e($t['error']) ?></div><?php }else{ ?>
 <section class="filter-panel"><form method="get" action="users.php" class="staff-picker"><input type="hidden" name="lang" value="<?= $lang ?>"><div><label for="staff-branch"><?= $e($t['branch']) ?></label><select id="staff-branch" name="office"><?php foreach($state['offices']as$office=>$currencies){ ?><option value="<?= $office ?>"<?= $state['office']===$office?' selected':'' ?>><?= $e($t[$office]) ?></option><?php } ?></select></div><div><label for="native-staff"><?= $e($t['staff']) ?></label><select id="native-staff" name="staff_id" required><option value=""><?= $e($t['select']) ?></option><?php foreach($state['directory']as$row){ ?><option value="<?= $row['id'] ?>"<?= $selected&&$selected['id']===$row['id']?' selected':'' ?>><?= $e($row['name'].' · '.$row['login']) ?></option><?php } ?></select></div><button class="button button-brand" type="submit"><?= $e($t['open']) ?></button></form><p class="staff-help"><?= $e($t['account']) ?></p></section>
 <?php if($selected){ ?><section class="filter-panel"><h2><?= $e($selected['name'].' · '.$selected['login'].' / '.$t[$state['office']]) ?></h2><form method="post" action="users.php" class="staff-grants"><?= $token('assign',$selected['id'],$membership['revision']??0) ?><div class="staff-fields"><div><label for="record-scope"><?= $e($t['scope']) ?></label><select id="record-scope" name="record_scope"><option value="own"<?= ($membership['record_scope']??'own')==='own'?' selected':'' ?>><?= $e($t['own']) ?></option><option value="branch"<?= ($membership['record_scope']??'own')==='branch'?' selected':'' ?>><?= $e($t['all']) ?></option></select></div></div><div class="table-scroll staff-permissions-scroll" tabindex="0" role="region" aria-label="<?= $e($t['permissions']) ?>"><table class="staff-permission-matrix"><thead><tr><th><?= $ar?'القسم':'Section' ?></th><th><?= $ar?'عرض وإنشاء':'Read / create' ?></th><th><?= $ar?'تعديل':'Edit' ?></th><th><?= !empty($state['workspace_ready'])?($ar?'أرشفة':'Archive'):($ar?'حذف':'Delete') ?></th></tr></thead><tbody><?php

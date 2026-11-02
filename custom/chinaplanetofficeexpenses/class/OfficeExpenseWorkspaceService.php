@@ -17,6 +17,9 @@ final class OfficeExpenseWorkspaceService
         $this->db=$db;$this->user=$user;$this->actor=(int)$user->id;$this->entity=$entity;$this->access=$access;
         $this->store=new OfficeExpenseWorkspaceStore($db);$this->documents=new OfficeExpenseWorkspaceDocument(new OfficeExpenseMoney());
     }
+    public function usesNativeConnection($db,int $entity,int $actor): bool {return $db===$this->db&&$entity===$this->entity&&$actor===$this->actor&&$this->access->usesContext($this->user,$entity);}
+    public function navigationViews(string $office): array {$this->context();return $this->access->navigationViews($office);}
+    public function actorId(): int {$this->context();return $this->access->financeActorId();}
     private function context(): void {if(!$this->access->usesContext($this->user,$this->entity))throw new DomainException('Native context differs.');}
     public function offices(string $section): array
     {
@@ -91,12 +94,12 @@ final class OfficeExpenseWorkspaceService
             // Branding metadata cannot redirect the authoritative per-currency native mapping.
             (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->assertPrimaryAccount($office,$v['account_id']);
         }
-        if($kind==='expense'&&$v['category_ref']!==''){
+        if(in_array($kind,['expense','advance_settlement'],true)&&$v['category_ref']!==''){
             $category=$this->get($office,'category',$v['category_ref']);if($category['status']!=='active'||!$category['content']['active'])throw new DomainException('Category is inactive.');
         }
-        if($kind==='advance_return'){
+        if(in_array($kind,['advance_return','advance_settlement'],true)){
             $advance=$this->get($office,'advance',$v['settles_ref']);
-            if($advance['status']!=='draft'||$advance['content']['currency']!==$v['currency']||bccomp($v['amount'],$advance['content']['amount'],2)>0)throw new DomainException('Return does not match an available advance.');
+            if(!in_array($advance['status'],['draft','posted'],true)||$advance['content']['currency']!==$v['currency']||bccomp($v['amount'],$advance['content']['amount'],2)>0)throw new DomainException('Return does not match an available advance.');
             // These are requests, not a settled balance. Never present multiple pending returns as posted settlement.
         }
     }
@@ -115,9 +118,9 @@ final class OfficeExpenseWorkspaceService
     public function report(string $office,string $from,string $to,string $filter='all',string $status='all',bool $withCharts=true): array
     {
         $reportScope=$this->access->recordScope($office,'reports');OfficeExpenseMoney::date($from);OfficeExpenseMoney::date($to);
-        if($from>$to||!in_array($filter,['all','expense','advance','advance_return','deposit','receipt','payroll'],true)||!in_array($status,['all','draft','archived'],true))throw new InvalidArgumentException('Invalid reporting filters.');
+        if($from>$to||!in_array($filter,['all','expense','advance','advance_return','advance_settlement','deposit','receipt','payroll'],true)||!in_array($status,['all','draft','submitted','approved','posted','rejected','reversed','archived'],true))throw new InvalidArgumentException('Invalid reporting filters.');
         $rows=[];$totals=[];$money=new OfficeExpenseMoney();
-        foreach(['expense','advance','advance_return','deposit','receipt','payroll']as$kind){
+        foreach(['expense','advance','advance_return','advance_settlement','deposit','receipt','payroll']as$kind){
             if($filter!=='all'&&$filter!==$kind)continue;
             if(!$this->allowed($office,$kind,'read'))continue;
             foreach($this->list($office,$kind,$from,$to)as$row){$v=$row['content'];if($v['date']<$from||$v['date']>$to||($status!=='all'&&$row['status']!==$status))continue;if($reportScope==='own'&&($kind==='payroll'?$row['subject']!==$this->actor:$row['owner']!==$this->actor))continue;$rows[]=$row;}

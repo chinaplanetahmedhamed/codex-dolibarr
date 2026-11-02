@@ -6,7 +6,7 @@ require_once __DIR__.'/OfficeExpenseWorkspaceLogo.php';
 /** Validated operational documents. This class never writes a cash balance or native payment. */
 final class OfficeExpenseWorkspaceDocument
 {
-    public const SECTIONS=['category'=>'categories','employee'=>'employees','payroll'=>'payroll','settings'=>'settings','deposit'=>'treasury','receipt'=>'receipts','expense'=>'expenses','advance'=>'advances','advance_return'=>'advances'];
+    public const SECTIONS=['category'=>'categories','employee'=>'employees','payroll'=>'payroll','settings'=>'settings','deposit'=>'treasury','receipt'=>'receipts','expense'=>'expenses','advance'=>'advances','advance_return'=>'advances','advance_settlement'=>'advances'];
     public const ICONS=['folder','building','bolt','truck-fast','utensils','print','bullhorn','wrench','receipt','users'];
     private OfficeExpenseMoney $money;
     public function __construct(OfficeExpenseMoney $money){$this->money=$money;}
@@ -24,6 +24,7 @@ final class OfficeExpenseWorkspaceDocument
             'expense'=>['amount','currency','date','category_ref','purpose','source_ref','notes'],
             'advance'=>['amount','currency','date','purpose','source_ref','notes'],
             'advance_return'=>['amount','currency','date','purpose','source_ref','settles_ref','notes'],
+            'advance_settlement'=>['amount','currency','date','purpose','source_ref','settles_ref','category_ref','notes'],
         ][$kind];
         if(array_diff(array_keys($p),$fields)||array_diff($fields,array_keys($p)))throw new InvalidArgumentException('Unexpected or missing document fields.');
         $v=[];foreach($fields as$field){

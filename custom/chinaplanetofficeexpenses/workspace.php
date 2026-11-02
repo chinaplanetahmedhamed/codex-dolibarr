@@ -4,6 +4,7 @@ define('CSRFCHECK_WITH_TOKEN',1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/class/OfficeExpenseWorkspaceRuntime.php';
 require_once __DIR__.'/class/OfficeExpenseWorkspacePage.php';
+require_once __DIR__.'/class/OfficeExpenseFinancialService.php';
 header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: same-origin');
 try{
     if(!OfficeExpenseWorkspaceRuntime::ready($db,$conf))throw new DomainException('Branch workspace is not activated.');
@@ -17,8 +18,16 @@ try{
     if($nativeLogin&&$result['status']===200){header('Location: workspace.php?'.http_build_query(['view'=>$result['view'],'office'=>$result['office'],'lang'=>$result['language']]),true,303);exit;}
     http_response_code($result['status']);if($result['redirect']!==null){header('Location: '.$result['redirect'],true,303);exit;}
     if($result['csv']!==null){header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="'.($result['csv_name']??'office-requests.csv').'"');echo $result['csv'];exit;}
+    if($result['status']===200){
+        $evidence=null;try{$evidence=new OfficeExpenseWorkspaceEvidence($db,$service,(int)$conf->entity,$service->actorId(),$pilot->privateRoot(),DOL_DOCUMENT_ROOT);}catch(RuntimeException $unavailable){}
+        $finance=new OfficeExpenseFinancialService($db,$user,$conf,$access,$service,$evidence);
+        $financialRow=$result['selected']&&in_array($result['selected']['kind'],OfficeExpenseFinancialPlan::KINDS,true)?$result['selected']:null;
+        $result['finance']=$finance->state($result['office'],$financialRow);
+        if($result['view']==='reports')$result['financial_report']=$finance->report($result['office'],$result['report']['from'],$result['report']['to']);
+        if($result['view']==='settings'&&$result['finance']['administrator']){$result['finance_config']=$finance->settings()->load($result['office']);$result['finance_metadata']=$finance->settings()->metadata();$result['finance_delegates']=array_values(array_filter($access->members($result['office']),static fn($m)=>$m['active']&&$m['record_scope']==='branch'));}
+    }
     if($result['status']===405)header('Allow: GET, POST');
-    try{$result['manage_staff']=(bool)$access->managedOffices();}catch(DomainException $e){$result['manage_staff']=false;}
+    try{$result['manage_staff']=isset($access->managedOffices()[$result['office']]);}catch(DomainException $e){$result['manage_staff']=false;}
     if($result['view']==='receipts'&&$result['selected'])$result['receipt_link']=OfficeExpenseWorkspaceController::receiptBaseUrl(DOL_MAIN_URL_ROOT).'/custom/chinaplanetofficeexpenses/workspace.php?'.http_build_query(['lang'=>$result['language'],'office'=>$result['office'],'view'=>'receipts','edit'=>$result['selected']['id'],'print'=>'1']);
     $asset=DOL_URL_ROOT.'/custom/chinaplanetofficeexpenses/';$hasCsp=false;
     foreach(headers_list()as$h)if(stripos($h,'Content-Security-Policy:')===0)$hasCsp=true;

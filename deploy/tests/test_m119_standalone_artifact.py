@@ -21,7 +21,7 @@ class StandaloneArtifactTests(unittest.TestCase):
         repo = root / 'repo'
         repo.mkdir()
         subprocess.run(['git', 'init', '-q'], cwd=repo, check=True)
-        for relative in builder.WORKSPACE_RUNTIME_FILES:
+        for relative in builder.FINANCE_RUNTIME_FILES:
             target = repo / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((ROOT / relative).read_bytes())
@@ -33,7 +33,7 @@ class StandaloneArtifactTests(unittest.TestCase):
         return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=repo, text=True).strip()
 
     def test_package_closes_local_dependencies_and_schema_hashes(self):
-        paths = set(builder.WORKSPACE_RUNTIME_FILES)
+        paths = set(builder.FINANCE_RUNTIME_FILES)
         for path in paths:
             if path.endswith('.php'):
                 for relative in re.findall(r"__DIR__\s*\.\s*'([^']+)'", (ROOT / path).read_text()):

@@ -18,6 +18,7 @@ check python3 -B deploy/tests/test_m119_design_deployer.py
 check python3 -B deploy/tests/test_m119_design_acceptance_deployer.py
 check python3 -B deploy/tests/test_m119_dropdown_deployer.py
 check python3 -B deploy/tests/test_m119_entry_deployer.py
+check php deploy/tests/test_m119_financial_plan.php
 check php deploy/tests/test_m119_workspace_documents.php
 check php deploy/tests/test_m119_workspace_native.php "$native"
 check php deploy/tests/test_m119_office_expenses.php
@@ -42,5 +43,6 @@ check python3 deploy/tests/test_m119_employee_http.py
 check python3 -B deploy/tests/test_m119_ui_updater.py UiUpdaterTests.test_real_root_replacement_refuses_drift_and_symlink_and_restores
 check php deploy/tests/test_m119_pilot_filesystem_ci.php
 check php deploy/tests/test_m119_mariadb_ci.php "$native"
+check php deploy/tests/test_m119_financial_mariadb_ci.php "$native"
 printf 'FAILED_SUITES=%s\n' "$failed_suites"
 test "$failed_suites" -eq 0

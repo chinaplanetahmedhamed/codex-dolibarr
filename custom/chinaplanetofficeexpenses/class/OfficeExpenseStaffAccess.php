@@ -19,6 +19,22 @@ final class OfficeExpenseStaffAccess
         $this->db=$db;$this->user=$user;$this->actor=(int)$user->id;$this->conf=$conf;$this->entity=$conf->entity;$this->bootstrap=$bootstrap;$this->store=$store??new OfficeExpenseNativeAccessStore($db);
         $this->identity();
     }
+    public function navigationViews(string $office): array
+    {
+        $sections=$this->readScopes()[$office]??[];$views=array_keys($sections);
+        if(isset($sections['expenses']))array_unshift($views,'overview');return $views;
+    }
+    public function financeActorId(): int {return (int)$this->identity()->id;}
+    public function isFinanceAdministrator(): bool {return $this->bootstrap($this->identity());}
+    /** Financial authority is explicit and independent from a CRUD create/edit grant. */
+    public function assertFinancial(string $office,string $section,string $action,array $roles): void
+    {
+        if(!in_array($action,['approve','post','reverse'],true))throw new InvalidArgumentException('Invalid financial authority.');
+        $native=$this->identity();$member=$this->membership($office,$native);
+        if(!$this->permits($native,$member,$section,'read')||($member['record_scope']??null)!=='branch')throw new OfficeExpenseStaffAccessDenied('Branch financial authority unavailable.');
+        if($this->bootstrap($native))return;
+        if(!$native->hasRight('chinaplanetofficeexpenses','draft')||!in_array($this->actor,$roles[$action]??[],true))throw new OfficeExpenseStaffAccessDenied('Explicit financial authority required.');
+    }
     public function usesContext($user,int $entity): bool {return $user===$this->user&&$entity===$this->entity&&(int)($user->id??0)===$this->actor;}
     private function identity(): User
     {
