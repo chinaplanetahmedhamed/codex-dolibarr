@@ -135,6 +135,7 @@ jobs:
           python3 -B deploy/tests/test_m119_dropdown_deployer.py
           python3 -B deploy/tests/test_m119_entry_deployer.py
           python3 -B deploy/tests/test_m119_finance_deployer.py
+          python3 -B deploy/tests/test_m119_menu_deployer.py
           python3 -B deploy/tests/test_m119_workspace_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_receipt_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_receipt_acceptance_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
@@ -143,6 +144,7 @@ jobs:
           python3 -B deploy/tests/test_m119_dropdown_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_entry_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_finance_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
+          python3 -B deploy/tests/test_m119_menu_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 deploy/tests/test_m119_runtime_preparation.py
           python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
