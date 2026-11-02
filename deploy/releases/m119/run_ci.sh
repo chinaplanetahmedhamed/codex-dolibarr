@@ -13,6 +13,7 @@ check() {
 }
 check python3 -B deploy/tests/test_m119_workspace_deployer.py
 check python3 -B deploy/tests/test_m119_receipt_deployer.py
+check python3 -B deploy/tests/test_m119_receipt_acceptance_deployer.py
 check php deploy/tests/test_m119_workspace_documents.php
 check php deploy/tests/test_m119_workspace_native.php "$native"
 check php deploy/tests/test_m119_office_expenses.php
