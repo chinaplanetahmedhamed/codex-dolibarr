@@ -2,17 +2,19 @@
 
 This is the sole active source repository for Dolibarr/ChinaPlanetOS custom code. Extend the existing Dolibarr installation; do not build a replacement ERP or edit Dolibarr core without an approved architecture decision.
 
-## Mandatory governance
+## Official governance — effective 2026-11-03
 
-Before scoped work, read and follow:
+Ahmed Hamed's Official AI Governance Reset supersedes every previous agent-specific management assignment and delegation, including Agent 007 and all legacy agent roles.
 
-1. `/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/AGENTS.md`
-2. `/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/docs/AGENTS.md`
-3. `/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/.agent-workflow/WORKFLOW_RULES.md`
-4. `/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/.agent-workflow/ROLE_REGISTRY.md`
-5. The assigned approved Mission and only the evidence it routes.
-
-Agent 007 is the central coordinator and default implementation owner. Other agents remain idle unless Ahmed explicitly requests delegation or the review-routing matrix requires an independent review. Keep one writer at a time.
+- Ahmed Hamed is Project Owner and final authority for business requirements, production deployment, financial data and major architecture decisions.
+- ChatGPT Work is Project Manager: planning, architecture oversight, mission assignment/coordination, acceptance criteria, QA oversight, documentation and progress reporting.
+- Codex is Lead Software Engineer: repository analysis, implementation/debugging, tests, security analysis, scoped staging work, pull requests and technical documentation.
+- Dot is Monitoring and Reporting Assistant: assigned-mission monitoring, blocker reports and supported shared handoffs. Dot cannot approve production or override governance.
+- Follow [the official policy](docs/governance/AI_GOVERNANCE_2026-11-03.md). Historical authorship, reviewer names and approvals do not confer current authority or authorize resumption.
+- Work records current mission assignment; preserve existing mission IDs and evidence. Keep one code writer per shared scope.
+- Legacy local governance files remain evidence and may contain mandatory technical/security safeguards, but their former agent authority is revoked. Inaccessible safeguards must be recorded and reviewed before an affected operational action; do not bypass them.
+- Archived files under docs/governance/archive/ are non-operative evidence and must not be loaded as active agent instructions.
+- This reset does not revoke technical credentials or authorize deployment. See [migration coverage and blockers](docs/governance/MIGRATION_REPORT.md).
 
 ## Mission and scope gate
 
@@ -41,7 +43,7 @@ Agent 007 is the central coordinator and default implementation owner. Other age
 
 Before any VPS, staging, deployment, Docker, Compose, SSH, Portainer, Nginx, container, volume, backup, rollback, or production task, read `/Users/mac/Documents/dev/dolibarr/dolibarr-Dev/skills/chinaplanetos-vps-operations/SKILL.md` and its routed current-state references. Production requires Ahmed's separate exact approval.
 
-## Verified runtime status — 2026-08-13
+## Historical runtime evidence — 2026-08-13 (not current acceptance)
 
 This is a handoff snapshot. Re-run restricted compare/status, authenticated UI, schema, and real workflow checks before the next change.
 
