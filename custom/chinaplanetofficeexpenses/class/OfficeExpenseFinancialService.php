@@ -34,11 +34,17 @@ final class OfficeExpenseFinancialService
                 foreach(['posting','reversal']as$phase){$p=$row['content']['_finance'][$phase]??null;if(!$p||$p['plan']['date']<$from||$p['plan']['date']>$to)continue;$this->native->verifyPosted($p);$plan=$p['plan'];$c=$plan['currency'];
                     if(!isset($totals[$c]))$totals[$c]=['cash_in'=>'0.00','cash_out'=>'0.00','net'=>'0.00'];
                     $cash=$plan['cash_amount'];if(bccomp($cash,'0',2)>=0)$totals[$c]['cash_in']=bcadd($totals[$c]['cash_in'],$cash,2);else $totals[$c]['cash_out']=bcsub($totals[$c]['cash_out'],$cash,2);
-                    $totals[$c]['net']=bcadd($totals[$c]['net'],$cash,2);$rows[]=['id'=>$row['id'],'kind'=>$kind,'phase'=>$phase,'date'=>$plan['date'],'currency'=>$c,'cash'=>$cash,'base_currency'=>$plan['base_currency'],'cash_base'=>$plan['cash_base'],'bank_id'=>$p['bank_id']??0,'journals'=>$p['journals']];
+                    $totals[$c]['net']=bcadd($totals[$c]['net'],$cash,2);$rows[]=['id'=>$row['id'],'kind'=>$kind,'phase'=>$phase,'date'=>$plan['date'],'currency'=>$c,'cash'=>$cash,'original_amount'=>$plan['valuation']['original_amount'],'base_amount'=>$plan['valuation']['base_amount'],'rate'=>$plan['valuation']['rate'],'rate_date'=>$plan['valuation']['rate_date'],'rate_source'=>$plan['valuation']['rate_source'],'base_currency'=>$plan['base_currency'],'cash_base'=>$plan['cash_base'],'bank_id'=>$p['bank_id']??0,'journals'=>$p['journals']];
                 }
             }
         }
         usort($rows,static fn($a,$b)=>[$b['date'],$b['id'],$b['phase']]<=>[$a['date'],$a['id'],$a['phase']]);return ['from'=>$from,'to'=>$to,'rows'=>$rows,'totals'=>$totals];
+    }
+    public static function csv(array $report): string
+    {
+        $stream=fopen('php://temp','w+');fwrite($stream,"\xEF\xBB\xBF");fputcsv($stream,['Date','Reference','Kind','Posting or reversal','Original currency','Document amount','Original cash movement','Book currency','Document book value','Cash book value','Rate to book currency','Rate date','Rate source','Native bank ID','Journal','Piece','GL account','Debit','Credit'],';','"','');
+        foreach($report['rows']as$r)foreach($r['journals']as$j)foreach($j['lines']as$line){$cells=[$r['date'],$r['id'],$r['kind'],$r['phase'],$r['currency'],$r['original_amount'],$r['cash'],$r['base_currency'],$r['base_amount'],$r['cash_base'],$r['rate'],$r['rate_date'],$r['rate_source'],$r['bank_id'],$j['journal'],$j['piece'],$line['account'],$line['debit'],$line['credit']];$cells=array_map(static function($v){$v=(string)$v;return preg_match('/^[\s]*[=+\-@]/u',$v)&&!preg_match('/^-?[0-9]+(?:\.[0-9]+)?$/D',$v)?"'".$v:$v;},$cells);fputcsv($stream,$cells,';','"','');}
+        rewind($stream);$csv=stream_get_contents($stream);fclose($stream);return $csv;
     }
     public function state(string $office,?array $row=null): array
     {

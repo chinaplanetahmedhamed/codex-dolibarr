@@ -15,7 +15,7 @@ final class OfficeExpenseWorkspaceController
     }
     public function handle(string $method,array $query,array $post,array $files=[]): array
     {
-        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false,'report_currency'=>'','month'=>'','navigation_views'=>[],'actor_id'=>0,'record_scope'=>'own'];
+        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false,'report_currency'=>'','month'=>'','financial_export'=>false,'navigation_views'=>[],'actor_id'=>0,'record_scope'=>'own'];
         try{
             if(!in_array($method,['GET','POST'],true))return array_replace($state,['status'=>405,'error'=>'method']);
             foreach(['view','office','lang','edit','print','from','to','kind','status','export','saved','search','currency','month']as$field)if(isset($query[$field])&&!is_string($query[$field]))throw new InvalidArgumentException('Invalid query.');
@@ -52,7 +52,7 @@ final class OfficeExpenseWorkspaceController
                 $month=$query['month']??date('Y-m');OfficeExpenseMoney::date($month.'-01');if(!preg_match('/^[0-9]{4}-[0-9]{2}$/D',$month))throw new InvalidArgumentException('Invalid reporting month.');
                 $state['month']=$month;$currency=$query['currency']??OfficeExpenseStaffAccess::OFFICES[$office][0];if(!in_array($currency,OfficeExpenseStaffAccess::OFFICES[$office],true))throw new InvalidArgumentException('Invalid branch currency.');$state['report_currency']=$currency;
                 $state['report']=$this->service->report($office,$query['from']??$month.'-01',$query['to']??date('Y-m-t',strtotime($month.'-01')),$query['kind']??'all',$query['status']??'all');
-                if(isset($query['export'])){if(!in_array($query['export'],['csv','cash_csv'],true))throw new InvalidArgumentException('Invalid export.');$state['csv']=$query['export']==='cash_csv'?OfficeExpenseWorkspaceService::cashCsv($state['report']):OfficeExpenseWorkspaceService::csv($state['report']);$state['csv_name']=$query['export']==='cash_csv'?'office-cash-period.csv':'office-requests.csv';}
+                if(isset($query['export'])){if(!in_array($query['export'],['csv','cash_csv','financial_csv'],true))throw new InvalidArgumentException('Invalid export.');$state['financial_export']=$query['export']==='financial_csv';$state['csv']=$state['financial_export']?null:($query['export']==='cash_csv'?OfficeExpenseWorkspaceService::cashCsv($state['report']):OfficeExpenseWorkspaceService::csv($state['report']));$state['csv_name']=$query['export']==='cash_csv'?'office-cash-period.csv':'office-requests.csv';}
                 return $state;
             }
             if($view==='receipts'){

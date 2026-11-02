@@ -23,7 +23,7 @@ try{
         $finance=new OfficeExpenseFinancialService($db,$user,$conf,$access,$service,$evidence);
         $financialRow=$result['selected']&&in_array($result['selected']['kind'],OfficeExpenseFinancialPlan::KINDS,true)?$result['selected']:null;
         $result['finance']=$finance->state($result['office'],$financialRow);
-        if($result['view']==='reports')$result['financial_report']=$finance->report($result['office'],$result['report']['from'],$result['report']['to']);
+        if($result['view']==='reports'){$result['financial_report']=$finance->report($result['office'],$result['report']['from'],$result['report']['to']);if($result['financial_export']){header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="office-finance-postings.csv"');echo OfficeExpenseFinancialService::csv($result['financial_report']);exit;}}
         if($result['view']==='settings'&&$result['finance']['administrator']){$result['finance_config']=$finance->settings()->load($result['office']);$result['finance_metadata']=$finance->settings()->metadata();$result['finance_categories']=$service->list($result['office'],'category');$result['finance_delegates']=array_values(array_filter($access->members($result['office']),static fn($m)=>$m['active']&&$m['record_scope']==='branch'));}
     }
     if($result['status']===405)header('Allow: GET, POST');

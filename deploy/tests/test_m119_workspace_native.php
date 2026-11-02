@@ -209,6 +209,12 @@ wt('workspace evidence reuses scoped private storage with retry actor audit and 
         $path=$root.'/workspace/1/egypt/'.$source['id'].'/'.$file['id'].'.blob';file_put_contents($path,'SYNTHETIC corrupt');$failed=false;try{$service->download('egypt','expense',$source['id'],$file['id']);}catch(RuntimeException$e){$failed=true;}we($failed,true);
     }finally{ $iterator=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);foreach($iterator as$item){if($item->isDir())rmdir($item->getPathname());else unlink($item->getPathname());}rmdir($root); }
 });
+wt('financial export preserves exact negative cash and neutralizes untrusted spreadsheet formulas',function(){
+    require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseFinancialService.php';
+    $row=['date'=>'2026-11-02','id'=>'synthetic-export','kind'=>'expense','phase'=>'posting','currency'=>'EGP','original_amount'=>'5.00','cash'=>'-5.00','base_currency'=>'USD','base_amount'=>'0.40','cash_base'=>'-0.40','rate'=>'0.08000000','rate_date'=>'2026-11-02','rate_source'=>' =HYPERLINK("https://invalid.example")','bank_id'=>42,'journals'=>[['journal'=>'SYNBANK','piece'=>7,'lines'=>[['account'=>'@untrusted','debit'=>'0.40','credit'=>'0.00']]]]];
+    $csv=OfficeExpenseFinancialService::csv(['rows'=>[$row]]);$stream=fopen('php://temp','w+');fwrite($stream,substr($csv,3));rewind($stream);$header=fgetcsv($stream,0,';','"','');$cells=fgetcsv($stream,0,';','"','');fclose($stream);
+    we(count($header),19);we($cells[6],'-5.00');we($cells[9],'-0.40');we($cells[12],"'".$row['rate_source']);we($cells[16],"'@untrusted");we($cells[17],'0.40');
+});
 wt('financial authority is explicit branch-scoped and configuration never enables native accounting',function()use($db,$conf,$owner,$egypt,$china){
     require_once dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseFinanceSettings.php';
     wb(fn()=>$egypt->assertFinancial('egypt','expenses','post',['post'=>[]]));$egypt->assertFinancial('egypt','expenses','post',['post'=>[8]]);

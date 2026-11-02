@@ -11,7 +11,7 @@ final class OfficeExpenseFinancialLock
         if(!in_array($db->type??'', ['mysqli','mysql'],true))throw new RuntimeException('Verified native financial locking is unavailable.');
         $key=$c->quote('cpo_office_finance_'.$entity);$row=$c->one('SELECT GET_LOCK('.$key.',5) AS financial_lock');
         if((int)($row['financial_lock']??0)!==1)throw new DomainException('Financial processing is busy; retry with the same operation key.');
-        try{return $work();}
-        finally{$row=$c->one('SELECT RELEASE_LOCK('.$key.') AS released');if((int)($row['released']??0)!==1){$c->retire();throw new RuntimeException('Financial connection lock release requires reconciliation.');}}
+        $failure=null;try{return $work();}catch(Throwable $error){$failure=$error;throw $error;}
+        finally{try{$row=$c->one('SELECT RELEASE_LOCK('.$key.') AS released');if((int)($row['released']??0)!==1){$c->retire();throw new RuntimeException('Financial connection lock release requires reconciliation.');}}catch(Throwable $releaseError){if($failure)throw new RuntimeException('Financial operation and connection lock require reconciliation.',0,$failure);throw $releaseError;}}
     }
 }
