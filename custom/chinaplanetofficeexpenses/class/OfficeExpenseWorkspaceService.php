@@ -29,6 +29,18 @@ final class OfficeExpenseWorkspaceService
         if($allowed&&$action!=='read'&&in_array($kind,['category','settings'],true)&&$this->access->recordScope($office,$section)!=='branch')return false;
         return $allowed;
     }
+    public function receiptBrand(string $office): array
+    {
+        $this->context();$this->access->assertAction($office,'receipts','read');$rows=$this->store->list($this->entity,$office,'settings');$brand=$rows[0]['content']??['name'=>'China Planet','phone'=>'','logo'=>''];
+        return array_intersect_key($brand,array_flip(['name','phone','logo']));
+    }
+    public function actorName(): string {$this->context();return trim((string)$this->user->firstname.' '.(string)$this->user->lastname)?:((string)$this->user->login);}
+    public function receiptOwnerName(string $office,string $id): string
+    {
+        $row=$this->get($office,'receipt',$id);$c=new OfficeExpenseNativeConnection($this->db);
+        $native=$c->one('SELECT firstname,lastname,login FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.$row['owner'].' AND entity IN (0,'.$this->entity.') AND (fk_soc IS NULL OR fk_soc=0)');
+        return $native?(trim((string)$native['firstname'].' '.(string)$native['lastname'])?:$native['login']):'#'.$row['owner'];
+    }
     public function staff(string $office,string $section): array {$this->context();return $this->access->branchStaff($office,$section);}
     public function cash(string $office,?string $from=null,?string $to=null): array {$this->context();return (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->read($office,$from,$to);}
     public function accounts(string $office): array {$this->context();return (new OfficeExpenseNativeTreasury($this->db,$this->user,$this->entity,$this->access))->accounts($office);}

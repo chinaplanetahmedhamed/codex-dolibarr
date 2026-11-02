@@ -9,10 +9,10 @@ final class OfficeExpenseWorkspaceController
     public function __construct(OfficeExpenseWorkspaceService $service,string $token){$this->service=$service;$this->token=$token;}
     public function handle(string $method,array $query,array $post,array $files=[]): array
     {
-        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16))];
+        $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false];
         try{
             if(!in_array($method,['GET','POST'],true))return array_replace($state,['status'=>405,'error'=>'method']);
-            foreach(['view','office','lang','edit','print','from','to','kind','status','export','saved']as$field)if(isset($query[$field])&&!is_string($query[$field]))throw new InvalidArgumentException('Invalid query.');
+            foreach(['view','office','lang','edit','print','from','to','kind','status','export','saved','search']as$field)if(isset($query[$field])&&!is_string($query[$field]))throw new InvalidArgumentException('Invalid query.');
             $view=$post['view']??$query['view']??'categories';if(!is_string($view)||!isset(self::VIEWS[$view]))throw new InvalidArgumentException('Unknown section.');
             $lang=$post['lang']??$query['lang']??'ar';if(!in_array($lang,['ar','en'],true))throw new InvalidArgumentException('Unknown language.');
             $offices=$this->service->offices($view);$office=$post['office']??$query['office']??array_key_first($offices);
@@ -21,8 +21,9 @@ final class OfficeExpenseWorkspaceController
             $state=array_replace($state,['view'=>$view,'kind'=>$kind,'office'=>$office,'language'=>$lang,'offices'=>$offices]);
             if($method==='POST'){
                 if($this->token===''||!is_string($post['token']??null)||!hash_equals($this->token,$post['token']))return array_replace($state,['status'=>403,'error'=>'csrf']);
-                if(array_diff(array_keys($post),['view','kind','office','lang','token','action','id','revision','submission_key','payload']))throw new InvalidArgumentException('Unexpected fields.');
+                if(array_diff(array_keys($post),['view','kind','office','lang','token','action','id','revision','submission_key','payload','print_after']))throw new InvalidArgumentException('Unexpected fields.');
                 $action=$post['action']??null;if(!in_array($action,['save','archive','restore'],true)||$view==='reports')throw new InvalidArgumentException('Unsupported action.');
+                if(isset($post['print_after'])&&($view!=='receipts'||$post['print_after']!=='1'||$action!=='save'))throw new InvalidArgumentException('Invalid print request.');
                 $id=$post['id']??'';if(!is_string($id)||($id!==''&&!preg_match('/^[a-f0-9]{32}$/D',$id)))throw new InvalidArgumentException('Invalid reference.');
                 $revision=OfficeExpenseWorkspaceDocument::number($post['revision']??'0',true);
                 if($files){
@@ -35,7 +36,7 @@ final class OfficeExpenseWorkspaceController
                     $state['form']=$post['payload'];$state['submission_key']=$post['submission_key'];
                     $saved=$this->service->save($office,$kind,$post['payload'],$post['submission_key'],$id===''?null:$id,$revision);
                 }else{if($id===''||isset($post['payload'])||isset($post['submission_key']))throw new InvalidArgumentException('Invalid transition.');$saved=$this->service->change($office,$kind,$id,$revision,$action);}
-                return array_replace($state,['status'=>303,'redirect'=>'workspace.php?'.http_build_query(['lang'=>$lang,'office'=>$office,'view'=>$view,'kind'=>$kind,'saved'=>'1','edit'=>$saved['id']])]);
+                return array_replace($state,['status'=>303,'redirect'=>'workspace.php?'.http_build_query(['lang'=>$lang,'office'=>$office,'view'=>$view,'kind'=>$kind,'saved'=>'1','edit'=>$saved['id']]+(isset($post['print_after'])?['print'=>'1']:[]))]);
             }
             foreach(['read','create','update','delete']as$action)$state['permissions'][$action]=$this->service->allowed($office,$kind,$action);
             if($view==='reports'){
@@ -43,7 +44,14 @@ final class OfficeExpenseWorkspaceController
                 if(isset($query['export'])){if(!in_array($query['export'],['csv','cash_csv'],true))throw new InvalidArgumentException('Invalid export.');$state['csv']=$query['export']==='cash_csv'?OfficeExpenseWorkspaceService::cashCsv($state['report']):OfficeExpenseWorkspaceService::csv($state['report']);$state['csv_name']=$query['export']==='cash_csv'?'office-cash-period.csv':'office-requests.csv';}
                 return $state;
             }
-            $state['rows']=$this->service->list($office,$kind);
+            if($view==='receipts'){
+                $from=$query['from']??date('Y-m-01');$to=$query['to']??date('Y-m-t');OfficeExpenseMoney::date($from);OfficeExpenseMoney::date($to);
+                $search=trim($query['search']??'');$status=$query['status']??'draft';
+                if($from>$to||strlen($search)>160||preg_match('/[\x00-\x1f]/',$search)||!in_array($status,['all','draft','archived'],true))throw new InvalidArgumentException('Invalid receipt filters.');
+                $state['receipt_filter']=['from'=>$from,'to'=>$to,'search'=>$search,'status'=>$status];
+                $state['rows']=array_values(array_filter($this->service->list($office,$kind,$from,$to),static function($r)use($search,$status){$v=$r['content'];return ($status==='all'||$r['status']===$status)&&($search===''||stripos('REC-'.$r['id'].' '.$v['payer'].' '.$v['phone'].' '.$v['purpose'],$search)!==false);}));
+                $state['actor_name']=$this->service->actorName();$state['can_edit_receipt_settings']=$this->service->allowed($office,'settings','update');
+            }else $state['rows']=$this->service->list($office,$kind);
             if($view==='advances')$state['rows']=array_merge($state['rows'],$this->service->list($office,'advance_return'));
             if(in_array($view,['expenses','advances'],true))$state['legacy']=$this->service->legacy($office,$view);
             if(in_array($view,['employees','payroll'],true))$state['staff']=$this->service->staff($office,$view);
@@ -57,10 +65,14 @@ final class OfficeExpenseWorkspaceController
                 $state['selected']=$this->service->get($office,$kind,$query['edit']);
                 $state['history']=$this->service->history($office,$kind,$query['edit']);
             }
+            if($view==='receipts'){
+                foreach(array_merge($state['rows'],$state['selected']?[$state['selected']]:[])as$r)if(!isset($state['receivers'][$r['owner']]))$state['receivers'][$r['owner']]=$this->service->receiptOwnerName($office,$r['id']);
+            }
             if(isset($query['print'])){
                 if($query['print']!=='1'||!$state['selected']||!in_array($kind,['receipt','deposit','payroll','expense','advance','advance_return'],true))throw new InvalidArgumentException('Invalid printable document.');$state['print']=true;
             }
-            if(in_array($view,['receipts','payroll'],true)&&$this->service->allowed($office,'settings','read'))$state['settings']=$this->service->list($office,'settings')[0]['content']??null;
+            if($view==='receipts')$state['settings']=$this->service->receiptBrand($office);
+            if($view==='payroll'&&$this->service->allowed($office,'settings','read'))$state['settings']=$this->service->list($office,'settings')[0]['content']??null;
             return $state;
         }catch(InvalidArgumentException $e){return array_replace($state,['status'=>422,'error'=>'invalid']);}
         catch(DomainException $e){return array_replace($state,['status'=>403,'error'=>'forbidden','rows'=>[],'legacy'=>[],'staff'=>[],'selected'=>null,'history'=>[],'report'=>null,'cash'=>null,'accounts'=>[]]);}

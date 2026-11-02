@@ -1,5 +1,14 @@
 # M119 — Office expenses local foundation
 
+## Actual payment and financial posting request — 2026-11-02 (REQUESTED; BUSINESS_DECISIONS_PENDING)
+
+Ahmed explicitly requests activating payment and financial posting. Read-only native-object discovery and preparation are authorized. Two required choices remain pending in the conversation: branch managers versus administrator-only approval, and native cash movements first versus statutory general-ledger posting now. No approval owner, chart/journal codes, FX valuation, receipt revenue classification or employee-loan treatment may be inferred. This request does not authorize an arbitrary payment, transfer or reposting of opening balances. Keep the receipt-design correction code-only and financial posting off until the actual posting contract and bounded acceptance plan are concrete and approved. Existing cash remains native Dolibarr; no second ledger.
+
+## Receipt screen and A4 design correction — 2026-11-02 (APPROVED; IN_PROGRESS)
+
+Ahmed reports the receipt page and printed result do not match the original and explicitly requests restoring the original receipt design. Rebuild the receipt-only register, branding banner, three metrics, search/date filters and editor, and the original three-copy A4 voucher (client/accounts/archive, cut lines, logo, payer, original amount/currency, words, purpose, creator/signatures and authenticated QR). Preserve stored records/references, branch/own permissions, existing settings, draft/archived status and financial-posting-disabled policy. QR must be generated locally and point to the existing authenticated scoped receipt; no public sharing or third-party QR disclosure. Use immutable code-only backup-ERP delivery and rollback; no schema, grants, credentials, native financial or production changes. Verify rendered AR/EN desktop/phone, actual one-page A4 PDF, three copies and negative scoped access.
+
+
 ## Activate all remaining branch workspace sections — 2026-11-02 (READY_FOR_REVIEW; BACKUP_DEPLOYED; ADMIN_UAT_VERIFIED)
 
 Ahmed explicitly requests completing every remaining pending section on the current backup-ERP module. Continue the already approved remaining-sections implementation and established backup-ERP release context: finish scoped forms/reporting, prepare a dependency-closed immutable package, update the existing restricted five-action deployer without widening sudoers, back up current files/database, install only the separately manifested operational workspace tables, enable the workspace flag and verify authenticated CRUD/printing/exports/AR-EN layouts and branch denials. Preserve the native top-bar menu correction, four native cash accounts/openings, existing identities, receipts, grants and audit. No production, core/server-stack replacement, credential reset or arbitrary real financial payment is authorized.
