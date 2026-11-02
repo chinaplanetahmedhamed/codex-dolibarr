@@ -18,6 +18,7 @@ on:
           - m119-workspace-r04
           - m119-receipt-r05
           - m119-receipt-r06
+          - m119-design-r07
           - m119-sidebar-verify
         default: m043-c02
       confirmation:
@@ -46,7 +47,7 @@ env:
 
 jobs:
   check_m119:
-    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' || inputs.release == 'm119-standalone-r01' || inputs.release == 'm119-ui-r02' || inputs.release == 'm119-sidebar-r03' || inputs.release == 'm119-sidebar-verify' || inputs.release == 'm119-workspace-r04' || inputs.release == 'm119-receipt-r05' || inputs.release == 'm119-receipt-r06' }}
+    if: ${{ inputs.release == 'm119-check' || inputs.release == 'm119-r01' || inputs.release == 'm119-standalone-r01' || inputs.release == 'm119-ui-r02' || inputs.release == 'm119-sidebar-r03' || inputs.release == 'm119-sidebar-verify' || inputs.release == 'm119-workspace-r04' || inputs.release == 'm119-receipt-r05' || inputs.release == 'm119-receipt-r06' || inputs.release == 'm119-design-r07' }}
     name: Office Expenses native storage release checks
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -86,6 +87,8 @@ jobs:
             test "$CONFIRMATION" = DEPLOY_M119_RECEIPT_TO_BACKUP_ERP
           elif [ "$SELECTED_RELEASE" = m119-receipt-r06 ]; then
             test "$CONFIRMATION" = DEPLOY_M119_RECEIPT_R06_TO_BACKUP_ERP
+          elif [ "$SELECTED_RELEASE" = m119-design-r07 ]; then
+            test "$CONFIRMATION" = DEPLOY_M119_DESIGN_R07_TO_BACKUP_ERP
           elif [ "$SELECTED_RELEASE" = m119-sidebar-verify ]; then
             test "$CONFIRMATION" = VERIFY_M119_SIDEBAR_ON_BACKUP_ERP
           else
@@ -118,9 +121,11 @@ jobs:
           python3 -B deploy/tests/test_m119_workspace_deployer.py
           python3 -B deploy/tests/test_m119_receipt_deployer.py
           python3 -B deploy/tests/test_m119_receipt_acceptance_deployer.py
+          python3 -B deploy/tests/test_m119_design_deployer.py
           python3 -B deploy/tests/test_m119_workspace_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_receipt_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 -B deploy/tests/test_m119_receipt_acceptance_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
+          python3 -B deploy/tests/test_m119_design_deployer.py --prepare-fixtures "$RUNNER_TEMP/m119-workspace-fixtures"
           python3 deploy/tests/test_m119_runtime_preparation.py
           python3 deploy/tests/test_m119_deploy_helper.py
       - name: Verify syntax and scoped source whitespace
@@ -567,6 +572,220 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '%s\n' 'Backup-erp receipt design release: exact 59-file closure; three source-file backups and atomic replacement. No schema, grants, native account, financial posting, credential, production or service change. Rollback restores the three R05 source files while retaining all data.' >> "$GITHUB_STEP_SUMMARY"
+
+  verify_m119_sidebar:
+    if: ${{ inputs.release == 'm119-sidebar-verify' }}
+    needs: check_m119
+    name: Verify already applied Office Expenses sidebar correction
+    runs-on: ubuntu-24.04
+    environment: backup-erp
+    timeout-minutes: 20
+    env:
+      STANDALONE_SOURCE: 26ce07fdef53765121532837dbaf7dcc2f6057cf
+      STANDALONE_SHA: 87c828b1ef26187384e705fa184ef5bc9567106c0f19d5c8a17b702efabc1830
+      STANDALONE_MANIFEST: 0518d3464781345ee10a8fab960ed5b54ccb5bc1de6468c72d690da83dbbc69b
+      STANDALONE_HELPER: b51706fff210aba0022502aff7b74b698ed6a6f11b5e0286bd9b5f1a3aaa1674
+    steps:
+      - name: Check out immutable delivery source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify confirmation helper and source closure then build the frozen package
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = VERIFY_M119_SIDEBAR_ON_BACKUP_ERP
+          test "$(sha256sum deploy/releases/m119/sidebar_update_helper.py | cut -d' ' -f1)" = "$STANDALONE_HELPER"
+          python3 -B - <<'PYCODE'
+          import importlib.util, os, pathlib, subprocess
+          spec=importlib.util.spec_from_file_location('standalone','deploy/releases/m119/build_standalone_artifact.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          for path in m.RUNTIME_FILES:
+              assert subprocess.check_output(['git','show','HEAD:'+path]) == subprocess.check_output(['git','show',os.environ['STANDALONE_SOURCE']+':'+path]), 'Pinned application source changed.'
+          m.build(os.environ['STANDALONE_SOURCE'],pathlib.Path(os.environ['RUNNER_TEMP'])/'m119')
+          PYCODE
+          test "$(sha256sum "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" | cut -d' ' -f1)" = "$STANDALONE_SHA"
+          test "$(sha256sum "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" | cut -d' ' -f1)" = "$STANDALONE_MANIFEST"
+      - name: Use the existing restricted staging identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify installed helper and upload only the pinned package
+        run: |
+          set -Eeuo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = b51706fff210aba0022502aff7b74b698ed6a6f11b5e0286bd9b5f1a3aaa1674'
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
+      - name: Verify updated source and unchanged branch isolation
+        run: bash deploy/releases/m119/run_sidebar_remote_action.sh verify
+      - name: Record exact release boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Backup-erp code-only UI correction: three reviewed files, exact prior deployment inode, private code backups and rollback. No schema, account, grant, password, financial posting, production or service change. Authenticated loader and visual acceptance follow deployment.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_m119:
+    if: ${{ inputs.release == 'm119-r01' }}
+    needs: check_m119
+    name: Deploy Office Expenses administrator pilot to backup-erp
+    runs-on: ubuntu-24.04
+    environment: backup-erp
+    timeout-minutes: 20
+    env:
+      M119_SOURCE: 8b14b9e9c609ed296cb18368f576bbf86fffadbb
+      M119_ARTIFACT: faa869ec8d05b6e631887bb1dbe0c403deb9d97909cea84ede492ee172bca698
+      M119_MANIFEST: 19aa7af9ebc3f6f0dadb6708dec5b182f5dc55a884a42157abc79bb60ef329a7
+      M119_HELPER_SHA: 845e497f2828df927ce14e5431d180a747c62bae264fbcee244183696cb967d9
+      M119_HELPER: /usr/local/sbin/chinaplanetos-backup-erp-deploy
+      M119_TAG: m119-backup-pilot-8b14b9e
+    steps:
+      - name: Check out the immutable verified delivery revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require exact release confirmation and source closure
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = DEPLOY_M119_TO_BACKUP_ERP
+          test "$(sha256sum deploy/releases/m119/deploy_helper.py | cut -d' ' -f1)" = "$M119_HELPER_SHA"
+          python3 - <<'PY'
+          import importlib.util, os, subprocess
+          spec=importlib.util.spec_from_file_location('m119_builder','deploy/releases/m119/build_artifact.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          for path in m.SOURCE_FILES:
+              assert subprocess.check_output(['git','show','HEAD:'+path]) == subprocess.check_output(['git','show',os.environ['M119_SOURCE']+':'+path]), 'Runtime changed outside the pinned source.'
+          PY
+      - name: Download and verify the frozen private release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          install -d -m 0700 "$RUNNER_TEMP/m119"
+          gh release download "$M119_TAG" --repo "$GITHUB_REPOSITORY" --pattern "artifact-$M119_ARTIFACT.tar.gz" --dir "$RUNNER_TEMP/m119"
+          gh release download "$M119_TAG" --repo "$GITHUB_REPOSITORY" --pattern "manifest-$M119_ARTIFACT.json" --dir "$RUNNER_TEMP/m119"
+          test "$(sha256sum "$RUNNER_TEMP/m119/artifact-$M119_ARTIFACT.tar.gz" | cut -d' ' -f1)" = "$M119_ARTIFACT"
+          test "$(sha256sum "$RUNNER_TEMP/m119/manifest-$M119_ARTIFACT.json" | cut -d' ' -f1)" = "$M119_MANIFEST"
+          python3 - <<'PY'
+          import importlib.util, os, pathlib
+          spec=importlib.util.spec_from_file_location('m119_helper','deploy/releases/m119/deploy_helper.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'m119'
+          m.validate_package((root/('manifest-'+m.ARTIFACT_SHA+'.json')).read_bytes(),(root/('artifact-'+m.ARTIFACT_SHA+'.tar.gz')).read_bytes())
+          PY
+      - name: Configure the existing restricted staging SSH identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify installed helper and stage the exact code package
+        run: |
+          set -Eeuo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = 845e497f2828df927ce14e5431d180a747c62bae264fbcee244183696cb967d9'
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$M119_ARTIFACT.tar.gz" "$RUNNER_TEMP/m119/manifest-$M119_ARTIFACT.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'chmod 0600 /home/codex-deploy/staging-inbox/artifact-faa869ec8d05b6e631887bb1dbe0c403deb9d97909cea84ede492ee172bca698.tar.gz /home/codex-deploy/staging-inbox/manifest-faa869ec8d05b6e631887bb1dbe0c403deb9d97909cea84ede492ee172bca698.json'
+      - name: Preflight the fixed backup environment
+        run: bash deploy/releases/m119/run_remote_action.sh preflight
+      - name: Apply with backup schema verification and entrypoint last
+        id: apply
+        run: |
+          echo 'attempted=true' >> "$GITHUB_OUTPUT"
+          bash deploy/releases/m119/run_remote_action.sh apply
+      - name: Verify installed source native storage permissions and login wall
+        run: bash deploy/releases/m119/run_remote_action.sh verify
+      - name: Disable only this recorded pilot if apply or verification fails
+        if: ${{ failure() && steps.apply.outputs.attempted == 'true' }}
+        run: bash deploy/releases/m119/run_remote_action.sh rollback
+      - name: Record the server deployment boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Target backup-erp only. Approved administrator1/entity1, Egypt/EGP and China/CNY, native baseUSD. Financial posting disabled. Authenticated browser/save/receipt acceptance is a separate required check.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_m119_design:
+    if: ${{ inputs.release == 'm119-design-r07' }}
+    needs: check_m119
+    name: Restore original module design and report charts on backup-erp
+    runs-on: ubuntu-24.04
+    environment: backup-erp
+    timeout-minutes: 20
+    env:
+      STANDALONE_SOURCE: 759b74d40cb9b0c80d51e5bf5c9908a1ec7711ef
+      STANDALONE_SHA: ba306611c7d175c1d6a2b68067285391dc1c2b6463ce317ab749e91f1c74f57e
+      STANDALONE_MANIFEST: 370d1156685ff47ea19af9571dad57e7d214bd19742adfe9d7a4e90e122f321c
+      STANDALONE_HELPER: 6155d463de43cd429a0be573d08bc95307ce643d78f2c8da9d6ba1c0d8f69f16
+    steps:
+      - name: Check out immutable delivery source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify confirmation helper and source closure then build the frozen package
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -Eeuo pipefail
+          test "$CONFIRMATION" = DEPLOY_M119_DESIGN_R07_TO_BACKUP_ERP
+          test "$(sha256sum deploy/releases/m119/design_update_helper.py | cut -d' ' -f1)" = "$STANDALONE_HELPER"
+          python3 -B - <<'PYCODE'
+          import importlib.util, os, pathlib, subprocess
+          spec=importlib.util.spec_from_file_location('standalone','deploy/releases/m119/build_standalone_artifact.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          for path in m.WORKSPACE_RUNTIME_FILES:
+              assert subprocess.check_output(['git','show','HEAD:'+path]) == subprocess.check_output(['git','show',os.environ['STANDALONE_SOURCE']+':'+path]), 'Pinned application source changed.'
+          m.build(os.environ['STANDALONE_SOURCE'],pathlib.Path(os.environ['RUNNER_TEMP'])/'m119')
+          PYCODE
+          test "$(sha256sum "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" | cut -d' ' -f1)" = "$STANDALONE_SHA"
+          test "$(sha256sum "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" | cut -d' ' -f1)" = "$STANDALONE_MANIFEST"
+      - name: Use the existing restricted staging identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Verify installed helper and upload only the pinned package
+        run: |
+          set -Eeuo pipefail
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = 6155d463de43cd429a0be573d08bc95307ce643d78f2c8da9d6ba1c0d8f69f16'
+          scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
+      - name: Preflight exact backup runtime identities and staff baseline
+        run: bash deploy/releases/m119/run_design_remote_action.sh preflight
+      - name: Back up and replace only nine design source files
+        id: apply
+        run: |
+          echo 'attempted=true' >> "$GITHUB_OUTPUT"
+          bash deploy/releases/m119/run_design_remote_action.sh apply
+      - name: Verify complete receipt closure and unchanged native branch access
+        run: bash deploy/releases/m119/run_design_remote_action.sh verify
+      - name: Restore exact nine predecessor source files on failure
+        if: ${{ failure() && steps.apply.outputs.attempted == 'true' }}
+        run: bash deploy/releases/m119/run_design_remote_action.sh rollback
+      - name: Record exact release boundary
+        if: ${{ always() }}
+        run: |
+          printf '%s\n' 'Backup-erp original design release: exact 59-file closure; nine source-file backups and atomic replacement. No schema, grants, native account, financial posting, credential, production or service change. Rollback restores the nine R06 source files while retaining all data.' >> "$GITHUB_STEP_SUMMARY"
 
   verify_m119_sidebar:
     if: ${{ inputs.release == 'm119-sidebar-verify' }}
