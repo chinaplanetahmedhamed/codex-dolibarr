@@ -2,7 +2,7 @@
 Assigned by: ChatGPT Work, Project Manager.
 Authorized by: Ahmed Hamed, Official AI Governance Reset (2026-11-03), followed by explicit authorization for Work to ask Dot to perform Mac tasks.
 Assigned role: Dot — local coordination/monitoring and reporting; if local implementation assistance is needed, coordinate a bounded Codex task under the official governance.
-Delivery status: PREPARED IN SHARED RECORD — no direct message sent or receipt verified from this cloud session. Do not label in progress until Dot acknowledges.
+Delivery status: RECEIVED AND EXECUTED ON CONNECTED MAC — local reconciliation verified; inventory/readback limits are recorded in the dated execution result below. Initial prepared-state history is retained in the exact original archive.
 Objective: reconcile Mac-local AI governance and return missing architecture evidence, preserving safeguards and existing work.
 
 ## Canonical references
@@ -39,3 +39,55 @@ No production/staging/server/Docker/Portainer/SSH configuration or schema change
 ## Return contract
 Mission ID/title; acknowledging agent identity/role; status (received/in progress/completed/blocked); actual paths read/changed/inaccessible; archival paths plus before/after SHA-256; safeguards preserved; repository/branch/full commit and dirty-state summary; validation performed and results; identity/job dependency inventory with no secrets; changes requiring Ahmed's approval; M121 evidence links; next actions and timestamp.
 Completion requires verified local reconciliation evidence. Receipt, execution and completion are separate states.
+
+## Verified Mac execution result — 2026-11-02 22:23:01 UTC
+
+Owner: Ahmed Hamed. Assignment: MAC-GOV-20261103, Work’s local governance and missing-evidence handoff.
+Acknowledging/executing session: local Codex engineering capability, handling the authorized Dot handoff. Dot is the monitoring/reporting role; no mapping to Agent 007 or any service identity is implied.
+Status: **COMPLETED for discovered active local governance and evidence delivery; technical-access/job inventory has explicit coverage gaps.** Receipt and actual Mac execution are now verified. Global technical-access revocation and cross-environment parity remain incomplete.
+
+### Connected identity and repository state
+- Mac shell verified: user `mac`, host `MacdeMacBook-Pro.local`, Darwin25.5.0/arm64.
+- Workspace: `/Users/mac/Documents/dev/chinaplanet-OS` (not a Git repository).
+- ERP: `codex/m084-dashboard-repair`, full HEAD `310deeaa70ced8d1a74aa84c802e2c705e54b2a1`; substantial pre-existing tracked/deleted/untracked work preserved.
+- Website: `codex/m087-china-guide-map`, full HEAD `4de6e6517379409fb73fb46e211f8bb66d44c4f6`; pre-existing website/API/workflow changes preserved.
+- 26 source checkouts were snapshotted and verified: branch, full HEAD, staged-diff hash and all tracked/untracked file hashes retained; only mission `AGENTS.md` edits differ inside source checkouts. No switch, pull, reset, cleanup, merge or deployment. These branches are not claimed synchronized with cloud main.
+
+### Reconciliation and exact archives
+Read the complete current handoff, official policy, migration/access plans and routed Mac instructions. Reconciled 30 project instruction documents across the shared workspace, active registered non-archive ERP/React worktrees and runtime management/VPS documentation. Replaced active legacy completion/coordinator authority, added official four-role policy precedence and retained technical/security/backup/audit/deployment safeguards and historical attribution. Added an exact local policy snapshot at `docs/governance/AI_GOVERNANCE_2026-11-03.md` in the shared workspace.
+
+Every instruction original was byte-archived before its edit and SHA-256 verified. The local result directory is `/Users/mac/Documents/dev/chinaplanet-OS/outputs/MAC-GOV-20261103/`; `manifest.json` records every original path, exact archive path, before/archive hash, after hash and readback status. The original remote handoff is also byte-archived, SHA256 `82f47536843fa94ed1aac9a6d734f280abd8f338f541448f500853a99cb5bce3`, Git blob `af2256b18254770b79e679484f076f705da9579f`.
+- [Full sanitized execution report: paths, hashes, provenance, checks and blockers](https://drive.google.com/file/d/1tM5MJ1toSXMAGJcjJuaKvSU04hrcR95m/view?usp=drivesdk)
+- [Instruction/archive manifest](https://drive.google.com/file/d/1l3sU88n_ZQAnj7LTb_2fYdr09KJPea_y/view?usp=drivesdk)
+- [Local verification evidence](https://drive.google.com/file/d/1pPedSTfkAJLppaCMSUQ24UdxMQfeYTtp/view?usp=drivesdk)
+- [Non-secret identity/job inventory and dependency plan](https://drive.google.com/file/d/1Ncw-29pJeN6vUOaHnK7zmqx1T_9k4KVZ/view?usp=drivesdk)
+- [M121 original/copy hashes and content dates](https://drive.google.com/file/d/1HxfKte0XYRaj0jDqtFlOn920jwtOzoUD/view?usp=drivesdk)
+
+Missing requested paths: runtime `docs/AGENTS.md`, `.agent-workflow/WORKFLOW_RULES.md` and `ROLE_REGISTRY.md` are absent; existing workflow README documents their historical retirement. They were not recreated. Archived/unmounted branches are preserved and must apply current policy before any resumption. No old Mission was resumed.
+
+### Verification and boundaries
+Local verification **PASS**: 30 exact archives/current hashes, role-only removed-line review, source-content/index/branch/HEAD preservation across26 checkouts, scoped diff whitespace checks, unchanged valid VPS skill frontmatter, exact official-policy copy. Full sanitized report text was read back from Drive and matched exactly. Application tests are not claimed for this documentation-only change.
+The 18 current ERP workflow trigger blocks were checked; this handoff path does not match an automatic deployment trigger. No workflow was dispatched or changed. React PR81 remains untouched/unmerged.
+
+No application code, production/staging/Docker/server setting, schema/module state, credentials, jobs, permissions or business/financial records were changed. The existing Drive parent and evidence child show owner-only permission metadata; no sharing operation was performed.
+
+### Identity/jobs and remaining gaps
+- 29 accessible local launchd definitions inspected: no project/legacy-agent reference found. Two local Codex automation definitions retained unchanged; no legacy authority reference found.
+- Codex user/project settings and Continue configuration checked without exporting secrets; no active legacy-role authority found.
+- Five local public-key fingerprints inventoried. Ownership, service dependencies and last use remain unknown/shared; all keys/accounts/jobs retained. Account names such as `codex-deploy` do not establish legacy-exclusive ownership.
+- **Denied:** `crontab -l` on the Mac, sandbox `PermissionError [Errno1] Operation not permitted`. Not retried; cron coverage remains unknown.
+- Actual server authorized_keys/grants/tokens/runners, remote n8n/Open WebUI/Ollama job settings and service last-use remain unverified; no server connection made. Missing checked home config locations do not prove service absence.
+- Two JSON evidence uploads have connector-confirmed upload/size/destination, but readable fetch yields empty JSON text and raw-byte download returned URLError. Their byte-level Drive readback remains unavailable; local original/copy hashes are supplied. Five Markdown evidence copies and the full report match exact Drive text readback.
+- Approval-dependent future work: verify each identity’s owner/grants/last use and dependents; preserve audit evidence, prepare/test replacements, then obtain Ahmed’s exact approval before any service-impacting revocation/job change. No current approval is pending for the documentation already completed.
+
+### M121 evidence returned
+All seven originals retained unchanged under canonical ERP source; original content dates are2026-11-02 UTC and the reports remain source-only, without new functional/runtime/schema/grant/staging-isolation acceptance.
+- [Architecture audit](https://drive.google.com/file/d/1WGZvX76nXfG9emrZQQK8a75lgMqQ8CI_/view?usp=drivesdk)
+- [Implementation plan](https://drive.google.com/file/d/1_nyoWLFF2jLrWDa3uFKL1KMlbH3lGZwq/view?usp=drivesdk)
+- [Workflow-reference snapshot](https://drive.google.com/file/d/1zFiuALkCQGi1jzqowtKtVQsbeGMJkiDD/view?usp=drivesdk) — evidence attachment; existing shared manual remains authoritative.
+- [Mission register](https://drive.google.com/file/d/1F1PPt66894ZHSQZzJhTXAfBXg3qlWSgf/view?usp=drivesdk)
+- [Resource register](https://drive.google.com/file/d/1HUSuyrWLCu1zwSLb_fv2YCXG_tA9EhDl/view?usp=drivesdk)
+- [Source evidence JSON](https://drive.google.com/file/d/1952pTH_yBIxqBBq-vI8PCXGAEBzRaCf-/view?usp=drivesdk)
+- [Schema-source inventory JSON](https://drive.google.com/file/d/10ef1r_POWmcvrz9Kv8tEWdz-_x_kNe-D/view?usp=drivesdk)
+
+All copies are inside the [existing project Drive workspace’s Mac evidence child](https://drive.google.com/drive/folders/1BVjNF0o-ICL31pKQApZT3ojTy0ykLyPd). Personal absolute-home prefixes and server identifiers are redacted; no credentials, real customer/financial payloads or private screenshots included. Work should review this result and use the returned M121 material for its separately assigned read-only architecture review; preserve open parity/finance/isolation gates.
