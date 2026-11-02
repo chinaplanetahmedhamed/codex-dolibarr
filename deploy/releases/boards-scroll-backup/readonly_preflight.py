@@ -33,7 +33,10 @@ def run(args):
 def selected(name):
     # Deliberately exclude environment, command, logs and other containers.
     fields = '{"name":{{json .Name}},"running":{{json .State.Running}},"image":{{json .Image}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"ports":{{json .NetworkSettings.Ports}},"mounts":{{json .Mounts}}}'
-    return json.loads(run(['docker', '--host', 'unix:///var/run/docker.sock', 'inspect', '--format', fields, name]))
+    item = json.loads(run(['docker', '--host', 'unix:///var/run/docker.sock', 'inspect', '--format', fields, name]))
+    # Docker builds this array from a map; order is not a resource identity.
+    item['mounts'] = sorted(item['mounts'], key=lambda m: m['Destination'])
+    return item
 
 
 def validate_resources(app, database, mail):

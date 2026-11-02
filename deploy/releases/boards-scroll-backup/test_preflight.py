@@ -2,6 +2,8 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import json
 
 spec = importlib.util.spec_from_file_location('probe', Path(__file__).with_name('readonly_preflight.py'))
 probe = importlib.util.module_from_spec(spec)
@@ -40,6 +42,18 @@ class ProbeTest(unittest.TestCase):
         resources[2]['ports']['9999/tcp'] = [{'HostIp': '0.0.0.0', 'HostPort': '19999'}]
         with self.assertRaises(RuntimeError):
             probe.validate_resources(*resources)
+
+    def test_mount_order_normalized_but_values_preserved(self):
+        app = self.resources()[0]
+        first = json.dumps(app).encode()
+        app['mounts'].reverse()
+        second = json.dumps(app).encode()
+        with patch.object(probe, 'run', side_effect=[first, second]):
+            self.assertEqual(probe.selected(probe.APP), probe.selected(probe.APP))
+        app['mounts'][0]['RW'] = False
+        changed = json.dumps(app).encode()
+        with patch.object(probe, 'run', side_effect=[first, changed]):
+            self.assertNotEqual(probe.selected(probe.APP), probe.selected(probe.APP))
 
     def test_file_snapshot_and_missing_helper(self):
         with tempfile.TemporaryDirectory() as tmp:
