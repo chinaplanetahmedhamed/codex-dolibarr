@@ -157,8 +157,8 @@ final class OfficeExpenseNativeFinance
     }
     private function funds(int $id,string $date,string $amount): void
     {
-        if(bccomp($amount,'0',2)>=0)return;$rows=$this->c->rows('SELECT rowid,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.' AND dateo<='.$this->c->quote($date).' ORDER BY rowid FOR UPDATE');$balance='0.00';foreach($rows as$r)$balance=bcadd($balance,$r['amount'],8);
-        if(bccomp(bcadd($balance,$amount,8),'0',8)<0)throw new DomainException('The selected branch account has insufficient available funds on this date.');
+        if(bccomp($amount,'0',2)>=0)return;$rows=$this->c->rows('SELECT rowid,dateo,CAST(CAST(amount AS DECIMAL(30,8)) AS CHAR) AS amount FROM '.MAIN_DB_PREFIX.'bank WHERE fk_account='.$id.' ORDER BY dateo,rowid FOR UPDATE');$balance='0.00';$applied=false;foreach($rows as$r){if(substr($r['dateo'],0,10)>$date&&!$applied){$balance=bcadd($balance,$amount,8);$applied=true;if(bccomp($balance,'0',8)<0)throw new DomainException('Insufficient funds on the selected posting date.');}$balance=bcadd($balance,$r['amount'],8);if($applied&&bccomp($balance,'0',8)<0)throw new DomainException('This backdated movement would overdraw a later recorded balance.');}
+        if(!$applied&&bccomp(bcadd($balance,$amount,8),'0',8)<0)throw new DomainException('The selected branch account has insufficient available funds on this date.');
     }
     private function verifyBank(int $id,int $account,array $plan): void
     {

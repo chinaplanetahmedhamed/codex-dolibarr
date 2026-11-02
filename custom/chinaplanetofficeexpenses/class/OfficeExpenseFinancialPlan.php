@@ -15,6 +15,7 @@ final class OfficeExpenseFinancialPlan
         foreach($input as$value)if(!is_string($value))throw new InvalidArgumentException('Posting fields must be scalar text.');
         $date=$input['date']??'';OfficeExpenseMoney::date($date);OfficeExpenseMoney::date($today);
         if($date>$today)throw new DomainException('Future financial posting is not allowed.');
+        if($date<$row['content']['date'])throw new DomainException('Payment date cannot precede the source document date.');
         $currency=$row['content']['currency'];$quote=[];
         if($currency!==$base){$quote=['rate'=>$input['rate']??'','date'=>$input['rate_date']??'','source'=>$input['rate_source']??''];OfficeExpenseMoney::date($quote['date']);if($quote['date']>$date)throw new InvalidArgumentException('Exchange-rate date cannot follow the posting date.');}
         elseif(($input['rate']??'')!==''&&!preg_match('/^1(?:\.0{1,8})?$/D',$input['rate']))throw new InvalidArgumentException('Identity currency requires rate one.');

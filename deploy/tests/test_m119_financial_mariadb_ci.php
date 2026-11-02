@@ -16,13 +16,18 @@ function fcheck($a,$b): void {if($a!==$b)throw new RuntimeException('Synthetic f
 function freject(callable $f): void {try{$f();}catch(Throwable $e){return;}throw new RuntimeException('Expected financial operation rejection.');}
 function ftest(string $name,callable $f): void {global $test,$passed;$test=$name;$f();$passed++;echo 'PASS '.$name."\n";}
 function fsql(string $sql): void {global $db;if(!$db->query($sql))throw new RuntimeException('Synthetic setup failed: '.$db->lasterror());}
-function fpost(string $kind,array $payload,array $input=[]): array
+function fprepare(string $kind,array $payload,array $input=[]): array
 {
     global $source,$finance,$today;$r=$source->save('egypt',$kind,$payload,bin2hex(random_bytes(16)));$input+=['date'=>$today,'setup_revision'=>'1','rate'=>($payload['currency']==='USD'?'1.00000000':'0.08000000'),'rate_date'=>$today,'rate_source'=>'SYNTHETIC reviewed quote','staff_id'=>'2102'];
     $r=$finance->transition('egypt',$kind,$r['id'],$r['revision'],'submit',bin2hex(random_bytes(16)),$input);$r=$finance->transition('egypt',$kind,$r['id'],$r['revision'],'approve',bin2hex(random_bytes(16)),['confirmation'=>$finance->confirmation($r)]);
-    $key=bin2hex(random_bytes(16));$rev=$r['revision'];$confirmation=['confirmation'=>$finance->confirmation($r)];$r=$finance->transition('egypt',$kind,$r['id'],$rev,'post',$key,$confirmation);
+    return $r;
+}
+function fpost(string $kind,array $payload,array $input=[]): array
+{
+    global $finance;$r=fprepare($kind,$payload,$input);$key=bin2hex(random_bytes(16));$rev=$r['revision'];$confirmation=['confirmation'=>$finance->confirmation($r)];$r=$finance->transition('egypt',$kind,$r['id'],$rev,'post',$key,$confirmation);
     fcheck($finance->transition('egypt',$kind,$r['id'],$rev,'post',$key,$confirmation),$r);return $r;
 }
+final class M119FinanceLostCommit extends DoliDBMysqli {public $loseOuter=false;public function commit($log=''){$outer=$this->transaction_opened===1;$r=parent::commit($log);if($r&&$outer&&$this->loseOuter){$this->loseOuter=false;return 0;}return $r;}}
 try{
     mysqli_report(MYSQLI_REPORT_OFF);$admin=new mysqli('127.0.0.1','root',$password,'',13306);if($admin->connect_errno)throw new RuntimeException('CI database unavailable.');
     $version=$admin->query('SELECT VERSION()')->fetch_row()[0];if(!str_starts_with($version,'10.6.27-MariaDB'))throw new RuntimeException('CI MariaDB version differs.');
@@ -59,6 +64,21 @@ try{
         $r=fpost('receipt',['amount'=>'12.00','currency'=>'USD','date'=>$today,'payer'=>'SYNTHETIC CUSTOMER','phone'=>'','method'=>'cash','purpose'=>'SYNTHETIC invoice payment','notes'=>''],['party_id'=>'301','invoice_id'=>'301']);$p=$r['content']['_finance']['posting'];fcheck($p['customer_payment_id']>0,true);fcheck($p['plan']['invoice_base_amount'],'12.00');fcheck(array_column($p['plan']['lines'],'role'),['cash','customer_receivable']);
     });
     ftest('actual report excludes drafts and retains original plus counter movements',function()use($finance,$today){$r=$finance->report('egypt',$today,$today);fcheck(count($r['rows']),9);fcheck($r['totals']['EGP']['net'],'-90.00');});
+    ftest('actual native payment and GL roll back when the source audit fails',function()use($today,$finance,$source,$db){
+        $r=fprepare('deposit',['amount'=>'1.00','currency'=>'USD','date'=>$today,'source'=>'SYNTHETIC audit','purpose'=>'SYNTHETIC atomic audit failure','notes'=>''],['funding_type'=>'owner']);$c=new OfficeExpenseNativeConnection($db);$before=$c->one('SELECT COUNT(*) AS n FROM llx_bank');$ledger=$c->one('SELECT COUNT(*) AS n FROM llx_accounting_bookkeeping');
+        fsql("CREATE TRIGGER m119_ci_post_audit_fail BEFORE INSERT ON llx_cpo_oe_workspace_audit FOR EACH ROW BEGIN IF NEW.action='post' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='SYNTHETIC financial audit failure'; END IF; END");
+        try{freject(fn()=>$finance->transition('egypt','deposit',$r['id'],$r['revision'],'post','synthetic-audit-post',['confirmation'=>$finance->confirmation($r)]));fcheck($source->get('egypt','deposit',$r['id'])['status'],'approved');fcheck($c->one('SELECT COUNT(*) AS n FROM llx_bank'),$before);fcheck($c->one('SELECT COUNT(*) AS n FROM llx_accounting_bookkeeping'),$ledger);fcheck($db->transaction_opened,0);}finally{fsql('DROP TRIGGER m119_ci_post_audit_fail');}
+    });
+    ftest('closed native fiscal period refuses financial execution without a money movement',function()use($today,$finance,$source,$db){
+        $r=fprepare('deposit',['amount'=>'1.00','currency'=>'USD','date'=>$today,'source'=>'SYNTHETIC closed','purpose'=>'SYNTHETIC closed period','notes'=>''],['funding_type'=>'owner']);$c=new OfficeExpenseNativeConnection($db);$before=$c->one('SELECT COUNT(*) AS n FROM llx_bank');fsql('UPDATE llx_accounting_fiscalyear SET statut=1 WHERE rowid=1');
+        try{freject(fn()=>$finance->transition('egypt','deposit',$r['id'],$r['revision'],'post','synthetic-closed-post',['confirmation'=>$finance->confirmation($r)]));fcheck($source->get('egypt','deposit',$r['id'])['status'],'approved');fcheck($c->one('SELECT COUNT(*) AS n FROM llx_bank'),$before);}finally{fsql('UPDATE llx_accounting_fiscalyear SET statut=0 WHERE rowid=1');}
+    });
+    ftest('lost outer commit acknowledgement recovers one actual bank and GL posting without replay',function()use($today,$finance,$source,$name,$password,$conf){
+        global $db,$user;$r=fprepare('deposit',['amount'=>'1.00','currency'=>'USD','date'=>$today,'source'=>'SYNTHETIC recovery','purpose'=>'SYNTHETIC lost acknowledgement','notes'=>''],['funding_type'=>'owner']);$originalDb=$db;$originalUser=$user;$confirmation=['confirmation'=>$finance->confirmation($r)];$key='synthetic-native-lost-commit';$lost=new M119FinanceLostCommit('mysqli','127.0.0.1','root',$password,$name,13306);
+        try{$db=$lost;$user=new User($db);fcheck($user->fetch(2101),1);$acl=new OfficeExpenseStaffAccess($db,$user,$conf,2101);$service=new OfficeExpenseWorkspaceService($db,$user,1,$acl);$f=new OfficeExpenseFinancialService($db,$user,$conf,$acl,$service);$lost->loseOuter=true;freject(fn()=>$f->transition('egypt','deposit',$r['id'],$r['revision'],'post',$key,$confirmation));freject(fn()=>$service->get('egypt','deposit',$r['id']));}
+        finally{$lost->close();$db=$originalDb;$user=$originalUser;}
+        $actual=$source->get('egypt','deposit',$r['id']);fcheck($actual['status'],'posted');$c=new OfficeExpenseNativeConnection($db);$before=$c->one('SELECT COUNT(*) AS n FROM llx_bank');fcheck($finance->transition('egypt','deposit',$r['id'],$r['revision'],'post',$key,$confirmation),$actual);fcheck($c->one('SELECT COUNT(*) AS n FROM llx_bank'),$before);
+    });
     ftest('native bank and GL source linkage remains balanced after all operations',function()use($db){$r=$db->query("SELECT CAST(SUM(debit-credit) AS DECIMAL(30,2)) AS difference FROM llx_accounting_bookkeeping WHERE entity=1");fcheck((string)$db->fetch_object($r)->difference,'0.00');fcheck($db->transaction_opened,0);});
 }catch(Throwable $e){$failed++;fwrite(STDERR,'FAIL financial native CI ['.$test.']: '.get_class($e).' '.$e->getMessage()."\n");}
 finally{
