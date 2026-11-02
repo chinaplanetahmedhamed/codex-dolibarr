@@ -25,3 +25,29 @@ One native transaction must bind the posting claim, source status, native paymen
 Migration is additive and separately pinned. Start in isolated MariaDB/native objects with synthetic funds: authorized payment; cross-branch/own-scope/capability/CSRF/revision denials; retry/concurrent submission; partial failure and lost commit response; currency and closed-account mismatch; actual native payment-bank linkage; statement/reconciliation totals; reversal; no duplicate openings. Back up the complete target database and source before an expressly bounded backup-ERP acceptance transaction. Any actual acceptance amount/source/account must be specified before posting; no arbitrary business payment is implied.
 
 Admin ERP is the affected surface. Customer Center and native Mobile App remain excluded; receipt QR continues requiring authenticated branch access. Rollback disables new posting actions while retaining posted native entries and audit; it must not restore an old database over real money movements or silently delete/reverse transactions.
+
+## Decisions confirmed — 2026-11-02
+
+Ahmed selected branch-manager approval (Moaz/Egypt and Rina/China), plus Ahmed and the global administrator, and requires **native cash movements and general-ledger posting together**. These two choices supersede the unresolved-choice wording at the top of this historical proposal. Implementation/activation is not complete. See Mission `M119-C01_NATIVE_CASH_AND_GL_ACTIVATION.md`.
+
+The authenticated audit found double-entry accounting disabled (`modAccounting` enable action present; accounting setup routes deny access), company country Hong Kong, base currency USD. No separate ahmed identity was found in the native user list. Two precise questions remain pending: whether admin is Ahmed, and whether an approved chart exists or a proposed mapping should be reviewed first.
+
+### Proposed mapping for owner/accountant review
+
+No account numbers or journals below have been selected or activated.
+
+| Operation | Debit classification | Credit classification | Required mapping |
+| --- | --- | --- | --- |
+| Approve staff expense | Approved expense category | Staff expense payable | Category GL account, staff subledger and recognition journal |
+| Pay approved expense | Staff expense payable | Exact branch cash account | Cash GL account/journal and native expense-payment link; do not recognize expense twice |
+| Receive invoiced customer funds | Exact branch cash account | Customer receivable | Native customer/invoice/payment and allocation |
+| Receive unallocated customer funds | Exact branch cash account | Unallocated customer funds liability | Native customer plus liability/subledger; payer text alone is insufficient |
+| Owner funding | Exact branch cash account | Owner/shareholder current account | Identified owner/source; never sales revenue |
+| Staff advance | Staff advance/loan asset | Exact branch cash account | Native staff and original-currency advance allocation |
+| Cash advance return | Exact branch cash account | Staff advance/loan asset | Linked outstanding posted advance; not a second expense |
+| Expense settlement against advance | Approved expense category | Staff advance/loan asset | Evidence, expense classification and cumulative allocation; no additional cash movement |
+| Salary recognition | Gross salary expense | Net salary payable plus classified deductions/loan offsets | Gross/base/bonus, actual loan receivable and separately classified deductions |
+| Salary payment | Net salary payable | Exact branch cash account | Native Salary/PaymentSalary and payroll journal |
+| GL opening representation | Mapped cash GL accounts | Approved opening-equity/control account | Reviewed original opening amounts/date and historical USD valuations; never add another native bank opening |
+
+For non-USD money, retain the original amount and require an explicit approved USD valuation, rate date and source. Do not silently change the company base currency or infer realized/unrealized FX policy. Native closed periods, tax/deduction classification and starting staff-loan balances must be resolved where applicable. No real or synthetic money was posted by preparing this proposal.
