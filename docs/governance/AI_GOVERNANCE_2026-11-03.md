@@ -37,3 +37,6 @@ Changing instructions does not revoke keys, tokens, memberships, runners, schedu
 For a verified legacy-only identity: preserve audit evidence, prepare replacement access where needed, test dependent services, then disable/revoke within the exact authorized scope, verify denial and record the result.
 Shared or production-dependent credentials must not be revoked until dependencies are verified and Ahmed approves the exact service-impacting action. Unknown ownership is a blocker, not evidence that revocation is safe.
 See MIGRATION_REPORT.md for coverage and open blockers.
+
+## Subsequent owner authorization — backup-erp
+The full master instructions are received. Ahmed authorizes Work's implementation decisions, backup, deployment, demo records and test users on backup-erp without routine repeated confirmation. See STAGING_AUTHORIZATION_2026-11-03.md. Technical safeguards remain; live production is prohibited. This authorization does not grant technical credentials or convert unexecuted tests into acceptance.
