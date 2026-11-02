@@ -83,6 +83,9 @@ class ControllerTest(unittest.TestCase):
  def test_shared_backup_lock_and_receipt_identity_contract(self):
   self.assertEqual(len(c.SHARED_LOCKS),13);self.assertEqual(c.SHARED_LOCKS[-1],Path('/var/lib/chinaplanetos-backup-erp-deploy/m119-menu-r13/lock'))
   source=Path(c.__file__).read_text();self.assertIn("'run_id':value['lease']['run_id']",source);self.assertIn("'workflow_commit':value['lease']['workflow_commit']",source);self.assertIn("time.time()+300<lease['expires']",source)
+ def test_cancelled_workflow_hold_fences_not_started_apply(self):
+  r=self.release();r.inbox=self.tree.fd;(self.root/'reconciliation-hold.json').write_text('{}')
+  with self.assertRaises(c.Refused):r.lease()
  def test_unsealed_package_refused(self):
   with self.assertRaises(c.Refused):c.unpack({},b'bad')
  def test_fixed_fallback_and_root_private_lock_contract(self):

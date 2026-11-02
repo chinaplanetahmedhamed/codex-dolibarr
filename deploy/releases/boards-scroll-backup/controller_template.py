@@ -198,6 +198,9 @@ class Release:
             raw,metadata=self.tree.read(item['path']);need((sha(raw)if raw is not None else None)==item['sha256'],'Preserved dependency drift: '+item['path'])
             if raw is not None:need(all(metadata[k]==item[k]for k in ('uid','gid','mode')),'Protected metadata drift.')
     def lease(self):
+        try:os.stat('reconciliation-hold.json',dir_fd=self.inbox,follow_symlinks=False)
+        except FileNotFoundError:pass
+        else:raise Refused('Cancelled or failed workflow hold requires reconciliation before apply.')
         raw,_=bounded_file(self.inbox,'workflow-lease.json',4096,1002,0o600);lease=json.loads(raw)
         need(set(lease)=={'mission','artifact_sha256','application_commit','workflow_commit','run_id','expires'}and lease['mission']=='M107-C02'and lease['artifact_sha256']==ARTIFACT_SHA and lease['application_commit']==APPLICATION,'Scoped workflow lease differs.')
         need(re.fullmatch('[a-f0-9]{40}',lease['workflow_commit'])is not None and type(lease['run_id'])is int and lease['run_id']>0 and time.time()+300<lease['expires']<time.time()+1800,'Workflow lease expired or invalid.')
