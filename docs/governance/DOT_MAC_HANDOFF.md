@@ -33,8 +33,8 @@ Related React PR https://github.com/chinaplanetahmedhamed/Moaz/pull/81 must rema
 8. Locate the M121 deliverables referenced in the shared manual: docs/architecture/M121_ARCHITECTURE_AUDIT_2026-11-02.md, M121_IMPLEMENTATION_PLAN.md, M121_WORKFLOW_MANUAL.md, missions-list.md, resources.md, docs/evidence/m121-2026-11-02/source-evidence.json and schema-source-inventory.json. Verify exact root, branch, commit, dirty state and content dates. Provide access-controlled links or sanitized copies in the existing Drive workspace; retain originals. Do not expose credentials or private customer/financial records.
 9. Update supported shared handoff/status with actual results. If unable to write the shared record, return a report to Ahmed containing the same fields.
 
-## Prohibited scope
-No production/staging/server/Docker/Portainer/SSH configuration or schema changes; no business/financial record changes; no deployment; no application code modifications; no unverified access revocation; no automatic resumption of old missions or approval inheritance.
+## Updated owner scope — 2026-11-03
+Ahmed now authorizes decisions, backup, implementation, deployment and testing on backup-erp using demo information and test admin/staff/customer accounts without routine per-task approval. Follow STAGING_AUTHORIZATION_2026-11-03.md. Validate target isolation, preserve data/source work, back up and keep a tested rollback. Production access/change/deployment is PROHIBITED. No real customer notifications or unverified shared-credential revocation.
 
 ## Return contract
 Mission ID/title; acknowledging agent identity/role; status (received/in progress/completed/blocked); actual paths read/changed/inaccessible; archival paths plus before/after SHA-256; safeguards preserved; repository/branch/full commit and dirty-state summary; validation performed and results; identity/job dependency inventory with no secrets; changes requiring Ahmed's approval; M121 evidence links; next actions and timestamp.
@@ -91,3 +91,23 @@ All seven originals retained unchanged under canonical ERP source; original cont
 - [Schema-source inventory JSON](https://drive.google.com/file/d/10ef1r_POWmcvrz9Kv8tEWdz-_x_kNe-D/view?usp=drivesdk)
 
 All copies are inside the [existing project Drive workspace’s Mac evidence child](https://drive.google.com/drive/folders/1BVjNF0o-ICL31pKQApZT3ojTy0ykLyPd). Personal absolute-home prefixes and server identifiers are redacted; no credentials, real customer/financial payloads or private screenshots included. Work should review this result and use the returned M121 material for its separately assigned read-only architecture review; preserve open parity/finance/isolation gates.
+
+## Work follow-up assignment — M121 execution on backup-erp, 2026-11-03
+Work has reviewed the returned M121 architecture, plan, mission/resource snapshots and the Mac execution report. The bounded governance delivery is accepted as documentation evidence; its explicit runtime/access limits remain open.
+Delivery of this follow-up: PUBLISHED IN SHARED RECORD, AWAITING LOCAL ACKNOWLEDGEMENT. Do not infer it has started.
+
+Latest owner instruction: "Approval is authorized ... taking decisions and deploy on backup and test ... Use demo info, create users, admins, staff ... Don't touch live production." No further routine staging permission request is required.
+
+Assigned executor: Codex engineering on the verified Mac, coordinated/reported by Dot; Work retains PM authority. Continue M121 using the existing source folders and existing 29-task plan. Prior documentation-only restrictions are superseded for backup-erp within the safeguards below.
+1. Acknowledge this follow-up with environment, branch/full HEAD, actual available local/backup-erp access, and the current step. Preserve all dirty/staged/untracked work. Do not switch/reset/clean the canonical worktree or blanket-copy an older branch.
+2. Read the current Mac VPS operations skill and current-state references, the full existing M121 audit/plan and Work's cloud source review/plan in PR58/main after publication. Resolve source/runtime/schema/role/isolation gaps first.
+3. Obtain non-secret metadata through already permitted paths; do not broaden sudo, bypass Docker permissions or relax protections. The cloud browser observed backup-erp Login @24.0.1, while source docs referenced23.0.3; establish actual installed runtime before patching.
+4. Validate that all services used by tests, including docstest's ERP target, point only to backup-erp/nonproduction destinations. Intercept real mail/webhooks/payments. Do not read or change live production.
+5. Create and verify code/database/configuration backups required for the exact staging change, record hashes/rollback, and verify recovery strategy. Do not restore an old DB over later records.
+6. Reconcile existing Boards/M116/Office/CustomerFunds/native supplier/shared-document implementations into the main project folders through scoped reviewed manifests. Reuse existing services/tables; no duplicate ledger. Implement sequentially under the existing M121 phases and stop only on a concrete access/security/technical blocker, not for routine staging approvals.
+7. Complete the six phases and the supplied end-to-end staging scenario as far as the actual environment supports. Use DEMO-M121 records and appropriate isolated roles. Actual user/credential creation must follow platform authentication/security requirements; do not publish secrets or broaden real service access.
+8. Maintain customer/supplier cash/commitment/funding correctness, one posting/source identity, per-currency totals, operational vs financial completion, history/reopen, compact/readable Boards and module-owned quick actions. Reuse Docs renderer/templates with verified target isolation.
+9. After each function, run focused and authenticated tests, preserve failures/retests, update the existing shared Progress/Tasks/Test Log and workflow manual with exact versions and genuine sanitized screenshots. No invented passes.
+10. Publish only source/docs appropriate for GitHub; report staged artifact SHA, backup/rollback evidence, test results and unresolved blockers. Production stays untouched, regardless of staging success.
+
+Return receipt and progress by appending to this file, preserving all earlier evidence. Use states RECEIVED / IN_PROGRESS / BLOCKED / COMPLETED with exact tested scope; no global completion claim from a source-only check.
