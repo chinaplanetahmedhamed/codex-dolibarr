@@ -800,10 +800,10 @@ jobs:
     environment: backup-erp
     timeout-minutes: 20
     env:
-      STANDALONE_SOURCE: 6f73b1234bd3fd440d3b98f840432ef0134963e2
-      STANDALONE_SHA: 818ed00aed4f925abf2d7e4465b3b5eed34112d62674ce598cca251fd3e3db9c
-      STANDALONE_MANIFEST: f600dd187b0fdcdccdda242c7373d34b9912afdd9d79f1cc9df853ae0191e1d1
-      STANDALONE_HELPER: 8fa571823ab8974e58ac6cd344b875436b27f3cacab1cba1cbf84361abb2ab8e
+      STANDALONE_SOURCE: afeb72b1c0e69233c59e99afb18609fd7e3053dc
+      STANDALONE_SHA: a1c993decfbf641072ce48a375c144fb1696356c87de5ee21f8e0b291647325d
+      STANDALONE_MANIFEST: 0cdd6664561890513112173d25d76848421874b7ea0e7fa585d18f038d594f25
+      STANDALONE_HELPER: ee54d35e9f992d78d3931c2820b1394c724799ac8dd8c2524c232cd760e74ffb
     steps:
       - name: Check out immutable delivery source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -842,7 +842,7 @@ jobs:
       - name: Verify installed helper and upload only the pinned package
         run: |
           set -Eeuo pipefail
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = 8fa571823ab8974e58ac6cd344b875436b27f3cacab1cba1cbf84361abb2ab8e'
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 codex-deploy@31.97.158.178 'test "$(id -u)" = 1002 && test "$(sha256sum /usr/local/sbin/chinaplanetos-backup-erp-deploy | cut -d" " -f1)" = ee54d35e9f992d78d3931c2820b1394c724799ac8dd8c2524c232cd760e74ffb'
           scp -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$RUNNER_TEMP/m119/artifact-$STANDALONE_SHA.tar.gz" "$RUNNER_TEMP/m119/manifest-$STANDALONE_SHA.json" codex-deploy@31.97.158.178:/home/codex-deploy/staging-inbox/
       - name: Preflight exact backup runtime identities and staff baseline
         run: bash deploy/releases/m119/run_design_acceptance_remote_action.sh preflight
