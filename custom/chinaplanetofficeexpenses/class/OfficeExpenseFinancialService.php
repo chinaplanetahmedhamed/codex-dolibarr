@@ -40,11 +40,14 @@ final class OfficeExpenseFinancialService
         $this->source->get($office,$row['kind'],$row['id']);$out['confirmation']=$this->confirmation($row);$out['permissions']=[];
         foreach(['approve','post','reverse']as$action)$out['permissions'][$action]=$this->permitted($office,$row['kind'],$action);
         $out['submit']=($row['owner']===$this->access->financeActorId()&&$this->source->allowed($office,$row['kind'],'create'))||$this->source->allowed($office,$row['kind'],'update');
-        $out['staff']=$this->source->staff($office,OfficeExpenseWorkspaceDocument::SECTIONS[$row['kind']]);$out['customers']=[];
+        $out['staff']=$this->source->staff($office,OfficeExpenseWorkspaceDocument::SECTIONS[$row['kind']]);$out['customers']=[];$out['invoices']=[];$out['advances']=[];
         if($row['kind']==='receipt'&&$this->settings->coreEnabled()){
             $c=new OfficeExpenseNativeConnection($this->db);$where=$this->access->isFinanceAdministrator()||$v['customer_mode']==='all_company_customers'?'':' AND rowid IN ('.implode(',',array_merge([0],$v['customer_ids'])).')';
             $out['customers']=$c->rows('SELECT rowid,nom FROM '.MAIN_DB_PREFIX.'societe WHERE entity='.(int)$this->conf->entity.' AND client IN (1,2,3)'.$where.' ORDER BY nom LIMIT 1001');
+            $invoiceScope=$this->access->isFinanceAdministrator()?'':' AND rowid IN ('.implode(',',array_merge([0],$v['invoice_ids'])).')';$customerIds=array_map('intval',array_column($out['customers'],'rowid'));
+            $out['invoices']=$c->rows('SELECT rowid,ref,fk_soc,multicurrency_code FROM '.MAIN_DB_PREFIX.'facture WHERE entity='.(int)$this->conf->entity.' AND fk_statut IN (1,2) AND type NOT IN (2,4) AND fk_soc IN ('.implode(',',array_merge([0],$customerIds)).')'.$invoiceScope.' ORDER BY rowid DESC LIMIT 1001');
         }
+        if($row['kind']==='payroll'&&$this->source->allowed($office,'advance','read'))foreach($this->source->list($office,'advance')as$loan)if($loan['status']==='posted'&&($loan['content']['_finance']['posting']['plan']['staff_id']??0)===$row['subject']&&$loan['content']['currency']===$row['content']['currency']){$balance=$this->advance($row,$loan['id'],$row['subject'],false);if(bccomp($balance['remaining_original'],'0',2)>0)$out['advances'][]=['id'=>$loan['id'],'purpose'=>$loan['content']['purpose'],'amount'=>$balance['remaining_original'],'currency'=>$loan['content']['currency']];}
         $out['evidence']=$this->evidence?$this->evidence->list($office,$row['kind'],$row['id']):[];return $out;
     }
     public function transition(string $office,string $kind,string $id,int $revision,string $action,string $key,array $input): array
@@ -122,9 +125,9 @@ final class OfficeExpenseFinancialService
         if($row['kind']==='receipt')$allocation=$this->native->invoiceValuation($row,$intent,$config['content']);
         return OfficeExpenseFinancialPlan::build($row,$intent,$allocation);
     }
-    private function advance(array $row,string $ref,int $staff): array
+    private function advance(array $row,string $ref,int $staff,bool $lock=true): array
     {
-        $parent=$this->store->locked((int)$this->conf->entity,$ref);if(!$parent||$parent['office']!==$row['office']||$parent['kind']!=='advance'||$parent['status']!=='posted'||$parent['content']['currency']!==$row['content']['currency'])throw new DomainException('Outstanding posted advance required in this branch/currency.');
+        $parent=$lock?$this->store->locked((int)$this->conf->entity,$ref):$this->store->find((int)$this->conf->entity,$ref);if(!$parent||$parent['office']!==$row['office']||$parent['kind']!=='advance'||$parent['status']!=='posted'||$parent['content']['currency']!==$row['content']['currency'])throw new DomainException('Outstanding posted advance required in this branch/currency.');
         $p=$parent['content']['_finance']['posting']??null;if(!$p||$p['plan']['staff_id']!==$staff)throw new DomainException('Advance belongs to a different employee.');$this->native->verifyPosted($p);
         $original=$parent['content']['amount'];$base=$p['plan']['valuation']['base_amount'];
         foreach(['advance_return','advance_settlement','payroll']as$kind)foreach($this->store->list((int)$this->conf->entity,$row['office'],$kind)as$child){

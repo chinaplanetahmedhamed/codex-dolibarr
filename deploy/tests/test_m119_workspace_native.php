@@ -231,4 +231,20 @@ wt('scoped navigation and default entry never require a legacy write grant or of
     foreach(['treasury','receipts','employees','settings']as$view)we(str_contains($html,'&amp;view='.$view.'"'),false);
     we((new OfficeExpenseWorkspaceController($service,'synthetic'))->handle('GET',['office'=>'china','view'=>'treasury'],[])['status'],403);
 });
+wt('financial pages expose explicit confirmation and never render private posting metadata or editable approved sources',function()use($db,$m){
+    $payload=['amount'=>'2.50','currency'=>'EGP','date'=>'2026-11-02','category_ref'=>'','purpose'=>'SYNTHETIC finance UI','source_ref'=>'SYNTHETIC','notes'=>''];$r=$m->save('egypt','expense',$payload,'financial-page-source');$store=new OfficeExpenseWorkspaceStore($db);
+    $intent=OfficeExpenseFinancialPlan::intent($r,['date'=>'2026-11-02','staff_id'=>'8'],'EGP','2026-11-02');$plan=OfficeExpenseFinancialPlan::build($r,$intent);
+    $apply=static function($row)use($plan){$v=$row['content'];$v['_finance']=['plan'=>$plan,'proof'=>[],'source_hash'=>'synthetic','private_canary'=>'DO-NOT-PRINT-PRIVATE-FINANCE'];return $v;};$check=static function(){};
+    $r=$store->financial(1,8,$r['id'],1,'submit','page-submit-01',[],$check,$apply);$r=$store->financial(1,8,$r['id'],2,'approve','page-approve-01',[],$check,$apply);
+    wb(fn()=>$m->save('egypt','expense',$payload,'approved-ui-edit',$r['id'],$r['revision']));
+    foreach(['ar','en']as$lang){$state=(new OfficeExpenseWorkspaceController($m,'synthetic'))->handle('GET',['view'=>'expenses','office'=>'egypt','lang'=>$lang,'edit'=>$r['id']],[]);we($state['status'],200);
+        $state['finance']=['enabled'=>true,'base'=>'EGP','revision'=>1,'administrator'=>false,'evidence_available'=>true,'evidence'=>[],'submit'=>true,'confirmation'=>'synthetic-confirmation','permissions'=>['approve'=>true,'post'=>true,'reverse'=>false],'staff'=>[],'customers'=>[]];
+        $html=(new OfficeExpenseWorkspacePage())->render($state,'synthetic-next');we(str_contains($html,'name="action" value="post"'),true);we(str_contains($html,'name="payload[confirmation]" value="synthetic-confirmation"'),true);we(str_contains($html,'id="workspace-form"'),false);we(str_contains($html,'DO-NOT-PRINT-PRIVATE-FINANCE'),false);
+        $state['finance']['permissions']['post']=false;$denied=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($denied,'name="action" value="post"'),false);
+        $state['print']=true;$printed=(new OfficeExpenseWorkspacePage())->render($state,'synthetic');we(str_contains($printed,'DO-NOT-PRINT-PRIVATE-FINANCE'),false);
+        $dir=getenv('M119_WORKSPACE_VISUAL_DIR');if($dir)file_put_contents($dir.'/'.$lang.'-financial-approval.html','<!doctype html><html lang="'.$lang.'" dir="'.($lang==='ar'?'rtl':'ltr').'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SYNTHETIC financial approval</title><link rel="stylesheet" href="/custom/chinaplanetofficeexpenses/employee.css"><link rel="stylesheet" href="/custom/chinaplanetofficeexpenses/workspace.css"></head><body>'.$html.'</body></html>');
+    }
+    $rejected=$store->financial(1,8,$r['id'],3,'reject','page-reject-01',['reason'=>'SYNTHETIC correction'],$check,$apply);$updated=$m->save('egypt','expense',$payload,'rejected-ui-edit',$r['id'],$rejected['revision']);we(count($updated['content']['_finance']['operations']),3);we(isset($updated['content']['_finance']['plan']),false);
+    wb(fn()=>$store->financial(1,8,$r['id'],2,'reject','page-reject-01',['reason'=>'SYNTHETIC correction'],$check,$apply));
+});
 echo "$pass passed, $fail failed\n";exit($fail?1:0);
