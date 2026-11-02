@@ -8,6 +8,7 @@ on:
         required: true
         type: choice
         options:
+          - boards-backup-m107-c02
           - m043-c02
           - m045-r01
           - m089-c02-r2
@@ -406,3 +407,110 @@ jobs:
       - name: Remove transient SSH material
         if: ${{ always() }}
         run: rm -f "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+
+  boards_backup:
+    if: ${{ inputs.release == 'boards-backup-m107-c02' }}
+    name: Verify Boards and hold backup deployment lease
+    runs-on: ubuntu-latest
+    environment: backup-erp
+    timeout-minutes: 30
+    env:
+      BOARDS_INBOX: /home/codex-deploy/staging-inbox/boards-backup-9b11ede
+      BOARDS_SHA: 75fc5e2bccf13ecf266ada483b9d5b51e3dc31cd371d84c0a206f7655dbad8c1
+    steps:
+      - name: Require exact approved backup-only scope
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: test "$CONFIRMATION" = 'INSTALL_BOARDS_M107_C02_TO_BACKUP_ONLY'
+      - name: Check out this immutable delivery commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Reproduce package and run guarded release regressions
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 deploy/releases/boards-scroll-backup/test_preflight.py
+          python3 deploy/releases/boards-scroll-backup/test_controller.py
+          node deploy/tests/boards-scroll/geometry.cjs
+          node deploy/tests/boards-scroll/frame.cjs
+          node deploy/tests/boards-scroll/integration.cjs
+          node deploy/tests/boards-sounds/controller.cjs
+          node deploy/tests/boards-sounds/integration.cjs
+          node deploy/tests/boards-live/sync.test.cjs
+          node deploy/tests/boards-live/pointer.test.cjs
+          python3 deploy/releases/boards-scroll-backup/ci_package.py "$RUNNER_TEMP/boards"
+          find "$RUNNER_TEMP/boards/lint" -name '*.js' -print0 | xargs -0 -r -n1 node --check
+          docker run --rm -v "$RUNNER_TEMP/boards/lint:/candidate:ro" php:8.2.32-cli sh -c 'find /candidate -name "*.php" -print0 | xargs -0 -r -n1 php -l'
+      - name: Use existing restricted deployment identity
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+      - name: Stage immutable Boards package and hold protected workflow lease
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10)
+          scp "${ssh_opts[@]}" "$RUNNER_TEMP/boards/boards-artifact-$BOARDS_SHA.tar.gz" "$RUNNER_TEMP/boards/boards-manifest-$BOARDS_SHA.json" "$RUNNER_TEMP/boards/boards-backup-controller.py" "$DEPLOY_USER@$DEPLOY_HOST:$BOARDS_INBOX/"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" python3 - "$BOARDS_INBOX" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$BOARDS_SHA" <<'PY'
+          import json,os,stat,sys,time
+          from pathlib import Path
+          inbox=Path(sys.argv[1]);assert not (inbox/'reconciliation-hold.json').exists();s=inbox.lstat()
+          assert stat.S_ISDIR(s.st_mode) and s.st_uid==os.getuid() and stat.S_IMODE(s.st_mode)==0o700
+          names=['boards-artifact-'+sys.argv[4]+'.tar.gz','boards-manifest-'+sys.argv[4]+'.json','boards-backup-controller.py']
+          for name in names:
+              p=inbox/name;s=p.lstat();assert stat.S_ISREG(s.st_mode)and s.st_nlink==1 and s.st_uid==os.getuid();os.chmod(p,0o600)
+          lease={'mission':'M107-C02','artifact_sha256':sys.argv[4],'application_commit':'7bb0686140da488a3d73ef4ae92d6a9cda686249','workflow_commit':sys.argv[3],'run_id':int(sys.argv[2]),'expires':int(time.time())+1200}
+          fd=os.open(inbox/'workflow-lease.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+          with os.fdopen(fd,'w')as f:json.dump(lease,f);f.flush();os.fsync(f.fileno())
+          print(json.dumps({'result':'BOARDS_LEASE_READY','run_id':lease['run_id'],'expires':lease['expires']}))
+          PY
+          for attempt in $(seq 1 120); do
+            receipt=$(ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" "test ! -L '$BOARDS_INBOX/deployment-receipt.json' && cat '$BOARDS_INBOX/deployment-receipt.json' 2>/dev/null" || true)
+            if [[ -n "$receipt" ]]; then
+              printf '%s' "$receipt" > "$RUNNER_TEMP/boards/receipt.json"
+              python3 - "$RUNNER_TEMP/boards/receipt.json" "$BOARDS_SHA" "$GITHUB_RUN_ID" "$GITHUB_SHA" <<'PY'
+          import json,sys
+          r=json.load(open(sys.argv[1]));assert r['phase']=='applied'and r['artifact_sha256']==sys.argv[2]and r['permissions_changed']is False and r['run_id']==int(sys.argv[3])and r['workflow_commit']==sys.argv[4]
+          print(json.dumps(r,sort_keys=True))
+          PY
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Lease expired without a completed apply receipt; reconcile root state before retry.' >&2
+          exit 1
+      - name: Reconcile or retain this run lease
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ ! -f "$HOME/.ssh/id_ed25519" ]]; then exit 0; fi
+          ssh -i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "$DEPLOY_USER@$DEPLOY_HOST" python3 - "$BOARDS_INBOX" "$GITHUB_RUN_ID" <<'PY'
+          import json,os,stat,sys
+          from pathlib import Path
+          p=Path(sys.argv[1])/'workflow-lease.json'
+          if p.exists():
+              s=p.lstat();assert stat.S_ISREG(s.st_mode)and s.st_uid==os.getuid()
+              if json.loads(p.read_text())['run_id']==int(sys.argv[2]):
+                  receipt=p.parent/'deployment-receipt.json'
+                  r=json.loads(receipt.read_text())if receipt.exists()else{}
+                  if r.get('phase')=='applied'and r.get('run_id')==int(sys.argv[2]):p.unlink()
+                  else:
+                      hold=p.parent/'reconciliation-hold.json'
+                      fd=os.open(hold,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+                      with os.fdopen(fd,'w')as f:json.dump({'run_id':int(sys.argv[2]),'reason':'No current-run completed apply receipt; inspect root state before another attempt.'},f)
+                      print('Reconciliation hold retained; no automatic retry.')
+          PY
+      - name: Remove transient runner SSH material
+        if: ${{ always() }}
+        shell: bash
+        run: rm -f -- "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
