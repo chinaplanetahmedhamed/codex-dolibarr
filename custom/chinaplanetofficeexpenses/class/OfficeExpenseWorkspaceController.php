@@ -7,6 +7,12 @@ final class OfficeExpenseWorkspaceController
     public const VIEWS=['expenses'=>'expense','advances'=>'advance','treasury'=>'deposit','receipts'=>'receipt','categories'=>'category','employees'=>'employee','payroll'=>'payroll','settings'=>'settings','reports'=>'reports'];
     private OfficeExpenseWorkspaceService $service;private string $token;
     public function __construct(OfficeExpenseWorkspaceService $service,string $token){$this->service=$service;$this->token=$token;}
+    public static function receiptBaseUrl(string $configuredRoot): string
+    {
+        // The staging installation retains its old alias in native configuration.
+        // Correct only that exact trusted alias; never derive QR targets from Host headers.
+        return (string)preg_replace('~^https://staging-erp\\.visiontrading\\.biz(?=/|$)~','https://backup-erp.visiontrading.biz',rtrim($configuredRoot,'/'));
+    }
     public function handle(string $method,array $query,array $post,array $files=[]): array
     {
         $state=['status'=>200,'error'=>null,'redirect'=>null,'csv'=>null,'view'=>'categories','kind'=>'category','office'=>'','language'=>'ar','offices'=>[],'rows'=>[],'legacy'=>[],'staff'=>[],'categories'=>[],'advances'=>[],'selected'=>null,'history'=>[],'print'=>false,'report'=>null,'permissions'=>[],'cash'=>null,'accounts'=>[],'settings'=>null,'form'=>null,'submission_key'=>bin2hex(random_bytes(16)),'receipt_filter'=>null,'receivers'=>[],'actor_name'=>'','receipt_link'=>'','can_edit_receipt_settings'=>false];

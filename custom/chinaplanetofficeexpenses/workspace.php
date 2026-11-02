@@ -19,7 +19,7 @@ try{
     if($result['csv']!==null){header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="'.($result['csv_name']??'office-requests.csv').'"');echo $result['csv'];exit;}
     if($result['status']===405)header('Allow: GET, POST');
     try{$result['manage_staff']=(bool)$access->managedOffices();}catch(DomainException $e){$result['manage_staff']=false;}
-    if($result['view']==='receipts'&&$result['selected'])$result['receipt_link']=rtrim(DOL_MAIN_URL_ROOT,'/').'/custom/chinaplanetofficeexpenses/workspace.php?'.http_build_query(['lang'=>$result['language'],'office'=>$result['office'],'view'=>'receipts','edit'=>$result['selected']['id'],'print'=>'1']);
+    if($result['view']==='receipts'&&$result['selected'])$result['receipt_link']=OfficeExpenseWorkspaceController::receiptBaseUrl(DOL_MAIN_URL_ROOT).'/custom/chinaplanetofficeexpenses/workspace.php?'.http_build_query(['lang'=>$result['language'],'office'=>$result['office'],'view'=>'receipts','edit'=>$result['selected']['id'],'print'=>'1']);
     $asset=DOL_URL_ROOT.'/custom/chinaplanetofficeexpenses/';$hasCsp=false;
     foreach(headers_list()as$h)if(stripos($h,'Content-Security-Policy:')===0)$hasCsp=true;
     if(!$hasCsp&&!defined('MAIN_SECURITY_FORCECSP')&&(!function_exists('getDolGlobalString')||getDolGlobalString('MAIN_SECURITY_FORCECSP')==='')){
