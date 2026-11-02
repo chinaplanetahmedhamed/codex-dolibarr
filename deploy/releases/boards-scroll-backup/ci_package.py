@@ -4,8 +4,8 @@ from pathlib import Path
 from build_artifact import build
 from render_helper import render
 HERE=Path(__file__).resolve().parent
-SUPPORT='9228e987b3f678d05c19ab3e70cded53e535e69e'
-EXPECTED={'artifact_sha256':'75fc5e2bccf13ecf266ada483b9d5b51e3dc31cd371d84c0a206f7655dbad8c1','manifest_sha256':'7e98a68fec3247adcbaa0d1e52e2ffbdf1b9c278914bae88cbfdb20a6be46119','helper_sha256':'cc7a3c98917852e13cb0b33c60f7519b05b650e0db53e7b98c404040f9d7e251'}
+SUPPORT='d756ca79906b19802dd620b948588b41effb19b3'
+EXPECTED={'artifact_sha256':'75fc5e2bccf13ecf266ada483b9d5b51e3dc31cd371d84c0a206f7655dbad8c1','manifest_sha256':'3c290e79bf566a4e865aa57ab629aca75d1241d9302fa350f52aea0e4107a059','helper_sha256':'4258fd94dfd2cab04e235a98c0ba805bdfa95c547fc20603fc9ca1642d376bdc'}
 out=Path(sys.argv[1]);pins=build(SUPPORT,out);pins=render(SUPPORT,out,out/'boards-backup-controller.py')
 if any(pins[k]!=v for k,v in EXPECTED.items()):raise RuntimeError('Reproduced package differs.')
 spec=importlib.util.spec_from_file_location('sealed',out/'boards-backup-controller.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
