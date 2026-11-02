@@ -18,12 +18,13 @@ try{
     fvMust(preg_match('/^[A-Za-z0-9_]{1,40}$/D',MAIN_DB_PREFIX)&&str_starts_with(fvRows('SELECT VERSION() AS v')[0]['v'],'10.6.27-MariaDB'),'Database differs.');
     fvMust($db->transaction_opened===0,'Unexpected transaction.');
     fvMust((int)fvRows("SELECT GET_LOCK('cpo_office_finance_1',30) AS acquired")[0]['acquired']===1,'Financial processing did not drain.');$locked=true;
-    fvMust((bool)$db->query('SET TRANSACTION READ ONLY')&&(bool)$db->begin(),'Read-only snapshot unavailable.');$transaction=true;
-    $module=DOL_DOCUMENT_ROOT.'/custom/chinaplanetofficeexpenses';require_once $module.'/class/OfficeExpenseWorkspaceRuntime.php';require_once $module.'/class/OfficeExpenseWorkspaceService.php';
+    $phase='schema';$module=DOL_DOCUMENT_ROOT.'/custom/chinaplanetofficeexpenses';require_once $module.'/class/OfficeExpenseWorkspaceRuntime.php';require_once $module.'/class/OfficeExpenseWorkspaceService.php';
     $pilot=OfficeExpensePilotConfiguration::read(OfficeExpensePilotConfiguration::PATH,DOL_DOCUMENT_ROOT);$id=$pilot->staffBootstrap($conf);
     $user=new User($db);fvMust($user->fetch($id)===1&&!empty($user->admin)&&(int)$user->status===1&&empty($user->socid)&&!$user->isNotIntoValidityDateRange(),'Bootstrap differs.');
     $access=OfficeExpenseStaffRuntime::access($db,$user,$conf,$pilot);$service=new OfficeExpenseWorkspaceService($db,$user,1,$access);
-    fvMust(OfficeExpenseWorkspaceRuntime::ready($db,$conf),'Existing workspace is unavailable.');$phase='cash';
+    fvMust(OfficeExpenseWorkspaceRuntime::ready($db,$conf),'Existing workspace is unavailable.');
+    fvMust((bool)$db->query('SET TRANSACTION READ ONLY')&&(bool)$db->begin(),'Read-only snapshot unavailable.');$transaction=true;
+    $phase='cash';
     foreach(['CPO-EG-EGP'=>'EGP','CPO-EG-USD'=>'USD','CPO-CN-CNY'=>'CNY','CPO-CN-USD'=>'USD']as$ref=>$currency){$r=fvRows("SELECT rowid,currency_code,courant FROM ".MAIN_DB_PREFIX."bank_account WHERE entity=1 AND ref='".$db->escape($ref)."'");fvMust(count($r)===1&&$r[0]['currency_code']===$currency&&(int)$r[0]['courant']===2,'Original cash account binding differs.');}
     $before=fvFingerprint();$postingCount=0;$settingsDisabled=true;$gate=null;
     if($mode!=='inspect'){

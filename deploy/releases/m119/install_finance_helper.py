@@ -10,11 +10,25 @@ import subprocess
 import types
 
 OLD='e36452a4dc36d55657f742f86314c26acb8c47006d7d045b7b52148d520a2527'
-NEW='86635b486f8698c815873e10c1a6fc25e9ef4488b058e81ab34396da3688ebc9'
+NEW='48fdc68f0e07f2a9fa3c5875d13170527551f8b390b76bcbb0fca11533bd183f'
 READER='2e3a02083f15986706f38e6eab2d6a4d143dad7d7b943681b04cfcd6d6d5e64e'
 TARGET=Path('/usr/local/sbin/chinaplanetos-backup-erp-deploy')
 STATE=Path('/var/lib/chinaplanetos-backup-erp-deploy/m119-finance-r11')
 INBOX=Path('/home/codex-deploy/staging-inbox/m119-finance-r11')
+
+
+def prepare_state(reader,old,worker):
+    if STATE.exists()or STATE.is_symlink():
+        # Resume only the exact failed, application-untouched R11 readiness preflight.
+        state=STATE.lstat()
+        if not stat.S_ISDIR(state.st_mode)or state.st_uid!=0 or stat.S_IMODE(state.st_mode)!=0o700 or STATE.resolve()!=STATE or set(os.listdir(STATE))!={'previous_helper.py','finance_native_verify.php'}:raise RuntimeError('Prior finance state requires reconciliation; no replay.')
+        if reader.read(STATE/'previous_helper.py',0,0o600,65536)!=old:raise RuntimeError('Prepared predecessor changed.')
+        prior_worker=reader.read(STATE/'finance_native_verify.php',0,0o600,65536)
+        if hashlib.sha256(prior_worker).hexdigest()!='0f19c6aecb92cf64e9b34bf62ae3c6071d26618288deb41331ce28c5c4b69b04':raise RuntimeError('Prepared read-only verifier differs.')
+        reader.write(STATE/'finance_native_verify.before-readiness-fix.php',prior_worker)
+        temporary=STATE/'.finance-native-verified.tmp';reader.write(temporary,worker);os.replace(temporary,STATE/'finance_native_verify.php')
+    else:
+        STATE.mkdir(mode=0o700);reader.write(STATE/'previous_helper.py',old);reader.write(STATE/'finance_native_verify.php',worker)
 
 
 def main():
@@ -34,7 +48,7 @@ def main():
     if hashlib.sha256(raw).hexdigest()!=READER:raise RuntimeError('Bounded reader checksum differs.')
     reader=types.ModuleType('m119_reviewed_reader');reader.__file__=str(path);exec(compile(raw,str(path),'exec'),reader.__dict__)
     worker=reader.read(INBOX/'finance_native_verify.php',1002,0o600,65536)
-    if hashlib.sha256(worker).hexdigest()!='0f19c6aecb92cf64e9b34bf62ae3c6071d26618288deb41331ce28c5c4b69b04':raise RuntimeError('Native read-only verifier checksum differs.')
+    if hashlib.sha256(worker).hexdigest()!='3de2abbf601c2b04b8bd6d9a1351941cc00eae0f26eed5106da3155dd7c267b1':raise RuntimeError('Native read-only verifier checksum differs.')
     old=reader.read(TARGET,0,0o755,65536);new=reader.read(INBOX/'finance_update_helper.py',1002,0o600,65536)
     if hashlib.sha256(old).hexdigest()!=OLD or hashlib.sha256(new).hexdigest()!=NEW:raise RuntimeError('Exact receipt updater pins differ.')
     for action in ('preflight','apply','verify','rollback','status'):
@@ -47,8 +61,7 @@ def main():
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         parent=STATE.parent;s=parent.lstat()
         if s.st_uid!=0 or not stat.S_ISDIR(s.st_mode)or stat.S_IMODE(s.st_mode)!=0o700 or parent.resolve()!=parent:raise RuntimeError('State parent differs.')
-        if STATE.exists()or STATE.is_symlink():raise RuntimeError('workspace installer has prior state; no replay.')
-        STATE.mkdir(mode=0o700);reader.write(STATE/'previous_helper.py',old);reader.write(STATE/'finance_native_verify.php',worker)
+        prepare_state(reader,old,worker)
         m=types.ModuleType('m119_ui_install');m.__file__=str(TARGET);exec(compile(new,str(TARGET),'exec'),m.__dict__)
         c,update=m.setup(old)
         update.preflight()

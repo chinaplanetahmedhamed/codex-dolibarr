@@ -144,6 +144,22 @@ class FinanceDeployerTests(unittest.TestCase):
                 with self.assertRaises(OSError):u.complete_paused(tree)
             finally:os.close(fd)
 
+    @unittest.skipUnless(os.geteuid()==0,'Root-owned private installer preparation is checked in Linux CI')
+    def test_installer_resumes_only_exact_failed_preflight_and_preserves_prior_verifier(self):
+        reader=load('finance_installer_reader','deploy/releases/m119/install_standalone_helper.py');old=Path(e.__file__).read_bytes();worker=(ROOT/'deploy/releases/m119/finance_native_verify.php').read_bytes()
+        with tempfile.TemporaryDirectory()as tmp:
+            state=Path(tmp)/'private-state'
+            with patch.object(i,'STATE',state):
+                i.prepare_state(reader,old,worker);self.assertEqual((state/'previous_helper.py').read_bytes(),old)
+                # Current or financially active state cannot be silently retried as an old preparation.
+                with self.assertRaises(RuntimeError):i.prepare_state(reader,old,worker)
+                with patch.object(i.hashlib,'sha256',return_value=types.SimpleNamespace(hexdigest=lambda:'0f19c6aecb92cf64e9b34bf62ae3c6071d26618288deb41331ce28c5c4b69b04')):
+                    i.prepare_state(reader,old,worker)
+                self.assertEqual((state/'finance_native_verify.before-readiness-fix.php').read_bytes(),worker)
+                self.assertEqual((state/'finance_native_verify.php').read_bytes(),worker)
+                (state/'state.json').write_text('synthetic recorded deployment')
+                with self.assertRaises(RuntimeError):i.prepare_state(reader,old,worker)
+
 
 def sha(raw):return hashlib.sha256(raw).hexdigest()
 if __name__=='__main__':
