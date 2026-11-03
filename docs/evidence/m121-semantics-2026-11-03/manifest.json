@@ -1,0 +1,102 @@
+{
+  "scope": "Synthetic source-only investigation; no canonical app edits, source deployment or real financial data",
+  "canonical_head": "310deeaa70ced8d1a74aa84c802e2c705e54b2a1",
+  "financial_library_sha256": "8b9eba67974982a04f636c05e964e9aab91be01d0a60ccbda0e1c946558b44f1",
+  "PHP": "8.3.21",
+  "historical_SQLite_cases": 24,
+  "historical_MySQL57_cases": 24,
+  "project_funding_SQLite_assertions": 36,
+  "mobile_proposal_positive_cases": 3,
+  "mobile_proposal_negative_controls": 8,
+  "meaning": "Characterization/proposed test validation, not financial or ERP acceptance",
+  "temporary_native_engine": "Empty isolated MySQL5.7.39 with TCP disabled; stopped cleanly after tests; target MariaDB10.6 acceptance pending",
+  "canonical_proposed_test_applied": false,
+  "canonical_arithmetic_changed": false,
+  "remote_actions_this_investigation": false,
+  "artifacts": [
+    {
+      "path": "historical-review.md",
+      "sha256": "1c8dae899cefc6036abad1d179a0a27dfda1f1bcba78c6af3461f6e9e8085d9f",
+      "bytes": 7674,
+      "original_sha256": "1c8dae899cefc6036abad1d179a0a27dfda1f1bcba78c6af3461f6e9e8085d9f",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "historical-proposal.md",
+      "sha256": "12fdd9019cb4a87c0c9146955e350c25c91b928ad68bdd4fa0aa883b6ac5d3b4",
+      "bytes": 3285,
+      "original_sha256": "12fdd9019cb4a87c0c9146955e350c25c91b928ad68bdd4fa0aa883b6ac5d3b4",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "project-funding-review.md",
+      "sha256": "8ab454191ae054409bfecf727de9f5ba2a29882282dbca2a6a1a6174dc4a4571",
+      "bytes": 9994,
+      "original_sha256": "8ab454191ae054409bfecf727de9f5ba2a29882282dbca2a6a1a6174dc4a4571",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "mobile-test-proposal.patch",
+      "sha256": "bc884d0624e04142e04bd5283cf909cfd8ceeba0f15bd5fc6e30b4f363cb6765",
+      "bytes": 3948,
+      "original_sha256": "bc884d0624e04142e04bd5283cf909cfd8ceeba0f15bd5fc6e30b4f363cb6765",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "mobile-test-results.json",
+      "sha256": "68da8fcacae099419f30943d0814bba996dd142c316c69339046173e5d4f2b50",
+      "bytes": 2781,
+      "original_sha256": "68da8fcacae099419f30943d0814bba996dd142c316c69339046173e5d4f2b50",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "asof-sqlite-probe.php.txt",
+      "sha256": "a4049d2554fa60eede8489bc11aea6dfba831f85909abec0af657bf00b1aba6a",
+      "bytes": 8040,
+      "original_sha256": "a4049d2554fa60eede8489bc11aea6dfba831f85909abec0af657bf00b1aba6a",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "project-funding-probe.php.txt",
+      "sha256": "79d23a7100cb892ab444feb36bfc9de22cc7256c9e0114b34012e817c227aa7a",
+      "bytes": 11691,
+      "original_sha256": "79d23a7100cb892ab444feb36bfc9de22cc7256c9e0114b34012e817c227aa7a",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "asof-sqlite-output.txt",
+      "sha256": "3eee4e995775be989d547f962322fdab0ae2271e633ec01c2f83fe8e86f7cda3",
+      "bytes": 1701,
+      "original_sha256": "3eee4e995775be989d547f962322fdab0ae2271e633ec01c2f83fe8e86f7cda3",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "asof-mysql-output.txt",
+      "sha256": "915a581fe22a605cc0c0a85617eca3312967fd93e3c7626d8c5d4d225bf86dfe",
+      "bytes": 1642,
+      "original_sha256": "915a581fe22a605cc0c0a85617eca3312967fd93e3c7626d8c5d4d225bf86dfe",
+      "export": "exact source-review artifact"
+    },
+    {
+      "path": "asof-sqlite-results.json",
+      "sha256": "cf3ba5097de8541760a4d6d4e269edd7b18411915fd38761ec01008b8979d3c3",
+      "bytes": 77616,
+      "original_sha256": "b0cc4ba9d3eaac041b6bf51bed5bd6b45487e3b6e28462e17bc2e521827bfdbe",
+      "export": "Only ephemeral connection metadata omitted; SQL/case results unchanged"
+    },
+    {
+      "path": "asof-mysql-results.json",
+      "sha256": "04f18a15793f7617bd562c8d39c3b0ee73529620d3d664cb9b0f8b8de0008f35",
+      "bytes": 78496,
+      "original_sha256": "78ae55a6e17569b891b4274288ba082dc68c3ba56545c35b6eacaae134045a50",
+      "export": "Only ephemeral connection metadata omitted; SQL/case results unchanged"
+    },
+    {
+      "path": "project-funding-results.json",
+      "sha256": "bd6c08ebc543d23010b9774bd894dcdd5f4975e7a17824add4a824a58416a9a0",
+      "bytes": 149268,
+      "original_sha256": "3c37ce1c664f1d7d359685fa761412f644484ae871a0830d33bbe9fcb54d4c6c",
+      "export": "Only ephemeral connection metadata omitted; SQL/case results unchanged"
+    }
+  ]
+}
