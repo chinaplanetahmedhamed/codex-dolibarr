@@ -1,0 +1,54 @@
+{
+  "mission": "M121",
+  "scope": "Local source/design verification and sanitized documentation; not a release artifact",
+  "head": "310deeaa70ced8d1a74aa84c802e2c705e54b2a1",
+  "source_hashes": {
+    "custom/chinaplanetcustomercenter/admin/financial_portfolio.php": "8ca4ad247f38f173a1389a4e494ca2d6376742c783bece98e45ff505b57ee7ac",
+    "deploy/tests/test_m121_financial_portfolio_currency.php": "d82a8e3d07711a1ffcc95dbebf747199ca2090f0d2a27b9a8b9f571562bdb1b4",
+    "custom/chinaplanetcustomercenter/langs/en_US/chinaplanetcustomercenter.lang": "706f283a8adfc535f72462e773e71031161b7af223830b4eee286bcf026c1938",
+    "custom/chinaplanetcustomercenter/langs/ar_SA/chinaplanetcustomercenter.lang": "60eb8fc15fee5d5ebcf57ff8c5fef51712dafa239c46ddba31b1e75581665fb7",
+    "custom/chinaplanetcustomercenter/lib/financial.lib.php": "297eab8265207af92c49567ec94f517908a27d1b197adad3205116fdb04f0177",
+    "custom/chinaplanetcustomercenter/lib/ui.lib.php": "86a4f4266ac71880d3a4f6fec6691fb60962073c7bc51430ed95365ea48e8f25",
+    "deploy/tests/test_m121_historical_audit_replay.php": "10101bddbb4f9c5cbc98ab43f50c0e07a8c5d6e7d2642c7d35704964955c6353"
+  },
+  "evidence_files": {
+    "docs/architecture/M121_HISTORICAL_EVIDENCE_DESIGN_2026-11-03.md": "d226d143b168e4ef479bae8f6dc205fc51542c9165b60962ecac28278112b0af",
+    "docs/REPORTS/M121_HISTORY_AND_PORTFOLIO_SOURCE_2026-11-03.md": "2b9d45b4daa623ef53c65777875485970a0103a3fba7f57a435876055f4b299a",
+    "docs/evidence/m121-history-design-2026-11-03/datetime-verification.json": "f2ebd871feb3bdfcba4fae1b8a7ca3a79b59d3131de8c38b6b39e79f4e485ae6",
+    "docs/evidence/m121-history-design-2026-11-03/history-reference-verification.json": "05dd1c2b9ff626a355102d16395ee93a75b7aa1b960b4ecf47ccf7fc8c315e9c",
+    "docs/evidence/m121-history-design-2026-11-03/portfolio-verification.json": "6f93af24c473e01b277e948a324b217bebeb4c37eefe007abdc57fcf257486b9",
+    "docs/evidence/m121-history-design-2026-11-03/history-audit-summary.json": "843be2c251a49eaa6e5e82508bbe1c161c6a718ba4dfeef0d7c31021ffc8f180",
+    "docs/evidence/m121-history-design-2026-11-03/operator-guard-summary.json": "dc34c1ac3b5bc9064e6de38fc23b833fffcb487f0c4a95743487f8221fe1e349"
+  },
+  "preservation": {
+    "original_paths_checked": 1015,
+    "changed_original_paths": [
+      "custom/chinaplanetcustomercenter/admin/financial_portfolio.php",
+      "custom/chinaplanetcustomercenter/langs/ar_SA/chinaplanetcustomercenter.lang",
+      "custom/chinaplanetcustomercenter/langs/en_US/chinaplanetcustomercenter.lang",
+      "custom/chinaplanetcustomercenter/lib/financial.lib.php",
+      "deploy/tests/test_m028_c04_financial_portfolio_mobile.php",
+      "docs/architecture/M121_PROGRESS_TASKS.csv",
+      "docs/architecture/M121_WORKFLOW_MANUAL.md",
+      "missions-list.md",
+      "resources.md"
+    ],
+    "unrelated_original_changes": 0,
+    "head_index_preserved": true
+  },
+  "review": {
+    "portfolio": "Independent no blocking findings for final scoped slice",
+    "history_reference": "Independent bounded test-only acceptance;3 reference gaps corrected; final55 checks verified"
+  },
+  "shared_records": "Latest29keys/sixopenphasegates read; new checkpoint write pending",
+  "operator_guard": "Limited operator-supplied metadataPASS evaluated; exact output private; no new Codex grant",
+  "gates": {
+    "full_history": "REQUIRED and incomplete",
+    "native_runtime_auth": "PENDING",
+    "full_isolation_anonymization": "PENDING",
+    "backup_recovery": "PENDING supported verification",
+    "deployment": "NOT PERFORMED",
+    "production": "NOT ACCESSED"
+  },
+  "publication_policy": "Sanitized docs/hashes/outcomes only; new application/test patches and raw records/SQL/private operator output excluded"
+}
