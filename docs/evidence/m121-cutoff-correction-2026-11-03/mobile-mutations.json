@@ -1,0 +1,97 @@
+{
+  "positive_cases": 3,
+  "negative_controls": 12,
+  "results": [
+    {
+      "case": "current English labels",
+      "exit_code": 0,
+      "expected_exit": 0,
+      "output": "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source contract; rendered UI untested\n"
+    },
+    {
+      "case": "historical bilingual labels",
+      "exit_code": 0,
+      "expected_exit": 0,
+      "output": "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source contract; rendered UI untested\n"
+    },
+    {
+      "case": "Unicode matching header-label",
+      "exit_code": 0,
+      "expected_exit": 0,
+      "output": "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source contract; rendered UI untested\n"
+    },
+    {
+      "case": "missing label",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "empty label",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "wrong label",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "empty header",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "missing value container",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: one mobile value container per cell\n"
+    },
+    {
+      "case": "wrong empty colspan",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: empty row spans all columns\n"
+    },
+    {
+      "case": "missing responsive table",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: two responsive tables\n"
+    },
+    {
+      "case": "wrong financial table role",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: one table per financial role\n"
+    },
+    {
+      "case": "missing CSS label content",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: active target mobile label rule\n"
+    },
+    {
+      "case": "detached CSS label selector",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: active target mobile label rule\n"
+    },
+    {
+      "case": "commented mobile CSS",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: active mobile card breakpoint\n"
+    },
+    {
+      "case": "deleted totals funding column with matching cells",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: financial role column count\n"
+    }
+  ],
+  "scope": "Static source contract only; rendered and localization acceptance pending"
+}
