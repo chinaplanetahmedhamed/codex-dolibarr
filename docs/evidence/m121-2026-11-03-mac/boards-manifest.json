@@ -1,0 +1,308 @@
+{
+  "mission": "M121",
+  "scope": "read-only Boards source reconciliation review; no application integration or runtime action",
+  "canonical": {
+    "path": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+    "branch": "codex/m084-dashboard-repair",
+    "head": "310deeaa70ced8d1a74aa84c802e2c705e54b2a1",
+    "dirty": "preserved"
+  },
+  "owner": {
+    "path": "/Users/mac/Documents/Codex/2026-10-26/task-4/statement-ui-dev",
+    "head": "0fb1dcc89d33760cca3a1b42c83979ba2fe89e77",
+    "dirty": "AGENTS.md only observed; preserved"
+  },
+  "m107_base": "113ddc6855915061d14acc7ab61ea33fd31742f9",
+  "pr": {
+    "url": "https://github.com/chinaplanetahmedhamed/codex-dolibarr/pull/60",
+    "head": "422284e0b26d15ef866c1fb7a886d9d77425e9b3",
+    "state": "open draft",
+    "changed_files": 5
+  },
+  "related_payload": "f6fefab780d14dd863ca8c2a3857dfa421e87fbb; local git diff against owner has no Operations delta",
+  "files": [
+    {
+      "path": "custom/chinaplanetoperations/js/boards.js",
+      "owner_sha256": "00a29efd921b87ed185f32d5d87902d738ac0a7ee9e8ebc73b8c9241ec8e73a3",
+      "reconciled_sha256": "4f6f9113d196bf490f1c824c297f9ea1c4a19b9b2cd668bf5e8473f4667cb48e",
+      "candidate_blob_sha": "3d8282fc61a680e6ae287b899bcd3346be1cc940",
+      "candidate_sha256": "2e135bbdf885eada4aa545a647560f8406412b29315907c76d906f5432b675e8"
+    },
+    {
+      "path": "custom/chinaplanetoperations/css/boards.css",
+      "owner_sha256": "d6ef4e884654dc4c5fd2e5e2725611fdabc81894cf53e09e347473dddfb2b89b",
+      "reconciled_sha256": "b5d7d6f36161ebaa643bd1475dd226ec17d925891e2e651207d84deeff96bb56",
+      "candidate_blob_sha": "d7f012e6f5ed994324552b0bd666c00cd00bb50c",
+      "candidate_sha256": "b5d7d6f36161ebaa643bd1475dd226ec17d925891e2e651207d84deeff96bb56"
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php",
+      "owner_sha256": "5c52ccf95f58bb6057d08cc21f6f6f0bc0d520dcfc54ae80d4ccca96bde29585",
+      "reconciled_sha256": "a3d581852efd19f915ba6426412f06e8be23c98672b2b6cfa967fc487a8a8e19",
+      "candidate_blob_sha": "abad635bf3f35acc3a87618f5fe838e160a2dbb0",
+      "candidate_sha256": "a3d581852efd19f915ba6426412f06e8be23c98672b2b6cfa967fc487a8a8e19"
+    },
+    {
+      "path": "deploy/tests/test_m121_boards_ui.cjs",
+      "owner_sha256": null,
+      "reconciled_sha256": "5243ef571be8b7f6b67e5b0780a841d55db86f0c1ff853647f1902ef6dde5424",
+      "candidate_blob_sha": null,
+      "candidate_sha256": "5243ef571be8b7f6b67e5b0780a841d55db86f0c1ff853647f1902ef6dde5424"
+    },
+    {
+      "path": ".github/workflows/m121-boards-source.yml",
+      "owner_sha256": null,
+      "reconciled_sha256": "ad86103f8f4ad33e98dc367bf8c595502e2591f37f61be2bcfbaa80fb4b9ebb6",
+      "candidate_blob_sha": null,
+      "candidate_sha256": "ad86103f8f4ad33e98dc367bf8c595502e2591f37f61be2bcfbaa80fb4b9ebb6"
+    }
+  ],
+  "dependency_closure_method": "Static recursive __DIR__-relative PHP literal references only, starting Boards entry/API/service. Excludes dynamic/native/bootstrap/assets/schema dependencies; not a deployment allowlist.",
+  "dependency_closure": [
+    {
+      "path": "custom/chinaplanetcustomercenter/lib/portal.lib.php",
+      "canonical_state": "different",
+      "owner_sha256": "0d7302284f2edbe440985ced41122fb9eed6b705616e9734fc0b58902b0f6278",
+      "canonical_sha256": "1ea72fc992165ed8125e287d9e33fcd733439d214646ea43213030182129dcd9"
+    },
+    {
+      "path": "custom/chinaplanetcustomercenter/lib/ui.lib.php",
+      "canonical_state": "same",
+      "owner_sha256": "86a4f4266ac71880d3a4f6fec6691fb60962073c7bc51430ed95365ea48e8f25",
+      "canonical_sha256": "86a4f4266ac71880d3a4f6fec6691fb60962073c7bc51430ed95365ea48e8f25"
+    },
+    {
+      "path": "custom/chinaplanetlogistics/class/ShipmentDocumentMigration.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "7ec450d046dcdbf5bc6b3521607910a8c1f3fcb879379432284816fbef5fca68",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetlogistics/class/ShipmentDocumentService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "ba8425b081827b14ec858c7f77659515b09d6fb7226c5066569bdc35fe48f3e4",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetlogistics/lib/shared_documents.lib.php",
+      "canonical_state": "missing",
+      "owner_sha256": "05075fe2cdcada9d0fc19fe146c0725e204b4ef2e05404b9596981422c14ccf5",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskAssetService.class.php",
+      "canonical_state": "different",
+      "owner_sha256": "bfb6e4d883e07b32bb478f8029ad55e11a80a13add21c3d341524176648dd8a1",
+      "canonical_sha256": "09e2711a5a42f6f019bfd0d3d0f11938bcf5f1abc5af569ecc1effc612babefc"
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskAuthorizationService.class.php",
+      "canonical_state": "different",
+      "owner_sha256": "db9c4d5037ff572fedf716c15108a0b0b42ff940e091b60c0303c9940d0548dc",
+      "canonical_sha256": "5d814cf5583a98218a897837f97a90a96150482301e41e02525a4f97d9b3621a"
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskBoardCounts.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "8b6d9b4e8a777ba8ba37d9dbb29aa3346a0d278fb1e381f48a1dad329c027406",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskBoardLifecycle.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "051b905a952cb707f31800a4647aa106992bec45cbfa33a806ce06bac75d8837",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskBoardPolicy.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "33ebc22bee020749008ea9068c4a6f72dd27b148b1748d4263698803b848f494",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskBoardPresentation.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "6e5dbc79d1e8d9bd60b4a69fe9a5684fc23df21ef7fc5ed67ad5495c80e6f842",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "5c52ccf95f58bb6057d08cc21f6f6f0bc0d520dcfc54ae80d4ccca96bde29585",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskCollaborationService.class.php",
+      "canonical_state": "different",
+      "owner_sha256": "3a7c81b0e1f6fef655a5e3a2cccf196bf66174d8c3200ffd2120c1a8e93a4c76",
+      "canonical_sha256": "01900a7c82941b7ca65e8d4682c0fc3cfc0c7ea56e7d49d760a6308506a5d438"
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskCompletionService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "e94e3df23595d64400af1c5d839d2be06e56aeaa38885d5fed442eb15986e242",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskContextService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "a7564b3ae7a6397ccf26062f6c0178fb326c43c52135e222131ed5efb10eac83",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskDetailsService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "8e5aee2c6c117170a90e26b96b25f15eb3eeb98041fb7f8f303af0add57dd915",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskFileValidator.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "8d7747a50dbf641a2c46951b55568abd561c33e3c71ec315cca094f5e03217c9",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskMigration.class.php",
+      "canonical_state": "same",
+      "owner_sha256": "252c52be436268bcab505f6a0c79a65cc47bcc8f835ed18b09b0072d05d2975d",
+      "canonical_sha256": "252c52be436268bcab505f6a0c79a65cc47bcc8f835ed18b09b0072d05d2975d"
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskPersonalBoard.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "d0500a413a8dfee813d4400bc8e63ae5ecff3f6c568dcd1eb32fdbbd2fe1aa64",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskProjectDeadline.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "e33db857efa0d5fc8093f82977a1485a93bafff62fb53b011f8b0a8cb8257efb",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskProjectTaskService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "a03eb1e30631f6ba0841b87b4138390f75cdf89285f5a31c5884a3002f1af02a",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskRichText.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "1230f3b7b0d4cf86af763c8e9aee91c513d35c0d6d4dfbed2f0545f4d925925a",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskSchedule.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "86a0489d588351571be92ef21223b44388a6a671f902feff4cf8f173f91b7479",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskService.class.php",
+      "canonical_state": "different",
+      "owner_sha256": "acacacfdfd6c162d88c896377f4d13d140ff28d25d23492fdbb50300594fe862",
+      "canonical_sha256": "43f21cd4a72b83961c923444ff509af5e4cf03c786e7c2c639fe04e3fa8386c1"
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskStageService.class.php",
+      "canonical_state": "same",
+      "owner_sha256": "f9ea28fad1b5ed0e42bafd3cf66eefc2472f2957b7989b8ef772bdaf366c8595",
+      "canonical_sha256": "f9ea28fad1b5ed0e42bafd3cf66eefc2472f2957b7989b8ef772bdaf366c8595"
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskWorkspaceAppearance.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "7e0cecee9c929b689a5de46a4914e4b06e92b5349c715853d3ce31c36aeea586",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskWorkspaceGalleryService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "cda3a9cc5bb5560f0086f749a68aae5d3e8e0fbac6b9706a96a4d2d8c5f74940",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/InternalTaskWorkspaceService.class.php",
+      "canonical_state": "missing",
+      "owner_sha256": "00d9ded215eabcf96766175dfdb20958bc95b3d3c0808996e4f7b88af7e70885",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/class/OperationsSopService.class.php",
+      "canonical_state": "same",
+      "owner_sha256": "71d381d06938f13ec4be01ff4afcc0581e315585403d75c881d1be6e26b4acce",
+      "canonical_sha256": "71d381d06938f13ec4be01ff4afcc0581e315585403d75c881d1be6e26b4acce"
+    },
+    {
+      "path": "custom/chinaplanetoperations/lib/main.lib.php",
+      "canonical_state": "same",
+      "owner_sha256": "acbe61d637a6da356240296371fbe1219aa8b6490632e58bf601b1b49ad39243",
+      "canonical_sha256": "acbe61d637a6da356240296371fbe1219aa8b6490632e58bf601b1b49ad39243"
+    },
+    {
+      "path": "custom/chinaplanetoperations/tasks/boards.php",
+      "canonical_state": "missing",
+      "owner_sha256": "01cf8b4b74059a8f65bb4b1976e3bfbfc42fe89e4b5587498743cbffa930c61b",
+      "canonical_sha256": null
+    },
+    {
+      "path": "custom/chinaplanetoperations/tasks/boards_api.php",
+      "canonical_state": "missing",
+      "owner_sha256": "5443205f5f821749e098dd88b87ae13d983dac107a8ac9deb0eab27e7ba1d5f7",
+      "canonical_sha256": null
+    }
+  ],
+  "dependency_counts": {
+    "missing": 22,
+    "different": 5,
+    "same": 5
+  },
+  "tests": [
+    {
+      "command": "node --check custom/chinaplanetoperations/js/boards.js",
+      "exit_code": 0,
+      "scope": "Reconciled temp fixture JS syntax"
+    },
+    {
+      "command": "php -l custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php",
+      "exit_code": 0,
+      "scope": "Reconciled temp fixture PHP syntax"
+    },
+    {
+      "command": "node deploy/tests/test_m121_boards_ui.cjs",
+      "exit_code": 0,
+      "scope": "PR60 source/selected-function synthetic DOM fixture; 12 language/priority cases, search/shared projection, scoped preference"
+    },
+    {
+      "command": "node deploy/tests/m116/card-summary.cjs",
+      "exit_code": 0,
+      "scope": "Preserved M116 summary implementation: denial, exact/currency amounts, mismatched scope, stale DOM, 20-scope batching, disabled feature"
+    },
+    {
+      "command": "node /tmp/m121-whole-startup.cjs /var/folders/9v/6t5wqy7x6yn4q4x7x27_bh3h0000gn/T/m121-boards-review-frd5qw60/custom/chinaplanetoperations/js/boards.js",
+      "exit_code": 0,
+      "scope": "Whole-file IIFE synthetic DOM;24 general/customer/My Work/board x EN/AR x default/compact/invalid preference plus API denial; Shared transition; only synthetic fetch including existing visit"
+    },
+    {
+      "command": "Python preservation assertions",
+      "exit_code": 0,
+      "scope": "M116 entire summary block unchanged; accountCardSummary call count and accountStatements gate count unchanged"
+    },
+    {
+      "command": "git -C <owner> apply --check /var/folders/9v/6t5wqy7x6yn4q4x7x27_bh3h0000gn/T/m121-boards-review-frd5qw60/boards-owner-scoped.patch",
+      "exit_code": 0,
+      "scope": "Nonmutating applicability check against newer owner with existing AGENTS.md dirty; patch not applied"
+    }
+  ],
+  "limits": [
+    "No CSS/layout browser measurement or screenshot",
+    "No native/authenticated ERP/schema/grant acceptance",
+    "No production/staging access or mutation by this reviewer",
+    "No canonical/worktree source files or refs modified",
+    "Temp selected-file fixture and diff are review artifacts, not release artifacts",
+    "Inline bilingual labels follow existing wsText pattern; future reconciliation should place labels in langs per owner conventions"
+  ],
+  "patch_sha256": "ce6df796e187ac06d4d858a15dfb7a438acadcd438dc1ff6abb65e5d89e74b2e",
+  "startup_harness": "/tmp/m121-whole-startup.cjs",
+  "startup_harness_sha256": "c5624515faf4ff774f9521053e3ef826647420347e794c5caca2f34ae4ddeeec"
+}
