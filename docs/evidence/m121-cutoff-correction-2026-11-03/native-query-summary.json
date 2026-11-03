@@ -1,0 +1,30 @@
+{
+  "scope": "Sanitized summary of actual generated-query verification on an empty private local fixture",
+  "engine": "MySQL5.7.39",
+  "PHP": "8.3.21",
+  "assertions": 110,
+  "generated_query_count": 133,
+  "generated_SQL_rewritten": false,
+  "identity_and_isolation_checked_before_DDL": true,
+  "first_database_empty_verified": true,
+  "sql_mode_or_grants_changed": false,
+  "fixture_shutdown_verified": true,
+  "coverage": [
+    "calendar and invalid-input rejection",
+    "whole cutoff day and next-midnight boundary",
+    "future payment and credit creation exclusion",
+    "manual and invoice-line credit links",
+    "payment validation and entity/customer/project scope",
+    "current-mode compatibility and preserved arithmetic",
+    "LEFT JOIN payment filtering keeps unpaid charges"
+  ],
+  "raw_query_log": {
+    "published": false,
+    "sha256": "6bd4178162e68b5627fcf717ffcae1a7e97da6e1cbf0807a9e1a2a180c995eae",
+    "disposition": "Retained in protected local evidence; external raw SQL publication rejected by automatic review"
+  },
+  "limits": [
+    "Not target MariaDB10.6",
+    "No authenticated or full historical lifecycle acceptance"
+  ]
+}
