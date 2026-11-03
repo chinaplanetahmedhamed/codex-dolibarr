@@ -1,0 +1,28 @@
+name: M121 Boards source regressions
+on:
+  pull_request:
+    paths:
+      - 'custom/chinaplanetoperations/js/boards.js'
+      - 'custom/chinaplanetoperations/css/boards.css'
+      - 'custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php'
+      - 'deploy/tests/test_m121_boards_ui.cjs'
+      - '.github/workflows/m121-boards-source.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m121-boards-source-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Syntax
+        run: |
+          php -l custom/chinaplanetoperations/class/InternalTaskBoardsService.class.php
+          node --check custom/chinaplanetoperations/js/boards.js
+      - name: Synthetic DOM and read projection
+        run: node deploy/tests/test_m121_boards_ui.cjs
