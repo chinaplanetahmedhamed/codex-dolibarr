@@ -15,6 +15,7 @@ cpcc_portal_require_access($user);
 $scope = cpcc_portal_user_scope($user);
 $is_external = !empty($scope['is_external']);
 $socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
+if (!$is_external && GETPOSTINT('socid') > 0 && $socid <= 0) accessforbidden();
 $statusFilter = GETPOST('status', 'alpha') === 'active' ? 'active' : '';
 $action = GETPOST('action', 'aZ09');
 $canadmin = (!empty($user->admin) || $user->hasRight('chinaplanetcustomercenter', 'admin'));
@@ -32,8 +33,19 @@ $activeProjectsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/projects
 $allProjectsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/projects.php', $is_external, $socid);
 
 $syncSummary = null;
-if (!$is_external && $canadmin && $action === 'syncprojectcards') {
+if ($action === 'syncprojectcards') {
+    if ($is_external || !$canadmin) accessforbidden();
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        header('Allow: POST');
+        exit(dol_escape_htmltag(cpcc_ui_t('UIProjectsSyncPostRequired')));
+    }
+    $syncToken = GETPOST('token', 'alphanohtml');
+    if ($syncToken === '' || !hash_equals((string) currentToken(), (string) $syncToken)) accessforbidden();
     $syncSummary = cpcc_project_sync_existing_cards($db, $user, $socid);
+    setEventMessages(cpcc_ui_t('UIProjectsSyncCompleted').' '.cpcc_ui_t('UIProjectsCreated').': '.(int)$syncSummary['created'].', '.cpcc_ui_t('UIProjectsUpdated').': '.(int)$syncSummary['updated'].', '.cpcc_ui_t('UIProjectsErrors').': '.(int)$syncSummary['errors'], null, !empty($syncSummary['errors']) ? 'errors' : 'mesgs');
+    header('Location: '.($statusFilter === 'active' ? $activeProjectsUrl : $allProjectsUrl), true, 303);
+    exit;
 }
 
 $projectCss = array(
@@ -42,82 +54,48 @@ $projectCss = array(
 );
 if ($is_external) $projectCss[] = '/custom/cpkanban/css/board.css?v=20260718-m010';
 else $projectCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
-llxHeader('', 'Projects / المشاريع', '', '', 0, 0,
+llxHeader('', cpcc_ui_t('UIProjects53e89'), '', '', 0, 0,
     $is_external ? array('/custom/cpkanban/js/board.js?v=20260718-m010') : array(),
     $projectCss);
 if($is_external) cpcc_portal_navigation($user, 'projects');
-else cpcc_admin_shell_open('portal','Projects / المشاريع','كل مشاريع العملاء والمشاريع النشطة في عرض واحد','fa-project-diagram',array('socid'=>$socid));
+else cpcc_admin_shell_open('portal',cpcc_ui_t('UIProjects53e89'),cpcc_ui_t('UICustomerProjectsAndActiveWorkInOneView86682'),'fa-project-diagram',array('socid'=>$socid));
 
 print '<main class="cpcc-dashboard cpcc-projects-page" dir="rtl">';
 print '<header class="cpcc-page-head"><div>';
-print '<span class="cpcc-eyebrow">CUSTOMER PROJECTS</span>';
-print '<h1>المشاريع / Projects</h1>';
-print '<p>تابع حالة مشاريعك وتواريخها وتفاصيلها ونسبة التقدم في مكان واحد. / Follow project status, dates, details, and progress in one place.</p>';
+print '<span class="cpcc-eyebrow">'.dol_escape_htmltag(cpcc_ui_t('UIProjectsEyebrow')).'</span>';
+print '<h1>' . dol_escape_htmltag(cpcc_ui_t('UIProjects53e89')) . '</h1>';
+print '<p>' . dol_escape_htmltag(cpcc_ui_t('UIFollowProjectStatusDatesDetailsAndProgressInOneP4d1bd')) . '</p>';
 print '</div></header>';
-print '<nav class="cpcc-project-view-cards" aria-label="Project views">';
-print '<a class="cpcc-project-view'.($statusFilter === 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($activeProjectsUrl).'"><span>المشاريع النشطة</span><strong>'.(int)$projectsActive.'</strong><small>Active projects</small></a>';
-print '<a class="cpcc-project-view'.($statusFilter !== 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($allProjectsUrl).'"><span>كل المشاريع</span><strong>'.(int)$projectsTotal.'</strong><small>All projects</small></a>';
+print '<nav class="cpcc-project-view-cards" aria-label="'.dol_escape_htmltag(cpcc_ui_t('UIProjectViews')).'">';
+print '<a class="cpcc-project-view'.($statusFilter === 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($activeProjectsUrl).'"><span>'.dol_escape_htmltag(cpcc_ui_t('UIProjectsActiveView')).'</span><strong>'.(int)$projectsActive.'</strong></a>';
+print '<a class="cpcc-project-view'.($statusFilter !== 'active' ? ' active' : '').'" href="'.dol_escape_htmltag($allProjectsUrl).'"><span>'.dol_escape_htmltag(cpcc_ui_t('UIProjectsAllView')).'</span><strong>'.(int)$projectsTotal.'</strong></a>';
 print '</nav>';
 
 if ($is_external && $socid <= 0) {
-    print '<div class="warning">No linked customer account was found for this portal user.</div>';
+    print '<div class="warning">'.dol_escape_htmltag(cpcc_ui_t('UIProjectsNoLinkedCustomer')).'</div>';
 } else {
-    $projectIds = array();
-    $syncScopeSql = "SELECT rowid FROM ".MAIN_DB_PREFIX."projet WHERE entity IN (".getEntity('project').")";
-    if ($socid > 0) {
-        $syncScopeSql .= " AND fk_soc = ".(int) $socid;
-    } elseif ($is_external) {
-        $syncScopeSql .= " AND fk_soc = ".(int) $socid;
-    }
-    if ($statusFilter === 'active') $syncScopeSql .= " AND fk_statut=1";
-    $syncScopeSql .= " ORDER BY rowid ASC";
-    $syncRes = $db->query($syncScopeSql);
-    if ($syncRes) {
-        while ($syncRow = $db->fetch_object($syncRes)) {
-            $projectIds[] = (int) $syncRow->rowid;
-        }
-    }
-
-    $autoSyncCreated = 0;
-    $autoSyncUpdated = 0;
-    $autoSyncSkipped = 0;
-    $autoSyncErrors = 0;
+    // Browsing projects must never create or modify Kanban records.
     if (!$is_external) {
-        foreach ($projectIds as $projectId) {
-            $project = new Project($db);
-            if ($project->fetch($projectId) <= 0) {
-                $autoSyncErrors++;
-                continue;
-            }
-            $sync = cpcc_project_sync_kanban_card($db, $project, $user, 'modify');
-            if (!empty($sync['action']) && $sync['action'] === 'created') $autoSyncCreated++;
-            elseif (!empty($sync['action']) && $sync['action'] === 'updated') $autoSyncUpdated++;
-            else $autoSyncSkipped++;
+        print '<form method="GET" action="'.dol_escape_htmltag($_SERVER['PHP_SELF']).'" style="margin-bottom:12px;">';
+        print '<label for="cpcc-project-customer">'.dol_escape_htmltag(cpcc_ui_t('UISelectCustomer')).'</label> ';
+        print '<select id="cpcc-project-customer" name="socid"><option value="0">'.dol_escape_htmltag(cpcc_ui_t('UIAllCustomers')).'</option>';
+        $customerList = $db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (".getEntity('societe').") AND status=1 AND client IN (1,3) ORDER BY nom");
+        while ($customerList && ($customer = $db->fetch_object($customerList))) {
+            print '<option value="'.(int)$customer->rowid.'"'.((int)$customer->rowid === $socid ? ' selected' : '').'>'.dol_escape_htmltag($customer->nom).'</option>';
         }
-    }
-
-    if (!empty($syncSummary) && !$is_external) {
-        print '<div class="info">';
-        print 'Kanban sync completed. Created: '.(int) $syncSummary['created'].', updated: '.(int) $syncSummary['updated'].', skipped: '.(int) $syncSummary['skipped'].', errors: '.(int) $syncSummary['errors'];
-        if (!empty($syncSummary['details'])) {
-            print '<br>'.dol_escape_htmltag(implode(' | ', array_slice($syncSummary['details'], 0, 6)));
-        }
-        print '</div>';
-    } elseif (($autoSyncCreated || $autoSyncUpdated) && !$is_external) {
-        print '<div class="info">';
-        print 'Auto sync refreshed cards. Created: '.(int) $autoSyncCreated.', updated: '.(int) $autoSyncUpdated.', skipped: '.(int) $autoSyncSkipped.', errors: '.(int) $autoSyncErrors;
-        print '</div>';
-    }
-
-    if (!$is_external) {
-        print '<form method="GET" action="'.$_SERVER['PHP_SELF'].'" style="margin-bottom:12px;">';
-        print '<input type="text" class="flat" name="socid" value="'.dol_escape_htmltag(GETPOSTINT('socid')).'" placeholder="Customer ID filter">';
+        print '</select>';
+        if (!$customerList) print '<span class="error" role="alert">'.dol_escape_htmltag(cpcc_ui_t('UICustomerLoadFailed')).'</span>';
+        if (cpcc_ui_language_parameter() !== '') print '<input type="hidden" name="lang" value="'.dol_escape_htmltag(cpcc_ui_language_parameter()).'">';
         if ($statusFilter === 'active') print '<input type="hidden" name="status" value="active">';
-        print ' <input type="submit" class="button" value="Filter">';
-        if ($canadmin) {
-            print ' <button class="button button-save" type="submit" name="action" value="syncprojectcards">Sync project cards</button>';
-        }
+        print ' <input type="submit" class="button" value="'.dol_escape_htmltag(cpcc_ui_t('UIProjectsFilter')).'">';
         print '</form>';
+        if ($canadmin) {
+            print '<form method="POST" action="'.dol_escape_htmltag($_SERVER['PHP_SELF'].(cpcc_ui_language_parameter() !== '' ? '?lang='.rawurlencode(cpcc_ui_language_parameter()) : '')).'" style="margin-bottom:12px;">';
+            print '<input type="hidden" name="token" value="'.newToken().'">';
+            print '<input type="hidden" name="socid" value="'.(int)$socid.'">';
+            if ($statusFilter === 'active') print '<input type="hidden" name="status" value="active">';
+            print '<button class="button button-save" type="submit" name="action" value="syncprojectcards">' . dol_escape_htmltag(cpcc_ui_t('UISyncProjectCardsa5d29')) . '</button></form>';
+        }
     }
 
     $sql = "SELECT p.rowid, p.ref, p.title, p.description, p.datec, p.dateo, p.datee, p.fk_statut as status, p.fk_soc, s.nom as customer_name, COALESCE(t.nb_tasks,0) as nb_tasks,";
@@ -149,36 +127,40 @@ if ($is_external && $socid <= 0) {
     print '<table class="noborder centpercent">';
     print '<tr class="liste_titre">';
     if ($is_external) {
-        print '<th>المشروع / Project</th><th>الحالة / Status</th><th>التواريخ / Dates</th><th>التفاصيل / Details</th><th>التقدم / Progress</th>';
+        print '<th>' . dol_escape_htmltag(cpcc_ui_t('UIProjectf6f4d')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIStatusbae7d')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIDates842b7')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIDetailsdc3de')) . '</th><th>' . dol_escape_htmltag(cpcc_ui_t('UIProgress1b902')) . '</th>';
     } else {
-        print '<th>Project</th><th>Customer</th><th>Status</th><th>Dates</th><th>Tasks</th><th>Details</th><th>Kanban sync</th><th>Progress</th>';
+        print '<th>'.dol_escape_htmltag(cpcc_ui_t('UIProjectf6f4d')).'</th><th>'.dol_escape_htmltag(cpcc_ui_t('UIProjectsCustomer')).'</th><th>'.dol_escape_htmltag(cpcc_ui_t('UIStatusbae7d')).'</th><th>'.dol_escape_htmltag(cpcc_ui_t('UIDates842b7')).'</th><th>'.dol_escape_htmltag(cpcc_ui_t('UIProjectsTasks')).'</th><th>'.dol_escape_htmltag(cpcc_ui_t('UIDetailsdc3de')).'</th><th>'.dol_escape_htmltag(cpcc_ui_t('UIProjectsKanbanSync')).'</th><th>'.dol_escape_htmltag(cpcc_ui_t('UIProgress1b902')).'</th>';
     }
     print '</tr>';
 
-    if (empty($rows)) {
-        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="center opacitymedium">لا توجد مشاريع / No projects found.</td></tr>';
+    if (!$resql) {
+        dol_syslog('M084 projects list query failed: '.$db->lasterror(), LOG_ERR);
+        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="error" role="alert">' . dol_escape_htmltag(cpcc_ui_t('UIProjectsCouldNotBeLoaded1f4d7')) . '</td></tr>';
+    } elseif (empty($rows)) {
+        print '<tr><td colspan="'.($is_external ? '5' : '8').'" class="center opacitymedium">' . dol_escape_htmltag(cpcc_ui_t('UINoProjectsFoundca787')) . '</td></tr>';
     } else {
         foreach ($rows as $row) {
-            $statusLabel = cpcc_project_status_label($row->status);
+            $statusKeys = array(0=>'UIProjectsStatusDraft', 1=>'UIProjectsStatusValidated', 2=>'UIProjectsStatusClosed');
+            $statusLabel = dol_escape_htmltag(cpcc_ui_t($statusKeys[(int)$row->status] ?? 'UIProjectsStatusUnknown'));
             $dateRange = array();
-            if (!empty($row->dateo)) $dateRange[] = 'Start '.dol_print_date($row->dateo, 'day');
-            if (!empty($row->datee)) $dateRange[] = 'End '.dol_print_date($row->datee, 'day');
-            if (empty($dateRange) && !empty($row->datec)) $dateRange[] = 'Created '.dol_print_date($row->datec, 'day');
+            if (!empty($row->dateo)) $dateRange[] = dol_escape_htmltag(cpcc_ui_t('UIProjectsStart')).' '.cpcc_portal_date($row->dateo, 'day');
+            if (!empty($row->datee)) $dateRange[] = dol_escape_htmltag(cpcc_ui_t('UIProjectsEnd')).' '.cpcc_portal_date($row->datee, 'day');
+            if (empty($dateRange) && !empty($row->datec)) $dateRange[] = dol_escape_htmltag(cpcc_ui_t('UIProjectsCreated')).' '.cpcc_portal_date($row->datec, 'day');
             $taskCount = !empty($row->nb_tasks) ? (int) $row->nb_tasks : 0;
             $details = array();
             if (!empty($row->description)) $details[] = dol_trunc($row->description, 120);
             if (!$is_external && !empty($row->card_id)) {
-                $details[] = 'Kanban: '.dol_escape_htmltag($row->card_title ?: 'card');
+                $details[] = cpcc_ui_t('UIProjectsKanbanLabel').': '.dol_escape_htmltag($row->card_title ?: cpcc_ui_t('UIProjectsCard'));
             }
 
             $cardLabel = '-';
             if (!empty($row->card_id)) {
-                $cardLabel = 'Card #'.(int) $row->card_id;
+                $cardLabel = dol_escape_htmltag(cpcc_ui_t('UIProjectsCard')).' #'.(int) $row->card_id;
                 if (!empty($row->column_label)) {
                     $cardLabel .= ' / '.dol_escape_htmltag($row->column_label);
                 }
             } elseif (!$is_external && $canadmin) {
-                $cardLabel = 'Missing - will be created on sync';
+                $cardLabel = dol_escape_htmltag(cpcc_ui_t('UIProjectsMissingSync'));
             }
 
             $progress = !empty($row->card_progress) ? (int) $row->card_progress : ((int) $row->status === 2 ? 100 : ((int) $row->status === 1 ? 55 : 5));
@@ -196,7 +178,7 @@ if ($is_external && $socid <= 0) {
             print '<strong><a'.$projectLinkClass.$projectLinkData.' href="'.dol_escape_htmltag($projectUrl).'">'.dol_escape_htmltag($row->ref).'</a></strong><br>';
             print dol_escape_htmltag($row->title ?: '');
             if (!$is_external && !empty($row->rowid) && $user->hasRight('projet', 'lire')) {
-                print '<br><a target="_blank" rel="noopener" href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int) $row->rowid.'">Vision Advanced / السجل المتقدم ↗</a>';
+                print '<br><a target="_blank" rel="noopener" href="'.dol_buildpath('/projet/card.php', 1).'?id='.(int) $row->rowid.'">' . dol_escape_htmltag(cpcc_ui_t('UIVisionAdvanced5e123')) . '</a>';
             }
             print '</td>';
             if (!$is_external) print '<td>'.dol_escape_htmltag($row->customer_name ?: '-').'</td>';
@@ -212,8 +194,8 @@ if ($is_external && $socid <= 0) {
     print '</table>';
     if ($is_external) {
         print '<dialog id="cpk-card-dialog" class="cpk-card-dialog" aria-labelledby="cpk-card-dialog-title">';
-        print '<div class="cpk-dialog-head"><strong id="cpk-card-dialog-title">مركز متابعة المشروع / Project Command Center</strong><button type="button" class="cpk-dialog-close" aria-label="إغلاق تفاصيل المشروع">×</button></div>';
-        print '<iframe class="cpk-dialog-frame" title="تفاصيل بطاقة المشروع"></iframe></dialog></div>';
+        print '<div class="cpk-dialog-head"><strong id="cpk-card-dialog-title">' . dol_escape_htmltag(cpcc_ui_t('UIProjectCommandCenter54539')) . '</strong><button type="button" class="cpk-dialog-close" aria-label="'.dol_escape_htmltag(cpcc_ui_t('UIProjectsCloseDetails')).'">×</button></div>';
+        print '<iframe class="cpk-dialog-frame" title="'.dol_escape_htmltag(cpcc_ui_t('UIProjectsFrameTitle')).'"></iframe></dialog></div>';
     }
 }
 

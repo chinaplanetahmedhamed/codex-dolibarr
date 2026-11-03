@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../../chinaplanetcustomercenter/lib/ui.lib.php';
 /**
  * Library for China Planet Kanban
  */
@@ -26,9 +27,9 @@ function cpkanban_user_context($user)
 function cpkanban_priority($p)
 {
     $map = array(
-        'high' => array('label' => 'أولوية عالية', 'cls' => 'pri-high'),
-        'med'  => array('label' => 'متوسطة',       'cls' => 'pri-med'),
-        'low'  => array('label' => 'منخفضة',       'cls' => 'pri-low'),
+        'high' => array('label' => cpcc_ui_english_label('High priority', 'أولوية عالية'), 'cls' => 'pri-high'),
+        'med'  => array('label' => cpcc_ui_english_label('Medium', 'متوسطة'),       'cls' => 'pri-med'),
+        'low'  => array('label' => cpcc_ui_english_label('Low', 'منخفضة'),       'cls' => 'pri-low'),
     );
     return isset($map[$p]) ? $map[$p] : $map['med'];
 }
@@ -39,9 +40,9 @@ function cpkanban_priority($p)
 function cpkanban_shipment_status($s)
 {
     $labels = array(
-        0 => 'استعلام', 1 => 'تأكيد الحجز', 8 => 'تم التحميل ومتجهة لجمارك التصدير',
-        9 => 'اكتمل تخليص التصدير', 2 => 'على متن السفينة', 3 => 'وصلت الميناء',
-        4 => 'تخليص جمركي', 5 => 'تم التخليص', 6 => 'تم التسليم', 7 => 'مغلقة',
+        0 => cpcc_ui_english_label('Inquiry', 'استعلام'), 1 => cpcc_ui_english_label('Booking confirmed', 'تأكيد الحجز'), 8 => cpcc_ui_english_label('Loaded; heading to export customs', 'تم التحميل ومتجهة لجمارك التصدير'),
+        9 => cpcc_ui_english_label('Export clearance complete', 'اكتمل تخليص التصدير'), 2 => cpcc_ui_english_label('On board vessel', 'على متن السفينة'), 3 => cpcc_ui_english_label('Arrived at port', 'وصلت الميناء'),
+        4 => cpcc_ui_english_label('Customs clearance', 'تخليص جمركي'), 5 => cpcc_ui_english_label('Customs cleared', 'تم التخليص'), 6 => cpcc_ui_english_label('Delivered', 'تم التسليم'), 7 => cpcc_ui_english_label('Closed', 'مغلقة'),
     );
     return isset($labels[$s]) ? $labels[$s] : '-';
 }
@@ -187,4 +188,21 @@ function cpkanban_money($amount)
 function cpkanban_customer_url($path)
 {
     return dol_buildpath($path, 1);
+}
+
+/** Translate known upload feedback at the view boundary; preserve unknown errors. */
+function cpkanban_upload_error_label($error)
+{
+    $labels = array(
+        'لم يتم استلام صورة صالحة.' => 'No valid image was received.',
+        'فشل رفع الصورة.' => 'The image upload failed.',
+        'يجب ألا يتجاوز حجم الصورة 5MB.' => 'The image must be no larger than 5 MB.',
+        'الأنواع المسموحة: JPG وPNG وWebP فقط.' => 'Allowed image types: JPG, PNG and WebP.',
+        'محتوى الملف ليس صورة صالحة.' => 'The file does not contain a valid image.',
+        'تعذر إنشاء مجلد الصورة الآمن.' => 'Unable to create the secure image folder.',
+        'تعذر حفظ الصورة.' => 'Unable to save the image.',
+        'تعذر استبدال صورة الغلاف.' => 'Unable to replace the cover image.',
+        'تعذر تسجيل صورة الغلاف.' => 'Unable to register the cover image.',
+    );
+    return cpcc_ui_english_label(isset($labels[$error]) ? $labels[$error] : $error, $error);
 }

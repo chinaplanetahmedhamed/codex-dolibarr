@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lib/ui.lib.php';
 define('CSRFCHECK_WITH_TOKEN', 1);
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 
@@ -32,7 +33,7 @@ $candelete = (!$is_external && ($user->admin || $user->hasRight('chinaplanetcust
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
 $form = new Form($db);
 $customer_options = array();
-$commercial_documents = (!$is_external && $socid > 0) ? cpcc_export_documents($db, $socid, 0, 0, true) : array();
+$commercial_documents = $socid > 0 ? cpcc_export_documents($db, $socid, 0, 0, $is_external) : array();
 if (!$is_external) {
     $res_customers=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");
     if($res_customers) while($customer=$db->fetch_object($res_customers)) $customer_options[(int)$customer->rowid]=$customer->nom;
@@ -44,6 +45,7 @@ $sql_ship_options = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.fk_soc, s
     . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
     . " WHERE t.entity=".(int) $conf->entity
     . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
+    . ($is_external ? " AND t.customer_visible=1" : "")
     . " ORDER BY t.rowid DESC";
 $res_ship_options = $db->query($sql_ship_options);
 if ($res_ship_options) {
@@ -106,20 +108,20 @@ $pageCss = array(
     cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/documents.css'),
 );
 if (!$is_external) $pageCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
-llxHeader('', 'Documents / المستندات', '', '', 0, 0, array(), $pageCss);
+llxHeader('', cpcc_ui_english_label('Documents', 'Documents / المستندات'), '', '', 0, 0, array(), $pageCss);
 if ($is_external) cpcc_portal_navigation($user, 'documents');
-else cpcc_admin_shell_open('documents', 'Documents / المستندات', 'إدارة المستندات التجارية وملفات الشحن المنشورة للعملاء', 'fa-folder-open', array('socid'=>$socid));
+else cpcc_admin_shell_open('documents', cpcc_ui_english_label('Documents', 'Documents / المستندات'), cpcc_ui_english_label('Manage commercial documents and shipment files published for customers.', 'إدارة المستندات التجارية وملفات الشحن المنشورة للعملاء'), 'fa-folder-open', array('socid'=>$socid));
 
-print '<main class="cpcc-dashboard cpcc-documents-page" dir="rtl">';
+print '<main class="cpcc-dashboard cpcc-documents-page" dir="'.cpcc_ui_english_label('ltr', 'rtl').'">';
 print '<header class="cpcc-page-head"><div>';
 print '<span class="cpcc-eyebrow">CUSTOMER DOCUMENTS</span>';
-print '<h1>المستندات / Documents</h1>';
-print '<p>'.($is_external ? 'مستندات وملفات الشحن المنشورة للعميل في مكان واحد. / Published shipment documents and gallery files in one place.' : 'المستندات التجارية وملفات الشحن المنشورة للعميل في مكان واحد. / Published commercial and shipment documents in one place.').'</p>';
+print cpcc_ui_english_label('<h1>Documents</h1>', '<h1>المستندات / Documents</h1>');
+print '<p>'.($is_external ? cpcc_ui_english_label('Published shipment documents and gallery files in one place.', 'مستندات وملفات الشحن المنشورة للعميل في مكان واحد. / Published shipment documents and gallery files in one place.') : cpcc_ui_english_label('Published commercial and shipment documents in one place.', 'المستندات التجارية وملفات الشحن المنشورة للعميل في مكان واحد. / Published commercial and shipment documents in one place.')).'</p>';
 print '</div></header>';
-if (!$is_external && $socid > 0) {
-    print '<section class="cpcc-commercial-documents"><div class="cpcc-section-head"><div><h2>المستندات التجارية / Commercial Documents</h2><p>Commercial invoices, packing lists, and other approved customer documents.</p></div><div class="cpcc-document-count"><span>Published</span><strong>'.count($commercial_documents).'</strong></div></div>';
+if ($socid > 0) {
+    print cpcc_ui_english_label('<section class="cpcc-commercial-documents"><div class="cpcc-section-head"><div><h2>Commercial Documents</h2><p>Commercial invoices, packing lists, and other approved customer documents.</p></div><div class="cpcc-document-count"><span>Published</span><strong>', '<section class="cpcc-commercial-documents"><div class="cpcc-section-head"><div><h2>المستندات التجارية / Commercial Documents</h2><p>Commercial invoices, packing lists, and other approved customer documents.</p></div><div class="cpcc-document-count"><span>Published</span><strong>').count($commercial_documents).'</strong></div></div>';
     if (empty($commercial_documents)) {
-        print '<div class="cpcc-empty">لا توجد مستندات تجارية منشورة لهذا العميل. / No published commercial documents.</div>';
+        print cpcc_ui_english_label('<div class="cpcc-empty">No published commercial documents.</div>', '<div class="cpcc-empty">لا توجد مستندات تجارية منشورة لهذا العميل. / No published commercial documents.</div>');
     } else {
         print '<div class="cpcc-document-grid">';
         foreach ($commercial_documents as $commercial_document) {
@@ -127,7 +129,7 @@ if (!$is_external && $socid > 0) {
             print '<a class="cpcc-document-card" href="'.dol_escape_htmltag($commercial_url).'">';
             print '<strong>'.dol_escape_htmltag($commercial_document->ref).'</strong>';
             print '<span class="cpcc-document-type"><i class="fas fa-file-alt" aria-hidden="true"></i>'.dol_escape_htmltag(cpcc_export_type_label($commercial_document->document_type)).'</span>';
-            print '<small><i class="fas fa-ship" aria-hidden="true"></i>'.dol_escape_htmltag($commercial_document->shipment_ref ?: 'غير مرتبط بشحنة / No related shipment').'</small>';
+            print '<small><i class="fas fa-ship" aria-hidden="true"></i>'.dol_escape_htmltag($commercial_document->shipment_ref ?: cpcc_ui_english_label('No related shipment', 'غير مرتبط بشحنة / No related shipment')).'</small>';
             print '</a>';
         }
         print '</div>';
@@ -144,14 +146,15 @@ if ($is_external && $socid <= 0) {
          . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
          . " WHERE t.entity=".(int) $conf->entity
          . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
+         . ($is_external ? " AND t.customer_visible=1" : "")
          . (!empty($search) ? " AND (t.ref LIKE '%".$db->escape($search)."%' OR t.container_no LIKE '%".$db->escape($search)."%' OR t.bl_no LIKE '%".$db->escape($search)."%')" : "")
          . " ORDER BY t.date_eta DESC, t.rowid DESC";
     $resql = $db->query($sql);
 
     print '<form method="GET" class="fright cpcc-documents-search">';
-    if (!$is_external) print Form::selectarray('socid',$customer_options,$socid,'كل العملاء / All customers',0,0,'aria-label="Customer / العميل"',0,0,0,'','minwidth250',1).' ';
-    print '<input type="text" name="search" class="flat" placeholder="الشحنة / الحاوية / البوليصة" aria-label="Shipment, container or BL / الشحنة أو الحاوية أو البوليصة" value="'.dol_escape_htmltag($search).'"> ';
-    print '<input type="submit" class="button" value="بحث / Search">';
+    if (!$is_external) print Form::selectarray('socid',$customer_options,$socid,cpcc_ui_english_label('All customers', 'كل العملاء / All customers'),0,0,cpcc_ui_english_label('aria-label="Customer"', 'aria-label="Customer / العميل"'),0,0,0,'','minwidth250',1).' ';
+    print cpcc_ui_english_label('<input type="text" name="search" class="flat" placeholder="Shipment / container / BL" aria-label="Shipment, container or BL" value="', '<input type="text" name="search" class="flat" placeholder="الشحنة / الحاوية / البوليصة" aria-label="Shipment, container or BL / الشحنة أو الحاوية أو البوليصة" value="').dol_escape_htmltag($search).'"> ';
+    print cpcc_ui_english_label('<input type="submit" class="button" value="Search">', '<input type="submit" class="button" value="بحث / Search">');
     print '</form>';
 
     if ($canwrite && !$is_external) {
@@ -159,11 +162,11 @@ if ($is_external && $socid <= 0) {
         print '<input type="hidden" name="token" value="'.newToken().'">';
         print '<input type="hidden" name="action" value="upload">';
         print '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
-        print '<label>الشحنة / Shipment <span class="opacitymedium">(بحث بالمرجع أو الحاوية أو البوليصة)</span><br>';
+        print cpcc_ui_english_label('<label>Shipment <span class="opacitymedium">(Search by reference, container or BL)</span><br>', '<label>الشحنة / Shipment <span class="opacitymedium">(بحث بالمرجع أو الحاوية أو البوليصة)</span><br>');
         print Form::selectarray('shipid', $ship_options, $shipid, 1, 0, 0, 'id="shipid" style="min-width:360px;max-width:100%"', 0, 0, 0, '', 'minwidth300 widthcentpercentminusx', 1);
         print '</label>';
         print '<input type="file" name="userfile" class="minwidth200">';
-        print '<input type="submit" class="button" value="رفع إلى الشحنة / Upload to Shipment">';
+        print cpcc_ui_english_label('<input type="submit" class="button" value="Upload to Shipment">', '<input type="submit" class="button" value="رفع إلى الشحنة / Upload to Shipment">');
         print '</div>';
         print '<div class="opacitymedium" style="margin-top:6px">Upload the file to the shipment folder used by the customer portal.</div>';
         print '</form>';
@@ -173,7 +176,7 @@ if ($is_external && $socid <= 0) {
     if ($is_external) {
         print '<thead><tr class="liste_titre cpcc-mobile-header-row"><th>'.$langs->trans('CPLGalleryShipment').'</th><th>'.$langs->trans('CPLGalleryContainer').'</th><th>'.$langs->trans('CPLGalleryBillOfLading').'</th><th>'.$langs->trans('CPLGalleryEta').'</th><th>'.$langs->trans('CPLShipmentFilesColumn').'</th><th>'.$langs->trans('CPLGalleryAction').'</th></tr></thead><tbody>';
     } else {
-        print '<tr class="liste_titre"><th>رقم / ID</th><th>الشحنة / Shipment</th><th>العميل / Customer</th><th>الحاوية / Container</th><th>البوليصة / BL</th><th>الوصول / ETA</th><th>الحالة / Status</th><th>المستندات / Documents</th><th>الإجراءات / Actions</th></tr>';
+        print cpcc_ui_english_label('<tr class="liste_titre"><th>ID</th><th>Shipment</th><th>Customer</th><th>Container</th><th>BL</th><th>ETA</th><th>Status</th><th>Documents</th><th>Actions</th></tr>', '<tr class="liste_titre"><th>رقم / ID</th><th>الشحنة / Shipment</th><th>العميل / Customer</th><th>الحاوية / Container</th><th>البوليصة / BL</th><th>الوصول / ETA</th><th>الحالة / Status</th><th>المستندات / Documents</th><th>الإجراءات / Actions</th></tr>');
     }
     if ($resql && $db->num_rows($resql) > 0) {
         while ($obj = $db->fetch_object($resql)) {
@@ -253,7 +256,7 @@ if ($is_external && $socid <= 0) {
             print '</tr>';
         }
     } else {
-        print '<tr><td colspan="'.($is_external ? '6' : '9').'" class="opacitymedium center" data-cpcc-empty-row="1">'.dol_escape_htmltag($is_external ? $langs->trans('CPLGalleryNoShipments') : 'لا توجد شحنات أو مستندات / No shipments with documents found.').'</td></tr>';
+        print '<tr><td colspan="'.($is_external ? '6' : '9').'" class="opacitymedium center" data-cpcc-empty-row="1">'.dol_escape_htmltag($is_external ? $langs->trans('CPLGalleryNoShipments') : cpcc_ui_english_label('No shipments with documents found.', 'لا توجد شحنات أو مستندات / No shipments with documents found.')).'</td></tr>';
     }
     if ($is_external) print '</tbody>';
     print '</table>';

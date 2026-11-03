@@ -18,6 +18,17 @@ function cpcc_admin_finance_project_ok($db,$socid,$projectid)
     $r=$db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."projet WHERE rowid=".(int)$projectid." AND fk_soc=".(int)$socid);
     return $r && $db->num_rows($r)>0;
 }
+function cpcc_admin_finance_target($db,$entity,$socid,$projectid,$value)
+{
+    if ($value === '') return array('type'=>'','id'=>0);
+    if (!preg_match('/^(operation|shipment|project|customer_invoice):([1-9][0-9]*)$/',$value,$match)) return null;
+    $map=array('operation'=>array('cpo_operation','fk_project'),'shipment'=>array('chinaplanetlogistics','fk_project'),'project'=>array('projet','rowid'),'customer_invoice'=>array('facture','fk_projet'));
+    $type=$match[1];$id=(int)$match[2];$def=$map[$type];
+    $sql="SELECT rowid,".$def[1]." fk_project FROM ".MAIN_DB_PREFIX.$def[0]." WHERE entity=".(int)$entity." AND rowid=".$id." AND fk_soc=".(int)$socid." LIMIT 1";
+    $res=$db->query($sql);$row=$res?$db->fetch_object($res):null;
+    if(!$row||($projectid>0&&(int)$row->fk_project!==$projectid)) return null;
+    return array('type'=>$type,'id'=>$id);
+}
 function cpcc_admin_insert_entry($db,$entity,$userid,$data)
 {
     $values=array(
@@ -66,6 +77,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         $amount=price2num(GETPOST('amount','alphanohtml')); $currency=cpcc_financial_currency(GETPOST('currency','alpha'),''); $type=GETPOST('entry_type','alpha');
         $creditTypes=array('opening_balance'); $direction=in_array($type,$creditTypes,true)?'C':'D';
         $sourceType=''; $sourceId=0;
+        $target=cpcc_admin_finance_target($db,(int)$conf->entity,$socid,$projectid,GETPOST('finance_target','alphanohtml'));
+        if($target===null){setEventMessages('Financial target does not belong to this customer/project.',null,'errors');$amount=0;}
+        elseif(!empty($target['id'])){$sourceType=$target['type'];$sourceId=$target['id'];}
         if(in_array($type,array('customer_receipt','invoice_allocation'),true)){
             setEventMessages('Customer receipts and invoice allocations are read automatically from Dolibarr. Do not enter them manually.',null,'errors');
             $amount=0;
@@ -97,45 +111,47 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     }
 }
 
-llxHeader('', 'Customer Finance / حسابات العملاء', '', '', 0, 0, array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/js/admin_financial.js')), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('financial', 'Finance Allocation Center / مركز تخصيص الأموال', 'تخصيص الرصيد والاستثناءات التشغيلية مع بقاء Dolibarr المصدر المحاسبي', 'fa-wallet', array('socid'=>$selectedSocid,'projectid'=>$selectedProjectid));
-print '<div class="info">دفعات العملاء والدفعات المقدمة واستهلاكها تُقرأ تلقائياً من Dolibarr. استخدم هذه الصفحة فقط للأرصدة الافتتاحية، والتسويات، والمصروفات التشغيلية، وتحويل العملة، والالتزامات التي لا ينشئها Dolibarr تلقائياً. / Customer receipts, down payments and their consumption are imported automatically from Dolibarr.</div>';
-print '<p class="cpcc-statement-row"><a class="cpcc-statement-button" href="'.dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1).'"><span class="fas fa-chart-pie"></span> العودة إلى المركز المالي / Back to Financial Center</a></p>';
+llxHeader('', 'Customer Finance', '', '', 0, 0, array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/js/admin_financial.js')), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
+cpcc_admin_shell_open('financial', 'Finance Allocation Center', 'Allocate funds and manage operational exceptions while Dolibarr remains the accounting source.', 'fa-wallet', array('socid'=>$selectedSocid,'projectid'=>$selectedProjectid));
+print '<div class="info">Customer receipts, deposits and their consumption are read automatically from Dolibarr. Use this page only for opening balances, adjustments, operational expenses, currency conversions and commitments not created automatically by Dolibarr.</div>';
+print '<p class="cpcc-statement-row"><a class="cpcc-statement-button" href="'.dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1).'"><span class="fas fa-chart-pie"></span> Back to Financial Center</a></p>';
 $customerOptions=array();$res=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");if($res)while($o=$db->fetch_object($res))$customerOptions[(int)$o->rowid]=$o->nom;
 $projectOptions=array();if($selectedSocid>0){$res=$db->query("SELECT rowid,ref,title FROM ".MAIN_DB_PREFIX."projet WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid." ORDER BY ref DESC");if($res)while($o=$db->fetch_object($res))$projectOptions[(int)$o->rowid]=$o->ref.' — '.$o->title;}
+$financeTargetOptions=array();if($selectedSocid>0){foreach(array('operation'=>array('cpo_operation','ref','fk_project'),'shipment'=>array('chinaplanetlogistics','ref','fk_project'),'project'=>array('projet','ref','rowid'),'customer_invoice'=>array('facture','ref','fk_projet')) as $type=>$def){$sql="SELECT rowid,".$def[1]." label FROM ".MAIN_DB_PREFIX.$def[0]." WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid.($selectedProjectid>0?" AND ".$def[2]."=".$selectedProjectid:'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$financeTargetOptions[$type.':'.(int)$o->rowid]=ucfirst(str_replace('_',' ',$type)).' · '.$o->label;}}
 $chargeOptions=array();if($selectedSocid>0&&cpcc_financial_schema_ready($db)){$sql="SELECT rowid,label,reference,currency_code,amount FROM ".MAIN_DB_PREFIX."cpcc_project_charge WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid." AND status=1".($selectedProjectid>0?" AND fk_project=".$selectedProjectid:'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$chargeOptions[(int)$o->rowid]=$o->label.' — '.cpcc_portal_money($o->amount).' '.$o->currency_code.' — '.$o->reference;}
 $invoiceOptions=array();if($selectedSocid>0){$sql="SELECT rowid,ref,multicurrency_code,multicurrency_total_ttc,total_ttc FROM ".MAIN_DB_PREFIX."facture WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid.($selectedProjectid>0?" AND (fk_projet IS NULL OR fk_projet=".$selectedProjectid.")":'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$invoiceOptions[(int)$o->rowid]=$o->ref.' — '.cpcc_portal_money(!empty($o->multicurrency_code)?$o->multicurrency_total_ttc:$o->total_ttc).' '.cpcc_financial_currency($o->multicurrency_code,!empty($conf->currency)?$conf->currency:'USD');}
 $today=date('Y-m-d');
 ?>
 <form method="get" class="cpad-context-form"><div class="cpad-context-fields">
-<label><span>العميل / Customer</span><?php echo Form::selectarray('socid',$customerOptions,$selectedSocid,'ابحث باسم العميل',0,0,'',0,0,0,'','minwidth300',1); ?></label>
-<label><span>المشروع / Project</span><?php echo Form::selectarray('projectid',$projectOptions,$selectedProjectid,'اختر المشروع أو اتركه عاماً',0,0,'',0,0,0,'','minwidth300',1); ?></label>
-<button class="button" type="submit">Load / عرض</button>
+<label><span>Customer</span><?php echo Form::selectarray('socid',$customerOptions,$selectedSocid,'Search by customer name',0,0,'',0,0,0,'','minwidth300',1); ?></label>
+<label><span>Project</span><?php echo Form::selectarray('projectid',$projectOptions,$selectedProjectid,'Choose a project or leave it unassigned',0,0,'',0,0,0,'','minwidth300',1); ?></label>
+<button class="button" type="submit">Load</button>
 </div></form><br>
-<?php if($selectedSocid<=0){ ?><div class="info">اختر العميل أولاً حتى تُسجل الحركات على الحساب الصحيح.</div><?php } ?>
+<?php if($selectedSocid<=0){ ?><div class="info">Choose the customer first so entries are recorded against the correct account.</div><?php } ?>
 <div class="fichecenter"><div class="fichehalfleft"><div class="underbanner clearboth"></div>
 <form method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="addentry"><input type="hidden" name="socid" value="<?php echo $selectedSocid; ?>"><input type="hidden" name="projectid" value="<?php echo $selectedProjectid; ?>">
-<table class="border centpercent"><tr><td colspan="2"><b>تسوية أو مصروف استثنائي / Manual exception or expense</b></td></tr>
-<tr><td>العميل / المشروع / Customer / Project</td><td><b><?php echo dol_escape_htmltag(isset($customerOptions[$selectedSocid])?$customerOptions[$selectedSocid]:'—'); ?></b><br><span class="opacitymedium"><?php echo dol_escape_htmltag(isset($projectOptions[$selectedProjectid])?$projectOptions[$selectedProjectid]:'General customer wallet'); ?></span></td></tr>
-<tr><td>التاريخ / Date</td><td><input required type="date" name="date" aria-label="Receipt date" value="<?php echo $today; ?>"></td></tr>
-<tr><td>النوع / Type</td><td><select id="cpcc-entry-type" name="entry_type" aria-label="Financial entry type"><?php foreach(array('opening_balance','supplier_payment','shipping','commission','cargox','dhl','inspection','service','other','adjustment') as $type) print '<option value="'.$type.'">'.dol_escape_htmltag(cpcc_financial_type_label($type)).'</option>'; ?></select></td></tr>
-<tr><td>الاتجاه / Direction</td><td><output id="cpcc-direction-output" class="cpcc-direction">دائن / Credit (+)</output> <span class="opacitymedium">يُحدد تلقائياً حسب نوع الحركة / Automatically determined by entry type</span></td></tr>
-<tr><td>الوصف / Description</td><td><input required class="minwidth300" name="description" aria-label="Receipt or expense description"></td></tr><tr><td>المبلغ / العملة / Amount / Currency</td><td><input required name="amount" inputmode="decimal" aria-label="Receipt or expense amount"> <input required size="4" maxlength="3" name="currency" aria-label="Receipt or expense currency" placeholder="USD"></td></tr>
-<tr><td>الالتزام / المخصص / Commitment / Allocated</td><td><?php echo Form::selectarray('chargeid',$chargeOptions,0,'بدون تخصيص / Not allocated',0,0,'aria-label="Project commitment"',0,0,0,'','minwidth300',1); ?> <input name="allocated_amount" inputmode="decimal" aria-label="Amount allocated to commitment" placeholder="المبلغ بعملة الالتزام"></td></tr>
-<tr><td>المرجع / البنك / Reference / Bank</td><td><input name="reference" aria-label="Payment reference"> <input name="bank_label" aria-label="Bank label"></td></tr><tr><td>ظاهر للعميل / Customer visible</td><td><input type="checkbox" name="customer_visible" value="1" aria-label="Visible to customer" checked></td></tr>
-<tr><td></td><td><button class="button button-save" type="submit">حفظ الحركة</button></td></tr></table></form>
+<table class="border centpercent"><tr><td colspan="2"><b>Manual exception or expense</b></td></tr>
+<tr><td>Customer / Project</td><td><b><?php echo dol_escape_htmltag(isset($customerOptions[$selectedSocid])?$customerOptions[$selectedSocid]:'—'); ?></b><br><span class="opacitymedium"><?php echo dol_escape_htmltag(isset($projectOptions[$selectedProjectid])?$projectOptions[$selectedProjectid]:'General customer wallet'); ?></span></td></tr>
+<tr><td>Date</td><td><input required type="date" name="date" aria-label="Receipt date" value="<?php echo $today; ?>"></td></tr>
+<tr><td>Type</td><td><select id="cpcc-entry-type" name="entry_type" aria-label="Financial entry type"><?php foreach(array('opening_balance','supplier_payment','shipping','commission','cargox','dhl','inspection','service','other','adjustment') as $type) print '<option value="'.$type.'">'.dol_escape_htmltag(cpcc_financial_type_label($type)).'</option>'; ?></select></td></tr>
+<tr><td>Direction</td><td><output id="cpcc-direction-output" class="cpcc-direction">Credit (+)</output> <span class="opacitymedium">Automatically determined by entry type</span></td></tr>
+<tr><td>Description</td><td><input required class="minwidth300" name="description" aria-label="Receipt or expense description"></td></tr><tr><td>Amount / Currency</td><td><input required name="amount" inputmode="decimal" aria-label="Receipt or expense amount"> <input required size="4" maxlength="3" name="currency" aria-label="Receipt or expense currency" placeholder="USD"></td></tr>
+<tr><td>Expense target</td><td><?php echo Form::selectarray('finance_target',$financeTargetOptions,0,'General unbound expense',0,0,'aria-label="Exact operation, shipment, project or invoice target"',0,0,0,'','minwidth300',1); ?><br><span class="opacitymedium">Choose the exact target if this expense will settle allocated funds.</span></td></tr>
+<tr><td>Commitment / Allocated</td><td><?php echo Form::selectarray('chargeid',$chargeOptions,0,'Not allocated',0,0,'aria-label="Project commitment"',0,0,0,'','minwidth300',1); ?> <input name="allocated_amount" inputmode="decimal" aria-label="Amount allocated to commitment" placeholder="Amount in the commitment currency"></td></tr>
+<tr><td>Reference / Bank</td><td><input name="reference" aria-label="Payment reference"> <input name="bank_label" aria-label="Bank label"></td></tr><tr><td>Customer visible</td><td><input type="checkbox" name="customer_visible" value="1" aria-label="Visible to customer" checked></td></tr>
+<tr><td></td><td><button class="button button-save" type="submit">Save entry</button></td></tr></table></form>
 </div><div class="fichehalfright"><div class="underbanner clearboth"></div>
 <form method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="addfx"><input type="hidden" name="socid" value="<?php echo $selectedSocid; ?>"><input type="hidden" name="projectid" value="<?php echo $selectedProjectid; ?>">
-<table class="border centpercent"><tr><td colspan="2"><b>تحويل عملة / Currency conversion</b></td></tr><tr><td>العميل / المشروع / Customer / Project</td><td><?php echo dol_escape_htmltag(isset($customerOptions[$selectedSocid])?$customerOptions[$selectedSocid]:'—'); ?> / <?php echo dol_escape_htmltag(isset($projectOptions[$selectedProjectid])?$projectOptions[$selectedProjectid]:'عام / General'); ?></td></tr>
-<tr><td>التاريخ / Date</td><td><input required type="date" name="date" aria-label="Currency conversion date" value="<?php echo $today; ?>"></td></tr><tr><td>من / From</td><td><input required name="from_amount" inputmode="decimal" aria-label="Amount converted from"> <input required size="4" name="from_currency" aria-label="Source currency" placeholder="EGP"></td></tr>
-<tr><td>إلى / To</td><td><input required name="to_amount" inputmode="decimal" aria-label="Amount converted to"> <input required size="4" name="to_currency" aria-label="Destination currency" placeholder="RMB"></td></tr><tr><td>الوصف / المرجع / Description / Reference</td><td><input name="description" aria-label="Currency conversion description"> <input name="reference" aria-label="Currency conversion reference"></td></tr>
-<tr><td></td><td><button class="button button-save" type="submit">تسجيل التحويل المزدوج</button></td></tr></table></form>
+<table class="border centpercent"><tr><td colspan="2"><b>Currency conversion</b></td></tr><tr><td>Customer / Project</td><td><?php echo dol_escape_htmltag(isset($customerOptions[$selectedSocid])?$customerOptions[$selectedSocid]:'—'); ?> / <?php echo dol_escape_htmltag(isset($projectOptions[$selectedProjectid])?$projectOptions[$selectedProjectid]:'General'); ?></td></tr>
+<tr><td>Date</td><td><input required type="date" name="date" aria-label="Currency conversion date" value="<?php echo $today; ?>"></td></tr><tr><td>From</td><td><input required name="from_amount" inputmode="decimal" aria-label="Amount converted from"> <input required size="4" name="from_currency" aria-label="Source currency" placeholder="EGP"></td></tr>
+<tr><td>To</td><td><input required name="to_amount" inputmode="decimal" aria-label="Amount converted to"> <input required size="4" name="to_currency" aria-label="Destination currency" placeholder="RMB"></td></tr><tr><td>Description / Reference</td><td><input name="description" aria-label="Currency conversion description"> <input name="reference" aria-label="Currency conversion reference"></td></tr>
+<tr><td></td><td><button class="button button-save" type="submit">Record paired conversion</button></td></tr></table></form>
 <br>
 <form method="post"><input type="hidden" name="token" value="<?php echo newToken(); ?>"><input type="hidden" name="action" value="addcharge"><input type="hidden" name="socid" value="<?php echo $selectedSocid; ?>"><input type="hidden" name="projectid" value="<?php echo $selectedProjectid; ?>">
-<table class="border centpercent"><tr><td colspan="2"><b>التزام مشروع / Project commitment</b></td></tr><tr><td>العميل / المشروع / Customer / Project</td><td><?php echo dol_escape_htmltag(isset($customerOptions[$selectedSocid])?$customerOptions[$selectedSocid]:'—'); ?> / <?php echo dol_escape_htmltag(isset($projectOptions[$selectedProjectid])?$projectOptions[$selectedProjectid]:'—'); ?></td></tr>
-<tr><td>التاريخ / التصنيف / Date / Category</td><td><input required type="date" name="date" aria-label="Commitment date" value="<?php echo $today; ?>"> <select name="category" aria-label="Commitment category"><?php foreach(array('product','commission','shipping','cargox','dhl','inspection','service','other') as $cat) print '<option>'.$cat.'</option>'; ?></select></td></tr>
-<tr><td>اسم آمن للمورد / Supplier-safe label</td><td><input name="supplier_label" aria-label="Supplier-safe label"></td></tr><tr><td>البيان / المرجع / Label / Reference</td><td><input required name="label" aria-label="Commitment label"> <input name="reference" aria-label="Commitment reference"></td></tr><tr><td>المبلغ / العملة / Amount / Currency</td><td><input required name="amount" inputmode="decimal" aria-label="Commitment amount"> <input required size="4" name="currency" aria-label="Commitment currency"></td></tr>
-<tr><td>فاتورة خدمة العميل / Customer service invoice</td><td><?php echo Form::selectarray('customer_invoice_id',$invoiceOptions,0,'خدمة مستقبلية لم تُفوتر / Not invoiced yet',0,0,'aria-label="Customer service invoice"',0,0,0,'','minwidth300',1); ?> <span class="opacitymedium">ربط الفاتورة يمنع احتساب الخدمة مرتين.</span></td></tr>
-<tr><td></td><td><button class="button button-save" type="submit">حفظ الالتزام</button></td></tr></table></form>
+<table class="border centpercent"><tr><td colspan="2"><b>Project commitment</b></td></tr><tr><td>Customer / Project</td><td><?php echo dol_escape_htmltag(isset($customerOptions[$selectedSocid])?$customerOptions[$selectedSocid]:'—'); ?> / <?php echo dol_escape_htmltag(isset($projectOptions[$selectedProjectid])?$projectOptions[$selectedProjectid]:'—'); ?></td></tr>
+<tr><td>Date / Category</td><td><input required type="date" name="date" aria-label="Commitment date" value="<?php echo $today; ?>"> <select name="category" aria-label="Commitment category"><?php foreach(array('product','commission','shipping','cargox','dhl','inspection','service','other') as $cat) print '<option>'.$cat.'</option>'; ?></select></td></tr>
+<tr><td>Supplier-safe label</td><td><input name="supplier_label" aria-label="Supplier-safe label"></td></tr><tr><td>Label / Reference</td><td><input required name="label" aria-label="Commitment label"> <input name="reference" aria-label="Commitment reference"></td></tr><tr><td>Amount / Currency</td><td><input required name="amount" inputmode="decimal" aria-label="Commitment amount"> <input required size="4" name="currency" aria-label="Commitment currency"></td></tr>
+<tr><td>Customer service invoice</td><td><?php echo Form::selectarray('customer_invoice_id',$invoiceOptions,0,'Not invoiced yet',0,0,'aria-label="Customer service invoice"',0,0,0,'','minwidth300',1); ?> <span class="opacitymedium">Linking the invoice prevents counting the service twice.</span></td></tr>
+<tr><td></td><td><button class="button button-save" type="submit">Save commitment</button></td></tr></table></form>
 </div></div>
 <?php cpcc_admin_shell_close(); llxFooter();

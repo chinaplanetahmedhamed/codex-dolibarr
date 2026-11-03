@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ui.lib.php';
 
 require_once __DIR__.'/financial.lib.php';
 require_once __DIR__.'/export.lib.php';
@@ -17,6 +18,29 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
     foreach ($supplierCharges as $charge) {
         if ($charge['paid'] > 0.005) $supplierPaidAny = true;
         if ($charge['remaining'] > 0.005) $supplierFullyPaid = false;
+    }
+    // M082 native supplier evidence supersedes the legacy manual commitment
+    // projection when a guided supplier invoice exists. Only boolean lifecycle
+    // state leaves this server-side query; supplier identity and cost stay private.
+    $supplierMarkerReady = false;
+    $tableCheck = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.'cpo_supplier_action')."'");
+    if ($tableCheck && $db->num_rows($tableCheck) === 1) {
+        $sql = "SELECT f.rowid,CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN f.multicurrency_total_ttc ELSE f.total_ttc END invoice_total,";
+        $sql .= "COALESCE((SELECT SUM(CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END) FROM ".MAIN_DB_PREFIX."paiementfourn_facturefourn pf WHERE pf.fk_facturefourn=f.rowid),0) paid_total ";
+        $sql .= "FROM ".MAIN_DB_PREFIX."cpo_supplier_action a JOIN ".MAIN_DB_PREFIX."facture_fourn f ON f.rowid=a.fk_supplier_invoice AND f.entity=a.entity ";
+        $sql .= "WHERE a.entity=".(int)$GLOBALS['conf']->entity." AND a.fk_soc_customer=".(int)$socid." AND a.fk_project=".(int)$projectid." AND a.action_type='supplier_invoice' AND a.status='confirmed' AND f.fk_statut>0";
+        $res = $db->query($sql);
+        $nativeCount = 0; $nativePaidAny = false; $nativeAllPaid = true;
+        while ($res && ($native = $db->fetch_object($res))) {
+            $nativeCount++;
+            if ((float)$native->paid_total > 0.005) $nativePaidAny = true;
+            if ((float)$native->invoice_total - (float)$native->paid_total > 0.005) $nativeAllPaid = false;
+        }
+        if ($nativeCount > 0) {
+            $supplierMarkerReady = true;
+            $supplierPaidAny = $nativePaidAny;
+            $supplierFullyPaid = $nativeAllPaid;
+        }
     }
 
     $invoiceCount = 0;
@@ -45,13 +69,13 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
     }
 
     return array(
-        array('key'=>'confirmed','label'=>'تم تأكيد الطلب','en'=>'Order confirmed','done'=>$orderConfirmed,'rule'=>'طلب عميل معتمد مرتبط بالمشروع / Validated customer order linked to project'),
-        array('key'=>'funded','label'=>'تم استلام تمويل العميل','en'=>'Customer funds received','done'=>$funded,'rule'=>'حركة استلام أو رصيد افتتاحي مرتبطة بالمشروع / Project-linked receipt or opening balance'),
-        array('key'=>'deposit','label'=>'تم دفع عربون المورد','en'=>'Supplier deposit paid','done'=>$supplierPaidAny,'rule'=>'أي مبلغ مخصص لالتزام مورد / Any amount allocated to a supplier commitment'),
-        array('key'=>'supplier_paid','label'=>'اكتمل دفع المورد','en'=>'Supplier fully paid','done'=>$supplierFullyPaid,'rule'=>'كل التزامات الموردين بلا رصيد متبقٍ / All supplier commitments have zero remaining'),
-        array('key'=>'service_invoice','label'=>'صدرت الفاتورة','en'=>'Invoice issued','done'=>$invoiceCount>0,'rule'=>'فاتورة عميل معتمدة مرتبطة بالمشروع / Validated customer invoice linked to project'),
-        array('key'=>'shipment','label'=>'تم إنشاء الشحنة','en'=>'Shipment created','done'=>$shipmentCount>0,'rule'=>'وجود شحنة مرتبطة بالعميل والمشروع / Shipment linked to customer and project'),
-        array('key'=>'documents','label'=>'اكتملت المستندات','en'=>'Documents complete','done'=>$documentsComplete,'rule'=>'فاتورة تجارية وقائمة تعبئة ظاهرتان للعميل / Customer-visible Commercial Invoice and Packing List'),
-        array('key'=>'closed','label'=>'تمت العملية','en'=>'Operation finished','done'=>$orderConfirmed&&$funded&&$supplierFullyPaid&&$invoiceCount>0&&$invoiceOpen===0&&$shipmentCount>0&&$shipmentClosed===$shipmentCount&&$documentsComplete,'rule'=>'اكتمال كل المتطلبات وإغلاق كل الشحنات وسداد الفواتير / All requirements complete'),
+        array('key'=>'confirmed','label'=>cpcc_ui_english_label('Order confirmed', 'تم تأكيد الطلب'),'en'=>'Order confirmed','done'=>$orderConfirmed,'rule'=>cpcc_ui_english_label('Validated customer order linked to project', 'طلب عميل معتمد مرتبط بالمشروع / Validated customer order linked to project')),
+        array('key'=>'funded','label'=>cpcc_ui_english_label('Customer funds received', 'تم استلام تمويل العميل'),'en'=>'Customer funds received','done'=>$funded,'rule'=>cpcc_ui_english_label('Project-linked receipt or opening balance', 'حركة استلام أو رصيد افتتاحي مرتبطة بالمشروع / Project-linked receipt or opening balance')),
+        array('key'=>'deposit','label'=>cpcc_ui_english_label('Supplier deposit paid', 'تم دفع عربون المورد'),'en'=>'Supplier deposit paid','done'=>$supplierPaidAny,'rule'=>cpcc_ui_english_label('Any amount allocated to a supplier commitment', 'أي مبلغ مخصص لالتزام مورد / Any amount allocated to a supplier commitment')),
+        array('key'=>'supplier_paid','label'=>cpcc_ui_english_label('Supplier fully paid', 'اكتمل دفع المورد'),'en'=>'Supplier fully paid','done'=>$supplierFullyPaid,'rule'=>cpcc_ui_english_label('All supplier commitments have zero remaining', 'كل التزامات الموردين بلا رصيد متبقٍ / All supplier commitments have zero remaining')),
+        array('key'=>'service_invoice','label'=>cpcc_ui_english_label('Invoice issued', 'صدرت الفاتورة'),'en'=>'Invoice issued','done'=>$invoiceCount>0,'rule'=>cpcc_ui_english_label('Validated customer invoice linked to project', 'فاتورة عميل معتمدة مرتبطة بالمشروع / Validated customer invoice linked to project')),
+        array('key'=>'shipment','label'=>cpcc_ui_english_label('Shipment created', 'تم إنشاء الشحنة'),'en'=>'Shipment created','done'=>$shipmentCount>0,'rule'=>cpcc_ui_english_label('Shipment linked to customer and project', 'وجود شحنة مرتبطة بالعميل والمشروع / Shipment linked to customer and project')),
+        array('key'=>'documents','label'=>cpcc_ui_english_label('Documents complete', 'اكتملت المستندات'),'en'=>'Documents complete','done'=>$documentsComplete,'rule'=>cpcc_ui_english_label('Customer-visible Commercial Invoice and Packing List', 'فاتورة تجارية وقائمة تعبئة ظاهرتان للعميل / Customer-visible Commercial Invoice and Packing List')),
+        array('key'=>'closed','label'=>cpcc_ui_english_label('Operation complete', 'تمت العملية'),'en'=>'Operation finished','done'=>$orderConfirmed&&$funded&&$supplierFullyPaid&&$invoiceCount>0&&$invoiceOpen===0&&$shipmentCount>0&&$shipmentClosed===$shipmentCount&&$documentsComplete,'rule'=>cpcc_ui_english_label('All requirements complete', 'اكتمال كل المتطلبات وإغلاق كل الشحنات وسداد الفواتير / All requirements complete')),
     );
 }

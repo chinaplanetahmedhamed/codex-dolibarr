@@ -18,6 +18,11 @@ if (empty($user->id) || !empty($user->socid) || empty($user->admin)) {
     cpad_layout_response(false, 'forbidden');
 }
 
+if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
+    http_response_code(405);
+    cpad_layout_response(false, 'post_required');
+}
+
 $token = GETPOST('token', 'alphanohtml');
 if (empty($token) || !hash_equals((string) currentToken(), (string) $token)) {
     cpad_layout_response(false, 'invalid_token');

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lib/ui.lib.php';
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
@@ -12,18 +13,19 @@ $socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
 $projectid = GETPOSTINT('projectid');
 $documents = $socid > 0 ? cpcc_export_documents($db, $socid, $projectid, 0, $isExternal) : array();
 
-llxHeader('', 'Commercial Documents / مستندات التصدير', '', '', 0, 0, array(), $isExternal?array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css'):array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
-if($isExternal) cpcc_portal_navigation($user, 'commercial_documents'); else cpcc_admin_shell_open('export','Commercial Documents / المستندات التجارية','المستندات المنشأة والمتاحة للعملاء','fa-file-export',array('socid'=>$socid,'projectid'=>$projectid));
+llxHeader('', cpcc_ui_t('UICommercialDocuments87a0b'), '', '', 0, 0, array(), $isExternal?array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css'):array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css')));
+if($isExternal) cpcc_portal_navigation($user, 'commercial_documents'); else cpcc_admin_shell_open('export',cpcc_ui_t('UICommercialDocuments87a0b'),cpcc_ui_english_label('Documents created and available to customers.', 'المستندات المنشأة والمتاحة للعملاء'),'fa-file-export',array('socid'=>$socid,'projectid'=>$projectid));
 ?>
-<main class="cpcc-dashboard" dir="rtl">
-  <header class="cpcc-page-head"><div><span class="cpcc-eyebrow">EXPORT DOCUMENTS</span><h1>المستندات التجارية والتصديرية</h1><p>Commercial Invoice وPacking List والمستندات المرتبطة بالمشروع والشحنة.</p></div></header>
-  <?php if ($socid <= 0) { ?><div class="warning">لا يوجد عميل محدد.</div>
-  <?php } elseif (!cpcc_export_schema_ready($db)) { ?><div class="warning">جداول مستندات التصدير لم تُفعّل بعد.</div>
-  <?php } elseif (empty($documents)) { ?><div class="cpcc-empty">لا توجد مستندات تجارية متاحة لهذا العميل.</div>
+<main class="cpcc-dashboard" dir="<?php echo cpcc_ui_english_label('ltr', 'rtl'); ?>">
+  <header class="cpcc-page-head"><div><span class="cpcc-eyebrow">EXPORT DOCUMENTS</span><h1><?php echo cpcc_ui_english_label('Commercial and export documents', 'المستندات التجارية والتصديرية'); ?></h1><p><?php echo cpcc_ui_english_label('Commercial invoices, packing lists and documents linked to the project and shipment.', 'Commercial Invoice وPacking List والمستندات المرتبطة بالمشروع والشحنة.'); ?></p></div></header>
+  <?php cpcc_portal_customer_selector($db,$user,$socid); ?>
+  <?php if ($socid <= 0) { ?><div class="warning"><?php echo dol_escape_htmltag(cpcc_ui_t('UISelectACustomerToViewRecordse2001')); ?></div>
+  <?php } elseif (!cpcc_export_schema_ready($db)) { ?><div class="warning"><?php echo cpcc_ui_english_label('Export document tables are not enabled yet.', 'جداول مستندات التصدير لم تُفعّل بعد.'); ?></div>
+  <?php } elseif (empty($documents)) { ?><div class="cpcc-empty"><?php echo cpcc_ui_english_label('No commercial documents are available for this customer.', 'لا توجد مستندات تجارية متاحة لهذا العميل.'); ?></div>
   <?php } else { ?><section class="cpcc-document-grid">
     <?php foreach ($documents as $document) {
         $url = cpcc_portal_scoped_url('/chinaplanetcustomercenter/export_document.php',$isExternal,$socid,array('id'=>(int)$document->rowid)); ?>
-      <a class="cpcc-document-card" href="<?php echo dol_escape_htmltag($url); ?>"><span><?php echo dol_escape_htmltag(cpcc_export_type_label($document->document_type)); ?></span><strong><?php echo dol_escape_htmltag($document->ref); ?></strong><small><?php echo dol_escape_htmltag($document->project_ref ?: 'بدون مشروع'); ?> · <?php echo dol_escape_htmltag(dol_print_date($document->document_date,'day')); ?></small><?php if(!empty($document->shipment_ref)){ ?><small>Shipment: <?php echo dol_escape_htmltag($document->shipment_ref); ?></small><?php } ?></a>
+      <a class="cpcc-document-card" href="<?php echo dol_escape_htmltag($url); ?>"><span><?php echo dol_escape_htmltag(cpcc_export_type_label($document->document_type)); ?></span><strong><?php echo dol_escape_htmltag($document->ref); ?></strong><small><?php echo dol_escape_htmltag($document->project_ref ?: cpcc_ui_english_label('No project', 'بدون مشروع')); ?> · <?php echo dol_escape_htmltag(cpcc_portal_date($document->document_date,'day')); ?></small><?php if(!empty($document->shipment_ref)){ ?><small>Shipment: <?php echo dol_escape_htmltag($document->shipment_ref); ?></small><?php } ?></a>
     <?php } ?>
   </section><?php } ?>
 </main>

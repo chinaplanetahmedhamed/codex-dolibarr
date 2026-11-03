@@ -29,6 +29,9 @@ class CplBilingualTranslate
     {
         $args = func_get_args();
         $primary = (string) call_user_func_array(array($this->primary, 'trans'), $args);
+        // Locale configuration is consumed by core formatters, not a bilingual label.
+        // Combining US and Arabic date masks prints the same date twice with reversed month/day.
+        if (strpos((string) $key, 'Format') === 0 || in_array($key, array('DIRECTION', 'SeparatorDecimal', 'SeparatorThousand'), true)) return $primary;
         $secondary = (string) call_user_func_array(array($this->secondary, 'trans'), $args);
         if ($secondary === '' || $secondary === (string) $key || $secondary === $primary) return $primary;
         return $primary.' / '.$secondary;
@@ -37,14 +40,9 @@ class CplBilingualTranslate
 
 function cpl_bilingual_langs($primary)
 {
-    global $conf;
-    if (!class_exists('Translate')) return $primary;
-    $primaryCode = !empty($primary->defaultlang) ? (string) $primary->defaultlang : 'en_US';
-    $secondaryCode = preg_match('/^ar(?:_|$)/i', $primaryCode) ? 'en_US' : 'ar_SA';
-    $secondary = new Translate('', $conf);
-    $secondary->setDefaultLang($secondaryCode);
-    $secondary->loadLangs(array('main', 'chinaplanetlogistics@chinaplanetlogistics'));
-    return new CplBilingualTranslate($primary, $secondary);
+    // Presentation follows the chosen interface language; international acronyms
+    // remain in the existing translations. Keep the proxy class for legacy callers.
+    return $primary;
 }
 
 function cpl_text_limit($value, $length)
@@ -491,7 +489,6 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     print '<article class="cpl-snapshot cpl-'.$freeClass.'"><span>'.$langs->trans('CPLFreeTime').'</span><strong>'.dol_escape_htmltag($freeTitle).'</strong><small>'.dol_escape_htmltag($freeText).'</small></article></section>';
 
     print '<section id="shipment-timeline" class="cpl-panel" aria-labelledby="cpl-timeline-title"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLShipmentJourney').'</span><h2 id="cpl-timeline-title">'.$langs->trans('CPLTimeline').'</h2></div>';
-    if ($external && $contextualAlert && $contextualAlert['code'] === 'container_receipt') print '<form method="POST" class="cpl-inline-receipt"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_container_received"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmContainerReceived')).'</button></form>';
     print '</div><ol class="cpl-timeline">';
     foreach ($timeline as $step) {
         $stateKeys = array('complete'=>'CPLStateComplete','current'=>'CPLStateCurrent','next'=>'CPLStateNext','planned'=>'CPLStatePlanned','unconfirmed'=>'CPLStateUnconfirmed');

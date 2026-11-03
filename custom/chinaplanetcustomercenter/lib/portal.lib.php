@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ui.lib.php';
 
 function cpcc_portal_user_scope($user)
 {
@@ -52,8 +53,40 @@ function cpcc_portal_customer_scope_id($db, $user, $requestedSocid = 0)
 function cpcc_portal_scoped_url($path, $isExternal, $socid, $parameters = array())
 {
     if (!$isExternal && (int) $socid > 0) $parameters['socid'] = (int) $socid;
+    if (cpcc_ui_language_parameter() !== '') $parameters['lang'] = cpcc_ui_language_parameter();
     $url = dol_buildpath($path, 1);
     return !empty($parameters) ? $url.'?'.http_build_query($parameters) : $url;
+}
+
+/** Format database dates through Dolibarr's timestamp contract; invalid/empty dates stay empty. */
+function cpcc_portal_date($value, $format = 'day')
+{
+    global $db;
+    if ($value === null || $value === '') return '';
+    if (is_numeric($value)) $timestamp = (int) $value;
+    else {
+        $value = trim((string) $value);
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})(?: \d{2}:\d{2}:\d{2})?$/D', $value, $parts)
+            || !checkdate((int)$parts[2], (int)$parts[3], (int)$parts[1])) return '';
+        $timestamp = $db->jdate($value);
+    }
+    return $timestamp > 0 ? dol_print_date($timestamp, $format) : '';
+}
+
+/** Offer the existing customer scope on internal pages reached without a selected customer. */
+function cpcc_portal_customer_selector($db, $user, $socid)
+{
+    $scope = cpcc_portal_user_scope($user);
+    if (!empty($scope['is_external'])) return;
+    $res = $db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (".getEntity('societe').") AND status=1 AND client IN (1,3) ORDER BY nom");
+    print '<form method="GET" class="cpad-context-form"><label for="cpcc-customer-select">' . dol_escape_htmltag(cpcc_ui_t('UICustomer0e857')) . '</label> <select id="cpcc-customer-select" name="socid" required><option value="">' . dol_escape_htmltag(cpcc_ui_t('UISelectCustomer68171')) . '</option>';
+    while ($res && ($customer = $db->fetch_object($res))) {
+        print '<option value="'.(int)$customer->rowid.'"'.((int)$customer->rowid === (int)$socid ? ' selected' : '').'>'.dol_escape_htmltag($customer->nom).'</option>';
+    }
+    print '</select>';
+    if (cpcc_ui_language_parameter() !== '') print '<input type="hidden" name="lang" value="'.dol_escape_htmltag(cpcc_ui_language_parameter()).'">';
+    print ' <button class="button" type="submit">' . dol_escape_htmltag(cpcc_ui_t('UIView69bd4')) . '</button></form>';
+    if (!$res) print '<div class="error" role="alert">' . dol_escape_htmltag(cpcc_ui_t('UICustomersCouldNotBeLoaded42d5d')) . '</div>';
 }
 
 /** Return a customer-portal asset URL with a content-based cache key. */
@@ -68,6 +101,7 @@ function cpcc_portal_navigation($user, $active = '')
 {
     if (empty($user->id) || empty($user->socid) || !empty($user->admin)) return;
 
+    cpcc_ui_assets();
     $activeGroups = array(
         'dashboard' => 'home',
         'projects' => 'projects',
@@ -79,6 +113,7 @@ function cpcc_portal_navigation($user, $active = '')
         'documents' => 'documents',
         'commercial_documents' => 'documents',
         'reports' => 'documents',
+        'quotations' => 'quotations',
         'orders' => 'requests',
         'profile' => 'account',
     );
@@ -91,30 +126,31 @@ function cpcc_portal_navigation($user, $active = '')
         'shippingprices' => array('أسعار الشحن', 'Shipping Prices', 'fa-search-dollar', '/chinaplanetshippingprices/index.php'),
         'account' => array('الحساب المالي', 'Financial Account', 'fa-wallet', '/chinaplanetcustomercenter/balance.php'),
         'documents' => array('المستندات', 'Documents', 'fa-file-alt', '/chinaplanetcustomercenter/documents.php'),
+        'quotations' => array('عروض الأسعار', 'Quotations', 'fa-file-signature', '/chinaplanetcustomercenter/quotations.php'),
         'requests' => array('الطلبات والدعم', 'Orders & Support', 'fa-headset', '/chinaplanetcustomercenter/orders.php'),
     );
 
     $homeUrl = dol_buildpath('/chinaplanetcustomercenter/board.php', 1);
     print '<link rel="stylesheet" href="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/portal.css')).'">';
-    print '<header class="cpcc-portal-shell" dir="rtl">';
+    print '<div class="cpcc-portal-shell" dir="'.(cpcc_ui_language() === 'ar_SA' ? 'rtl' : 'ltr').'">';
     print '<a class="cpcc-portal-brand" href="'.dol_escape_htmltag($homeUrl).'" aria-label="الرئيسية / Customer Home"><span class="cpcc-portal-brand-mark" aria-hidden="true">V</span><span><strong>Vision Customer Center</strong><small>مركز العميل</small></span></a>';
-    print '<button type="button" class="cpcc-portal-menu-toggle" aria-expanded="false" aria-controls="cpcc-portal-menu"><span class="fas fa-bars" aria-hidden="true"></span><span>القائمة / Menu</span></button>';
+    print '<button type="button" class="cpcc-portal-menu-toggle" aria-expanded="false" aria-controls="cpcc-portal-menu"><span class="fas fa-bars" aria-hidden="true"></span><span>' . dol_escape_htmltag(cpcc_ui_t('UIMenu57f5f')) . '</span></button>';
     print '<nav id="cpcc-portal-menu" class="cpcc-portal-nav" aria-label="تنقل بوابة العميل">';
     foreach ($items as $key => $item) {
         $class = $key === $activeGroup ? ' class="active" aria-current="page"' : '';
         print '<a'.$class.' href="'.dol_escape_htmltag(dol_buildpath($item[3], 1)).'">';
         print '<span class="fas '.dol_escape_htmltag($item[2]).'" aria-hidden="true"></span>';
-        print '<span><b>'.dol_escape_htmltag($item[0]).'</b><small lang="en" dir="ltr">'.dol_escape_htmltag($item[1]).'</small></span></a>';
+        print '<span><b>'.dol_escape_htmltag($item[cpcc_ui_language() === 'ar_SA' ? 0 : 1]).'</b></span></a>';
     }
     print '<a class="cpcc-logout-link" data-cpcc-logout href="'.dol_escape_htmltag(DOL_URL_ROOT.'/user/logout.php').'"><span class="fas fa-sign-out-alt" aria-hidden="true"></span><span><b>تسجيل الخروج</b><small lang="en" dir="ltr">Logout</small></span></a>';
-    print '</nav></header>';
+    print '</nav></div>';
     print '<dialog class="cpcc-logout-dialog" data-cpcc-logout-dialog aria-labelledby="cpcc-logout-title" aria-describedby="cpcc-logout-message">';
     print '<form method="dialog" dir="rtl">';
     print '<h2 id="cpcc-logout-title">تأكيد تسجيل الخروج</h2>';
     print '<p id="cpcc-logout-message">هل تريد حقًا تسجيل الخروج؟<br><span lang="en" dir="ltr">Are you sure you want to log out?</span></p>';
     print '<div class="cpcc-logout-actions">';
-    print '<button type="submit" value="cancel" data-cpcc-logout-cancel>إلغاء / Cancel</button>';
-    print '<button type="button" class="cpcc-logout-confirm" data-cpcc-logout-confirm>تسجيل الخروج / Logout</button>';
+    print '<button type="submit" value="cancel" data-cpcc-logout-cancel>' . dol_escape_htmltag(cpcc_ui_t('UICancel77dfd')) . '</button>';
+    print '<button type="button" class="cpcc-logout-confirm" data-cpcc-logout-confirm>' . dol_escape_htmltag(cpcc_ui_t('UILogoute43d6')) . '</button>';
     print '</div></form></dialog>';
     print '<script src="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/js/portal.js')).'" defer></script>';
     print '<script src="'.dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/js/logout-confirm.js', 1)).'" defer></script>';
@@ -134,7 +170,7 @@ function cpcc_portal_access_denied($user, $active = '')
     http_response_code(403);
     llxHeader('', 'Access denied');
     cpcc_portal_navigation($user, $active);
-    print '<div class="error" role="alert">لا يمكنك الوصول إلى هذا السجل. / You cannot access this record.</div>';
+    print '<div class="error" role="alert">' . dol_escape_htmltag(cpcc_ui_t('UIYouCannotAccessThisRecord752dc')) . '</div>';
     llxFooter();
     exit;
 }
@@ -165,7 +201,7 @@ function cpcc_portal_authorized_shipment($db, $user, $shipid, $requestedSocid = 
     $sql .= " WHERE rowid=".$shipid." AND entity=".(int) $conf->entity;
     if (!empty($scope['is_external'])) {
         if ((int) $scope['socid'] <= 0) return null;
-        $sql .= " AND fk_soc=".(int) $scope['socid'];
+        $sql .= " AND fk_soc=".(int) $scope['socid']." AND customer_visible=1";
     } elseif ((int) $requestedSocid > 0) {
         $sql .= " AND fk_soc=".(int) $requestedSocid;
     }
@@ -806,7 +842,7 @@ function cpcc_portal_customer_gallery_items($db, $user, $shipment = null)
     else $sql .= "'staff' AS source_origin,'published' AS response_status,NULL AS customer_upload_status,NULL AS response_note,NULL AS date_response,";
     $sql .= " t.ref AS shipment_ref,t.container_no,t.bl_no";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
-    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc AND t.customer_visible=1";
     $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid." AND p.customer_visible=1 AND p.status=1";
     if ($shipmentId > 0) $sql .= " AND p.fk_shipment=".$shipmentId;
     $sql .= " ORDER BY p.date_publication DESC,p.rowid DESC";
@@ -840,7 +876,7 @@ function cpcc_portal_customer_gallery_publication($db, $user, $publicToken)
     else $sql .= "'staff' AS source_origin,'published' AS response_status,NULL AS customer_upload_status,NULL AS response_note,NULL AS date_response,";
     $sql .= " t.ref AS shipment_ref";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpl_shipment_public_document p";
-    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc";
+    $sql .= " INNER JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics t ON t.rowid=p.fk_shipment AND t.entity=p.entity AND t.fk_soc=p.fk_soc AND t.customer_visible=1";
     $sql .= " WHERE p.entity=".$entity." AND p.fk_soc=".$socid." AND p.customer_visible=1 AND p.status=1";
     $result = $db->query($sql);
     while ($result && ($row = $db->fetch_object($result))) {
@@ -978,12 +1014,6 @@ function cpcc_portal_customer_document_items_html(array $items, $shipmentId = 0)
         }
         if (!$hasEventNote && !empty($item->response_note)) $html .= '<p class="cpcc-document-note">'.nl2br(dol_escape_htmltag($item->response_note)).'</p>';
         $html .= '</div><div class="cpcc-document-actions"><a class="cpcc-gallery-download" href="'.dol_escape_htmltag($downloadUrl).'">'.dol_escape_htmltag($langs->trans('CPLGalleryDownload')).'</a>';
-        if ((string)$item->source_origin === 'staff' && (string)$item->response_status !== 'confirmed' && (int)$shipmentId > 0) {
-            $html .= '<form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipmentId.'"><input type="hidden" name="action" value="customer_document_confirm"><input type="hidden" name="publication" value="'.dol_escape_htmltag($item->public_token).'"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmDocument')).'</button></form>';
-        }
-        if ((string)$item->source_origin === 'staff' && (int)$shipmentId > 0) {
-            $html .= '<details class="cpcc-document-response"><summary>'.dol_escape_htmltag($langs->trans('CPLRequestAmendmentOrComment')).'</summary><form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipmentId.'"><input type="hidden" name="publication" value="'.dol_escape_htmltag($item->public_token).'"><textarea required name="response_note" maxlength="2000" placeholder="'.dol_escape_htmltag($langs->trans('CPLWriteCustomerNote')).'"></textarea><button type="submit" name="action" value="customer_document_amend" class="button button-cancel">'.dol_escape_htmltag($langs->trans('CPLRequestAmendment')).'</button><button type="submit" name="action" value="customer_document_comment" class="button">'.dol_escape_htmltag($langs->trans('CPLAddComment')).'</button></form></details>';
-        }
         $html .= '</div></article>';
     }
     return $html.'</div>';
@@ -1000,7 +1030,6 @@ function cpcc_portal_customer_shipment_files_html($db, $user, $shipment)
     if (cpcc_portal_collaboration_schema_ready($db)) {
         $html .= '<div class="cpcc-customer-uploaded-section"><div class="cpcc-subsection-title"><div><span>'.dol_escape_htmltag($langs->trans('CPLCustomerUploadedFilesEyebrow')).'</span><h3>'.dol_escape_htmltag($langs->trans('CPLCustomerUploadedFilesTitle')).'</h3></div><b>'.count($groups['customer_uploads']).'</b></div>';
         $html .= cpcc_portal_customer_upload_items_html($groups['customer_uploads']).'</div>';
-        $html .= '<div class="cpcc-customer-upload"><h3>'.dol_escape_htmltag($langs->trans('CPLUploadShipmentDocument')).'</h3><form method="POST" enctype="multipart/form-data"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_document_upload"><input required type="file" name="customer_file"><textarea name="response_note" maxlength="2000" placeholder="'.dol_escape_htmltag($langs->trans('CPLWriteCustomerNote')).'"></textarea><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLUpload')).'</button></form></div>';
         $events = cpcc_portal_shipment_collaboration_events($db, $shipment);
         $originalStatuses = cpcc_portal_original_document_statuses(); $latestOriginal = ''; $originalReceived = false;
         foreach ($events as $event) { if ($event->event_type === 'original_document_status') $latestOriginal = (string)$event->status_code; if ($event->event_type === 'original_documents_received') $originalReceived = true; }
@@ -1009,7 +1038,6 @@ function cpcc_portal_customer_shipment_files_html($db, $user, $shipment)
             $html .= '<div class="cpcc-original-documents"><h3>'.dol_escape_htmltag($langs->trans('CPLOriginalDocumentsTimeline')).'</h3><ol>';
             foreach ($originalStatuses as $index=>$code) $html .= '<li class="'.($index <= $currentIndex ? 'is-complete' : '').'"><span>'.dol_escape_htmltag($langs->trans('CPLOriginalStatus'.str_replace(' ', '', ucwords(str_replace('_', ' ', $code))))).'</span></li>';
             $html .= '</ol>';
-            if ($latestOriginal === 'delivered' && !$originalReceived) $html .= '<form method="POST"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_original_documents_received"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmOriginalDocumentsReceived')).'</button></form>';
             $html .= '</div>';
         }
     }
@@ -1053,7 +1081,7 @@ function cpcc_portal_staff_shipment_files_html($db, $shipment, $canwrite, $actio
     $html = '<section id="shipment-files-manager" class="cpl-doc-panel"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLShipmentFilesManagerEyebrow').'</span><h2>'.$langs->trans('CPLShipmentFilesManagerTitle').'</h2></div></div>';
     $html .= '<p class="opacitymedium">'.$langs->trans('CPLShipmentFilesManagerHint').'</p>';
     if ($canwrite) {
-        $html .= '<form action="'.dol_escape_htmltag($actionUrl).'" method="POST" enctype="multipart/form-data" class="cpl-file-upload-form"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="sendit" value="1"><input required type="file" name="userfile"><button type="submit" class="button button-save">'.$langs->trans('CPLShipmentFileUpload').'</button></form>';
+        $html .= '<form action="'.dol_escape_htmltag($actionUrl).'" method="POST" enctype="multipart/form-data" class="cpl-file-upload-form"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="sendit" value="1"><label for="cpl-staff-upload">'.$langs->trans('CPLShipmentFileUpload').'</label><input id="cpl-staff-upload" aria-describedby="cpl-upload-limit" required type="file" name="userfile"><small id="cpl-upload-limit">'.dol_escape_htmltag(cpcc_ui_t('UIUploadLimit')).' '.(int)(cpcc_portal_staff_upload_max_bytes()/1048576).' MB</small><button type="submit" class="button button-save">'.$langs->trans('CPLShipmentFileUpload').'</button></form>';
     }
     if (!$ready) $html .= '<div class="warning">'.dol_escape_htmltag($langs->trans('CPLGallerySchemaMissing')).'</div>';
     $collaborationReady = cpcc_portal_collaboration_schema_ready($db);

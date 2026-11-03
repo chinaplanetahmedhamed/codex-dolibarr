@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../chinaplanetcustomercenter/lib/ui.lib.php';
 $csrfRequestMethod = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $csrfRequestedAction = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
 $csrfReadOnlyActions = array('create', 'edit', 'confirm_delete');
@@ -52,7 +53,7 @@ if ($is_external_customer) {
     $candelete = false;
     $cansendshipmentemail = false;
     if ($id > 0) {
-        if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
+        if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid || empty($object->customer_visible)) {
             if ($is_modal) {
                 http_response_code(403);
                 header('Content-Type: text/html; charset=UTF-8');
@@ -68,6 +69,10 @@ if ($is_external_customer) {
 
 $listurl = DOL_URL_ROOT.'/custom/chinaplanetlogistics/list.php';
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
+// M082 staff-first boundary: the external customer shipment experience is
+// strictly read-only. Keep the legacy collaboration writers for historical
+// records, but reject every direct external mutation before action routing.
+if ($is_external_customer && $is_post) accessforbidden();
 
 $parseDateTime = function ($value) {
     $value = trim((string) $value);
@@ -97,7 +102,7 @@ if ($action == 'add' && $canwrite && $is_post) {
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
     $object->container_no     = GETPOST('container_no', 'alpha');
-    $object->container_type   = GETPOST('container_type', 'alpha');
+    $object->container_type   = GETPOST('container_type', 'alpha') === '-1' ? '' : GETPOST('container_type', 'alpha');
     $object->nb_containers    = (int) GETPOST('nb_containers', 'int');
     $object->booking_no       = GETPOST('booking_no', 'alpha');
     $object->bl_no            = GETPOST('bl_no', 'alpha');
@@ -120,6 +125,7 @@ if ($action == 'add' && $canwrite && $is_post) {
     $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
     $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
     $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
+    $object->customer_visible = GETPOSTINT('customer_visible') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
@@ -144,7 +150,7 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
     $object->container_no     = GETPOST('container_no', 'alpha');
-    $object->container_type   = GETPOST('container_type', 'alpha');
+    $object->container_type   = GETPOST('container_type', 'alpha') === '-1' ? '' : GETPOST('container_type', 'alpha');
     $object->nb_containers    = (int) GETPOST('nb_containers', 'int');
     $object->booking_no       = GETPOST('booking_no', 'alpha');
     $object->bl_no            = GETPOST('bl_no', 'alpha');
@@ -167,6 +173,7 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
     $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
     $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
+    $object->customer_visible = GETPOSTINT('customer_visible') ? 1 : 0;
     $sendStatusEmail = GETPOSTINT('send_status_email') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
@@ -343,7 +350,7 @@ if ($is_modal) {
     if(!$is_external_customer) $cardCss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
     llxHeader('', $langs->trans('CPLShipmentCardTitle'), '', '', 0, 0, array(), $cardCss);
     if($is_external_customer) cpcc_portal_navigation($user, 'shipments');
-    else cpcc_admin_shell_open('shipments','Shipment Details / تفاصيل الشحنة','بيانات الحاوية والمواعيد والوقت الحر والمستندات','fa-ship',array('socid'=>(int)$object->fk_soc,'projectid'=>(int)$object->fk_project));
+    else cpcc_admin_shell_open('shipments',cpcc_ui_t('UIShipmentCardHeading'),cpcc_ui_t('UIShipmentCardSubtitle'),'fa-ship',array('socid'=>(int)$object->fk_soc,'projectid'=>(int)$object->fk_project));
 }
 
 $form = new Form($db);
@@ -354,7 +361,7 @@ $types = array('20GP'=>'20GP','40GP'=>'40GP','40HQ'=>'40HQ','45HQ'=>'45HQ','LCL'
 
 // ─── CONFIRM DELETE PAGE ──────────────────────────────────────────────────
 if ($action == 'confirm_delete' && $confirm != 'yes') {
-    print load_fiche_titre('Delete Shipment / حذف الشحنة', '', 'delete');
+    print load_fiche_titre(cpcc_ui_english_label('Delete Shipment', 'Delete Shipment / حذف الشحنة'), '', 'delete');
     print '<br>';
     print '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:20px;margin:10px 0;">';
     print '<b style="font-size:16px;">⚠️ Are you sure you want to permanently delete this shipment?</b><br><br>';
@@ -372,7 +379,7 @@ if ($action == 'confirm_delete' && $confirm != 'yes') {
     print '<div class="center" style="margin-top:20px;">';
     print '<input type="submit" class="butActionDelete" value="Yes, Delete Permanently">';
     print ' &nbsp; ';
-    print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.'">Cancel / إلغاء</a>';
+    print '<a class="butAction" href="'.$_SERVER['PHP_SELF'].'?id='.$id.cpcc_ui_english_label('">Cancel</a>', '">Cancel / إلغاء</a>');
     print '</div>';
     print '</form>';
     if(!$is_external_customer) cpcc_admin_shell_close();
@@ -385,7 +392,7 @@ if ($action == 'confirm_delete' && $confirm != 'yes') {
 if ($action == 'create' || $action == 'edit') {
     if (!$canwrite) accessforbidden();
 
-    $title = ($action == 'create') ? 'New Shipment / شحنة جديدة' : 'Edit Shipment / تعديل الشحنة';
+    $title = ($action == 'create') ? cpcc_ui_english_label('New Shipment', 'New Shipment / شحنة جديدة') : cpcc_ui_english_label('Edit Shipment', 'Edit Shipment / تعديل الشحنة');
     print load_fiche_titre($title, '', 'generic');
 
     print '<form action="'.$_SERVER["PHP_SELF"].'" method="POST">';
@@ -397,92 +404,94 @@ if ($action == 'create' || $action == 'edit') {
     print '<table class="border centpercent">';
 
     // Reference
-    print '<tr><td class="titlefieldcreate">Reference / المرجع</td><td>';
+    print cpcc_ui_english_label('<tr><td class="titlefieldcreate">Reference</td><td>', '<tr><td class="titlefieldcreate">Reference / المرجع</td><td>');
     print '<input type="text" name="ref" value="'.dol_escape_htmltag($action == 'create' ? 'AUTO' : $object->ref).'" style="width:300px">';
     print ' <span class="opacitymedium">(leave AUTO for auto-generate)</span></td></tr>';
 
     // Customer
-    print '<tr><td class="titlefieldcreate fieldrequired">Customer / العميل</td><td>';
+    print cpcc_ui_english_label('<tr><td class="titlefieldcreate fieldrequired">Customer</td><td>', '<tr><td class="titlefieldcreate fieldrequired">Customer / العميل</td><td>');
     print $form->select_company($object->fk_soc, 'fk_soc', '', '-- Select Customer --', 1);
     print '</td></tr>';
 
     // Project
-    print '<tr><td>Project / المشروع</td><td>';
+    print cpcc_ui_english_label('<tr><td>Project</td><td>', '<tr><td>Project / المشروع</td><td>');
     print $formproject->select_projects(-1, $object->fk_project, 'fk_project', 0, 0, 1, 0, 0, 0, 0, '', 1);
     print '</td></tr>';
 
     // Container
-    print '<tr><td class="fieldrequired">Container Number / رقم الحاوية</td><td>';
+    print cpcc_ui_english_label('<tr><td class="fieldrequired">Container Number</td><td>', '<tr><td class="fieldrequired">Container Number / رقم الحاوية</td><td>');
     print '<input type="text" name="container_no" value="'.dol_escape_htmltag($object->container_no).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>Container Type / نوع الحاوية</td><td>';
+    print cpcc_ui_english_label('<tr><td>Container Type</td><td>', '<tr><td>Container Type / نوع الحاوية</td><td>');
     print $form->selectarray('container_type', $types, $object->container_type, 1);
     print '</td></tr>';
 
-    print '<tr><td>Nb Containers / عدد الحاويات</td><td>';
+    print cpcc_ui_english_label('<tr><td>Nb Containers</td><td>', '<tr><td>Nb Containers / عدد الحاويات</td><td>');
     print '<input type="number" name="nb_containers" value="'.dol_escape_htmltag($object->nb_containers ? $object->nb_containers : 1).'" style="width:100px"></td></tr>';
 
-    print '<tr><td>Booking No / رقم الحجز</td><td>';
+    print cpcc_ui_english_label('<tr><td>Booking No</td><td>', '<tr><td>Booking No / رقم الحجز</td><td>');
     print '<input type="text" name="booking_no" value="'.dol_escape_htmltag($object->booking_no).'" style="width:300px"></td></tr>';
 
-    print '<tr><td class="fieldrequired">BL Number / رقم البوليصة</td><td>';
+    print cpcc_ui_english_label('<tr><td class="fieldrequired">BL Number</td><td>', '<tr><td class="fieldrequired">BL Number / رقم البوليصة</td><td>');
     print '<input type="text" name="bl_no" value="'.dol_escape_htmltag($object->bl_no).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>Shipping Line / خط الملاحة</td><td>';
+    print cpcc_ui_english_label('<tr><td>Shipping Line</td><td>', '<tr><td>Shipping Line / خط الملاحة</td><td>');
     print '<input type="text" name="shipping_line" value="'.dol_escape_htmltag($object->shipping_line).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>Vessel Name / اسم السفينة</td><td>';
+    print cpcc_ui_english_label('<tr><td>Vessel Name</td><td>', '<tr><td>Vessel Name / اسم السفينة</td><td>');
     print '<input type="text" name="vessel_name" value="'.dol_escape_htmltag($object->vessel_name).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>Voyage No / رقم الرحلة</td><td>';
+    print cpcc_ui_english_label('<tr><td>Voyage No</td><td>', '<tr><td>Voyage No / رقم الرحلة</td><td>');
     print '<input type="text" name="voyage_no" value="'.dol_escape_htmltag($object->voyage_no).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>Port of Loading / ميناء الشحن</td><td>';
+    print cpcc_ui_english_label('<tr><td>Port of Loading</td><td>', '<tr><td>Port of Loading / ميناء الشحن</td><td>');
     print '<input type="text" name="port_loading" value="'.dol_escape_htmltag($object->port_loading).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>Port of Destination / ميناء الوصول</td><td>';
+    print cpcc_ui_english_label('<tr><td>Port of Destination</td><td>', '<tr><td>Port of Destination / ميناء الوصول</td><td>');
     print '<input type="text" name="port_destination" value="'.dol_escape_htmltag($object->port_destination).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>ETD (Sailing) / تاريخ الإبحار</td><td>';
+    print cpcc_ui_english_label('<tr><td>ETD (Sailing)</td><td>', '<tr><td>ETD (Sailing) / تاريخ الإبحار</td><td>');
     print $form->selectDate($object->date_etd ? $object->date_etd : -1, 'etd_', 0, 0, 1, "card", 1, 0);
     print '</td></tr>';
 
-    print '<tr><td>ATD (Actual Departure) / المغادرة الفعلية</td><td>';
+    print cpcc_ui_english_label('<tr><td>ATD (Actual Departure)</td><td>', '<tr><td>ATD (Actual Departure) / المغادرة الفعلية</td><td>');
     print $form->selectDate($object->date_atd ? $object->date_atd : -1, 'atd_', 0, 0, 1, "card", 1, 0);
     print '</td></tr>';
 
-    print '<tr><td class="fieldrequired">ETA (Arrival) / الوصول المتوقع</td><td>';
+    print cpcc_ui_english_label('<tr><td class="fieldrequired">ETA (Arrival)</td><td>', '<tr><td class="fieldrequired">ETA (Arrival) / الوصول المتوقع</td><td>');
     print $form->selectDate($object->date_eta ? $object->date_eta : -1, 'eta_', 0, 0, 1, "card", 1, 0);
     print '</td></tr>';
 
-    print '<tr><td>ATA (Actual Arrival) / الوصول الفعلي</td><td>';
+    print cpcc_ui_english_label('<tr><td>ATA (Actual Arrival)</td><td>', '<tr><td>ATA (Actual Arrival) / الوصول الفعلي</td><td>');
     print $form->selectDate($object->date_ata ? $object->date_ata : -1, 'ata_', 0, 0, 1, "card", 1, 0);
     print '</td></tr>';
 
-    print '<tr><td>Free Time (Days) / أيام الوقت الحر</td><td>';
+    print cpcc_ui_english_label('<tr><td>Free Time (Days)</td><td>', '<tr><td>Free Time (Days) / أيام الوقت الحر</td><td>');
     print '<input type="number" id="freetime_days" name="freetime_days" min="0" value="'.dol_escape_htmltag($object->freetime_days).'" style="width:100px">';
-    print ' <span class="opacitymedium">Calendar days / أيام تقويمية</span></td></tr>';
+    print cpcc_ui_english_label(' <span class="opacitymedium">Calendar days</span></td></tr>', ' <span class="opacitymedium">Calendar days / أيام تقويمية</span></td></tr>');
 
-    print '<tr><td>Free Time Start / بداية الوقت الحر</td><td>';
+    print cpcc_ui_english_label('<tr><td>Free Time Start</td><td>', '<tr><td>Free Time Start / بداية الوقت الحر</td><td>');
     print $form->selectDate($object->freetime_start ? $object->freetime_start : -1, 'fts_', 0, 0, 1, "card", 1, 0, 1);
-    print ' <span class="opacitymedium">Automatic from ATA / تلقائي من الوصول الفعلي</span>';
+    print cpcc_ui_english_label(' <span class="opacitymedium">Automatic from ATA</span>', ' <span class="opacitymedium">Automatic from ATA / تلقائي من الوصول الفعلي</span>');
     print '</td></tr>';
 
-    print '<tr><td>Free Time End / نهاية الوقت الحر</td><td>';
+    print cpcc_ui_english_label('<tr><td>Free Time End</td><td>', '<tr><td>Free Time End / نهاية الوقت الحر</td><td>');
     print $form->selectDate($object->freetime_end ? $object->freetime_end : -1, 'fte_', 0, 0, 1, "card", 1, 0, 1);
-    print ' <span class="opacitymedium">ATA + Free Time Days / الوصول الفعلي + الأيام</span>';
+    print cpcc_ui_english_label(' <span class="opacitymedium">ATA + Free Time Days</span>', ' <span class="opacitymedium">ATA + Free Time Days / الوصول الفعلي + الأيام</span>');
     print '</td></tr>';
 
-    print '<tr><td>Status / الحالة</td><td>';
+    print cpcc_ui_english_label('<tr><td>Status</td><td>', '<tr><td>Status / الحالة</td><td>');
     print $form->selectarray('fk_statut', $statuses, $object->fk_statut);
     print '</td></tr>';
+
+    print cpcc_ui_english_label('<tr><td>Customer portal visibility</td><td><label><input type="checkbox" name="customer_visible" value="1"', '<tr><td>Customer portal visibility / ظهور الشحنة للعميل</td><td><label><input type="checkbox" name="customer_visible" value="1"').(!empty($object->customer_visible) && $action === 'edit' ? ' checked' : '').cpcc_ui_english_label('> Publish the shipment record in the customer portal</label></td></tr>', '> Publish the shipment record in the customer portal / إظهار سجل الشحنة في بوابة العميل</label></td></tr>');
 
     print '<tr><td>'.$langs->trans('CPLPublicUpdateSource').'</td><td>';
     $publicSourceOptions = array(); foreach (cpl_public_source_types() as $sourceCode=>$unusedLabel) $publicSourceOptions[$sourceCode] = cpl_public_source_label($langs, $sourceCode);
     print $form->selectarray('audit_source_type', $publicSourceOptions, 'manual_team', 0);
     print '</td></tr>';
     print '<tr><td>'.$langs->trans('CPLPublicUpdateReason').'</td><td><input type="text" name="audit_reason_public" maxlength="1000" style="width:95%"></td></tr>';
-    print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1" checked></td></tr>';
+    print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1"'.($action === 'edit' ? ' checked' : '').'></td></tr>';
     if ($action === 'edit') {
         print '<tr><td>'.$langs->trans('CPLSendStatusEmail').'</td><td>';
         if ($cansendshipmentemail) print '<label><input type="checkbox" name="send_status_email" value="1"> '.$langs->trans('CPLSendStatusEmailHelp').'</label>';
@@ -490,11 +499,11 @@ if ($action == 'create' || $action == 'edit') {
         print '</td></tr>';
     }
 
-    print '<tr><td>Internal Notes / ملاحظات داخلية</td><td>';
+    print cpcc_ui_english_label('<tr><td>Internal Notes</td><td>', '<tr><td>Internal Notes / ملاحظات داخلية</td><td>');
     print '<textarea name="notes" rows="3" style="width:95%;">'.dol_escape_htmltag($object->notes).'</textarea>';
     print '</td></tr>';
 
-    print '<tr><td>Customer Notes / ملاحظات العميل</td><td>';
+    print cpcc_ui_english_label('<tr><td>Customer Notes</td><td>', '<tr><td>Customer Notes / ملاحظات العميل</td><td>');
     print '<textarea name="customer_note" rows="3" style="width:95%;">'.dol_escape_htmltag($object->customer_note).'</textarea>';
     print '</td></tr>';
 
@@ -502,11 +511,11 @@ if ($action == 'create' || $action == 'edit') {
     print dol_get_fiche_end();
 
     print '<div class="center">';
-    $btn_label = ($action == 'create') ? 'Save / حفظ' : 'Update / تحديث';
+    $btn_label = ($action == 'create') ? cpcc_ui_english_label('Save', 'Save / حفظ') : cpcc_ui_english_label('Update', 'Update / تحديث');
     print '<input type="submit" class="button button-save" value="'.$btn_label.'">';
     print ' &nbsp; ';
     $cancel_url = ($id > 0) ? $_SERVER['PHP_SELF'].'?id='.$id : $listurl;
-    print '<a class="button button-cancel" href="'.$cancel_url.'">Cancel / إلغاء</a>';
+    print '<a class="button button-cancel" href="'.$cancel_url.cpcc_ui_english_label('">Cancel</a>', '">Cancel / إلغاء</a>');
     print '</div>';
     print '</form>';
     print '<script src="'.dol_buildpath('/chinaplanetlogistics/js/card-freetime.js', 1).'?v=20260714"></script>';

@@ -19,7 +19,9 @@
                     return;
                 }
 
-                if (window.confirm('هل تريد حقًا تسجيل الخروج؟\nAre you sure you want to log out?')) {
+                var internalEnglish = !!document.querySelector('[data-interface-language="en_US"]');
+                var confirmation = internalEnglish ? 'Are you sure you want to log out?' : 'هل تريد حقًا تسجيل الخروج؟\nAre you sure you want to log out?';
+                if (window.confirm(confirmation)) {
                     window.location.assign(logoutUrl);
                 }
             });

@@ -1,0 +1,102 @@
+/* M084 shared accessibility layer. Loaded only by custom module shells. */
+body.cpcc-ui {font-family:Arial,Tahoma,sans-serif;line-height:1.5}
+.cpcc-ui :is(.cpad-shell,.cpcc-dashboard,.cpl-command-center,.cpw-workspace,.cpcc-portal-shell) {font-family:Arial,Tahoma,sans-serif;font-size:15px;line-height:1.5}
+.cpcc-ui :is(button,input,select,textarea){font-family:inherit}
+.cpcc-ui :is(.cpad-nav-links a,.cpad-nav-group-toggle,.cpad-tool){font-family:inherit;font-size:14px;min-height:44px}
+.cpcc-ui .cpad-nav-links{flex-wrap:wrap}
+.cpcc-ui :is(.cpad-title,.cpad-table th,.cpad-table td,.cpad-legend div,.cpad-rank){font-size:14px;line-height:1.5}
+.cpcc-ui .cpad-shell small,.cpcc-ui .cpad-shell .cpad-footnote{font-size:13px;line-height:1.5}
+.cpcc-ui .cpad-shell{--muted:#adc8d9}
+.cpcc-ui :is(.cpad-empty,.cpad-footnote,.cpad-library-row small,.cpad-activity-list small,.cpad-activity-list time){color:#adc8d9}
+.cpcc-ui :is(.cpcc-card small,.cpcc-project-view small,.cpcc-document-card small,.cpcc-section-head p,.cpcc-export-meta span,.cpcc-gallery-empty small,.cpcc-admin-overview-grid small,.cpcc-admin-finance-grid small,.cpcc-admin-finance-grid dt,.cpad-work-start small,.cpw-launch-grid small){color:#465d70!important}
+.cpcc-ui :is(.placeholder,.select2-selection__placeholder){color:#526579!important;opacity:1}
+/* Keep branded dark header/button surfaces and their foreground together. */
+.cpcc-ui :is(.cpcc-table,.cpcc-export-table) th{background:#173e56!important;color:#fff!important}
+.cpcc-ui .cpcc-print-actions :is(a,button){background:#173e56;color:#fff!important;min-height:44px;font-size:15px}
+.cpcc-ui .cpcc-portal-nav a.active :is(b,small){color:#152535!important;opacity:1!important}
+.cpcc-ui a:focus-visible,.cpcc-ui button:focus-visible,.cpcc-ui [tabindex="0"]:focus-visible{outline:3px solid #087eb5;outline-offset:3px;box-shadow:0 0 0 5px #fff}
+.cpcc-ui .cpad-shell :is(a,button):focus-visible{outline-color:#ffbf47;box-shadow:0 0 0 5px #061a35}
+.cpcc-ui #id-top .tmenu a{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:5px 8px;box-sizing:border-box}
+.cpcc-ui #id-top .tmenu li{height:auto;min-height:44px}
+.cpcc-ui .cpad-context-form{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cpcc-ui .cpad-context-form select{max-width:100%;min-height:44px}
+.cpcc-ui :is(.cpad-section-content,.cpcc-dashboard) input:not([type=hidden]):not([type=checkbox]):not([type=radio]),.cpcc-ui :is(.cpad-section-content,.cpcc-dashboard) select{min-height:44px;max-width:100%}
+.cpcc-ui .cpad-widget-library{position:fixed;margin:auto;inset:0;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 40px);color:#eaf8ff}
+.cpcc-ui .cpad-widget-library::backdrop{background:rgba(0,12,28,.7)}
+.cpcc-ui .cpad-library-head button{min-width:44px;min-height:44px}
+.cpcc-ui .cpad-library-row b{font-size:14px}
+.cpcc-ui .cpad-widget-controls button{min-width:44px;min-height:44px}
+.cpcc-ui .cpad-shell.is-customizing [data-cpad-widget]{padding-top:62px}
+.cpcc-ui .cpad-shell.is-customizing .cpad-title{padding-right:9px}
+.cpcc-ui .cpad-work-start-head h2{margin:3px 0;color:#102a43;font-size:22px}
+.cpcc-ui .cpad-work-start{margin-top:18px}
+.cpcc-ui .cpad-customize-toolbar{position:static}
+.cpcc-ui :is(.cpcc-admin-overview,.cpcc-dashboard){direction:inherit}
+.cpcc-ui .cpad-bars{gap:14px;padding-top:40px;height:240px}
+.cpcc-ui .cpad-bar em{font-size:12px;top:-30px;white-space:normal;text-align:center;line-height:1.1}
+.cpcc-ui .cpad-bar span{font-size:12px}
+.cpcc-ui .cpad-table td{white-space:normal;overflow-wrap:anywhere}
+.cpcc-ui .cpad-title>a{font-size:13px}
+@media(max-width:760px){
+ .cpcc-ui .cpad-head{padding:2px 4px 8px;margin-bottom:8px}
+ .cpcc-ui .cpad-head p{font-size:12px;margin:3px 0}
+ .cpcc-ui .cpad-environment{position:static;display:flex;justify-content:center;font-size:12px;margin:4px 0}
+ .cpcc-ui .cpad-environment small{font-size:12px}
+ .cpcc-ui .cpad-head h1{font-size:20px;letter-spacing:0}
+ .cpcc-ui .cpad-attention-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .cpcc-ui .cpad-attention-grid a{padding:10px;min-height:124px}
+ .cpcc-ui .cpad-attention-grid small{display:none}
+ .cpcc-ui .cpad-attention-grid b{font-size:14px}
+ .cpcc-ui .cpad-title{flex-wrap:wrap}
+ .cpcc-ui .cpad-widget-controls{max-width:calc(100% - 10px)}
+ .cpcc-ui .cpad-work-start-grid{grid-template-columns:1fr 1fr}
+ .cpcc-ui .cpad-work-start-grid>a{grid-template-columns:1fr;text-align:center;justify-items:center}
+ .cpcc-ui .cpad-work-start-grid .fas{grid-row:auto}
+ .cpcc-ui .cpad-donut-row{grid-template-columns:1fr}
+ .cpcc-ui .cpad-activity-list>a{grid-template-columns:30px minmax(0,1fr)}
+ .cpcc-ui .cpad-activity-list strong{grid-column:2;white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){.cpcc-ui *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.cpcc-ui #id-top .login_block_elem>a:has(.fa-print),.cpcc-ui #id-top a.help{display:inline-flex;min-width:32px;min-height:32px;align-items:center;justify-content:center}
+/* M084 review round 2: reserve natural rows for the title and environment.
+ * An absolute badge cannot accommodate translated titles at tablet widths. */
+.cpcc-ui .cpad-head{display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;gap:4px;padding-inline:12px}
+.cpcc-ui .cpad-head h1{max-width:100%;overflow-wrap:anywhere}
+.cpcc-ui .cpad-environment{position:static;max-width:100%;margin:4px 0;justify-content:center;text-align:center}
+.cpcc-ui .cpad-environment span{min-width:0;overflow-wrap:anywhere}
+ /* Paired label/icon links share one destination. The icon keeps the accessible
+  * name and tooltip; the strip scrolls internally at phone widths. */
+ .cpcc-ui.cpcc-native-compact #id-top nav{max-width:100%}
+ .cpcc-ui.cpcc-native-compact #id-top ul.tmenu{display:flex!important;flex-wrap:nowrap!important;align-items:center;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+ .cpcc-ui.cpcc-native-compact #id-top ul.tmenu>li{position:relative;float:none!important;flex:0 0 44px;width:44px!important;min-width:44px;max-width:none;padding:0;margin:0}
+ .cpcc-ui.cpcc-native-compact #id-top .tmenuend{display:none}
+ .cpcc-ui.cpcc-native-compact #id-top .cpcc-icon-menu-item a.tmenulabel{display:none!important}
+
+/* A native menu entry without a paired icon keeps a fully readable text target. */
+.cpcc-ui.cpcc-native-compact #id-top ul.tmenu>li.cpcc-text-menu-item{flex:0 0 auto;width:auto!important;min-width:44px}
+.cpcc-ui.cpcc-native-compact #id-top .cpcc-text-menu-item a.tmenulabel{display:flex!important;align-items:center;min-height:44px;padding-inline:12px;font-size:14px;width:auto;white-space:nowrap;text-overflow:clip}
+.cpcc-ui.cpcc-native-compact #id-top .cpcc-text-menu-item .mainmenuaspan{font-size:14px;max-width:none;white-space:nowrap;text-overflow:clip}
+
+/* Keyboard and touch details from the scoped Web Interface Guidelines review. */
+.cpcc-ui .cpcc-skip-link{position:fixed;inset-block-start:64px;inset-inline-start:12px;z-index:10000;padding:12px 18px;background:#fff;color:#102a43;font-size:16px;font-weight:700;transform:translateY(-220px);border:2px solid #087eb5;border-radius:6px}
+.cpcc-ui .cpcc-skip-link:focus{transform:none}
+.cpcc-ui :is(.cpo-guided-page,.cpw-page,#cpad-customize,#customer-operations){scroll-margin-top:90px}
+.cpcc-ui .cpo-guided-page :is(input,select,textarea):focus-visible{outline:3px solid #087eb5;outline-offset:3px;box-shadow:0 0 0 5px #fff}
+.cpcc-ui .cpo-guided-page :is(input,select,textarea){scroll-margin-top:90px}
+.cpcc-ui :is(.cpo-guided-page,.cpw-page) :is(h1,h2,h3){text-wrap:balance;overflow-wrap:anywhere}
+.cpcc-ui #customer-operations .cpw-action-main{min-width:0}
+.cpcc-ui #customer-operations .cpw-action-main h3{overflow-wrap:anywhere}
+.cpcc-ui :is(.cpo-guided-page,.cpw-page) :is(button,a),.cpcc-ui .cpad-tool{touch-action:manipulation;-webkit-tap-highlight-color:rgba(8,126,181,.25)}
+.cpcc-ui #cpad-widget-library{overscroll-behavior:contain}
+.cpcc-ui .cpad-mobile-home{display:none}
+@media(max-width:760px){
+ .cpcc-ui .cpad-mobile-home{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;margin:0 0 10px;padding:8px 12px;border:1px solid #45b9df;border-radius:8px;background:#123d64;color:#fff;font-size:16px;font-weight:700;line-height:1.5;text-decoration:none}
+ .cpcc-ui .cpad-mobile-home:hover{background:#195381;color:#fff}
+}
+
+/* The native selector leaves future interface languages visible but unavailable. */
+.cpcc-ui .cpad-language-control{display:flex;justify-content:flex-end;margin:0 0 12px;direction:ltr}
+.cpcc-ui .cpad-language-control select{font:inherit;font-size:16px;font-weight:600;line-height:1.5;min-height:44px;width:150px;max-width:100%;padding:8px 12px;border:1px solid #85b9e7;border-radius:8px;background-color:#e6f1ff;color:#064b85;cursor:pointer}
+.cpcc-ui .cpad-language-control select:focus-visible{outline:3px solid #5fddff;outline-offset:3px}
+@media(max-width:760px){.cpcc-ui .cpad-language-control{justify-content:center}}

@@ -1,5 +1,23 @@
 # ChinaPlanetOS Change Log
 
+## 2026-09-14 — M082 staff-first local completion
+
+- Added a guided staff-only supplier workflow to the operation screen: explicit native supplier order, separate validation, linked native supplier invoice, and partial/full same-currency supplier payment with bank evidence.
+- Added durable request, object, and payment markers so retries recover exact server-owned evidence and never recreate supplier cash; optional customer-funds attribution is explicit, same-currency, and linked to the exact native supplier payment.
+- Added an evidence-only shipment/document checklist for booking, loading, departure, arrival, delivery, Commercial Invoice, Packing List, BL, and customer publication; missing evidence remains pending.
+- Completed schema-only disposable UAT for USD, CNY, and EGP from native quotation and sales order through customer collection and supplier settlement: 3 quotations, 3 sales orders, 3 customer invoices, 6 customer receipts, 3 supplier orders, 3 supplier invoices, 6 supplier payments, and 12 bank entries.
+- Verified idempotent partial/full retries, explicit funds attribution, wrong-currency and overpayment rejection, customer writer denial, reviewed-document projection, authenticated desktop rendering, and 390px no-overflow behavior.
+- Corrected the initial review findings: supplier payment now uses Dolibarr's real supplier-invoice-create and bank-read permissions, advanced supplier validations follow `MAIN_USE_ADVANCED_PERMS`, and external shipment pages expose no mutation forms and reject every direct customer POST.
+- Local only. No real business records, automatic FX, external send, Push, Staging, or Production action occurred; independent release reviews remain pending.
+
+## 2026-09-14 — M081 customer portal clarity and traceability
+
+- Separated Sarah Company's financial summary by original currency so USD, CNY, and EGP are never combined into a misleading total.
+- Added read-only, customer-scoped native quotation list/detail pages and customer-safe project/order links to quotations, invoices, shipments, documents, and reports.
+- Exposed published commercial documents from the main Documents page and changed operation reports into readable responsive cards.
+- Authenticated desktop and 390px acceptance, customer-isolation checks, accounting review, focused regressions, and independent Security/QA passed. Synthetic UAT record names remain a non-blocking content-cleanup item.
+- Local source only: no business data, schema, module state, Push, Staging, or Production changed. Mobile quotation/journey parity remains pending a separate Mission.
+
 ## 2026-08-28 — M062-R04 separate Alexandria terminal trends
 
 - Replaced the intentionally empty grouped Alexandria history contract with independently queried Old Port, TMT and optional terminal-not-specified series; no terminal prices are averaged together.

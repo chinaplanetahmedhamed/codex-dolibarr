@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../../chinaplanetcustomercenter/lib/ui.lib.php';
 /**
  * China Planet Kanban - Customer onboarding helper.
  * Idempotently adds external users to the Customers Portal group and sets their landing page to the unified customer center board.
@@ -108,22 +109,22 @@ if ($action == 'onboard' && $tokenOk) {
 }
 
 llxHeader('', 'ChinaPlanet Customer Center - Customer Onboarding', '', '', 0, 0, array(), array('/custom/cpkanban/css/board.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('portal','Customer Onboarding / تهيئة العملاء','إعداد مستخدمي بوابة العملاء وصلاحيات القراءة','fa-user-check');
-print '<div class="cpk-wrap" dir="rtl">';
-print load_fiche_titre('تهيئة العملاء تلقائياً', '', 'user');
-print '<div class="cpk-banner">هذه الصفحة تضيف العملاء الخارجيين إلى مجموعة Customers Portal وتضبط صفحة البداية لهم على مركز العميل الموحد. العملية آمنة ويمكن تشغيلها أكثر من مرة.</div>';
+cpcc_admin_shell_open('portal','Customer Onboarding','Set up customer portal users and read access.','fa-user-check');
+print '<div class="cpk-wrap" dir="ltr">';
+print load_fiche_titre('Customer onboarding', '', 'user');
+print '<div class="cpk-banner">This page adds external customers to the Customers Portal group and sets the Customer Center as their landing page. It can be run more than once.</div>';
 print '<div class="cpk-detail-card">';
 print '<form method="POST" action="'.$_SERVER['PHP_SELF'].'">';
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="action" value="onboard">';
 print '<table class="border centpercent">';
-print '<tr><td class="titlefield">النطاق</td><td>';
-print '<label><input type="radio" name="mode" value="all" checked> كل المستخدمين الخارجيين النشطين</label><br>';
-print '<label><input type="radio" name="mode" value="one"> مستخدم واحد فقط — rowid:</label> <input type="number" name="fk_user" class="flat" style="width:120px">';
+print '<tr><td class="titlefield">Scope</td><td>';
+print '<label><input type="radio" name="mode" value="all" checked> All active external users</label><br>';
+print '<label><input type="radio" name="mode" value="one"> One user only — rowid:</label> <input type="number" name="fk_user" class="flat" style="width:120px">';
 print '</td></tr>';
-print '<tr><td>ما سيتم ضبطه</td><td><ul><li>إنشاء/استخدام مجموعة Customers Portal</li><li>منح صلاحية cpkanban read رقم 500101 للمجموعة</li><li>منح صلاحية chinaplanetcustomercenter read رقم 500201 للمجموعة</li><li>إضافة المستخدم الخارجي للمجموعة</li><li>تعيين MAIN_LANDING_PAGE = /custom/chinaplanetcustomercenter/board.php</li></ul></td></tr>';
+print '<tr><td>Changes to apply</td><td><ul><li>Create or use the Customers Portal group</li><li>Grant cpkanban read permission 500101 to the group</li><li>Grant chinaplanetcustomercenter read permission 500201 to the group</li><li>Add the external user to the group</li><li>Set MAIN_LANDING_PAGE = /custom/chinaplanetcustomercenter/board.php</li></ul></td></tr>';
 print '</table>';
-print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="تشغيل التهيئة"></div>';
+print '<div class="center" style="margin-top:14px"><input type="submit" class="button" value="Run onboarding"></div>';
 print '</form>';
 print '</div></div>';
 cpcc_admin_shell_close();

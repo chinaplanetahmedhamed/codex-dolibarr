@@ -25,7 +25,7 @@ $morecss = array(
     cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),
 );
 llxHeader('', $langs->trans('SopLibrary'), '', '', 0, 0, array(), $morecss);
-cpcc_admin_shell_open('sop', 'Multilingual SOP Center / مكتبة SOP متعددة اللغات', 'تحكم مركزي بمحتوى التشغيل والعمليات المتعدد اللغات', 'fa-book-open');
+cpcc_admin_shell_open('sop', 'Multilingual SOP Center', 'Manage multilingual operating procedures in one place.', 'fa-book-open');
 ?>
 <main class="cpo-page">
 <section class="cpo-hero"><div><span class="cpo-eyebrow">CONTROLLED MULTILINGUAL LIBRARY</span><h1><?php echo $langs->trans('MultilingualSopCenter'); ?></h1><p><?php echo $langs->trans('TranslationPublishNotice'); ?></p></div><div><?php echo cpo_language_switcher($contentLang, array_filter($filters, function($value){return $value!==''&&$value!==0;})); ?><div class="cpo-actions" style="margin-top:8px"><?php if($canWrite){ ?><a class="button" href="edit.php?content_lang=<?php echo urlencode($contentLang); ?>"><?php echo $langs->trans('NewSop'); ?></a><?php } ?><a class="button" href="../index.php"><?php echo $langs->trans('OperationsCenter'); ?></a></div></div></section>

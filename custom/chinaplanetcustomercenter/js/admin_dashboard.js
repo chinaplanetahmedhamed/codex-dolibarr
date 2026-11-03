@@ -11,6 +11,7 @@
     try { config = JSON.parse(dataNode.textContent || '{}'); } catch (e) { return; }
     var layout = Array.isArray(config.layout) ? config.layout : [];
     var labels = config.labels || {};
+    var ui = config.ui || {};
     var byKey = {};
     layout.forEach(function (row) { if (row && row.key) byKey[row.key] = row; });
 
@@ -25,6 +26,13 @@
         grid.appendChild(widget);
     });
 
+    if (!layout.length) {
+        // Manager-first default. Persisted per-user order and visibility always take precedence.
+        ['attention_center', 'customer_finance', 'shipment_control', 'documents_center'].reverse().forEach(function (key) {
+            var priority = grid.querySelector('[data-cpad-widget="' + key + '"]');
+            if (priority) grid.insertBefore(priority, grid.firstChild);
+        });
+    }
     if (layout.length) {
         layout.slice().sort(function (a, b) { return (a.position || 0) - (b.position || 0); }).forEach(function (row) {
             var widget = grid.querySelector('[data-cpad-widget="' + row.key + '"]');
@@ -50,9 +58,12 @@
     function widgetControls(widget) {
         var controls = document.createElement('div');
         controls.className = 'cpad-widget-controls';
-        controls.innerHTML = '<button type="button" class="cpad-drag-handle" title="Drag or use arrow keys / اسحب أو استخدم الأسهم" aria-label="Move widget">↕</button>' +
-            '<button type="button" class="cpad-resize-widget" title="Resize / تغيير الحجم" aria-label="Resize widget">↔</button>' +
-            '<button type="button" class="cpad-hide-widget" title="Hide / إخفاء" aria-label="Hide widget">×</button>';
+        controls.innerHTML = '<button type="button" class="cpad-drag-handle" title="Drag or use arrow keys" aria-label="Move widget">↕</button>' +
+            '<button type="button" class="cpad-resize-widget" title="Resize" aria-label="Resize widget">↔</button>' +
+            '<button type="button" class="cpad-hide-widget" title="Hide" aria-label="Hide widget">×</button>';
+        ['move','resize','hide'].forEach(function(key,index){
+            var button=controls.children[index];button.setAttribute('aria-label',ui[key] || button.getAttribute('aria-label'));button.title=ui[key] || button.title;
+        });
         widget.appendChild(controls);
         controls.querySelector('.cpad-resize-widget').addEventListener('click', function () {
             var sizes = ['small','medium','large','full'];
@@ -137,12 +148,15 @@
             widget.hidden = !visible;
             var row = document.createElement('button');
             row.type = 'button';
+            row.dataset.widgetKey = key;
             row.className = 'cpad-library-row' + (visible ? ' is-visible' : '');
-            row.innerHTML = '<span>' + (visible ? '✓' : '+') + '</span><b>' + (labels[key] || key) + '</b><small>' + (widget.getAttribute('data-size') || 'medium') + '</small>';
+            row.innerHTML = '<span>' + (visible ? '✓' : '+') + '</span><b>' + (labels[key] || key) + '</b><small>' + (ui[widget.getAttribute('data-size') || 'medium'] || widget.getAttribute('data-size') || 'medium') + '</small>';
             row.addEventListener('click', function () {
                 widget.setAttribute('data-visible', visible ? '0' : '1');
                 updateLibrary();
+                libraryList.children[widgets.indexOf(widget)].focus();
             });
+            row.setAttribute('aria-pressed', visible ? 'true' : 'false');
             libraryList.appendChild(row);
         });
     }
@@ -155,7 +169,7 @@
         cancelButton.hidden = !enabled;
         resetButton.hidden = !enabled;
         libraryButton.hidden = !enabled;
-        if (!enabled) library.hidden = true;
+        if (!enabled && library.open) library.close();
         updateLibrary();
     }
 
@@ -180,8 +194,9 @@
 
     editButton.addEventListener('click', function () { setCustomizing(true); });
     cancelButton.addEventListener('click', function () { window.location.reload(); });
-    libraryButton.addEventListener('click', function () { library.hidden = false; });
-    closeLibrary.addEventListener('click', function () { library.hidden = true; });
+    libraryButton.addEventListener('click', function () { library.showModal(); closeLibrary.focus(); });
+    closeLibrary.addEventListener('click', function () { library.close(); });
+    library.addEventListener('close', function () { libraryButton.focus(); });
     saveButton.addEventListener('click', function () {
         var payload = Array.prototype.slice.call(grid.querySelectorAll('[data-cpad-widget]')).map(function (widget) {
             return {
@@ -192,7 +207,7 @@
         });
         post('save', payload).then(function (result) {
             if (!result.success) throw new Error(result.message || 'save_failed');
-            showMessage('Layout saved / تم حفظ التخطيط', false);
+            showMessage(ui.saved || 'Layout saved', false);
             setCustomizing(false);
         }).catch(function (error) { showMessage(error.message || 'Unable to save layout', true); });
     });

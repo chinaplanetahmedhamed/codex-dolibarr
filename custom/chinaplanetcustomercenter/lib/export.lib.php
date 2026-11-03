@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ui.lib.php';
 
 function cpcc_export_schema_ready($db)
 {
@@ -10,13 +11,13 @@ function cpcc_export_schema_ready($db)
 function cpcc_export_type_label($type)
 {
     $labels = array(
-        'commercial_invoice' => 'Commercial Invoice / فاتورة تجارية',
-        'packing_list' => 'Packing List / قائمة تعبئة',
-        'bill_of_lading' => 'Bill of Lading / بوليصة شحن',
-        'cargox' => 'CargoX Document / مستند CargoX',
-        'certificate_origin' => 'Certificate of Origin / شهادة منشأ',
-        'inspection' => 'Inspection Document / مستند فحص',
-        'other' => 'Other Export Document / مستند آخر',
+        'commercial_invoice' => cpcc_ui_english_label('Commercial Invoice', 'Commercial Invoice / فاتورة تجارية'),
+        'packing_list' => cpcc_ui_english_label('Packing List', 'Packing List / قائمة تعبئة'),
+        'bill_of_lading' => cpcc_ui_english_label('Bill of Lading', 'Bill of Lading / بوليصة شحن'),
+        'cargox' => cpcc_ui_english_label('CargoX Document', 'CargoX Document / مستند CargoX'),
+        'certificate_origin' => cpcc_ui_english_label('Certificate of Origin', 'Certificate of Origin / شهادة منشأ'),
+        'inspection' => cpcc_ui_english_label('Inspection Document', 'Inspection Document / مستند فحص'),
+        'other' => cpcc_ui_english_label('Other Export Document', 'Other Export Document / مستند آخر'),
     );
     return isset($labels[$type]) ? $labels[$type] : $type;
 }
@@ -32,7 +33,7 @@ function cpcc_export_documents($db, $socid, $projectid = 0, $shipmentid = 0, $cu
     $sql .= " WHERE d.entity=".(int) $GLOBALS['conf']->entity." AND d.fk_soc=".(int) $socid." AND d.status=1";
     if ((int) $projectid > 0) $sql .= " AND d.fk_project=".(int) $projectid;
     if ((int) $shipmentid > 0) $sql .= " AND d.fk_shipment=".(int) $shipmentid;
-    if ($customerVisibleOnly) $sql .= " AND d.customer_visible=1";
+    if ($customerVisibleOnly) $sql .= " AND d.customer_visible=1 AND (d.fk_shipment IS NULL OR l.customer_visible=1)";
     $sql .= " ORDER BY d.document_date DESC,d.rowid DESC";
     $resql = $db->query($sql);
     if ($resql) while ($obj = $db->fetch_object($resql)) $rows[] = $obj;
@@ -47,7 +48,7 @@ function cpcc_export_fetch($db, $id, $socid, $customerVisibleOnly = true)
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=d.fk_project AND p.entity=d.entity AND p.fk_soc=d.fk_soc";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.rowid=d.fk_shipment AND l.entity=d.entity AND l.fk_soc=d.fk_soc";
     $sql .= " WHERE d.rowid=".(int) $id." AND d.entity=".(int) $GLOBALS['conf']->entity." AND d.fk_soc=".(int) $socid." AND d.status=1";
-    if ($customerVisibleOnly) $sql .= " AND d.customer_visible=1";
+    if ($customerVisibleOnly) $sql .= " AND d.customer_visible=1 AND (d.fk_shipment IS NULL OR l.customer_visible=1)";
     $resql = $db->query($sql);
     $document = $resql ? $db->fetch_object($resql) : null;
     if (!$document) return null;

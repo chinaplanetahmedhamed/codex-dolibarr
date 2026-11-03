@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/lib/ui.lib.php';
 if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
@@ -16,12 +17,13 @@ $totals = cpcc_export_totals($document);
 
 llxHeader('', cpcc_export_type_label($document->document_type), '', '', 0, 0, array(), $isExternal?array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css'):array('/custom/chinaplanetcustomercenter/css/customer_dashboard.css','/custom/chinaplanetcustomercenter/css/export.css',cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'),cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
 if ($isExternal) cpcc_portal_navigation($user, 'commercial_documents');
-else cpcc_admin_shell_open('export', cpcc_export_type_label($document->document_type), 'معاينة وطباعة مستند التصدير', 'fa-file-export', array('socid'=>$socid,'projectid'=>(int)$document->fk_project));
+else cpcc_admin_shell_open('export', cpcc_export_type_label($document->document_type), cpcc_ui_english_label('Preview and print the export document.', 'معاينة وطباعة مستند التصدير'), 'fa-file-export', array('socid'=>$socid,'projectid'=>(int)$document->fk_project));
 $backUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/commercial_documents.php',$isExternal,$socid);
 ?>
-<div class="cpcc-print-actions" dir="rtl"><a href="<?php echo dol_escape_htmltag($backUrl); ?>">العودة للمستندات</a><button type="button" onclick="window.print()">طباعة / حفظ PDF</button></div>
+<main>
+<div class="cpcc-print-actions" dir="<?php echo cpcc_ui_english_label('ltr', 'rtl'); ?>"><a href="<?php echo dol_escape_htmltag($backUrl); ?>"><?php echo dol_escape_htmltag(cpcc_ui_t('UIBackToDocuments')); ?></a><button type="button" onclick="window.print()"><?php echo dol_escape_htmltag(cpcc_ui_t('UIPrintSavePdf')); ?></button></div>
 <article class="cpcc-export-sheet" dir="ltr">
-  <header class="cpcc-export-title"><div><span>VISION FOR IMPORT AND EXPORT LIMITED</span><h1><?php echo dol_escape_htmltag(strtoupper(cpcc_export_type_label($document->document_type))); ?></h1></div><div><b><?php echo dol_escape_htmltag($document->ref); ?></b><br><?php echo dol_escape_htmltag(dol_print_date($document->document_date,'day')); ?></div></header>
+  <header class="cpcc-export-title"><div><span>VISION FOR IMPORT AND EXPORT LIMITED</span><h1><?php echo dol_escape_htmltag(strtoupper(cpcc_export_type_label($document->document_type))); ?></h1></div><div><b><?php echo dol_escape_htmltag($document->ref); ?></b><br><?php echo dol_escape_htmltag(cpcc_portal_date($document->document_date,'day')); ?></div></header>
   <section class="cpcc-export-meta">
     <div><span>Shipper / Exporter</span><b><?php echo dol_escape_htmltag($document->shipper_name ?: 'Vision for Import and Export Limited'); ?></b></div>
     <div><span>Consignee</span><b><?php echo dol_escape_htmltag($document->consignee_name); ?></b></div>
@@ -38,4 +40,5 @@ $backUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/commercial_documen
   <?php if($document->document_type==='commercial_invoice'){ ?><div class="cpcc-export-total"><span>Total:</span><b><?php echo cpcc_portal_money($totals['amount']).' '.dol_escape_htmltag($document->currency_code); ?></b></div><?php }else{ ?><div class="cpcc-export-total"><span>Cartons: <b><?php echo cpcc_portal_money($totals['cartons']); ?></b></span><span>Net: <b><?php echo cpcc_portal_money($totals['net_weight']); ?> KG</b></span><span>Gross: <b><?php echo cpcc_portal_money($totals['gross_weight']); ?> KG</b></span></div><?php } ?>
   <?php if(!empty($document->notes_public)){ ?><p><?php echo nl2br(dol_escape_htmltag($document->notes_public)); ?></p><?php } ?>
 </article>
+</main>
 <?php if(!$isExternal)cpcc_admin_shell_close();llxFooter();

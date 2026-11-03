@@ -2,6 +2,8 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST') define('CSRFCHECK_WITH_TOKEN', 1);
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/../lib/main.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/ui.lib.php';
+cpcc_ui_initialize_language();
 require_once __DIR__.'/../class/InternalTaskService.class.php';
 cpo_task_require($db, $user);
 $langs->load('chinaplanetoperations@chinaplanetoperations');
@@ -33,7 +35,7 @@ $teams = $service->teamOptions(false);
 $users = $service->internalUsers();
 $grants = $service->grantRows();
 $morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'));
-llxHeader('', $langs->trans('InternalTaskTeamGrants'), '', '', 0, 0, array(), $morecss);
+llxHeader('', $langs->trans('InternalTaskTeamGrants'), '', '', 0, 0, array(), $morecss);cpcc_ui_assets();cpcc_ui_language_controls();
 ?>
 <main class="cpo-page">
 <section class="cpo-hero"><div><span class="cpo-eyebrow"><?php echo $langs->trans('InternalTaskLeastPrivilege'); ?></span><h1><?php echo $langs->trans('InternalTaskTeamGrants'); ?></h1><p><?php echo $langs->trans('InternalTaskTeamGrantsHelp'); ?></p></div><a class="button" href="board.php"><?php echo $langs->trans('Back'); ?></a></section>
