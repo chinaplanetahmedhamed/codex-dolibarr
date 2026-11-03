@@ -1,0 +1,27 @@
+{
+  "engine": "5.7.39",
+  "sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+  "php": "8.3.21",
+  "checks": 122,
+  "queries_unmodified": true,
+  "schema": "Canonical custom entry DATETIME; charge/invoice DATE; native payment/credit DATETIME",
+  "canonical_library_sha256": "297eab8265207af92c49567ec94f517908a27d1b197adad3205116fdb04f0177",
+  "canonical_test_sha256": "e9509686052d1d753aa12be1bd1c686689059e00a7316987b6ee5ff160daec73",
+  "scope": "Fresh private local synthetic MySQL only; no existing database or target runtime",
+  "correction": "Earlier native fixture used DATE for custom entry_date; canonical source DDL uses DATETIME. Earlier results retained. This new run preserves input timestamps.",
+  "additional_assertions": 12,
+  "additional_cases": [
+    "cutoff-day 00:00:00",
+    "cutoff-day 12:00:00",
+    "cutoff-day 23:59:59",
+    "next-day 00:00:00"
+  ],
+  "stop_verified": "Owned test process stopped; socket and PID absent",
+  "target_mariadb_acceptance": false,
+  "full_historical_acceptance": false,
+  "runner_sha256": "b688caef0f05f539cc26455201ea03ece508344b76cc477ee84f894bad98011e",
+  "native_ddl_source_hashes": {
+    "custom/chinaplanetcustomercenter/sql/llx_cpcc_financial_entry.sql": "d2f8008a4640485232019ca951c5974527b9dc0920fdaba78ba2d7c7117c302e",
+    "custom/chinaplanetcustomercenter/sql/llx_cpcc_project_charge.sql": "24bd1b6be722b12520d8ec31270c09f33dd613deb6737b56151bc3ddb53cc495"
+  }
+}
