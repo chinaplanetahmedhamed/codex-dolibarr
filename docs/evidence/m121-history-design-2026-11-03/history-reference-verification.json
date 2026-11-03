@@ -1,0 +1,55 @@
+{
+  "scope": "Test-only executable historical design; no application backend/API or runtime certification",
+  "test_path": "deploy/tests/test_m121_historical_audit_replay.php",
+  "test_sha256": "10101bddbb4f9c5cbc98ab43f50c0e07a8c5d6e7d2642c7d35704964955c6353",
+  "PHP8.3.21": {
+    "assertions": 55,
+    "lint": "PASS",
+    "result": "PASS"
+  },
+  "PHP8.2.0": {
+    "assertions": 55,
+    "lint": "PASS",
+    "result": "PASS"
+  },
+  "mutation_controls": {
+    "removed_coverage": "RED",
+    "removed_version_continuity": "RED",
+    "removed_reversed_original_guard": "RED",
+    "removed_creation_chronology": "RED",
+    "current_state_fallback": "RED",
+    "removed_creation_input_binding": "RED",
+    "removed_batch_provenance": "RED",
+    "removed_project_normalization": "RED",
+    "removed_nullable_identity_normalization": "RED"
+  },
+  "source": "Existing M116 manual-source audit and retained allocations; synthetic records only",
+  "time_basis": "As-recorded with explicit synthetic UTC/complete-empty-start/retained-universe assumptions; equal-second creation/audit is a conservative supported fixture subset",
+  "positive_cases": [
+    "save/post/reallocate/reverse",
+    "historical project allocation version",
+    "USD100.00 and CNY200.01 remain independent exact minor units",
+    "covered empty interval zero"
+  ],
+  "refusal_cases": [
+    "missing or truncated or duplicate audit",
+    "version/batch/tail or allocation conflict",
+    "unknown identity/currency/time basis",
+    "historical scope denied",
+    "mutation after reversal",
+    "entry creation/audit time conflict",
+    "invalid/uncovered cutoff",
+    "independent ledger mixing",
+    "native current rows or unavailable credit application history"
+  ],
+  "certifies_native_receivables": false,
+  "certifies_real_runtime": false,
+  "raw_records_or_full_new_test_published": false,
+  "review": "Independent final reviewer accepted bounded test-only scope;3 material reference gaps fixed and reprobes verified",
+  "limits": [
+    "Only explicitly normalized initial commands supported; raw command normalization/draft edits/task scopes unsupported",
+    "Coverage/identity/timezone flags are synthetic assumptions; no runtime adapter or history certificate",
+    "Conservative same-second entry/audit chronology restriction may refuse valid actual operations",
+    "Native cash/receivables and credit-application/lifecycle history remain unsupported"
+  ]
+}
