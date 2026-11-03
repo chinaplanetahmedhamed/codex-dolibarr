@@ -532,7 +532,7 @@ function cpcc_financial_summary($db, $socid, $currencyFallback, $projectid = 0, 
             $summary[$currency]['future_services'] += $remaining;
         }
     }
-    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, 0, $asOf) as $invoice) {
+    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, (int) $projectid, $asOf) as $invoice) {
         $currency = $invoice['currency'];
         if (!isset($summary[$currency])) $summary[$currency] = cpcc_financial_empty_summary();
         $summary[$currency]['unpaid_invoices'] += (float) $invoice['remaining'];
@@ -569,3 +569,4 @@ function cpcc_financial_project_charges($db, $socid, $projectid, $currencyFallba
 {
     return cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid);
 }
+
