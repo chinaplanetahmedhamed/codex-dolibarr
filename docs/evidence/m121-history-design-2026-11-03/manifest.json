@@ -13,12 +13,13 @@
   },
   "evidence_files": {
     "docs/architecture/M121_HISTORICAL_EVIDENCE_DESIGN_2026-11-03.md": "d226d143b168e4ef479bae8f6dc205fc51542c9165b60962ecac28278112b0af",
-    "docs/REPORTS/M121_HISTORY_AND_PORTFOLIO_SOURCE_2026-11-03.md": "2b9d45b4daa623ef53c65777875485970a0103a3fba7f57a435876055f4b299a",
+    "docs/REPORTS/M121_HISTORY_AND_PORTFOLIO_SOURCE_2026-11-03.md": "599bbbdafd361dd28a588b44b8759f91d9a8b25f2ba8df4f19fbfec1cd2a41a4",
+    "docs/evidence/m121-history-design-2026-11-03/backup-guard-preparation.json": "8c38b608254059439edc87a324fdfd7aad05ea55d24cd10d689a0592384f57fe",
     "docs/evidence/m121-history-design-2026-11-03/datetime-verification.json": "f2ebd871feb3bdfcba4fae1b8a7ca3a79b59d3131de8c38b6b39e79f4e485ae6",
-    "docs/evidence/m121-history-design-2026-11-03/history-reference-verification.json": "05dd1c2b9ff626a355102d16395ee93a75b7aa1b960b4ecf47ccf7fc8c315e9c",
-    "docs/evidence/m121-history-design-2026-11-03/portfolio-verification.json": "6f93af24c473e01b277e948a324b217bebeb4c37eefe007abdc57fcf257486b9",
     "docs/evidence/m121-history-design-2026-11-03/history-audit-summary.json": "843be2c251a49eaa6e5e82508bbe1c161c6a718ba4dfeef0d7c31021ffc8f180",
-    "docs/evidence/m121-history-design-2026-11-03/operator-guard-summary.json": "dc34c1ac3b5bc9064e6de38fc23b833fffcb487f0c4a95743487f8221fe1e349"
+    "docs/evidence/m121-history-design-2026-11-03/history-reference-verification.json": "05dd1c2b9ff626a355102d16395ee93a75b7aa1b960b4ecf47ccf7fc8c315e9c",
+    "docs/evidence/m121-history-design-2026-11-03/operator-guard-summary.json": "dc34c1ac3b5bc9064e6de38fc23b833fffcb487f0c4a95743487f8221fe1e349",
+    "docs/evidence/m121-history-design-2026-11-03/portfolio-verification.json": "6f93af24c473e01b277e948a324b217bebeb4c37eefe007abdc57fcf257486b9"
   },
   "preservation": {
     "original_paths_checked": 1015,
@@ -40,13 +41,38 @@
     "portfolio": "Independent no blocking findings for final scoped slice",
     "history_reference": "Independent bounded test-only acceptance;3 reference gaps corrected; final55 checks verified"
   },
-  "shared_records": "Latest29keys/sixopenphasegates read; new checkpoint write pending",
+  "shared_records": {
+    "test_log_ranges": [
+      "A36:L39",
+      "A41:L41"
+    ],
+    "test_ids": "M121-MAC-19\u201323",
+    "progress_ranges": [
+      "J2",
+      "L2:N2",
+      "I3:N3",
+      "W3"
+    ],
+    "task_ranges": [
+      "H3:J4",
+      "H6:J6",
+      "H8:J9",
+      "H14:J14",
+      "H29:J29"
+    ],
+    "manual": {
+      "tab": "t.0",
+      "indexes": "31245\u201336754",
+      "revision": "AHj4eMRHBogAQANiZSFkd2QDZae_B-P2ow840qH1PJImw0bORWYBmBYKz1PnTrV2ip0rAbq8pnoEfOjjFYd_AWcEQu1LgaQc88GFTax7fbw"
+    },
+    "readback": "Writes verified;29keys/sixopenphases/failurehistory/manualprefix/sharing preserved; layout visually checked"
+  },
   "operator_guard": "Limited operator-supplied metadataPASS evaluated; exact output private; no new Codex grant",
   "gates": {
     "full_history": "REQUIRED and incomplete",
     "native_runtime_auth": "PENDING",
     "full_isolation_anonymization": "PENDING",
-    "backup_recovery": "PENDING supported verification",
+    "backup_recovery": "Human integrity guard prepared/reviewed/delivered, result PENDING; no fresh backup/recovery rehearsal or safe supported scratch execution path",
     "deployment": "NOT PERFORMED",
     "production": "NOT ACCESSED"
   },
