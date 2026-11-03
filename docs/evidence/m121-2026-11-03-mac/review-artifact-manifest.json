@@ -1,0 +1,42 @@
+[
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/finance-review.md",
+    "sha256": "e8af127e454097f68aa5c132ced34e38bd7e5a012f7d0db5d0a92fe91e52afee",
+    "bytes": 5070
+  },
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/finance-manifest.json",
+    "sha256": "aa8ef8dcf4be9b36b5455f418af9700a41dee5251984c48dcdc0ab50ffd694cd",
+    "bytes": 7868
+  },
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/finance-reviewed-integration.patch",
+    "sha256": "0a336a8a8dd4165d91e3a312ae021f084d0167799a5365c185682a368749669e",
+    "bytes": 13506
+  },
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/finance-review-probes.php.txt",
+    "sha256": "ad45bdd1279051de84489e29920fd2e8f6b34d196bf2d636e1f2037d533987dc",
+    "bytes": 2606
+  },
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/boards-review.md",
+    "sha256": "cfa7f0d1bd6ca0c48295301d0d839c6056dddd7b550e0ba9940d4a67b301319b",
+    "bytes": 4528
+  },
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/boards-manifest.json",
+    "sha256": "b709cc9c633838ad6f625cf4e5e12d0932589c865d5da9d0107fd941bf0f6e93",
+    "bytes": 14469
+  },
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/boards-owner-scoped.patch",
+    "sha256": "ce6df796e187ac06d4d858a15dfb7a438acadcd438dc1ff6abb65e5d89e74b2e",
+    "bytes": 57688
+  },
+  {
+    "path": "docs/evidence/m121-2026-11-03-mac/boards-whole-startup.cjs.txt",
+    "sha256": "c5624515faf4ff774f9521053e3ef826647420347e794c5caca2f34ae4ddeeec",
+    "bytes": 4512
+  }
+]
