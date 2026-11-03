@@ -1,5 +1,7 @@
 name: M121 Boards source regressions
 on:
+  push:
+    branches: ['codex/m121-boards-density-priority']
   pull_request:
     paths:
       - 'custom/chinaplanetoperations/js/boards.js'
