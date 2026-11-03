@@ -1,0 +1,167 @@
+{
+  "mission": "M121",
+  "scope": "Source-only financial reconciliation review; prepared temporary candidate only",
+  "review_date": "2026-11-03",
+  "owner": "Root agent owns canonical scope; finance_review is read-only reviewer",
+  "canonical": {
+    "path": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+    "branch": "codex/m084-dashboard-repair",
+    "head": "310deeaa70ced8d1a74aa84c802e2c705e54b2a1",
+    "dirty_work_preserved": true
+  },
+  "pr": {
+    "url": "https://github.com/chinaplanetahmedhamed/codex-dolibarr/pull/59",
+    "state_observed": "open draft",
+    "head": "6bdc868e7bfeb44c9ffe8b3ca5545300ab0df298",
+    "base": "016893bbc6382f050e819a8a1984efb2aafde7a1",
+    "source": "GitHub connector get_pr_info/get_pr_diff/fetch_file"
+  },
+  "php_version": "8.3.21 CLI",
+  "files": [
+    {
+      "path": "custom/chinaplanetcustomercenter/admin/financial_portfolio.php",
+      "baseline_sha256": "9c2db56ee44612f70281fbb4923cc0419fd70cb94e3451df5e9779e0c53eddb3",
+      "candidate_sha256": "31359d0ce173348a2ae2f2d18d5297ca6974bd0f5f39d21612abec9f270eb08f",
+      "baseline_exists": true
+    },
+    {
+      "path": "custom/chinaplanetcustomercenter/lib/financial.lib.php",
+      "baseline_sha256": "8b9eba67974982a04f636c05e964e9aab91be01d0a60ccbda0e1c946558b44f1",
+      "candidate_sha256": "e9f5e21891845298cf218ef2285c4f502ad3f2a531950aef15c032045257966a",
+      "baseline_exists": true
+    },
+    {
+      "path": "deploy/tests/test_m121_financial_currency_project.php",
+      "baseline_sha256": null,
+      "candidate_sha256": "9c3c8468acb076f996882f3887484bc646f520bd748aba8af2b56d8a6ffad1ca",
+      "baseline_exists": false
+    }
+  ],
+  "preserved_dependency": {
+    "path": "custom/chinaplanetcustomercenter/lib/ui.lib.php",
+    "baseline_sha256": "86a4f4266ac71880d3a4f6fec6691fb60962073c7bc51430ed95365ea48e8f25",
+    "candidate_sha256": "86a4f4266ac71880d3a4f6fec6691fb60962073c7bc51430ed95365ea48e8f25"
+  },
+  "checks": [
+    {
+      "command": "php -l /tmp/m121-finance-reviewed-candidate/custom/chinaplanetcustomercenter/admin/financial_portfolio.php",
+      "exit_code": 0,
+      "output": "No syntax errors detected in /tmp/m121-finance-reviewed-candidate/custom/chinaplanetcustomercenter/admin/financial_portfolio.php"
+    },
+    {
+      "command": "php -l /tmp/m121-finance-reviewed-candidate/custom/chinaplanetcustomercenter/lib/financial.lib.php",
+      "exit_code": 0,
+      "output": "No syntax errors detected in /tmp/m121-finance-reviewed-candidate/custom/chinaplanetcustomercenter/lib/financial.lib.php"
+    },
+    {
+      "command": "php -l /tmp/m121-finance-reviewed-candidate/deploy/tests/test_m121_financial_currency_project.php",
+      "exit_code": 0,
+      "output": "No syntax errors detected in /tmp/m121-finance-reviewed-candidate/deploy/tests/test_m121_financial_currency_project.php"
+    },
+    {
+      "command": "php /tmp/m121-finance-reviewed-candidate/deploy/tests/test_m121_financial_currency_project.php",
+      "exit_code": 0,
+      "output": "M121 financial currency/project regressions passed"
+    },
+    {
+      "command": "php /tmp/m121-finance-reviewed-candidate/deploy/tests/test_customer_financial_multicurrency.php",
+      "exit_code": 0,
+      "output": "Customer finance multi-currency tests passed"
+    },
+    {
+      "command": "php /tmp/m121-finance-reviewed-candidate/deploy/tests/test_m029_core_customer_funds.php",
+      "exit_code": 0,
+      "output": "M029 core customer funds tests passed"
+    },
+    {
+      "command": "php /tmp/m121-finance-reviewed-candidate/deploy/tests/test_m028_c04_financial_portfolio_mobile.php",
+      "exit_code": 1,
+      "output": "M028-C04 FAIL: totals mobile labels"
+    }
+  ],
+  "negative_control": {
+    "action": "Temporarily replace only fixture portfolio with unchanged canonical page, run adapted M121 test, restore fixture candidate",
+    "exit_code": 255,
+    "first_failure": "Supplier KPI must keep each currency",
+    "canonical_changed": false
+  },
+  "probe_command": "php /tmp/m121-finance-reviewed-candidate/deploy/tests/test_m121_review_probes.php",
+  "probe_exit_code": 0,
+  "probe_sha256": "ad45bdd1279051de84489e29920fd2e8f6b34d196bf2d636e1f2037d533987dc",
+  "probe_observations": [
+    {
+      "invoice_total": 100,
+      "paid": 25,
+      "available": -25,
+      "unpaid_invoices": 75,
+      "required_funding": 100
+    },
+    {
+      "invoice_total": 100,
+      "paid": 100,
+      "available": -100,
+      "unpaid_invoices": 0,
+      "required_funding": 100
+    },
+    {
+      "invoice_total": 100,
+      "payment_after_cutoff": 25,
+      "available": 0,
+      "unpaid_invoices": 75,
+      "required_funding": 75
+    }
+  ],
+  "probe_limit": "Query doubles simulate source behavior; not actual DB/runtime acceptance. Probe assertions characterize observations rather than approve accounting semantics.",
+  "limits": [
+    "No canonical edits or Git ref mutations",
+    "No server or production access",
+    "No staging, schema, grants or authenticated runtime acceptance",
+    "P1 runtime/source-parity and session/scope ownership gates remain blocked",
+    "No arithmetic rewrite until approved financial contract",
+    "Comparator equal-name/ID, reversed balances and actual as-of payment/credit SQL execution remain pending"
+  ],
+  "patch": {
+    "path": "reviewed-integration.patch",
+    "sha256": "0a336a8a8dd4165d91e3a312ae021f084d0167799a5365c185682a368749669e",
+    "apply_status": "Prepared diff only; not applied to canonical"
+  },
+  "baseline_checks": [
+    {
+      "cwd": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+      "command": "php -v",
+      "exit_code": 0,
+      "output": "PHP 8.3.21 (cli) (built: May 6 2025 13:58:10) (NTS)"
+    },
+    {
+      "cwd": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+      "command": "php -l custom/chinaplanetcustomercenter/admin/financial_portfolio.php",
+      "exit_code": 0,
+      "output": "No syntax errors detected in custom/chinaplanetcustomercenter/admin/financial_portfolio.php"
+    },
+    {
+      "cwd": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+      "command": "php -l custom/chinaplanetcustomercenter/lib/financial.lib.php",
+      "exit_code": 0,
+      "output": "No syntax errors detected in custom/chinaplanetcustomercenter/lib/financial.lib.php"
+    },
+    {
+      "cwd": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+      "command": "php deploy/tests/test_customer_financial_multicurrency.php",
+      "exit_code": 0,
+      "output": "Customer finance multi-currency tests passed"
+    },
+    {
+      "cwd": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+      "command": "php deploy/tests/test_m029_core_customer_funds.php",
+      "exit_code": 0,
+      "output": "M029 core customer funds tests passed"
+    },
+    {
+      "cwd": "/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr",
+      "command": "php deploy/tests/test_m028_c04_financial_portfolio_mobile.php",
+      "exit_code": 1,
+      "output": "M028-C04 FAIL: totals mobile labels"
+    }
+  ],
+  "probe_output": "M121 financial currency/project regressions passed\nPREEXISTING_PROJECT_PROBE paid=25 summary={\"USD\":{\"received\":0,\"spent\":25,\"available\":-25,\"obligations\":75,\"supplier_remaining\":0,\"future_services\":0,\"unpaid_invoices\":75,\"required_funding\":100}}\nPREEXISTING_PROJECT_PROBE paid=100 summary={\"USD\":{\"received\":0,\"spent\":100,\"available\":-100,\"obligations\":0,\"supplier_remaining\":0,\"future_services\":0,\"unpaid_invoices\":0,\"required_funding\":100}}\nPREEXISTING_ASOF_PROBE late_payment=25 summary={\"USD\":{\"received\":0,\"spent\":0,\"available\":0,\"obligations\":75,\"supplier_remaining\":0,\"future_services\":0,\"unpaid_invoices\":75,\"required_funding\":75}}\nReview probes passed: privacy/helper preserved; project/as-of observations require financial policy/runtime acceptance"
+}
