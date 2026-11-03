@@ -72,10 +72,6 @@ if ($customerResult) {
             $portfolioOverdueByCurrency[$c] += $amount;
         }
 
-        $custAvailable = 0.0;
-        $custObligations = 0.0;
-        $custUnpaid = 0.0;
-        $custRequired = 0.0;
         foreach ($summary as $currency => $values) {
             if (!isset($portfolioSummary[$currency])) {
                 $portfolioSummary[$currency] = $summaryTemplate;
@@ -83,10 +79,6 @@ if ($customerResult) {
             foreach ($summaryFields as $field) {
                 $portfolioSummary[$currency][$field] += isset($values[$field]) ? (float) $values[$field] : 0.0;
             }
-            $custAvailable += $values['available'];
-            $custObligations += $values['obligations'];
-            $custUnpaid += $values['unpaid_invoices'];
-            $custRequired += $values['required_funding'];
         }
 
         $usd = cpcc_financial_total_usd($summary);
@@ -116,10 +108,7 @@ if ($customerResult) {
             'unpaid_count' => $unpaidCount,
             'overdue_count' => $overdueCount,
             'overdue_by_currency' => $overdueByCurrency,
-            'available' => $custAvailable,
-            'obligations' => $custObligations,
-            'unpaid_invoices' => $custUnpaid,
-            'required_funding' => $custRequired,
+            'needs_funding' => $requiredForCustomer,
             'usd_total' => $usd['total'],
             'usd_missing' => $usd['missing'],
         );
@@ -127,10 +116,12 @@ if ($customerResult) {
 }
 
 usort($customers, function ($left, $right) {
-    $l = (float) $left['required_funding'];
-    $r = (float) $right['required_funding'];
-    if ($l === $r) return 0;
-    return ($l < $r) ? 1 : -1;
+    // Prioritize customers with a shortfall without ranking unlike currencies.
+    if ($left['needs_funding'] !== $right['needs_funding']) {
+        return $left['needs_funding'] ? -1 : 1;
+    }
+    $nameOrder = strcasecmp($left['name'], $right['name']);
+    return $nameOrder !== 0 ? $nameOrder : ($left['id'] <=> $right['id']);
 }
 );
 
@@ -169,8 +160,8 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
 <section class="cpad-kpis">
   <div class="cpad-kpi"><b><?php echo $totalOverdueInvoices; ?></b><span>Overdue Open Invoices / فواتير متأخرة</span><small>overdue count / عدد المتأخر</small></div>
   <div class="cpad-kpi"><b><?php echo cpcc_portal_money($globalUsd['total']); ?></b><span>All Customer Cash (USD) / إجمالي رصيد العملاء (USD)</span><small>exchange-rate valuation only / عرض تحويلي</small></div>
-  <div class="cpad-kpi"><b><?php echo cpcc_portal_money(array_sum(array_column($portfolioSummary, 'supplier_remaining'))); ?></b><span>Supplier Remaining / بقايا الموردين</span><small>approved supplier obligations / التزامات الموردين</small></div>
-  <div class="cpad-kpi"><b><?php echo cpcc_portal_money(array_sum(array_column($portfolioSummary, 'future_services'))); ?></b><span>Future Services / الخدمات المتوقعة</span><small>approved future service commitments / التزامات الخدمات</small></div>
+  <div class="cpad-kpi"><b><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($portfolioSummary, 'supplier_remaining')); ?></b><span>Supplier Remaining / بقايا الموردين</span><small>approved supplier obligations / التزامات الموردين</small></div>
+  <div class="cpad-kpi"><b><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($portfolioSummary, 'future_services')); ?></b><span>Future Services / الخدمات المتوقعة</span><small>approved future service commitments / التزامات الخدمات</small></div>
 </section>
 
 <section class="cpad-panel">
@@ -237,14 +228,14 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
           <td data-label="Customer / العميل"><span class="cpad-cell-value"><a href="<?php echo $balanceUrl; ?>"><?php echo $name; ?> <small>(<?php echo (int)$row['id']; ?>)</small></a></span></td>
           <td data-label="Available (USD) / متاح (USD)"><span class="cpad-cell-value"><b><?php echo cpcc_portal_money($row['usd_total']); ?></b></span></td>
           <td data-label="Available by Currency / متاح حسب العملة"><span class="cpad-cell-value"><?php echo cpad_portfolio_currency_text($row['summary'], 'available'); ?></span></td>
-          <td data-label="Obligations / الالتزامات"><span class="cpad-cell-value"><?php echo cpcc_portal_money($row['obligations']); ?></span></td>
+          <td data-label="Obligations / الالتزامات"><span class="cpad-cell-value"><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($row['summary'], 'obligations')); ?></span></td>
           <td data-label="Unpaid / غير مدفوع"><span class="cpad-cell-value"><?php echo cpad_portfolio_currency_text($row['summary'], 'unpaid_invoices'); ?></span></td>
           <td data-label="Overdue / متأخر"><span class="cpad-cell-value">
             <a href="<?php echo $lateInvoiceUrl; ?>"><b><?php echo (int) $row['overdue_count']; ?></b></a>
             <?php if ($row['overdue_count'] > 0) { echo ' · '.cpad_portfolio_currency_text($row['overdue_by_currency'], 'amount'); } ?>
           </span></td>
-          <td data-label="Required Funding / التمويل المطلوب" class="<?php echo $row['required_funding'] > 0 ? 'warn' : ''; ?>">
-            <span class="cpad-cell-value"><b><?php echo cpcc_portal_money($row['required_funding']); ?></b></span>
+          <td data-label="Required Funding / التمويل المطلوب" class="<?php echo $row['needs_funding'] ? 'warn' : ''; ?>">
+            <span class="cpad-cell-value"><b><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($row['summary'], 'required_funding')); ?></b></span>
           </td>
           <td data-label="Action / إجراء"><span class="cpad-cell-value cpad-cell-actions">
             <a href="<?php echo $financeUrl; ?>">Admin Entry / تسجيل مالي</a>
@@ -264,3 +255,4 @@ cpcc_admin_shell_close();
 llxFooter();
 $db->close();
 ?>
+

@@ -1,0 +1,34 @@
+name: M121 financial source regressions
+on:
+  pull_request:
+    paths:
+      - 'custom/chinaplanetcustomercenter/admin/financial_portfolio.php'
+      - 'custom/chinaplanetcustomercenter/lib/financial.lib.php'
+      - 'deploy/tests/test_m121_financial_currency_project.php'
+      - '.github/workflows/m121-financial-source.yml'
+permissions:
+  contents: read
+concurrency:
+  group: m121-financial-source-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: PHP syntax
+        run: |
+          php -v
+          php -l custom/chinaplanetcustomercenter/admin/financial_portfolio.php
+          php -l custom/chinaplanetcustomercenter/lib/financial.lib.php
+          php -l deploy/tests/test_m121_financial_currency_project.php
+      - name: Existing related financial regressions
+        run: |
+          php deploy/tests/test_customer_financial_multicurrency.php
+          php deploy/tests/test_m028_c04_financial_portfolio_mobile.php
+          php deploy/tests/test_m029_core_customer_funds.php
+      - name: Synthetic read model and page rendering
+        run: php deploy/tests/test_m121_financial_currency_project.php
