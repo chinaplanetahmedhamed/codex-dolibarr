@@ -1,6 +1,6 @@
 {
   "scope": "Prepared human-run staging backup-artifact integrity guard; no server execution by Codex",
-  "status": "PREPARED; human execution/result PENDING",
+  "status": "Operator reported integrityPASS; RESTORE_PROOF=NO",
   "output_contract": [
     "M121_STAGING_BACKUP_INTEGRITY=PASS RESTORE_PROOF=NO",
     "M121_STAGING_BACKUP_INTEGRITY=STOP"
@@ -23,5 +23,15 @@
   ],
   "authority": "Owner staging backup/recovery testing authorization already exists; exact safe scratch design/access/anonymization and rehearsal execution path remain unverified",
   "old_dump_policy": "Never restore the dated dump over subsequent records",
-  "private_artifacts_published": false
+  "private_artifacts_published": false,
+  "operator_outcome": {
+    "source": "Trusted owner/operator result via parent delegation",
+    "marker": "M121_STAGING_BACKUP_INTEGRITY=PASS RESTORE_PROOF=NO",
+    "scope": "Fixed dated archive and saved original-source slots integrity only",
+    "codex_remote_execution": false,
+    "fresh_backup": false,
+    "recovery_rehearsed": false,
+    "permission_grants_changed": false,
+    "raw_infrastructure_output_published": false
+  }
 }
