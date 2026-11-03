@@ -62,14 +62,14 @@
       "bytes": 2777
     },
     {
-      "path": "native-generated-queries.json",
-      "sha256": "6bd4178162e68b5627fcf717ffcae1a7e97da6e1cbf0807a9e1a2a180c995eae",
-      "bytes": 77841
+      "path": "native-manifest.json",
+      "sha256": "8a7bbe6b38c6dfef3dcd70a236e8be51a71b4aefd3bdc7e349b20a794fc620de",
+      "bytes": 2839
     },
     {
-      "path": "native-manifest.json",
-      "sha256": "ac2e561a0ee11095e09df03dc6088582e261747ec5142fe872d0fdb17f918513",
-      "bytes": 2805
+      "path": "native-query-summary.json",
+      "sha256": "1723cbc9c8b2ab3c34f8959f4d7a496242ceb47b6e791dc02b3ca53acefc5aea",
+      "bytes": 1160
     },
     {
       "path": "native-test-output.txt",
@@ -78,13 +78,21 @@
     },
     {
       "path": "native-verification.md",
-      "sha256": "47d6fc3bd44518917dab27282fde6baee6b3cab15725db5e6b1474091e1f78a6",
-      "bytes": 4690
+      "sha256": "d60fdb1ba58056dfd7d379e831abb14c54a16e9d31a3e9db53285ff5aae8004a",
+      "bytes": 4782
     },
     {
       "path": "source-correction.patch",
       "sha256": "4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae",
       "bytes": 35840
+    }
+  ],
+  "local_only_evidence": [
+    {
+      "label": "Generated native query log",
+      "sha256": "6bd4178162e68b5627fcf717ffcae1a7e97da6e1cbf0807a9e1a2a180c995eae",
+      "published": false,
+      "reason": "Raw SQL publication rejected; summary published instead"
     }
   ]
 }
