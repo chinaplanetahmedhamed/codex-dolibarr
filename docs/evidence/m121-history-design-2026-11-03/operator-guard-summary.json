@@ -1,0 +1,18 @@
+{
+  "source": "Ahmed operator-supplied result via trusted parent delegation; Codex did not execute Docker",
+  "result": "Limited staging metadata guard PASS",
+  "evaluated_checks": [
+    "three expected staging identities/project/running states",
+    "expected bound-port scope",
+    "expected custom-volume metadata"
+  ],
+  "raw_output_published": false,
+  "not_proven": [
+    "full outbound/integration/Docs isolation",
+    "mounted source and schema/grants parity",
+    "anonymized data",
+    "backup/recovery",
+    "authenticated functional acceptance"
+  ],
+  "codex_docker_permission": "Unchanged; previous OS denial not retried or bypassed"
+}
