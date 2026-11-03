@@ -1,6 +1,6 @@
 # M121 bounded cutoff correction — prepared source, 2026-11-03
 
-**Outcome: local source correction and regression tests are prepared and reviewed; nothing was applied to backup-erp or production.** The scope is payment/credit-creation cutoff consistency, with existing financial arithmetic and current invoice lifecycle retained. This is not a full historical accounting implementation.
+**Outcome: local source correction and regression tests are prepared and reviewed; nothing was applied to backup-erp or production.** The scope is payment/credit-creation cutoff consistency, with existing financial arithmetic and current invoice lifecycle retained. This is not a full historical accounting implementation. **The selected-date result is a hybrid of current invoice eligibility and dated evidence: it is neither a complete past receivables position nor necessarily today's collectible balance.**
 
 ## Changed source
 
@@ -57,10 +57,16 @@ These failures were recorded rather than changing unrelated contracts or pre-exi
 
 The patch fixes event inclusion, not historical state reconstruction. A credit created earlier but applied later still lacks an application timestamp. Current paid/closed/reopened/validated states and current invoice net totals cannot establish every earlier position. Excluding a future line credit does not restore an invoice net amount modified today. Current custom-entry statuses and native-source suppression also retain history limitations.
 
-The owner/accountant must choose the intended report contract before full historical acceptance:
+A controlled two-invoice fixture makes the hybrid visible. Both invoices are100 and validated before October3. On October5, invoiceA receives25 and remains open; invoiceB receives100 and becomes paid. The patched query for October3 includes invoiceA with100 but omits invoiceB because it is currently paid. Its total is100. The controlled historical receivables reference is200, while the current collectible total is75. Thus **100 is neither200 nor75**.
 
-1. **Current open-invoice view with dated evidence:** retain current lifecycle eligibility and describe it explicitly as today's open invoices issued through the selected day. Payment/creation cutoffs are bounded as in this patch; it is not a reconstructed past balance.
-2. **Historical position at the end of a business day:** define timezone/effective dates, closure/write-off/reopening, reversals, historical invoice net and actual credit-application events. Use verified existing audit/history or an explicit unresolved-history queue; do not invent timestamps, erase records or create a duplicate ledger.
+Four diagnostic assertions execute the corrected canonical SELECTs on synthetic SQLite; [sanitized hybrid example](../evidence/m121-cutoff-correction-2026-11-03/hybrid-limit-summary.json). No application/test file or approved-publication patch changed for this clarification.
+
+The owner/accountant must choose the intended report contract and corresponding UI wording before financial acceptance or release:
+
+1. **Current collectible balance:** use current invoice eligibility and current payment/credit totals. Any invoice-issue-date filter must be separately described; it must not silently backdate payment evidence. This is a future reporting contract, not a claim that the current selected-date hybrid already implements it.
+2. **Historical position at the end of a business day:** reconstruct eligibility, payments, validation/closure/write-off/reopening, historical invoice net and actual credit-application events at that cutoff. Define timezone/effective dates and use verified existing audit/history or an explicit unresolved-history queue. Do not invent timestamps, erase records or create a duplicate ledger.
+
+The current hybrid may be retained as a clearly named diagnostic projection during source review, but it is not an accepted ending receivable/cash/collectible balance. Product UI labels were not changed in this three-file diff. Financial release must remain blocked until the report semantics and labels are resolved; passing cutoff tests does not provide that business acceptance.
 
 Actual customer cash and unused invoice credit remain separate concepts. This correction does not silently turn the existing wallet into a cash book.
 
