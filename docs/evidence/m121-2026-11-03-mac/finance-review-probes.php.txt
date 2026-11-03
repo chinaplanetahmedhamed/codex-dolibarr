@@ -1,0 +1,37 @@
+<?php
+require __DIR__.'/test_m121_financial_currency_project.php';
+$db = new M121FinanceDb();
+$private = cpcc_financial_commitment_rows($db,7,'USD');
+$internal = cpcc_financial_commitment_rows($db,7,'USD',0,'',true);
+m121_assert($private[0]['supplier'] === '' && $internal[0]['supplier'] === 'Synthetic','Local supplier privacy opt-in must survive');
+m121_assert(function_exists('cpcc_managed_funds_schema_ready'),'Managed-funds schema helper must survive');
+class M121PaidProjectDb extends M121FinanceDb {
+    public $paid=25;
+    public $late=false;
+    public function query($sql) {
+        if (strpos($sql,'FROM llx_cpcc_project_charge c') !== false) return new M121Result(array());
+        if (strpos($sql,'f.fk_statut=1 AND f.paye=0') !== false) {
+            $this->queries[]=$sql;
+            return new M121Result(array((object)array('rowid'=>11,'ref'=>'SYN','datef'=>'2026-10-01','date_lim_reglement'=>'2026-10-30','fk_projet'=>11,'multicurrency_code'=>'USD','total_ttc'=>100,'multicurrency_total_ttc'=>100,'paid_base'=>$this->paid,'paid_multi'=>$this->paid,'discount_base'=>0,'discount_multi'=>0,'project_ref'=>'SYN','project_title'=>'Synthetic')));
+        }
+        if (strpos($sql,'SELECT p.rowid payment_id') === 0) {
+            $this->queries[]=$sql;
+            if ($this->late) return new M121Result(array());
+            return new M121Result(array((object)array('payment_id'=>1,'datep'=>'2026-10-15','payment_ref'=>'SYN','num_paiement'=>'SYN','invoice_id'=>11,'invoice_ref'=>'SYN','fk_projet'=>11,'currency_code'=>'USD','amount'=>$this->paid)));
+        }
+        return parent::query($sql);
+    }
+}
+foreach(array(25,100) as $paid) {
+    $db = new M121PaidProjectDb(); $db->paid=$paid;
+    $result=cpcc_financial_summary($db,7,'USD',11,'2026-11-03');
+    echo 'PREEXISTING_PROJECT_PROBE paid='.$paid.' summary='.json_encode($result)."\n";
+    m121_assert($result['USD']['available'] === -1.0*$paid, 'Observed project native receipt omission changed');
+    m121_assert($result['USD']['required_funding'] === 100.0,'Observed paid invoice funding behavior changed');
+}
+$db=new M121PaidProjectDb(); $db->late=true;
+$result=cpcc_financial_summary($db,7,'USD',11,'2026-11-03');
+echo 'PREEXISTING_ASOF_PROBE late_payment=25 summary='.json_encode($result)."\n";
+$query=implode("\n",$db->queries);
+m121_assert(strpos($query,"f.datef<='2026-11-03'") !== false && strpos($query,'ppay.datep') === false,'Unpaid invoice aggregate unexpectedly dates payment evidence');
+echo "Review probes passed: privacy/helper preserved; project/as-of observations require financial policy/runtime acceptance\n";
