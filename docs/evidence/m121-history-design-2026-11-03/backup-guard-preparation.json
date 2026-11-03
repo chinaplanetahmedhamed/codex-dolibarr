@@ -1,0 +1,27 @@
+{
+  "scope": "Prepared human-run staging backup-artifact integrity guard; no server execution by Codex",
+  "status": "PREPARED; human execution/result PENDING",
+  "output_contract": [
+    "M121_STAGING_BACKUP_INTEGRITY=PASS RESTORE_PROOF=NO",
+    "M121_STAGING_BACKUP_INTEGRITY=STOP"
+  ],
+  "local_checks": {
+    "archive_synthetic_cases": 10,
+    "source_manifest_synthetic_cases": 3,
+    "pinned_original_slots": 45,
+    "known_present_originals": 19,
+    "known_absences": 26,
+    "root_independent_review": "Exact body/hash/compile, archive fixtures, original-source fixtures and sealed plan correspondence PASS"
+  },
+  "bounded_operation": "Fixed private dated archive metadata/hash/gzipCRC plus pinned saved source-original hashes; no content output, Docker, SQL, helper, grant or runtime change; sixty-second timeout",
+  "not_proven": [
+    "fresh current baseline",
+    "database import/recovery rehearsal",
+    "current code/data/schema parity",
+    "full isolation/anonymization",
+    "deployment readiness"
+  ],
+  "authority": "Owner staging backup/recovery testing authorization already exists; exact safe scratch design/access/anonymization and rehearsal execution path remain unverified",
+  "old_dump_policy": "Never restore the dated dump over subsequent records",
+  "private_artifacts_published": false
+}
