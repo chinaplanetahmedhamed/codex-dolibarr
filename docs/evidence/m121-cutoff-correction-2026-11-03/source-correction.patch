@@ -1,0 +1,476 @@
+diff --git a/custom/chinaplanetcustomercenter/lib/financial.lib.php b/custom/chinaplanetcustomercenter/lib/financial.lib.php
+index b84bd09..3ac58da 100644
+--- a/custom/chinaplanetcustomercenter/lib/financial.lib.php
++++ b/custom/chinaplanetcustomercenter/lib/financial.lib.php
+@@ -120,15 +120,46 @@ function cpcc_financial_invoice_amounts($netTotal, $directPaid, $appliedCredit)
+     );
+ }
+ 
+-/** SQL aggregate for credits/down payments consumed by a target invoice. */
+-function cpcc_financial_applied_credit_sql()
++/**
++ * Inclusive named-day limit for stored DATE/DATETIME columns, without timezone conversion.
++ * Empty cutoffs retain current mode; invalid nonempty dates must not broaden a read.
++ */
++function cpcc_financial_cutoff_sql($db, $column, $asOf)
+ {
+-    return "SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture,"
++    if (!is_string($column) || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?\z/', $column)) {
++        throw new InvalidArgumentException('Invalid internal financial date column.');
++    }
++    if ($asOf === '' || $asOf === null) return '';
++    if (!is_string($asOf) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})\z/', $asOf, $parts)
++        || (int) $parts[1] < 1000 || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) || $asOf === '9999-12-31') {
++        return ' AND 1=0';
++    }
++    // UTC is used only for calendar arithmetic; no timestamp or timezone is converted.
++    $day = DateTimeImmutable::createFromFormat('!Y-m-d', $asOf, new DateTimeZone('UTC'));
++    if ($day === false || $day->format('Y-m-d') !== $asOf) return ' AND 1=0';
++    $nextDay = $day->modify('+1 day')->format('Y-m-d');
++    return " AND ".$column."<'".$db->escape($nextDay)."'";
++}
++
++/**
++ * Current credit links, optionally bounded by creation day and explicit source scope.
++ * Creation time is not application history; unknown dates are excluded by a cutoff.
++ * The no-argument SQL remains compatible with existing undated mobile consumers.
++ */
++function cpcc_financial_applied_credit_sql($db = null, $asOf = '', $entity = 0, $socid = 0)
++{
++    if ($db === null && $asOf !== '' && $asOf !== null) {
++        throw new InvalidArgumentException('A database handle is required for a financial cutoff.');
++    }
++    $sql = "SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture,"
+         ." SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount"
+         ." FROM ".MAIN_DB_PREFIX."societe_remise_except r"
+         ." LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line"
+-        ." WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL"
+-        ." GROUP BY COALESCE(r.fk_facture,fd.fk_facture)";
++        ." WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL";
++    if ((int) $entity > 0) $sql .= " AND r.entity=".(int) $entity;
++    if ((int) $socid > 0) $sql .= " AND r.fk_soc=".(int) $socid;
++    if ($db !== null) $sql .= cpcc_financial_cutoff_sql($db, 'r.datec', $asOf);
++    return $sql." GROUP BY COALESCE(r.fk_facture,fd.fk_facture)";
+ }
+ 
+ function cpcc_financial_empty_summary()
+@@ -179,13 +210,11 @@ function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $project
+     $sql .= " COALESCE(SUM(CASE WHEN e.status=1 AND e.direction='D' THEN COALESCE(e.allocated_amount,0) ELSE 0 END),0) paid,";
+     $sql .= " fi.rowid billed_invoice_id,fi.ref billed_invoice_ref,fi.fk_statut billed_invoice_status,fi.type billed_invoice_type";
+     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_project_charge c";
+-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpcc_financial_entry e ON e.fk_charge=c.rowid";
++    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpcc_financial_entry e ON e.fk_charge=c.rowid AND e.entity=c.entity AND e.fk_soc=c.fk_soc".cpcc_financial_cutoff_sql($db, 'e.entry_date', $asOf);
+     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc";
+     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facture fi ON c.source_type IN ('customer_invoice','invoice') AND fi.rowid=c.source_id AND fi.fk_soc=c.fk_soc";
+     $sql .= " WHERE c.entity=".(int) $GLOBALS['conf']->entity." AND c.fk_soc=".(int) $socid." AND c.status=1 AND c.customer_visible=1";
+-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+-        $sql .= " AND c.charge_date<='".$db->escape($asOf)."'";
+-    }
++    $sql .= cpcc_financial_cutoff_sql($db, 'c.charge_date', $asOf);
+     if ((int) $projectid > 0) $sql .= " AND c.fk_project=".(int) $projectid;
+     $sql .= " GROUP BY c.rowid,c.fk_project,c.charge_date,c.category,c.label,c.supplier_label,c.amount,c.currency_code,c.reference,c.source_type,c.source_id,p.ref,p.title,fi.rowid,fi.ref,fi.fk_statut,fi.type";
+     $sql .= " ORDER BY c.charge_date,c.rowid";
+@@ -234,13 +263,11 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
+     $sql .= " COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi,";
+     $sql .= " p.ref project_ref,p.title project_title";
+     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
+-    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
+-    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
++    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." AND ppay.entity=".(int) $GLOBALS['conf']->entity.cpcc_financial_cutoff_sql($db, 'ppay.datep', $asOf)." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
++    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql($db, $asOf, (int) $GLOBALS['conf']->entity, $socid).") discount ON discount.fk_facture=f.rowid";
+     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
+     $sql .= " WHERE f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5)";
+-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+-        $sql .= " AND f.datef<='".$db->escape($asOf)."'";
+-    }
++    $sql .= cpcc_financial_cutoff_sql($db, 'f.datef', $asOf);
+     if ((int) $projectid > 0) $sql .= " AND f.fk_projet=".(int) $projectid;
+     $sql .= " ORDER BY f.datef,f.rowid";
+ 
+@@ -302,7 +329,7 @@ function cpcc_financial_customer_invoices($db, $socid, $currencyFallback, $proje
+     $sql .= " COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi,COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi,p.ref project_ref,p.title project_title";
+     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
+     $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
+-    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
++    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql($db, '', (int) $GLOBALS['conf']->entity, $socid).") discount ON discount.fk_facture=f.rowid";
+     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
+     $sql .= " WHERE f.entity=".(int)$GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND f.type IN (0,1,5)";
+     if ((int)$projectid>0) $sql .= " AND f.fk_projet=".(int)$projectid;
+@@ -329,9 +356,7 @@ function cpcc_financial_native_receipts($db, $socid, $currencyFallback, $asOf =
+     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid";
+     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
+     $sql .= " WHERE p.entity=".(int) $GLOBALS['conf']->entity." AND f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND ".cpcc_financial_payment_status_sql('p');
+-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+-        $sql .= " AND p.datep<='".$db->escape($asOf)."'";
+-    }
++    $sql .= cpcc_financial_cutoff_sql($db, 'p.datep', $asOf);
+     if (cpcc_financial_schema_ready($db)) {
+         $sql .= " AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_financial_entry ce WHERE ce.entity=p.entity AND ce.fk_soc=f.fk_soc AND ce.source_type='payment' AND ce.source_id=p.rowid AND ce.status=1)";
+     }
+@@ -380,7 +405,8 @@ function cpcc_financial_native_allocations($db, $socid, $currencyFallback, $proj
+     $sql .= " WHERE r.entity=".(int) $GLOBALS['conf']->entity." AND r.fk_soc=".$socid;
+     $sql .= " AND target.entity=".(int) $GLOBALS['conf']->entity." AND target.fk_soc=".$socid." AND target.fk_statut>0";
+     if ((int) $projectid > 0) $sql .= " AND target.fk_projet=".(int) $projectid;
+-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) $sql .= " AND target.datef<='".$db->escape($asOf)."'";
++    $sql .= cpcc_financial_cutoff_sql($db, 'target.datef', $asOf);
++    $sql .= cpcc_financial_cutoff_sql($db, 'r.datec', $asOf);
+     $sql .= " ORDER BY target.datef,r.rowid";
+     $resql = $db->query($sql);
+     if ($resql) {
+@@ -417,7 +443,7 @@ function cpcc_financial_native_allocations($db, $socid, $currencyFallback, $proj
+     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
+     $sql .= " WHERE p.entity=".(int) $GLOBALS['conf']->entity." AND f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND f.type IN (0,1,5) AND ".cpcc_financial_payment_status_sql('p');
+     if ((int) $projectid > 0) $sql .= " AND f.fk_projet=".(int) $projectid;
+-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) $sql .= " AND p.datep<='".$db->escape($asOf)."'";
++    $sql .= cpcc_financial_cutoff_sql($db, 'p.datep', $asOf);
+     $sql .= " ORDER BY p.datep,p.rowid,f.rowid";
+     $resql = $db->query($sql);
+     if ($resql) {
+@@ -479,9 +505,7 @@ function cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projecti
+     if (!cpcc_financial_schema_ready($db)) return $rows;
+     $sql = "SELECT rowid,entry_date,entry_type,direction,description,amount,currency_code,reference,bank_label,fk_project,fk_charge,allocated_amount,allocated_currency,exchange_rate,transfer_group,proof_ecm_id";
+     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".(int) $GLOBALS['conf']->entity." AND fk_soc=".(int) $socid." AND status=1 AND customer_visible=1";
+-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
+-        $sql .= " AND entry_date<='".$db->escape($asOf)."'";
+-    }
++    $sql .= cpcc_financial_cutoff_sql($db, 'entry_date', $asOf);
+     if ($projectid > 0) $sql .= " AND fk_project=".(int) $projectid;
+     $sql .= " ORDER BY entry_date,rowid";
+     $resql = $db->query($sql);
+@@ -543,7 +567,7 @@ function cpcc_financial_summary($db, $socid, $currencyFallback, $projectid = 0,
+             $summary[$currency]['future_services'] += $remaining;
+         }
+     }
+-    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, 0, $asOf) as $invoice) {
++    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, (int) $projectid, $asOf) as $invoice) {
+         $currency = $invoice['currency'];
+         if (!isset($summary[$currency])) $summary[$currency] = cpcc_financial_empty_summary();
+         $summary[$currency]['unpaid_invoices'] += (float) $invoice['remaining'];
+diff --git a/deploy/tests/test_m028_c04_financial_portfolio_mobile.php b/deploy/tests/test_m028_c04_financial_portfolio_mobile.php
+index 74053c7..f3db9e6 100644
+--- a/deploy/tests/test_m028_c04_financial_portfolio_mobile.php
++++ b/deploy/tests/test_m028_c04_financial_portfolio_mobile.php
+@@ -1,23 +1,88 @@
+ <?php
++/** Static mobile table contract; this does not replace rendered UI acceptance. */
+ $root = dirname(__DIR__, 2);
+ $page = file_get_contents($root.'/custom/chinaplanetcustomercenter/admin/financial_portfolio.php');
+ $css = file_get_contents($root.'/custom/chinaplanetcustomercenter/css/ux_fixes.css');
+-
+-$checks = array(
+-    'responsive table classes' => substr_count($page, 'cpad-responsive-table') === 2,
+-    'totals mobile labels' => strpos($page, 'data-label="Currency / العملة"') !== false && strpos($page, 'data-label="Required Funding / التمويل المطلوب"') !== false,
+-    'customer mobile labels' => strpos($page, 'data-label="Customer / العميل"') !== false && strpos($page, 'data-label="Action / إجراء"') !== false,
+-    'mobile card breakpoint' => strpos($css, '@media (max-width: 768px)') !== false,
+-    'mobile rows become cards' => strpos($css, '.cpad-responsive-table tbody tr{display:block') !== false,
+-    'mobile values do not truncate' => strpos($css, 'text-overflow:clip;white-space:normal') !== false,
+-    'desktop minimum remains' => strpos($css, '.cpad-finance-portfolio-theme .cpad-table{min-width:680px}') !== false,
+-);
+-
+-foreach ($checks as $label => $passed) {
+-    if (!$passed) {
+-        fwrite(STDERR, "M028-C04 FAIL: {$label}\n");
+-        exit(1);
++function m028_fail($label)
++{
++    fwrite(STDERR, "M028-C04 FAIL: {$label}\n");
++    exit(1);
++}
++function m028_css_rules($css, $selectors)
++{
++    $declarations = array();
++    preg_match_all('/([^{}]+)\{([^{}]*)\}/s', $css, $rules, PREG_SET_ORDER);
++    foreach ($rules as $rule) {
++        $names = array_map('trim', explode(',', preg_replace('/\s+/', ' ', trim($rule[1]))));
++        if (!array_intersect($names, (array) $selectors)) continue;
++        foreach (explode(';', $rule[2]) as $declaration) {
++            $parts = explode(':', $declaration, 2);
++            if (count($parts) !== 2) continue;
++            $declarations[strtolower(trim($parts[0]))] = preg_replace('/\s+|!important/i', '', trim($parts[1]));
++        }
++    }
++    return $declarations;
++}
++$activeCss = preg_replace('~/\*.*?(?:\*/|$)~s', '', $css);
++$mobileCss = '';
++preg_match_all('/@media\s*\(\s*max-width\s*:\s*768px\s*\)\s*\{/i', $activeCss, $media, PREG_OFFSET_CAPTURE);
++foreach ($media[0] as $match) {
++    $open = $match[1] + strlen($match[0]) - 1;
++    $depth = 1;
++    for ($end = $open + 1; $end < strlen($activeCss) && $depth > 0; $end++) {
++        if ($activeCss[$end] === '{') $depth++;
++        if ($activeCss[$end] === '}') $depth--;
++    }
++    if ($depth !== 0) m028_fail('complete mobile media block');
++    $mobileCss .= substr($activeCss, $open + 1, $end - $open - 2)."\n";
++}
++if ($mobileCss === '') m028_fail('active mobile card breakpoint');
++$prefix = '.cpad-finance-portfolio-theme .cpad-responsive-table';
++$rows = m028_css_rules($mobileCss, $prefix.' tbody tr');
++$cells = m028_css_rules($mobileCss, $prefix.' td');
++$labels = m028_css_rules($mobileCss, array($prefix.' td:before', $prefix.' td::before'));
++$desktop = m028_css_rules($activeCss, '.cpad-finance-portfolio-theme .cpad-table');
++if (($rows['display'] ?? '') !== 'block') m028_fail('active mobile rows become cards');
++if (($cells['text-overflow'] ?? '') !== 'clip' || ($cells['white-space'] ?? '') !== 'normal') m028_fail('active mobile values do not truncate');
++if (($labels['content'] ?? '') !== 'attr(data-label)') m028_fail('active target mobile label rule');
++if (($desktop['min-width'] ?? '') !== '680px') m028_fail('desktop minimum remains');
++if (!class_exists('DOMDocument')) m028_fail('DOM extension required for source contract');
++$html = '';
++foreach (token_get_all($page) as $token) {
++    if (is_array($token) && $token[0] === T_INLINE_HTML) $html .= $token[1];
++}
++$dom = new DOMDocument();
++$old = libxml_use_internal_errors(true);
++$loaded = $dom->loadHTML('<?xml encoding="utf-8" ?>'.$html, LIBXML_NONET);
++libxml_clear_errors();
++libxml_use_internal_errors($old);
++if (!$loaded) m028_fail('page HTML template parses');
++$xpath = new DOMXPath($dom);
++$responsive = 'contains(concat(" ",normalize-space(@class)," ")," cpad-responsive-table ")';
++if ($xpath->query('//table['.$responsive.']')->length !== 2) m028_fail('two responsive tables');
++$normalize = function ($text) { return trim(preg_replace('/\s+/u', ' ', $text)); };
++foreach (array('cpad-finance-totals-table' => 6, 'cpad-customer-finance-table' => 8) as $role => $columns) {
++    $tables = $xpath->query('//table['.$responsive.' and contains(concat(" ",normalize-space(@class)," ")," '.$role.' ")]');
++    if ($tables->length !== 1) m028_fail('one table per financial role');
++    $table = $tables->item(0);
++    $headers = $xpath->query('./thead/tr/th', $table);
++    if ($headers->length !== $columns) m028_fail('financial role column count');
++    $dataRows = 0;
++    foreach ($xpath->query('./tbody/tr', $table) as $row) {
++        $cells = $xpath->query('./td', $row);
++        if (strpos(' '.$row->getAttribute('class').' ', ' cpad-empty-row ') !== false) {
++            if ($cells->length !== 1 || (int) $cells->item(0)->getAttribute('colspan') !== $columns) m028_fail('empty row spans all columns');
++            continue;
++        }
++        if ($cells->length !== $columns) m028_fail('data row matches header column count');
++        foreach ($cells as $column => $cell) {
++            $header = $normalize($headers->item($column)->textContent);
++            $label = $normalize($cell->getAttribute('data-label'));
++            if ($header === '' || $label === '' || $label !== $header) m028_fail('mobile label matches column header');
++            if ($xpath->query('./span[contains(concat(" ",normalize-space(@class)," ")," cpad-cell-value ")]', $cell)->length !== 1) m028_fail('one mobile value container per cell');
++        }
++        $dataRows++;
+     }
++    if ($dataRows === 0) m028_fail('data row template present');
+ }
+-
+-echo "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS\n";
++echo "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source contract; rendered UI untested\n";
+diff --git a/deploy/tests/test_m121_financial_cutoff.php b/deploy/tests/test_m121_financial_cutoff.php
+new file mode 100644
+--- /dev/null
++++ b/deploy/tests/test_m121_financial_cutoff.php
+@@ -0,0 +1,213 @@
++<?php
++/**
++ * Synthetic SQLite execution of generated financial SELECTs; no runtime/config/network.
++ * Verifies event creation/payment cutoffs, not past invoice lifecycle or credit application.
++ * Only SHOW TABLES metadata is translated to sqlite_master; financial SQL is unchanged.
++ */
++error_reporting(E_ALL);
++set_error_handler(function ($severity, $message, $file, $line) {
++    throw new ErrorException($message, 0, $severity, $file, $line);
++});
++define('MAIN_DB_PREFIX', 'llx_');
++$conf = (object) array('entity'=>2);
++$m121CutoffValidation = 0;
++function getDolGlobalInt($key) { return $GLOBALS['m121CutoffValidation']; }
++require_once dirname(__DIR__, 2).'/custom/chinaplanetcustomercenter/lib/financial.lib.php';
++$m121CutoffChecks = 0;
++function m121c_assert($condition, $message) {
++    $GLOBALS['m121CutoffChecks']++;
++    if (!$condition) throw new RuntimeException($message);
++}
++function m121c_near($actual, $expected, $message) {
++    m121c_assert(abs((float) $actual - $expected) < 0.000001, $message.'; observed '.var_export($actual, true));
++}
++function m121c_throws($call, $message) {
++    try { $call(); } catch (InvalidArgumentException $exception) {
++        m121c_assert(true, $message); return;
++    }
++    m121c_assert(false, $message);
++}
++class M121CutoffRows {
++    public $rows;
++    public function __construct($rows) { $this->rows = $rows; }
++}
++class M121CutoffDb {
++    public $pdo;
++    public $queries = array();
++    private $paymentId = 0;
++    public function __construct() {
++        $this->pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
++        foreach (array(
++            'CREATE TABLE llx_facture(rowid INTEGER PRIMARY KEY,ref TEXT,ref_client TEXT,entity INTEGER,fk_soc INTEGER,fk_projet INTEGER,datef TEXT,date_valid TEXT,date_closing TEXT,date_lim_reglement TEXT,multicurrency_code TEXT,total_ttc REAL,multicurrency_total_ttc REAL,fk_statut INTEGER,paye INTEGER,type INTEGER)',
++            'CREATE TABLE llx_paiement(rowid INTEGER PRIMARY KEY,ref TEXT,num_paiement TEXT,entity INTEGER,datep TEXT,statut INTEGER)',
++            'CREATE TABLE llx_paiement_facture(rowid INTEGER PRIMARY KEY,fk_paiement INTEGER,fk_facture INTEGER,amount REAL,multicurrency_amount REAL,multicurrency_code TEXT)',
++            'CREATE TABLE llx_societe_remise_except(rowid INTEGER PRIMARY KEY,entity INTEGER,fk_soc INTEGER,datec TEXT,amount_ttc REAL,multicurrency_amount_ttc REAL,multicurrency_code TEXT,fk_facture INTEGER,fk_facture_line INTEGER,fk_facture_source INTEGER)',
++            'CREATE TABLE llx_facturedet(rowid INTEGER PRIMARY KEY,fk_facture INTEGER)',
++            'CREATE TABLE llx_projet(rowid INTEGER PRIMARY KEY,entity INTEGER,fk_soc INTEGER,ref TEXT,title TEXT)',
++            'CREATE TABLE llx_cpcc_project_charge(rowid INTEGER PRIMARY KEY,entity INTEGER,fk_soc INTEGER,fk_project INTEGER,charge_date TEXT,category TEXT,label TEXT,supplier_label TEXT,amount REAL,currency_code TEXT,reference TEXT,source_type TEXT,source_id INTEGER,status INTEGER,customer_visible INTEGER)',
++            'CREATE TABLE llx_cpcc_financial_entry(rowid INTEGER PRIMARY KEY,entity INTEGER,fk_soc INTEGER,fk_charge INTEGER,fk_project INTEGER,entry_date TEXT,entry_type TEXT,direction TEXT,description TEXT,amount REAL,currency_code TEXT,reference TEXT,bank_label TEXT,allocated_amount REAL,allocated_currency TEXT,exchange_rate REAL,transfer_group TEXT,proof_ecm_id INTEGER,source_type TEXT,source_id INTEGER,status INTEGER,customer_visible INTEGER)'
++        ) as $sql) $this->pdo->exec($sql);
++        $this->insert('llx_projet', array('rowid'=>11,'entity'=>2,'fk_soc'=>7,'ref'=>'SYN-11','title'=>'Synthetic'));
++    }
++    public function insert($table, $row) {
++        $statement = $this->pdo->prepare('INSERT INTO '.$table.'('.implode(',', array_keys($row)).') VALUES('.implode(',', array_fill(0, count($row), '?')).')');
++        $statement->execute(array_values($row));
++    }
++    public function invoice($values = array()) {
++        $this->insert('llx_facture', array_merge(array('rowid'=>1,'ref'=>'SYN-1','ref_client'=>'SYN','entity'=>2,'fk_soc'=>7,'fk_projet'=>11,'datef'=>'2026-10-01','date_valid'=>'2026-10-01','date_closing'=>null,'date_lim_reglement'=>'2026-10-30','multicurrency_code'=>'USD','total_ttc'=>100,'multicurrency_total_ttc'=>100,'fk_statut'=>1,'paye'=>0,'type'=>0), $values));
++    }
++    public function payment($date, $amount, $values = array()) {
++        $id = ++$this->paymentId;
++        $this->insert('llx_paiement', array_merge(array('rowid'=>$id,'ref'=>'SYN-P'.$id,'num_paiement'=>'SYN','entity'=>2,'datep'=>$date,'statut'=>1), $values));
++        $this->insert('llx_paiement_facture', array('rowid'=>$id,'fk_paiement'=>$id,'fk_facture'=>1,'amount'=>$amount,'multicurrency_amount'=>$amount,'multicurrency_code'=>'USD'));
++    }
++    public function credit($date, $values = array()) {
++        // No source invoice is required: native manual credits remain supported.
++        $this->insert('llx_societe_remise_except', array_merge(array('rowid'=>1,'entity'=>2,'fk_soc'=>7,'datec'=>$date,'amount_ttc'=>25,'multicurrency_amount_ttc'=>25,'multicurrency_code'=>'USD','fk_facture'=>1,'fk_facture_line'=>null,'fk_facture_source'=>null), $values));
++    }
++    public function charge($values = array()) {
++        $this->insert('llx_cpcc_project_charge', array_merge(array('rowid'=>1,'entity'=>2,'fk_soc'=>7,'fk_project'=>11,'charge_date'=>'2026-10-01','category'=>'supplier','label'=>'Synthetic','supplier_label'=>'Internal synthetic supplier','amount'=>100,'currency_code'=>'USD','reference'=>'SYN','source_type'=>'manual','source_id'=>0,'status'=>1,'customer_visible'=>1), $values));
++    }
++    public function entry($values = array()) {
++        $this->insert('llx_cpcc_financial_entry', array_merge(array('rowid'=>1,'entity'=>2,'fk_soc'=>7,'fk_charge'=>1,'fk_project'=>11,'entry_date'=>'2026-11-03 12:00:00','entry_type'=>'supplier_payment','direction'=>'D','description'=>'Synthetic','amount'=>25,'currency_code'=>'USD','reference'=>'SYN','bank_label'=>'','allocated_amount'=>25,'allocated_currency'=>'USD','exchange_rate'=>null,'transfer_group'=>'','proof_ecm_id'=>0,'source_type'=>'manual','source_id'=>0,'status'=>1,'customer_visible'=>1), $values));
++    }
++    public function escape($value) { return str_replace("'", "''", $value); }
++    public function query($sql) {
++        $this->queries[] = $sql;
++        if (preg_match("/^SHOW TABLES LIKE '([a-zA-Z0-9_]+)'$/", $sql, $match)) {
++            $statement = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?");
++            $statement->execute(array($match[1]));
++        } else {
++            $statement = $this->pdo->query($sql);
++        }
++        return new M121CutoffRows($statement->fetchAll(PDO::FETCH_OBJ));
++    }
++    public function num_rows($result) { return count($result->rows); }
++    public function fetch_object($result) { return array_shift($result->rows); }
++}
++function m121c_remaining($db, $asOf = '2026-11-03', $project = 11) {
++    return array_sum(array_column(cpcc_financial_unpaid_invoices($db, 7, 'USD', $project, $asOf), 'remaining'));
++}
++function m121c_allocated($db, $asOf = '2026-11-03', $project = 11) {
++    return array_sum(array_column(cpcc_financial_native_allocations($db, 7, 'USD', $project, $asOf), 'amount'));
++}
++m121c_assert(function_exists('cpcc_financial_cutoff_sql'), 'Missing validated financial event cutoff helper');
++$db = new M121CutoffDb();
++m121c_assert(cpcc_financial_cutoff_sql($db, 'p.datep', '') === '', 'Empty date keeps current mode');
++m121c_assert(cpcc_financial_cutoff_sql($db, 'p.datep', null) === '', 'Null date keeps current mode');
++foreach (array('2024-02-28'=>'2024-02-29','2024-02-29'=>'2024-03-01','2026-02-28'=>'2026-03-01','2026-12-31'=>'2027-01-01','1000-01-01'=>'1000-01-02') as $date=>$next) {
++    $where = cpcc_financial_cutoff_sql($db, 'p.datep', $date);
++    $db->pdo->exec('CREATE TABLE IF NOT EXISTS cutoff_probe(datep TEXT)');
++    $db->pdo->exec('DELETE FROM cutoff_probe');
++    $db->insert('cutoff_probe', array('datep'=>$date.' 23:59:59'));
++    $db->insert('cutoff_probe', array('datep'=>$next.' 00:00:00'));
++    m121c_assert(count($db->query('SELECT p.datep FROM cutoff_probe p WHERE 1=1'.$where)->rows) === 1, 'Calendar cutoff rollover '.$date);
++}
++foreach (array('2026-02-29','2026-02-31','2026-13-01','2026-00-01','2026-11-3','2026-11-03 12:00:00',"2026-11-03\n","2026-11-03\r\n",' 2026-11-03',' ','0000-01-01','0999-12-31','9999-12-31',array(),42,false) as $invalid) {
++    $where = cpcc_financial_cutoff_sql($db, 'datep', $invalid);
++    m121c_assert(count($db->query('SELECT datep FROM cutoff_probe WHERE 1=1'.$where)->rows) === 0, 'Invalid input must yield valid fail-closed SQL');
++}
++foreach (array('p.datep OR 1=1','p.datep; DROP TABLE x','p..datep','p.datep.extra',"p.datep\n",'') as $column) {
++    m121c_throws(function () use ($db, $column) { cpcc_financial_cutoff_sql($db, $column, '2026-11-03'); }, 'Unsafe internal identifier must throw');
++}
++m121c_throws(function () { cpcc_financial_applied_credit_sql(null, '2026-11-03'); }, 'Credit cutoff requires db argument');
++$compatibility = new M121CutoffDb();
++$compatibility->invoice(); $compatibility->credit('2026-11-05 12:00:00');
++$unscopedCredits = $compatibility->query(cpcc_financial_applied_credit_sql())->rows;
++m121c_assert(count($unscopedCredits) === 1 && (int) $unscopedCredits[0]->fk_facture === 1, 'No-argument credit SQL executes and retains invoice identity');
++m121c_near($unscopedCredits[0]->amount, 25, 'No-argument credit SQL preserves current unbounded aggregate');
++
++// All times on the named day are included; next midnight is excluded.
++$db = new M121CutoffDb(); $db->invoice();
++foreach (array('2026-11-03 00:00:00','2026-11-03 12:00:00','2026-11-03 23:59:59','2026-11-04 00:00:00') as $date) $db->payment($date, 10);
++m121c_near(m121c_remaining($db), 70, 'Only same-day payment30 reduces unpaid invoices');
++m121c_near(m121c_allocated($db), 30, 'Whole cutoff day allocations agree with unpaid evidence');
++m121c_near(array_sum(array_column(cpcc_financial_native_receipts($db, 7, 'USD', '2026-11-03'), 'amount')), 30, 'Whole cutoff day native receipts');
++m121c_near(m121c_remaining($db, ''), 60, 'Current mode includes later payments');
++m121c_near(m121c_allocated($db, ''), 40, 'Current allocations unchanged');
++$db = new M121CutoffDb(); $db->invoice(); $db->payment('2026-11-05 12:00:00', 25);
++m121c_near(m121c_remaining($db), 100, 'Future partial payment cannot reduce dated unpaid');
++m121c_near(m121c_allocated($db), 0, 'Future partial payment not allocated at cutoff');
++
++foreach (array('2026-11-03 12:00:00'=>25,'2026-11-03 23:59:59'=>25,'2026-11-04 00:00:00'=>0) as $date=>$expected) {
++    $db = new M121CutoffDb(); $db->invoice(); $db->credit($date);
++    m121c_near(m121c_allocated($db), $expected, 'Manual credit creation cutoff '.$date);
++    $aggregate = $db->query(cpcc_financial_applied_credit_sql($db, '2026-11-03', 2, 7))->rows;
++    m121c_near(array_sum(array_map(function ($row) { return $row->amount; }, $aggregate)), $expected, 'Credit aggregate creation cutoff '.$date);
++}
++// Existing invoice-line discount path: only fd links the credit to its target.
++// Net75 is the current invoice value; this does not reconstruct a past invoice net.
++foreach (array('2026-11-02 12:00:00'=>25,'2026-11-03 23:59:59'=>25,'2026-11-04 00:00:00'=>0) as $date=>$expected) {
++    $db = new M121CutoffDb(); $db->invoice(array('total_ttc'=>75,'multicurrency_total_ttc'=>75));
++    $db->insert('llx_facturedet', array('rowid'=>11,'fk_facture'=>1));
++    $db->credit($date, array('fk_facture'=>null,'fk_facture_line'=>11));
++    m121c_near(m121c_allocated($db), $expected, 'Invoice-line-only credit allocation cutoff '.$date);
++    $aggregate = $db->query(cpcc_financial_applied_credit_sql($db, '2026-11-03', 2, 7))->rows;
++    m121c_near(array_sum(array_map(function ($row) { return $row->amount; }, $aggregate)), $expected, 'Invoice-line-only aggregate target join '.$date);
++}
++$db = new M121CutoffDb(); $db->invoice(); $db->credit(null);
++m121c_near(m121c_allocated($db), 0, 'Unknown credit creation time excluded from explicit cutoff');
++m121c_near(m121c_allocated($db, ''), 25, 'Unknown creation time retained in current mode');
++foreach (array(array('entity'=>3),array('fk_soc'=>8)) as $foreign) {
++    $db = new M121CutoffDb(); $db->invoice(); $db->credit('2026-11-03 12:00:00', $foreign);
++    m121c_near(m121c_allocated($db), 0, 'Credit source scope isolation');
++    m121c_assert(count($db->query(cpcc_financial_applied_credit_sql($db, '', 2, 7))->rows) === 0, 'Credit aggregate source scope isolation');
++}
++$db = new M121CutoffDb(); $db->invoice(); $db->payment('2026-11-03 12:00:00', 25, array('entity'=>3));
++m121c_near(m121c_remaining($db), 100, 'Foreign payment cannot reduce active entity invoice');
++
++// Preserve validation policy and current invoice eligibility, not historical reconstruction.
++foreach (array(0=>75,1=>100) as $validation=>$remaining) {
++    $m121CutoffValidation = $validation;
++    $db = new M121CutoffDb(); $db->invoice(); $db->payment('2026-11-03 12:00:00', 25, array('statut'=>0));
++    m121c_near(m121c_remaining($db), $remaining, 'Existing payment validation policy');
++}
++$m121CutoffValidation = 0;
++foreach (array(array('fk_statut'=>0),array('fk_statut'=>2,'paye'=>1),array('fk_statut'=>3),array('paye'=>1),array('entity'=>3),array('fk_soc'=>8),array('fk_projet'=>12),array('datef'=>'2026-11-04')) as $ineligible) {
++    $db = new M121CutoffDb(); $db->invoice($ineligible);
++    m121c_near(m121c_remaining($db), 0, 'Invoice current state/entity/customer/project/date eligibility');
++}
++$db = new M121CutoffDb(); $db->invoice(array('datef'=>'2026-11-03'));
++m121c_near(m121c_remaining($db), 100, 'Invoice DATE cutoff inclusive');
++$db = new M121CutoffDb(); $db->invoice(array('fk_projet'=>12));
++m121c_near(m121c_remaining($db, '2026-11-03', 0), 100, 'All-project mode retains other project');
++$db = new M121CutoffDb(); $db->invoice(); $db->invoice(array('rowid'=>2,'fk_projet'=>12,'total_ttc'=>900,'multicurrency_total_ttc'=>900));
++$summary = cpcc_financial_summary($db, 7, 'USD', 11, '2026-11-03');
++m121c_near($summary['USD']['unpaid_invoices'], 100, 'Summary forwards project scope to invoice read');
++
++// Future/foreign charge payments cannot reduce a past same-scope commitment.
++foreach (array(array('entry_date'=>'2026-11-03 23:59:59'),array('entry_date'=>'2026-11-04 00:00:00'),array('entity'=>3),array('fk_soc'=>8)) as $entry) {
++    $db = new M121CutoffDb(); $db->charge(); $db->entry($entry);
++    $charges = cpcc_financial_commitment_rows($db, 7, 'USD', 11, '2026-11-03');
++    m121c_assert(count($charges) === 1, 'LEFT JOIN cutoff must preserve unpaid charge');
++    $expected = isset($entry['entry_date']) && $entry['entry_date'] === '2026-11-03 23:59:59' ? 75 : 100;
++    m121c_near($charges[0]['remaining'], $expected, 'Charge paid amount uses same cutoff and entity/customer');
++    m121c_assert($charges[0]['supplier'] === '', 'Supplier identity remains private by default');
++}
++$db = new M121CutoffDb(); $db->charge(); $db->entry(array('entry_date'=>'2026-11-04 00:00:00'));
++m121c_near(cpcc_financial_commitment_rows($db, 7, 'USD', 11)[0]['remaining'], 75, 'Current charge payments unchanged');
++$db = new M121CutoffDb(); $db->charge(array('charge_date'=>'2026-11-04')); $db->entry();
++m121c_assert(cpcc_financial_commitment_rows($db, 7, 'USD', 11, '2026-11-03') === array(), 'Future charge excluded');
++m121c_assert(count(cpcc_financial_custom_entries($db, 7, 'USD', 11, '2026-11-03')) === 1, 'Same-day custom entry retained');
++$db = new M121CutoffDb(); $db->entry(array('entry_date'=>'2026-11-04 00:00:00'));
++m121c_assert(cpcc_financial_custom_entries($db, 7, 'USD', 11, '2026-11-03') === array(), 'Future custom entry excluded');
++
++// Invalid dates must close outer reads, not only empty an aggregate subquery.
++foreach (array('2026-02-31',' ','9999-12-31',array()) as $invalid) {
++    $db = new M121CutoffDb();
++    $db->invoice(array('datef'=>'2026-01-01'));
++    $db->charge(array('charge_date'=>'2026-01-01'));
++    $db->entry(array('entry_date'=>'2026-01-02'));
++    $db->credit('2026-01-01');
++    $db->payment('2026-01-02 12:00:00', 10);
++    m121c_near(m121c_remaining($db, $invalid), 0, 'Invalid date closes outer invoice query');
++    m121c_near(m121c_allocated($db, $invalid), 0, 'Invalid date closes both native allocation queries');
++    m121c_assert(cpcc_financial_native_receipts($db, 7, 'USD', $invalid) === array(), 'Invalid date closes receipts');
++    m121c_assert(cpcc_financial_custom_entries($db, 7, 'USD', 11, $invalid) === array(), 'Invalid date closes custom entries');
++    m121c_assert(cpcc_financial_commitment_rows($db, 7, 'USD', 11, $invalid) === array(), 'Invalid date closes commitment query');
++}
++// Gross/credit formula and current lifecycle remain explicitly unchanged.
++$amounts = cpcc_financial_invoice_amounts(100, 0, 25);
++m121c_near($amounts['total'], 125, 'Existing gross formula unchanged');
++m121c_near($amounts['remaining'], 100, 'Existing remaining formula unchanged');
++echo 'M121 financial cutoff regressions passed ('.$m121CutoffChecks." checks; SQLite generated SELECTs; not historical lifecycle acceptance)\n";
