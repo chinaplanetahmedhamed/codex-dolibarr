@@ -13,8 +13,8 @@
   },
   "evidence_files": {
     "docs/architecture/M121_HISTORICAL_EVIDENCE_DESIGN_2026-11-03.md": "d226d143b168e4ef479bae8f6dc205fc51542c9165b60962ecac28278112b0af",
-    "docs/REPORTS/M121_HISTORY_AND_PORTFOLIO_SOURCE_2026-11-03.md": "599bbbdafd361dd28a588b44b8759f91d9a8b25f2ba8df4f19fbfec1cd2a41a4",
-    "docs/evidence/m121-history-design-2026-11-03/backup-guard-preparation.json": "8c38b608254059439edc87a324fdfd7aad05ea55d24cd10d689a0592384f57fe",
+    "docs/REPORTS/M121_HISTORY_AND_PORTFOLIO_SOURCE_2026-11-03.md": "072fcfd2a9e7584c931a675f6b3d0c7078805b5519864f7b2caa445b8a204680",
+    "docs/evidence/m121-history-design-2026-11-03/backup-guard-preparation.json": "8aeed901457bd09d2ee8a3ba87798b1faf07c976160ef193d48ac9b1532129e8",
     "docs/evidence/m121-history-design-2026-11-03/datetime-verification.json": "f2ebd871feb3bdfcba4fae1b8a7ca3a79b59d3131de8c38b6b39e79f4e485ae6",
     "docs/evidence/m121-history-design-2026-11-03/history-audit-summary.json": "843be2c251a49eaa6e5e82508bbe1c161c6a718ba4dfeef0d7c31021ffc8f180",
     "docs/evidence/m121-history-design-2026-11-03/history-reference-verification.json": "05dd1c2b9ff626a355102d16395ee93a75b7aa1b960b4ecf47ccf7fc8c315e9c",
@@ -35,7 +35,8 @@
       "resources.md"
     ],
     "unrelated_original_changes": 0,
-    "head_index_preserved": true
+    "head_index_preserved": true,
+    "scope": "Historical history/portfolio checkpoint; later authorized source changes recorded in supplier-payment manifest"
   },
   "review": {
     "portfolio": "Independent no blocking findings for final scoped slice",
@@ -65,16 +66,23 @@
       "indexes": "31245\u201336754",
       "revision": "AHj4eMRHBogAQANiZSFkd2QDZae_B-P2ow840qH1PJImw0bORWYBmBYKz1PnTrV2ip0rAbq8pnoEfOjjFYd_AWcEQu1LgaQc88GFTax7fbw"
     },
-    "readback": "Writes verified;29keys/sixopenphases/failurehistory/manualprefix/sharing preserved; layout visually checked"
+    "readback": "Writes verified;29keys/sixopenphases/failurehistory/manualprefix/sharing preserved; layout visually checked",
+    "operator_integrity_followup": {
+      "test_log": "A43:L43 M121-MAC-24",
+      "manual": "t.0 indexes36754\u201338107",
+      "revision": "AHj4eMSDGd11Y_LSMt59p0Sl1uldgINglkfdSWePCnvB--BKqrHaC4wjVi2gg5hbQB1tckXyimpGGEzu556kwld8uN-8uV-C35V7yJ0yG1U",
+      "readback": "Verified;29keys/sixopenphases/history/sharing preserved"
+    }
   },
   "operator_guard": "Limited operator-supplied metadataPASS evaluated; exact output private; no new Codex grant",
   "gates": {
     "full_history": "REQUIRED and incomplete",
     "native_runtime_auth": "PENDING",
     "full_isolation_anonymization": "PENDING",
-    "backup_recovery": "Human integrity guard prepared/reviewed/delivered, result PENDING; no fresh backup/recovery rehearsal or safe supported scratch execution path",
+    "backup_recovery": "Operator old-artifact integrityPASS RESTORE_PROOF=NO; freshness/isolated recovery rehearsal and supported execution path remain unverified",
     "deployment": "NOT PERFORMED",
     "production": "NOT ACCESSED"
   },
-  "publication_policy": "Sanitized docs/hashes/outcomes only; new application/test patches and raw records/SQL/private operator output excluded"
+  "publication_policy": "Sanitized docs/hashes/outcomes only; new application/test patches and raw records/SQL/private operator output excluded",
+  "later_source_report": "docs/REPORTS/M121_SUPPLIER_PAYMENT_SOURCE_2026-11-03.md"
 }
