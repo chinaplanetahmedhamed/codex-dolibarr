@@ -12,7 +12,7 @@
 
 Base branch is codex/m084-dashboard-repair at `310deeaa70ced8d1a74aa84c802e2c705e54b2a1`; changes remain in the canonical working tree. HEAD and index are preserved. Exact original source bytes were archived and matched pre-edit hashes. No whole-tree overlay, new module/ledger, schema migration, source relocation, native posting, credential/grant change or application release commit occurred.
 
-Three-file review patch retained locally (publication awaiting specific owner authorization), SHA256 `4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae`; [source and evidence manifest](../evidence/m121-cutoff-correction-2026-11-03/manifest.json). This is a review patch, not a deployable release artifact. Earlier PR59/PR60 candidates are not merged; future integration must reconcile against this newer library rather than replay an older whole file.
+[Exact three-file review patch](../evidence/m121-cutoff-correction-2026-11-03/source-correction.patch), SHA256 `4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae`; [source and evidence manifest](../evidence/m121-cutoff-correction-2026-11-03/manifest.json). This is a review patch, not a deployable release artifact. Earlier PR59/PR60 candidates are not merged; future integration must reconcile against this newer library rather than replay an older whole file.
 
 ## Corrected behavior
 
@@ -78,4 +78,4 @@ All integrated M121 phase gates remain open. The corrected mobile source test su
 
 Raw generated-query publication was denied by automatic review because the payload contains SQL/schema/identifiers. It did not execute. The raw log remains in protected local evidence outside Git; the published summary contains counts, covered behaviors and limits only.
 
-Full source-diff publication was separately rejected by automatic review as nonpublic source disclosure; the action did not execute. The tested patch remains in the local workspace, and specific owner authorization for that exact three-file publication is pending. Sanitized reports, hashes, mutation results and native query summary are published.
+Full source-diff publication was initially rejected by automatic review and did not execute. Ahmed subsequently approved the exact three-file diff for this repository. After confirming absence and unchanged content/hash, the same publication was retried once and allowed. Commit `5c26fddaca5e33741396c3c72e3fe0a6e9c2c53d`, blob `2c82732c2701eb034506cd978baca9036a93e8f1`, exact content and SHA256 readback verified. This publishes a review patch only: no application-path merge, backup/prod apply or financial acceptance. Raw query logs remain local-only.
