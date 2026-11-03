@@ -12,7 +12,7 @@
 
 Base branch is codex/m084-dashboard-repair at `310deeaa70ced8d1a74aa84c802e2c705e54b2a1`; changes remain in the canonical working tree. HEAD and index are preserved. Exact original source bytes were archived and matched pre-edit hashes. No whole-tree overlay, new module/ledger, schema migration, source relocation, native posting, credential/grant change or application release commit occurred.
 
-[Three-file review patch](../evidence/m121-cutoff-correction-2026-11-03/source-correction.patch), SHA256 `4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae`; [source and evidence manifest](../evidence/m121-cutoff-correction-2026-11-03/manifest.json). This is a review patch, not a deployable release artifact. Earlier PR59/PR60 candidates are not merged; future integration must reconcile against this newer library rather than replay an older whole file.
+Three-file review patch retained locally (publication awaiting specific owner authorization), SHA256 `4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae`; [source and evidence manifest](../evidence/m121-cutoff-correction-2026-11-03/manifest.json). This is a review patch, not a deployable release artifact. Earlier PR59/PR60 candidates are not merged; future integration must reconcile against this newer library rather than replay an older whole file.
 
 ## Corrected behavior
 
@@ -71,3 +71,5 @@ The staging metadata OS-permission denial remains. No alternate privileged route
 All integrated M121 phase gates remain open. The corrected mobile source test supersedes its earlier failed source assertion only; the old failure and all earlier evidence remain in history. Sanitized evidence belongs in the existing tracker/manual. No production-resource access or backup/prod apply occurred.
 
 Raw generated-query publication was denied by automatic review because the payload contains SQL/schema/identifiers. It did not execute. The raw log remains in protected local evidence outside Git; the published summary contains counts, covered behaviors and limits only.
+
+Full source-diff publication was separately rejected by automatic review as nonpublic source disclosure; the action did not execute. The tested patch remains in the local workspace, and specific owner authorization for that exact three-file publication is pending. Sanitized reports, hashes, mutation results and native query summary are published.
