@@ -1,0 +1,55 @@
+{
+  "scope": "Read-only local source audit; no runtime evidence or raw financial records",
+  "source_categories": 11,
+  "coverage": [
+    {
+      "source": "Native current invoices",
+      "status": "Unsupported historical total without linked version/event coverage"
+    },
+    {
+      "source": "Native current payments/links",
+      "status": "Current-source observations; historical completeness unproved"
+    },
+    {
+      "source": "Native credits",
+      "status": "Unsupported application history from current table"
+    },
+    {
+      "source": "Generic security events",
+      "status": "Not a financial reconstruction source"
+    },
+    {
+      "source": "Agenda chronology",
+      "status": "Corroborating chronology only"
+    },
+    {
+      "source": "BlockedLog invoice/payment snapshots",
+      "status": "Conditional positive snapshot evidence, not blanket completeness"
+    },
+    {
+      "source": "CPCC financial/custom charges",
+      "status": "Conditional source observation; history incomplete unless immutable source/version established"
+    },
+    {
+      "source": "CPCC managed funds",
+      "status": "Potential bounded workflow interval replay if row immutability/event completeness verified; never extra cash"
+    },
+    {
+      "source": "Guided receipt link",
+      "status": "Identity corroboration only"
+    },
+    {
+      "source": "Supplier bridge markers",
+      "status": "Positive source/context evidence subject to reconciliation; not universal supplier history"
+    },
+    {
+      "source": "M116 manual account audit",
+      "status": "Strongest bounded replay candidate for manual source if complete chain/versions retained"
+    }
+  ],
+  "required_history": "Accessible trustworthy historical statements remain required; current-status transaction cutoff cannot substitute",
+  "native_payment_window": "Conditional as-recorded event-window changes only after identity/currency/integrity/coverage/authorization proof; not historical receivables",
+  "manual_source": "Existing retained manual audit shapes are a bounded replay candidate; never added to independent native cash",
+  "audit_manifest_sha256": "9b42d2f3602e43bde52371fa3669ec882b8a95d3e67f8c9671047f26918c4e2c",
+  "raw_source_and_record_payloads_published": false
+}
