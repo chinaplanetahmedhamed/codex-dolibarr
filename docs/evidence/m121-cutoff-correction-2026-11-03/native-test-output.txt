@@ -1,0 +1,7 @@
+PHP8.3.21 canonical SQLite: M121 financial cutoff regressions passed (110 checks; SQLite generated SELECTs; not historical lifecycle acceptance)
+PHP8.2.0 canonical SQLite: M121 financial cutoff regressions passed (110 checks; SQLite generated SELECTs; not historical lifecycle acceptance)
+PHP8.3.21 native MySQL: M121 native financial cutoff regressions passed (110 checks; native DATE/DATETIME; not historical lifecycle acceptance)
+Native runner lint: No syntax errors detected
+No-argument safety probe: exit64, Required explicit private fixture-dir/socket/datadir/database arguments; no connection attempted
+Initial sandbox Unix-socket attempt: Operation not permitted before SQL
+Formal local-fixture escalation: approved; identical guarded command exit0
