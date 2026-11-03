@@ -43,6 +43,7 @@
     "fixed_during_review": "terminal-newline date crash; newLF/CRLF regression and parse/absolute-anchor guard"
   },
   "business_limits": [
+    "Selected-date result is a hybrid of current invoice eligibility and dated evidence; neither complete historical nor necessarily current collectible balance",
     "Creation/payment cutoff consistency only, not full past lifecycle reconstruction",
     "Credit application time and historical invoice net are not inferred",
     "Empty/current mode retains status/paye/formula semantics; explicit cutoff excludes unknown credit creation dates",
@@ -80,6 +81,11 @@
       "path": "native-verification.md",
       "sha256": "d60fdb1ba58056dfd7d379e831abb14c54a16e9d31a3e9db53285ff5aae8004a",
       "bytes": 4782
+    },
+    {
+      "path": "hybrid-limit-summary.json",
+      "sha256": "a9f8d9d83197e0c8e57fcf5c269eb248a9cb40a0a752eb91da532db45b70b7ce",
+      "bytes": 997
     }
   ],
   "local_only_evidence": [
@@ -96,5 +102,12 @@
       "published": false,
       "reason": "Automatic review denied full nonpublic source disclosure; specific owner publication permission requested"
     }
-  ]
+  ],
+  "diagnostic_fixture": {
+    "checks": 4,
+    "hybrid_selected_projection": 100,
+    "controlled_historical_reference": 200,
+    "current_collectible": 75,
+    "application_source_unchanged": true
+  }
 }
