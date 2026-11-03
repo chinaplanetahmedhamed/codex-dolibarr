@@ -1,0 +1,650 @@
+{
+  "engine": "SQLite 3.54.1",
+  "php": "8.3.21",
+  "source_sha256": "8b9eba67974982a04f636c05e964e9aab91be01d0a60ccbda0e1c946558b44f1",
+  "queries_unmodified": true,
+  "cases": [
+    {
+      "case": "unpaid_at_cutoff_baseline",
+      "observed_remaining": 100,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 0,
+          "direct_paid": 0,
+          "applied_credit": 0,
+          "remaining": 100,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "later_partial_payment",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 25,
+          "applied_credit": 0,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "fully_paid_today_closed_after_cutoff",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "paye_filter_independent",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "status_filter_closed_partial_after_cutoff",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "payment_before_cutoff",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 25,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 25,
+          "applied_credit": 0,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [
+        {
+          "id": "payment-allocation-1-invoice-1",
+          "date": "2026-11-02 12:00:00",
+          "type": "native_invoice_allocation",
+          "direction": "D",
+          "description": "Payment allocated to invoice / تخصيص دفعة للفاتورة · SYN-1",
+          "amount": 25,
+          "currency": "USD",
+          "reference": "SYN",
+          "bank": "",
+          "project_id": 11,
+          "charge_id": 0,
+          "allocated_amount": 25,
+          "allocated_currency": "USD",
+          "exchange_rate": null,
+          "transfer_group": "",
+          "proof_ecm_id": 0
+        }
+      ],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "payment_cutoff_day_noon",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 25,
+          "applied_credit": 0,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "payment_cutoff_day_midnight_SQLITE_TEXT_LIMIT",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 25,
+          "applied_credit": 0,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "payment_cutoff_date_only_SQLITE_CONTROL",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 25,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 25,
+          "applied_credit": 0,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [
+        {
+          "id": "payment-allocation-1-invoice-1",
+          "date": "2026-11-03",
+          "type": "native_invoice_allocation",
+          "direction": "D",
+          "description": "Payment allocated to invoice / تخصيص دفعة للفاتورة · SYN-1",
+          "amount": 25,
+          "currency": "USD",
+          "reference": "SYN",
+          "bank": "",
+          "project_id": 11,
+          "charge_id": 0,
+          "allocated_amount": 25,
+          "allocated_currency": "USD",
+          "exchange_rate": null,
+          "transfer_group": "",
+          "proof_ecm_id": 0
+        }
+      ],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "credit_direct_created_after_cutoff",
+      "observed_remaining": 100,
+      "observed_allocation_debit": 25,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 125,
+          "paid": 25,
+          "direct_paid": 0,
+          "applied_credit": 25,
+          "remaining": 100,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [
+        {
+          "id": "credit-allocation-1",
+          "date": "2026-11-05 12:00:00",
+          "type": "native_credit_allocation",
+          "direction": "D",
+          "description": "Customer credit allocated to invoice / تخصيص رصيد العميل للفاتورة · SYN-1 ← SYN-CREDIT",
+          "amount": 25,
+          "currency": "USD",
+          "reference": "SYN-1",
+          "bank": "",
+          "project_id": 11,
+          "charge_id": 0,
+          "allocated_amount": 25,
+          "allocated_currency": "USD",
+          "exchange_rate": null,
+          "transfer_group": "",
+          "proof_ecm_id": 0
+        }
+      ],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "credit_line_created_after_cutoff",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 25,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 0,
+          "applied_credit": 25,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [
+        {
+          "id": "credit-allocation-1",
+          "date": "2026-11-05 12:00:00",
+          "type": "native_credit_allocation",
+          "direction": "D",
+          "description": "Customer credit allocated to invoice / تخصيص رصيد العميل للفاتورة · SYN-1 ← SYN-CREDIT",
+          "amount": 25,
+          "currency": "USD",
+          "reference": "SYN-1",
+          "bank": "",
+          "project_id": 11,
+          "charge_id": 0,
+          "allocated_amount": 25,
+          "allocated_currency": "USD",
+          "exchange_rate": null,
+          "transfer_group": "",
+          "proof_ecm_id": 0
+        }
+      ],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "credit_created_before_but_linked_after_cutoff_UNRECORDED_LINK_DATE",
+      "observed_remaining": 100,
+      "observed_allocation_debit": 25,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 125,
+          "paid": 25,
+          "direct_paid": 0,
+          "applied_credit": 25,
+          "remaining": 100,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [
+        {
+          "id": "credit-allocation-1",
+          "date": "2026-10-20 12:00:00",
+          "type": "native_credit_allocation",
+          "direction": "D",
+          "description": "Customer credit allocated to invoice / تخصيص رصيد العميل للفاتورة · SYN-1 ← SYN-CREDIT",
+          "amount": 25,
+          "currency": "USD",
+          "reference": "SYN-1",
+          "bank": "",
+          "project_id": 11,
+          "charge_id": 0,
+          "allocated_amount": 25,
+          "allocated_currency": "USD",
+          "exchange_rate": null,
+          "transfer_group": "",
+          "proof_ecm_id": 0
+        }
+      ],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "invoice_date_cutoff_inclusive",
+      "observed_remaining": 100,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-11-03",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 0,
+          "direct_paid": 0,
+          "applied_credit": 0,
+          "remaining": 100,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "invoice_dated_after_cutoff",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "invoice_validated_after_cutoff",
+      "observed_remaining": 100,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 0,
+          "direct_paid": 0,
+          "applied_credit": 0,
+          "remaining": 100,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "draft_excluded",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "cancelled_after_cutoff_excluded",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "foreign_entity_invoice_excluded",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "foreign_customer_invoice_excluded",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "other_project_invoice_excluded",
+      "observed_remaining": 0,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "other_project_allprojects_included",
+      "observed_remaining": 100,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 12,
+          "project_ref": "",
+          "project_title": "",
+          "total": 100,
+          "paid": 0,
+          "direct_paid": 0,
+          "applied_credit": 0,
+          "remaining": 100,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "foreign_entity_payment_aggregate_scope_gap",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 25,
+          "applied_credit": 0,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "payment_pending_validation_excluded",
+      "observed_remaining": 100,
+      "observed_allocation_debit": 0,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 0,
+          "direct_paid": 0,
+          "applied_credit": 0,
+          "remaining": 100,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut=1 GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut=1 AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    },
+    {
+      "case": "payment_pending_without_validation_included",
+      "observed_remaining": 75,
+      "observed_allocation_debit": 25,
+      "unpaid_rows": [
+        {
+          "id": 1,
+          "ref": "SYN-1",
+          "date": "2026-10-01",
+          "due_date": "2026-10-30",
+          "project_id": 11,
+          "project_ref": "SYN",
+          "project_title": "Synthetic",
+          "total": 100,
+          "paid": 25,
+          "direct_paid": 25,
+          "applied_credit": 0,
+          "remaining": 75,
+          "currency": "USD"
+        }
+      ],
+      "allocation_rows": [
+        {
+          "id": "payment-allocation-1-invoice-1",
+          "date": "2026-11-02 12:00:00",
+          "type": "native_invoice_allocation",
+          "direction": "D",
+          "description": "Payment allocated to invoice / تخصيص دفعة للفاتورة · SYN-1",
+          "amount": 25,
+          "currency": "USD",
+          "reference": "SYN",
+          "bank": "",
+          "project_id": 11,
+          "charge_id": 0,
+          "allocated_amount": 25,
+          "allocated_currency": "USD",
+          "exchange_rate": null,
+          "transfer_group": "",
+          "proof_ecm_id": 0
+        }
+      ],
+      "queries": [
+        "SELECT f.rowid,f.ref,f.datef,f.date_lim_reglement,f.fk_projet,f.multicurrency_code,f.total_ttc,f.multicurrency_total_ttc, COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi, COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi, p.ref project_ref,p.title project_title FROM llx_facture f LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM llx_paiement_facture pf INNER JOIN llx_paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ppay.statut IN (0,1) GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid LEFT JOIN (SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture, SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL GROUP BY COALESCE(r.fk_facture,fd.fk_facture)) discount ON discount.fk_facture=f.rowid LEFT JOIN llx_projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc WHERE f.entity=2 AND f.fk_soc=7 AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5) AND f.datef<='2026-11-03' AND f.fk_projet=11 ORDER BY f.datef,f.rowid",
+        "SELECT r.rowid,r.datec,r.amount_ttc,r.multicurrency_amount_ttc,r.multicurrency_code, target.rowid invoice_id,target.ref invoice_ref,target.datef,target.fk_projet,source.ref source_ref FROM llx_societe_remise_except r LEFT JOIN llx_facturedet fd ON fd.rowid=r.fk_facture_line INNER JOIN llx_facture target ON target.rowid=COALESCE(r.fk_facture,fd.fk_facture) LEFT JOIN llx_facture source ON source.rowid=r.fk_facture_source WHERE r.entity=2 AND r.fk_soc=7 AND target.entity=2 AND target.fk_soc=7 AND target.fk_statut>0 AND target.fk_projet=11 AND target.datef<='2026-11-03' ORDER BY target.datef,r.rowid",
+        "SELECT p.rowid payment_id,p.datep,p.ref payment_ref,p.num_paiement,f.rowid invoice_id,f.ref invoice_ref,f.fk_projet, COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,''),'USD') currency_code, CASE WHEN COALESCE(NULLIF(pf.multicurrency_code,''),NULLIF(f.multicurrency_code,'')) IS NOT NULL THEN COALESCE(NULLIF(pf.multicurrency_amount,0),pf.amount) ELSE pf.amount END amount FROM llx_paiement p INNER JOIN llx_paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN llx_facture f ON f.rowid=pf.fk_facture WHERE p.entity=2 AND f.entity=2 AND f.fk_soc=7 AND f.fk_statut>0 AND f.type IN (0,1,5) AND p.statut IN (0,1) AND f.fk_projet=11 AND p.datep<='2026-11-03' ORDER BY p.datep,p.rowid,f.rowid"
+      ]
+    }
+  ]
+}
