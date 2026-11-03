@@ -1,0 +1,26 @@
+{
+  "scope": "Two synthetic invoices; generated canonical SELECTs on SQLite memory",
+  "library_sha256": "297eab8265207af92c49567ec94f517908a27d1b197adad3205116fdb04f0177",
+  "selected_day": "2026-10-03",
+  "events_after_day": "2026-10-05",
+  "invoice_A": {
+    "total": 100,
+    "later_partial_payment": 25,
+    "currently_open": true,
+    "selected_projection": 100,
+    "current_collectible": 75
+  },
+  "invoice_B": {
+    "total": 100,
+    "later_full_payment": 100,
+    "currently_paid": true,
+    "selected_projection": "omitted because currently paid",
+    "current_collectible": 0
+  },
+  "selected_projection_total": 100,
+  "historical_fixture_reference": 200,
+  "current_collectible_total": 75,
+  "classification": "Hybrid: neither complete historical receivables nor current collectible balance",
+  "checks": 4,
+  "limits": "Historical reference is exact for this controlled fixture with both invoices validated before cutoff and no other events; not general historical reconstruction"
+}
