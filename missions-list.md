@@ -34,3 +34,11 @@ The preceding register is the returned local M121 evidence snapshot, not newly v
 المهام الـ29 ومفاتيح P1-01…REL-02 في [خطة التنفيذ](docs/architecture/M121_MASTER_IMPLEMENTATION_PLAN_2026-11-03.md) و[سجل Drive القائم](https://docs.google.com/spreadsheets/d/1QZMWYIHbuigCW_40XdIFC4ZSknVrYGVsW-IL2rjF8HQ/edit). مفاتيح المراحل ليست أرقام Mission جديدة.
 السجل التاريخي الكامل يبقى في docs/MISSIONS/ وdocs/REPORTS/ مع إشعارات supersession؛ لا تغيير أسماء المؤلفين أو الموافقات التاريخية إلى موافقات حالية.
 كل إسناد جديد يسجل الهدف والمالك والفرع/commit والمسار والاختبارات والقضايا والخطوة التالية. لا completed دون evidence وقبول النطاق، ولا production ضمن التفويض الحالي.
+
+## M121 cloud execution checkpoint — 2026-11-03
+| Task subset | Status | Agent | Paths and evidence | Next action |
+| --- | --- | --- | --- | --- |
+| P2-01 read-model defects | open; isolated candidate source tests pass | Codex finance; Work review | custom/chinaplanetcustomercenter/admin/financial_portfolio.php; lib/financial.lib.php; PR59 /6bdc868 | Mac parity, full financial semantics and backup-erp acceptance |
+| P3-01/P3-02 UI subset | open; isolated candidate source tests pass | Codex Boards; Work review | custom/chinaplanetoperations/js/boards.js; css/boards.css; class/InternalTaskBoardsService.class.php; PR60 /422284e | Mac reconcile, whole startup/CSS/viewport/role verification |
+| P1-02…P1-06, REL-01 | open; access/runtime blockers | Local Codex; Dot reports | docs/governance/DOT_MAC_HANDOFF.md | Acknowledge local execution, read VPS skill, prove target/backup/schema/grants/source |
+Full evidence: [cloud implementation checkpoint](docs/REPORTS/M121_CLOUD_IMPLEMENTATION_2026-11-03.md). No staging deployment or production change; no global completion claim.

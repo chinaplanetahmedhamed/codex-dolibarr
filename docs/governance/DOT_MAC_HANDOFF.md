@@ -111,3 +111,9 @@ Assigned executor: Codex engineering on the verified Mac, coordinated/reported b
 10. Publish only source/docs appropriate for GitHub; report staged artifact SHA, backup/rollback evidence, test results and unresolved blockers. Production stays untouched, regardless of staging success.
 
 Return receipt and progress by appending to this file, preserving all earlier evidence. Use states RECEIVED / IN_PROGRESS / BLOCKED / COMPLETED with exact tested scope; no global completion claim from a source-only check.
+
+## Work cloud progress and scope split — 2026-11-03
+Ahmed explicitly authorizes parallel agents and mixed cloud/Mac work; keeping the Mac open does not itself establish a control connection. New local receipt is still AWAITING ACKNOWLEDGEMENT.
+Cloud engineering prepared two isolated candidates, not deployed: PR59 finance head6bdc868e7bfeb44c9ffe8b3ca5545300ab0df298; PR60 Boards head422284e0b26d15ef866c1fb7a886d9d77425e9b3. Read [the implementation checkpoint](../REPORTS/M121_CLOUD_IMPLEMENTATION_2026-11-03.md) for actual tests, paths, dependency boundaries and limits.
+Mac executor: preserve dirty work; read the mandatory VPS skill/current-state references; acknowledge; resolve P1 runtime/schema/isolation/source parity; compare candidate deltas before applying. Do not merge/copy whole older M107 or main over newer local services. Run full startup/browser/role/financial scenarios, verify backup and rollback, then deploy/test backup-erp only under the existing authorization. Keep shared mission status open until exact acceptance.
+No cloud agent currently controls the Mac or has created a backup/deployment. Do not infer this work resumes automatically because this file changed.
