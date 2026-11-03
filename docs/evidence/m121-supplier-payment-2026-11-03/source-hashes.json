@@ -1,0 +1,8 @@
+{
+  "custom/chinaplanetcustomercenter/class/CustomerFundsService.class.php": "fed08eb6fdc8c2650e8b1648aff0ba2070bca293140d6a8f2aabb7248f13aa68",
+  "custom/chinaplanetoperations/class/OperationSupplierWorkflowService.class.php": "20139db50c7e0951c357cdd5380efb239a5b630fbcd597f534f674abbb68822b",
+  "custom/chinaplanetcustomercenter/lib/operations.lib.php": "5aa44238636ed927ccee5dfe3d4b87e150924052a477b01eeb6670d775fe811c",
+  "deploy/tests/test_m121_funds_transaction.php": "385b05122f5bf34d5baf4344d2ef3e7c78af97686502375e87c6665a8007df6a",
+  "deploy/tests/test_m121_supplier_currency_alias.php": "3487c86d05a01370ef91d57e673ad8bcd4cc50e23422220489981b9b9e6be4d0",
+  "deploy/tests/test_m121_supplier_lifecycle.php": "b9421132ae92b5fd19bf48d197362003d9fa24906dfd577c3807180d0143c567"
+}
