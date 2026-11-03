@@ -1,0 +1,77 @@
+<?php
+/** Actual canonical generated SQL executed unchanged against synthetic SQLite tables. */
+error_reporting(E_ALL);
+set_error_handler(function($s,$m,$f,$l) { throw new ErrorException($m,0,$s,$f,$l); });
+define('MAIN_DB_PREFIX','llx_');
+$conf=(object)array('entity'=>2);
+$validationEnabled=0;
+function getDolGlobalInt($key) { return $GLOBALS['validationEnabled']; }
+require '/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr/custom/chinaplanetcustomercenter/lib/financial.lib.php';
+class ActualSqlDb {
+ public $pdo; public $queries=array();
+ function __construct() {
+  $this->pdo=new PDO('sqlite::memory:'); $this->pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+  foreach(array(
+   'CREATE TABLE llx_facture(rowid INTEGER PRIMARY KEY,ref TEXT,entity INTEGER,fk_soc INTEGER,fk_projet INTEGER,datef TEXT,date_valid TEXT,date_closing TEXT,date_lim_reglement TEXT,multicurrency_code TEXT,total_ttc REAL,multicurrency_total_ttc REAL,fk_statut INTEGER,paye INTEGER,type INTEGER,close_code TEXT)',
+   'CREATE TABLE llx_paiement(rowid INTEGER PRIMARY KEY,ref TEXT,num_paiement TEXT,entity INTEGER,datep TEXT,statut INTEGER)',
+   'CREATE TABLE llx_paiement_facture(rowid INTEGER PRIMARY KEY,fk_paiement INTEGER,fk_facture INTEGER,amount REAL,multicurrency_amount REAL,multicurrency_code TEXT)',
+   'CREATE TABLE llx_societe_remise_except(rowid INTEGER PRIMARY KEY,entity INTEGER,fk_soc INTEGER,datec TEXT,amount_ttc REAL,multicurrency_amount_ttc REAL,multicurrency_code TEXT,fk_facture INTEGER,fk_facture_line INTEGER,fk_facture_source INTEGER)',
+   'CREATE TABLE llx_facturedet(rowid INTEGER PRIMARY KEY,fk_facture INTEGER)',
+   'CREATE TABLE llx_projet(rowid INTEGER PRIMARY KEY,entity INTEGER,fk_soc INTEGER,ref TEXT,title TEXT)'
+  ) as $sql) $this->pdo->exec($sql);
+  $this->insert('llx_projet',array('rowid'=>11,'entity'=>2,'fk_soc'=>7,'ref'=>'SYN','title'=>'Synthetic'));
+ }
+ function insert($table,$row) { $keys=array_keys($row); $s=$this->pdo->prepare('INSERT INTO '.$table.'('.implode(',',$keys).') VALUES('.implode(',',array_fill(0,count($keys),'?')).')'); $s->execute(array_values($row)); }
+ function invoice($overrides=array()) { $this->insert('llx_facture',array_merge(array('rowid'=>1,'ref'=>'SYN-1','entity'=>2,'fk_soc'=>7,'fk_projet'=>11,'datef'=>'2026-10-01','date_valid'=>'2026-10-01','date_closing'=>null,'date_lim_reglement'=>'2026-10-30','multicurrency_code'=>'USD','total_ttc'=>100,'multicurrency_total_ttc'=>100,'fk_statut'=>1,'paye'=>0,'type'=>0,'close_code'=>null),$overrides)); }
+ function payment($date,$amount,$status=1,$entity=2) {
+  $this->insert('llx_paiement',array('rowid'=>1,'ref'=>'SYN-P1','num_paiement'=>'SYN','entity'=>$entity,'datep'=>$date,'statut'=>$status));
+  $this->insert('llx_paiement_facture',array('rowid'=>1,'fk_paiement'=>1,'fk_facture'=>1,'amount'=>$amount,'multicurrency_amount'=>$amount,'multicurrency_code'=>'USD'));
+ }
+ function credit($date,$line=false) {
+  if($line) $this->insert('llx_facturedet',array('rowid'=>1,'fk_facture'=>1));
+  $this->insert('llx_societe_remise_except',array('rowid'=>1,'entity'=>2,'fk_soc'=>7,'datec'=>$date,'amount_ttc'=>25,'multicurrency_amount_ttc'=>25,'multicurrency_code'=>'USD','fk_facture'=>$line?null:1,'fk_facture_line'=>$line?1:null,'fk_facture_source'=>2));
+  $this->invoice(array('rowid'=>2,'ref'=>'SYN-CREDIT','type'=>2,'datef'=>substr($date,0,10),'total_ttc'=>-25,'multicurrency_total_ttc'=>-25));
+ }
+ function escape($s) { return str_replace("'","''",$s); }
+ function query($sql) { $this->queries[]=$sql; return $this->pdo->query($sql); }
+ function fetch_object($result) { return $result->fetch(PDO::FETCH_OBJ); }
+}
+$results=array();
+function scenario($name,$prepare,$expected,$project=11) {
+ $db=new ActualSqlDb(); $prepare($db);
+ $unpaid=cpcc_financial_unpaid_invoices($db,7,'USD',$project,'2026-11-03');
+ $alloc=cpcc_financial_native_allocations($db,7,'USD',$project,'2026-11-03');
+ $remaining=array_sum(array_column($unpaid,'remaining'));
+ $spent=array_sum(array_column($alloc,'amount'));
+ if($remaining!==$expected[0] || $spent!==$expected[1]) throw new RuntimeException($name.' unexpected '.json_encode(array($remaining,$spent)));
+ $GLOBALS['results'][]=array('case'=>$name,'observed_remaining'=>$remaining,'observed_allocation_debit'=>$spent,'unpaid_rows'=>$unpaid,'allocation_rows'=>$alloc,'queries'=>$db->queries);
+ echo $name.' remaining='.$remaining.' allocation_debit='.$spent."\n";
+}
+scenario('unpaid_at_cutoff_baseline',function($d){$d->invoice();},array(100.0,0));
+scenario('later_partial_payment',function($d){$d->invoice();$d->payment('2026-11-05 12:00:00',25);},array(75.0,0));
+scenario('fully_paid_today_closed_after_cutoff',function($d){$d->invoice(array('fk_statut'=>2,'paye'=>1,'date_closing'=>'2026-11-05 12:00:00'));$d->payment('2026-11-05 12:00:00',100);},array(0,0));
+scenario('paye_filter_independent',function($d){$d->invoice(array('paye'=>1));},array(0,0));
+scenario('status_filter_closed_partial_after_cutoff',function($d){$d->invoice(array('fk_statut'=>2,'paye'=>0,'date_closing'=>'2026-11-05 12:00:00','close_code'=>'discount_vat'));$d->payment('2026-11-05 12:00:00',25);},array(0,0));
+scenario('payment_before_cutoff',function($d){$d->invoice();$d->payment('2026-11-02 12:00:00',25);},array(75.0,25.0));
+scenario('payment_cutoff_day_noon',function($d){$d->invoice();$d->payment('2026-11-03 12:00:00',25);},array(75.0,0));
+scenario('payment_cutoff_day_midnight_SQLITE_TEXT_LIMIT',function($d){$d->invoice();$d->payment('2026-11-03 00:00:00',25);},array(75.0,0));
+scenario('payment_cutoff_date_only_SQLITE_CONTROL',function($d){$d->invoice();$d->payment('2026-11-03',25);},array(75.0,25.0));
+scenario('credit_direct_created_after_cutoff',function($d){$d->invoice();$d->credit('2026-11-05 12:00:00');},array(100.0,25.0));
+scenario('credit_line_created_after_cutoff',function($d){$d->invoice(array('total_ttc'=>75,'multicurrency_total_ttc'=>75));$d->credit('2026-11-05 12:00:00',true);},array(75.0,25.0));
+scenario('credit_created_before_but_linked_after_cutoff_UNRECORDED_LINK_DATE',function($d){$d->invoice();$d->credit('2026-10-20 12:00:00');},array(100.0,25.0));
+scenario('invoice_date_cutoff_inclusive',function($d){$d->invoice(array('datef'=>'2026-11-03'));},array(100.0,0));
+scenario('invoice_dated_after_cutoff',function($d){$d->invoice(array('datef'=>'2026-11-04'));},array(0,0));
+scenario('invoice_validated_after_cutoff',function($d){$d->invoice(array('date_valid'=>'2026-11-05'));},array(100.0,0));
+scenario('draft_excluded',function($d){$d->invoice(array('fk_statut'=>0));},array(0,0));
+scenario('cancelled_after_cutoff_excluded',function($d){$d->invoice(array('fk_statut'=>3,'date_closing'=>'2026-11-05 12:00:00'));},array(0,0));
+scenario('foreign_entity_invoice_excluded',function($d){$d->invoice(array('entity'=>3));},array(0,0));
+scenario('foreign_customer_invoice_excluded',function($d){$d->invoice(array('fk_soc'=>8));},array(0,0));
+scenario('other_project_invoice_excluded',function($d){$d->invoice(array('fk_projet'=>12));},array(0,0));
+scenario('other_project_allprojects_included',function($d){$d->invoice(array('fk_projet'=>12));},array(100.0,0),0);
+scenario('foreign_entity_payment_aggregate_scope_gap',function($d){$d->invoice();$d->payment('2026-11-02 12:00:00',25,1,3);},array(75.0,0));
+$GLOBALS['validationEnabled']=1;
+scenario('payment_pending_validation_excluded',function($d){$d->invoice();$d->payment('2026-11-02 12:00:00',25,0);},array(100.0,0));
+$GLOBALS['validationEnabled']=0;
+scenario('payment_pending_without_validation_included',function($d){$d->invoice();$d->payment('2026-11-02 12:00:00',25,0);},array(75.0,25.0));
+file_put_contents(__DIR__.'/actual-sql-results.json',json_encode(array('engine'=>'SQLite '.SQLite3::version()['versionString'],'php'=>PHP_VERSION,'source_sha256'=>hash_file('sha256','/Users/mac/Documents/dev/chinaplanet-OS/codex-dolibarr/custom/chinaplanetcustomercenter/lib/financial.lib.php'),'queries_unmodified'=>true,'cases'=>$results),JSON_PRETTY_PRINT)."\n");
+echo 'ACTUAL_SQL_CASES='.count($results)." PASS (characterization only)\n";
