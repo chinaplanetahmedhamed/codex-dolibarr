@@ -1,0 +1,90 @@
+{
+  "mission": "M121",
+  "scope": "Prepared source correction only; not deployed or committed as an application release",
+  "base_branch": "codex/m084-dashboard-repair",
+  "base_commit": "310deeaa70ced8d1a74aa84c802e2c705e54b2a1",
+  "source_changes": [
+    {
+      "path": "custom/chinaplanetcustomercenter/lib/financial.lib.php",
+      "before_sha256": "8b9eba67974982a04f636c05e964e9aab91be01d0a60ccbda0e1c946558b44f1",
+      "after_sha256": "297eab8265207af92c49567ec94f517908a27d1b197adad3205116fdb04f0177",
+      "class": "runtime"
+    },
+    {
+      "path": "deploy/tests/test_m028_c04_financial_portfolio_mobile.php",
+      "before_sha256": "6b6633c6d3b3edb15c1eaa8ad91272359b663892bc15ad62704b55c51f81962f",
+      "after_sha256": "c86f340131f792c515d801e3363f1abef8c8fa11d04d72540950102e00c3c4e9",
+      "class": "test"
+    },
+    {
+      "path": "deploy/tests/test_m121_financial_cutoff.php",
+      "before_sha256": null,
+      "after_sha256": "e9509686052d1d753aa12be1bd1c686689059e00a7316987b6ee5ff160daec73",
+      "class": "test"
+    }
+  ],
+  "tests": {
+    "PHP8.3.21_SQLite": 110,
+    "PHP8.2.0_SQLite": 110,
+    "PHP8.3.21_MySQL5.7.39": 110,
+    "PHP_lint": "all3changed PHPfiles pass on8.2.0and8.3.21",
+    "mobile_source": "PASS",
+    "mobile_positive_fixtures": 3,
+    "mobile_negative_controls": 12,
+    "M029": "PASS",
+    "multicurrency": "PASS",
+    "M017_security": "PASS",
+    "M017_data": "PASS",
+    "M017_contract": "BASELINE_FAIL frozen OpenAPI hash; unchanged HEAD-only reproduction",
+    "M077_connected": "BASELINE_FAIL missing Arabic source phrase; test/view match pre-task hashes"
+  },
+  "review": {
+    "independent": "No blocking findings remain",
+    "fixed_during_review": "terminal-newline date crash; newLF/CRLF regression and parse/absolute-anchor guard"
+  },
+  "business_limits": [
+    "Creation/payment cutoff consistency only, not full past lifecycle reconstruction",
+    "Credit application time and historical invoice net are not inferred",
+    "Empty/current mode retains status/paye/formula semantics; explicit cutoff excludes unknown credit creation dates",
+    "Stored-calendar boundaries; no new timezone conversion or cash/credit policy"
+  ],
+  "safety": {
+    "temporary_native_engine": "shutdown confirmed; network disabled; no existing DB used",
+    "production_or_backup_apply": false,
+    "remote_access_this_scope": false,
+    "no_new_ledger_schema_or_postings": true,
+    "git_HEAD_index_preserved": true
+  },
+  "artifacts": [
+    {
+      "path": "mobile-mutations.json",
+      "sha256": "78733380ac1163a16e19b1668d73cc1a8d9d888738fa58f1df83b58ea35c72a1",
+      "bytes": 2777
+    },
+    {
+      "path": "native-generated-queries.json",
+      "sha256": "6bd4178162e68b5627fcf717ffcae1a7e97da6e1cbf0807a9e1a2a180c995eae",
+      "bytes": 77841
+    },
+    {
+      "path": "native-manifest.json",
+      "sha256": "ac2e561a0ee11095e09df03dc6088582e261747ec5142fe872d0fdb17f918513",
+      "bytes": 2805
+    },
+    {
+      "path": "native-test-output.txt",
+      "sha256": "f8c9e120167bd224f0c33ff65a4d127a94129054646ca24eeb8abc70e3c86099",
+      "bytes": 757
+    },
+    {
+      "path": "native-verification.md",
+      "sha256": "47d6fc3bd44518917dab27282fde6baee6b3cab15725db5e6b1474091e1f78a6",
+      "bytes": 4690
+    },
+    {
+      "path": "source-correction.patch",
+      "sha256": "4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae",
+      "bytes": 35840
+    }
+  ]
+}
