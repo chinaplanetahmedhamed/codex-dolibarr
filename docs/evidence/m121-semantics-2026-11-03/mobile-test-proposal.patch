@@ -1,0 +1,70 @@
+--- a/deploy/tests/test_m028_c04_financial_portfolio_mobile.php
++++ b/deploy/tests/test_m028_c04_financial_portfolio_mobile.php
+@@ -1,23 +1,58 @@
+ <?php
++/** Source-only mobile contract: labels follow their column headers in the page language. */
+ $root = dirname(__DIR__, 2);
+ $page = file_get_contents($root.'/custom/chinaplanetcustomercenter/admin/financial_portfolio.php');
+ $css = file_get_contents($root.'/custom/chinaplanetcustomercenter/css/ux_fixes.css');
+-
++$fail = function ($label) {
++    fwrite(STDERR, "M028-C04 FAIL: {$label}\n");
++    exit(1);
++};
+ $checks = array(
+     'responsive table classes' => substr_count($page, 'cpad-responsive-table') === 2,
+-    'totals mobile labels' => strpos($page, 'data-label="Currency / العملة"') !== false && strpos($page, 'data-label="Required Funding / التمويل المطلوب"') !== false,
+-    'customer mobile labels' => strpos($page, 'data-label="Customer / العميل"') !== false && strpos($page, 'data-label="Action / إجراء"') !== false,
+     'mobile card breakpoint' => strpos($css, '@media (max-width: 768px)') !== false,
+     'mobile rows become cards' => strpos($css, '.cpad-responsive-table tbody tr{display:block') !== false,
+     'mobile values do not truncate' => strpos($css, 'text-overflow:clip;white-space:normal') !== false,
++    'mobile labels use data-label' => strpos($css, 'content:attr(data-label)') !== false,
+     'desktop minimum remains' => strpos($css, '.cpad-finance-portfolio-theme .cpad-table{min-width:680px}') !== false,
+ );
+-
+ foreach ($checks as $label => $passed) {
+-    if (!$passed) {
+-        fwrite(STDERR, "M028-C04 FAIL: {$label}\n");
+-        exit(1);
++    if (!$passed) $fail($label);
++}
++if (!class_exists('DOMDocument')) $fail('DOM extension required for source contract');
++$html = '';
++foreach (token_get_all($page) as $token) {
++    if (is_array($token) && $token[0] === T_INLINE_HTML) $html .= $token[1];
++}
++$dom = new DOMDocument();
++$old = libxml_use_internal_errors(true);
++$loaded = $dom->loadHTML('<?xml encoding="utf-8" ?>'.$html, LIBXML_NONET);
++libxml_clear_errors();
++libxml_use_internal_errors($old);
++if (!$loaded) $fail('page HTML template parses');
++$xpath = new DOMXPath($dom);
++$tables = $xpath->query('//table[contains(concat(" ",normalize-space(@class)," ")," cpad-responsive-table ")]');
++if ($tables->length !== 2) $fail('two responsive tables');
++$normalize = function ($text) { return trim(preg_replace('/\s+/u', ' ', $text)); };
++foreach ($tables as $index => $table) {
++    $headers = $xpath->query('./thead/tr/th', $table);
++    if ($headers->length === 0) $fail('table headers present');
++    $dataRows = 0;
++    foreach ($xpath->query('./tbody/tr', $table) as $row) {
++        if (strpos(' '.$row->getAttribute('class').' ', ' cpad-empty-row ') !== false) {
++            $emptyCells = $xpath->query('./td', $row);
++            if ($emptyCells->length !== 1 || (int) $emptyCells->item(0)->getAttribute('colspan') !== $headers->length) $fail('empty row spans all columns');
++            continue;
++        }
++        $cells = $xpath->query('./td', $row);
++        if ($cells->length !== $headers->length) $fail('data row matches header column count');
++        foreach ($cells as $column => $cell) {
++            $header = $normalize($headers->item($column)->textContent);
++            $label = $normalize($cell->getAttribute('data-label'));
++            if ($header === '' || $label === '' || $label !== $header) $fail('mobile label matches column header');
++            if ($xpath->query('./span[contains(concat(" ",normalize-space(@class)," ")," cpad-cell-value ")]', $cell)->length !== 1) $fail('one mobile value container per cell');
++        }
++        $dataRows++;
+     }
++    if ($dataRows === 0) $fail('data-row template present');
+ }
+-
+-echo "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS\n";
++echo "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source-label/header parity; rendered UI untested\n";
