@@ -139,7 +139,7 @@ Read current remote handoff, owner staging authorization, cloud checkpoint/requi
 Operational blocker: restricted SSH `hostname` probe to the documented shared VPS was first blocked by sandbox networking, then the requested escalation was rejected by automatic approval review before connection. Reason: backup-only host identity/isolation was not verified and the shared host may expose production. Outcome: DENIED, not executed; no indirect Termius retry. A specific owner clarification for bounded shared-host identity and erp-staging-only metadata is pending. No production access or change, backup, restore, deploy, account creation, financial posting, authenticated runtime acceptance or screenshot is claimed.
 Current independent work: compare only PR59/PR60 deltas against newest local sources, preserve financial privacy/helper and M116 Boards additions, run synthetic source checks separately, and update the existing Drive tracker/manual with actual evidence. Phase1 gate stays OPEN.
 
-## M121 Mac source checkpoint — 2026-11-03 12:14 UTC
+## M121 Mac source checkpoint — 2026-11-03 12:10 UTC
 
 Status: SOURCE RECONCILIATION PREPARED; OPERATIONAL PREFLIGHT BLOCKED. [Detailed Mac report](../REPORTS/M121_MAC_RECONCILIATION_2026-11-03.md) is published and read back, with exact manifests and review-only patches under [source evidence](../evidence/m121-2026-11-03-mac/). PR59 port preserves local supplier privacy/managed-funds helper/UI dependency. PR60 port preserves newer M116 summary/gates/links; canonical static dependency walk finds22 missing/5different/5identical PHP files. Do not deploy the three runtime deltas without owner/dependency reconciliation.
 
