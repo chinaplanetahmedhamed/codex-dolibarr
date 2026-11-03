@@ -60,3 +60,9 @@ Completed independently: local source reconciliation, fixture tests, prepared de
 5. Run authenticated synthetic admin/staff/customer, negative/persistence/rollback and AR/EN desktop/phone tests; update the existing tracker/manual after each function. P1-06 and all integrated runtime gates remain open.
 
 Shared handoff receipt committed as `d75ce09db7c300b78adce9f127dce24420c050b9` and read back exactly. Existing [tracker](https://docs.google.com/spreadsheets/d/1QZMWYIHbuigCW_40XdIFC4ZSknVrYGVsW-IL2rjF8HQ/edit) and [manual](https://docs.google.com/document/d/1pxjs7J7qACZGfhj8XIEdEvw1A5Rfz06IvYphX9G5bEQ/edit) retain prior results and will record this source checkpoint separately from runtime acceptance. No competing tracker, sharing change or application release is authorized by this report.
+
+## Shared-record verification
+
+Verified updates: Test Log A12:L16 contains M121-MAC-01–05; prior T01–T06 values are unchanged. Progress rows2–4 and Tasks H3:J4, H6:J6, H8:J8, H15:J17 contain scoped source evidence/limits; all six phase statuses remain open. Manual tab t.0 append spans indexes14102–18025; all prior content and structure are retained. Source rows link to this report; blocked preflight links to the receipt. All tracker tabs were visually inspected at100%. Sharing was unchanged.
+
+An optional formatting cleanup, deleteBanding for new Test Log A12:L12/bandedRangeId107908843, was rejected by automatic review because preserving formatting was required. The rejected batch did not execute. Narrow updateCells corrections then succeeded and were read back; the optional banding cleanup remains unapplied. Required evidence-recording is complete and no write outcome is uncertain. No further formatting action is needed for this checkpoint.
