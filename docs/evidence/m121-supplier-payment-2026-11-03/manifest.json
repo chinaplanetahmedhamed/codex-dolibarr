@@ -1,0 +1,52 @@
+{
+  "mission": "M121",
+  "scope": "Tested local supplier/receipt safeguards and sanitized evidence; not a release artifact",
+  "head": "310deeaa70ced8d1a74aa84c802e2c705e54b2a1",
+  "source_hashes": {
+    "custom/chinaplanetcustomercenter/class/CustomerFundsService.class.php": "fed08eb6fdc8c2650e8b1648aff0ba2070bca293140d6a8f2aabb7248f13aa68",
+    "custom/chinaplanetoperations/class/OperationSupplierWorkflowService.class.php": "20139db50c7e0951c357cdd5380efb239a5b630fbcd597f534f674abbb68822b",
+    "custom/chinaplanetcustomercenter/lib/operations.lib.php": "5aa44238636ed927ccee5dfe3d4b87e150924052a477b01eeb6670d775fe811c",
+    "deploy/tests/test_m121_funds_transaction.php": "385b05122f5bf34d5baf4344d2ef3e7c78af97686502375e87c6665a8007df6a",
+    "deploy/tests/test_m121_supplier_currency_alias.php": "3487c86d05a01370ef91d57e673ad8bcd4cc50e23422220489981b9b9e6be4d0",
+    "deploy/tests/test_m121_supplier_lifecycle.php": "b9421132ae92b5fd19bf48d197362003d9fa24906dfd577c3807180d0143c567"
+  },
+  "evidence_files": {
+    "docs/REPORTS/M121_SUPPLIER_PAYMENT_SOURCE_2026-11-03.md": "3cd17fa180bdb453416d9d97646e70d2c42536cd7b635e4941c4a99bacde0d01",
+    "docs/evidence/m121-supplier-payment-2026-11-03/source-hashes.json": "4b76b92cd19c7b93e5567e6fab451188038f1391595bc604e6b089bc69565c65",
+    "docs/evidence/m121-supplier-payment-2026-11-03/verification.json": "300174a841669fdfc207760994f25dbb93bcdcb7c1aa551a6f4c457cee033519"
+  },
+  "local_source_patch_sha256": "f0b63d5310b47500657519a902407d0bc8ebb752c4a1031393ef04809b1528e3",
+  "patch_status": "Six-file review patch stays local; reverse applicability check PASS; no source publication authorization inferred",
+  "preservation": {
+    "original_paths_checked": 1015,
+    "changed_original_paths": [
+      "custom/chinaplanetcustomercenter/admin/financial_portfolio.php",
+      "custom/chinaplanetcustomercenter/class/CustomerFundsService.class.php",
+      "custom/chinaplanetcustomercenter/langs/ar_SA/chinaplanetcustomercenter.lang",
+      "custom/chinaplanetcustomercenter/langs/en_US/chinaplanetcustomercenter.lang",
+      "custom/chinaplanetcustomercenter/lib/financial.lib.php",
+      "custom/chinaplanetcustomercenter/lib/operations.lib.php",
+      "custom/chinaplanetoperations/class/OperationSupplierWorkflowService.class.php",
+      "deploy/tests/test_m028_c04_financial_portfolio_mobile.php",
+      "docs/architecture/M121_PROGRESS_TASKS.csv",
+      "docs/architecture/M121_WORKFLOW_MANUAL.md",
+      "missions-list.md",
+      "resources.md"
+    ],
+    "unrelated_original_changes": 0,
+    "head_index_preserved": true
+  },
+  "backup_operator_result": "Old retained artifact integrity PASS; RESTORE_PROOF=NO; no fresh backup/recovery",
+  "permissions": "Restricted Docker denial unchanged; no retry/bypass/new grant",
+  "review": "Independent no material introduced blocker in three bounded source slices",
+  "shared_records": "Old-integrity TestLog24/manual followup verified; newsource outcomes25+ write pending",
+  "remaining": [
+    "Unified supplier statement/source-link reconciliation",
+    "Complete trustworthy historical statements",
+    "Full native cash concurrency and nested workflow transaction ownership",
+    "Target MariaDB/native driver/authenticated roles/persistence/phone acceptance",
+    "Current target parity/isolation/anonymization/fresh backup and safe isolated recovery rehearsal"
+  ],
+  "runtime": "No deployment, active DB restore, account/grant change or production access",
+  "code_and_sql_publication": "New application/test patch and raw SQL/connection data excluded; sanitized report/hashes/outcomes only"
+}
