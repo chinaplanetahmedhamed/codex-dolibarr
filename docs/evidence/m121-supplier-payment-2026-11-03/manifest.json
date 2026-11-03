@@ -39,7 +39,26 @@
   "backup_operator_result": "Old retained artifact integrity PASS; RESTORE_PROOF=NO; no fresh backup/recovery",
   "permissions": "Restricted Docker denial unchanged; no retry/bypass/new grant",
   "review": "Independent no material introduced blocker in three bounded source slices",
-  "shared_records": "Old-integrity TestLog24/manual followup verified; newsource outcomes25+ write pending",
+  "shared_records": {
+    "test_log": "A45:L47 M121-MAC-25\u201327",
+    "progress": [
+      "J3",
+      "L3:N3",
+      "W3"
+    ],
+    "tasks": [
+      "H4:J4",
+      "H10:J11",
+      "H14:J14",
+      "H29:J29"
+    ],
+    "manual": {
+      "tab": "t.0",
+      "indexes": "38107\u201341231",
+      "revision": "AHj4eMRplIcD_yML-KRe1xmyIgWNG5y29kyhLMZcx-1N7_cx6ypjj3j9ELXu_Da-BHyadDuTGVmdqcl56sKJIGE9q5LIbqB1ri4w-1cxCvY"
+    },
+    "readback": "All writes exact; newrows visually checked;29keys/sixopenphases/priorintegrity/manualprefix/sharing preserved"
+  },
   "remaining": [
     "Unified supplier statement/source-link reconciliation",
     "Complete trustworthy historical statements",
