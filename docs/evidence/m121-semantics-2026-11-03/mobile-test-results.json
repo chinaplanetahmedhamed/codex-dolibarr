@@ -1,0 +1,80 @@
+{
+  "source_commit": "b442f0f85be47a755edb538e15339e0e517cd2bf",
+  "canonical_test_sha256": "6b6633c6d3b3edb15c1eaa8ad91272359b663892bc15ad62704b55c51f81962f",
+  "proposed_test_sha256": "4f3406f6f1862a9ffb297356887cb63b755d765ccaa14b8170d31a3d9ecf6ff8",
+  "patch_sha256": "bc884d0624e04142e04bd5283cf909cfd8ceeba0f15bd5fc6e30b4f363cb6765",
+  "baseline_failure": "M028-C04 FAIL: totals mobile labels; exit1",
+  "tests": [
+    {
+      "case": "current English header-label parity",
+      "exit_code": 0,
+      "expected_exit": 0,
+      "output": "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source-label/header parity; rendered UI untested\n"
+    },
+    {
+      "case": "actual historical bilingual header-label parity",
+      "exit_code": 0,
+      "expected_exit": 0,
+      "output": "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source-label/header parity; rendered UI untested\n"
+    },
+    {
+      "case": "Unicode header-label parity fixture",
+      "exit_code": 0,
+      "expected_exit": 0,
+      "output": "M028_C04_FINANCIAL_PORTFOLIO_MOBILE=PASS source-label/header parity; rendered UI untested\n"
+    },
+    {
+      "case": "missing mobile data-label",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "empty mobile data-label",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "wrong column label",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "empty header",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile label matches column header\n"
+    },
+    {
+      "case": "missing value container",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: one mobile value container per cell\n"
+    },
+    {
+      "case": "empty row wrong colspan",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: empty row spans all columns\n"
+    },
+    {
+      "case": "missing responsive table class",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: responsive table classes\n"
+    },
+    {
+      "case": "CSS no longer displays cell labels",
+      "exit_code": 1,
+      "expected_exit": 1,
+      "output": "M028-C04 FAIL: mobile labels use data-label\n"
+    }
+  ],
+  "limits": [
+    "Source-only DOM parses T_INLINE_HTML; no PHP page execution/browser/CSS geometry/native auth acceptance",
+    "Current UI localization remains separate; test does not approve English-only AR screen",
+    "Proposed test-only patch unapplied; canonical application and test files unchanged"
+  ]
+}
