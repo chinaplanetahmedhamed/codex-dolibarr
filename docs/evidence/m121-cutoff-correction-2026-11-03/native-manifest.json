@@ -1,0 +1,72 @@
+{
+  "mission": "M121",
+  "date": "2026-11-03",
+  "scope": "Source-only cutoff correction verification; no backup-ERP or production apply",
+  "canonical_library_sha256": "297eab8265207af92c49567ec94f517908a27d1b197adad3205116fdb04f0177",
+  "canonical_new_test": {
+    "path": "deploy/tests/test_m121_financial_cutoff.php",
+    "sha256": "e9509686052d1d753aa12be1bd1c686689059e00a7316987b6ee5ff160daec73"
+  },
+  "checks": [
+    {
+      "runtime": "PHP8.3.21",
+      "engine": "SQLite memory",
+      "command": "php deploy/tests/test_m121_financial_cutoff.php",
+      "exit_code": 0,
+      "assertions": 110
+    },
+    {
+      "runtime": "PHP8.2.0",
+      "engine": "SQLite memory",
+      "command": "PHP8.2.0 deploy/tests/test_m121_financial_cutoff.php",
+      "exit_code": 0,
+      "assertions": 110
+    },
+    {
+      "runtime": "PHP8.3.21",
+      "engine": "MySQL5.7.39 empty disposable local fixture",
+      "command_template": "php test_native_cutoff.php --fixture-dir=<private-fixture> --socket=<private-fixture>/mysql.sock --datadir=<private-fixture>/data --database=m121_cutoff_<suffix>",
+      "exit_code": 0,
+      "assertions": 110,
+      "generated_queries_unmodified": true,
+      "generated_query_count": 133
+    }
+  ],
+  "native_sql_mode": "ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+  "safety": {
+    "private_fixture_identity_verified_before_DDL": true,
+    "network_disabled_verified": true,
+    "first_database_empty_verified": true,
+    "only_fixed_synthetic_tables_touched": true,
+    "initial_sandbox_connect": "Blocked before SQL; formal local-fixture escalation approved and exact command passed",
+    "sql_mode_or_grants_changed": false,
+    "private_instance_identifiers_in_this_manifest": false,
+    "canonical_library_edited_by_this_reviewer": false,
+    "lifecycle_owner": "Root agent; notified immediately at test finish"
+  },
+  "limits": [
+    "MySQL5.7.39 differs from target MariaDB10.6",
+    "No authenticated runtime/schema/ACL/workflow acceptance",
+    "Current invoice lifecycle and gross/credit formula retained",
+    "Earlier-created/later-applied credits and historical invoice net/lifecycle reconstruction unresolved"
+  ],
+  "artifacts": [
+    {
+      "path": "review.md",
+      "sha256": "47d6fc3bd44518917dab27282fde6baee6b3cab15725db5e6b1474091e1f78a6"
+    },
+    {
+      "path": "test-output.txt",
+      "sha256": "f8c9e120167bd224f0c33ff65a4d127a94129054646ca24eeb8abc70e3c86099"
+    },
+    {
+      "path": "test_native_cutoff.php",
+      "sha256": "6ac14d914a17fe9620306ebce70d9d51bb7e4f0c948453742199275c0f461234"
+    },
+    {
+      "path": "LOCAL_ONLY_GENERATED_QUERY_LOG",
+      "sha256": "6bd4178162e68b5627fcf717ffcae1a7e97da6e1cbf0807a9e1a2a180c995eae",
+      "published": false
+    }
+  ]
+}
