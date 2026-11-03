@@ -86,6 +86,12 @@
       "path": "hybrid-limit-summary.json",
       "sha256": "a9f8d9d83197e0c8e57fcf5c269eb248a9cb40a0a752eb91da532db45b70b7ce",
       "bytes": 997
+    },
+    {
+      "path": "source-correction.patch",
+      "sha256": "4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae",
+      "bytes": 35840,
+      "published": true
     }
   ],
   "local_only_evidence": [
@@ -94,13 +100,6 @@
       "sha256": "6bd4178162e68b5627fcf717ffcae1a7e97da6e1cbf0807a9e1a2a180c995eae",
       "published": false,
       "reason": "Raw SQL publication rejected; summary published instead"
-    },
-    {
-      "label": "Three-file source correction patch",
-      "path": "source-correction.patch",
-      "sha256": "4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae",
-      "published": false,
-      "reason": "Automatic review denied full nonpublic source disclosure; specific owner publication permission requested"
     }
   ],
   "diagnostic_fixture": {
@@ -109,5 +108,16 @@
     "controlled_historical_reference": 200,
     "current_collectible": 75,
     "application_source_unchanged": true
+  },
+  "source_patch_publication": {
+    "initial_outcome": "Denied; not executed",
+    "specific_owner_approval": "Received for exact three-file patch and destination",
+    "retry_count_after_new_approval": 1,
+    "prior_absence_checked": true,
+    "destination": "chinaplanetahmedhamed/codex-dolibarr:main/docs/evidence/m121-cutoff-correction-2026-11-03/source-correction.patch",
+    "commit": "5c26fddaca5e33741396c3c72e3fe0a6e9c2c53d",
+    "blob": "2c82732c2701eb034506cd978baca9036a93e8f1",
+    "exact_text_readback": true,
+    "runtime_application": false
   }
 }
