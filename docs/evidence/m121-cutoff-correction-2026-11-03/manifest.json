@@ -80,11 +80,6 @@
       "path": "native-verification.md",
       "sha256": "d60fdb1ba58056dfd7d379e831abb14c54a16e9d31a3e9db53285ff5aae8004a",
       "bytes": 4782
-    },
-    {
-      "path": "source-correction.patch",
-      "sha256": "4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae",
-      "bytes": 35840
     }
   ],
   "local_only_evidence": [
@@ -93,6 +88,13 @@
       "sha256": "6bd4178162e68b5627fcf717ffcae1a7e97da6e1cbf0807a9e1a2a180c995eae",
       "published": false,
       "reason": "Raw SQL publication rejected; summary published instead"
+    },
+    {
+      "label": "Three-file source correction patch",
+      "path": "source-correction.patch",
+      "sha256": "4138432fccbfa5b84b92f475d0b40c5488cd9ea625ce5ee8ce4b3897888ff5ae",
+      "published": false,
+      "reason": "Automatic review denied full nonpublic source disclosure; specific owner publication permission requested"
     }
   ]
 }
