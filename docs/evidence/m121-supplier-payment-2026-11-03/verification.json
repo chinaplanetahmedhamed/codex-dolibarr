@@ -1,0 +1,75 @@
+{
+  "scope": "Bounded local source/testing only; no native cash/staging/production operations",
+  "transaction": {
+    "php_versions": [
+      "8.2.0",
+      "8.3.21"
+    ],
+    "assertions": 27,
+    "result": "PASS",
+    "faults": [
+      "begin fails before writes",
+      "commit unconfirmed before persistence",
+      "commit acknowledgement lost after persistence",
+      "existing-row commit fails",
+      "audit failure",
+      "same-key reconciliation and cleanup"
+    ],
+    "removed_check_controls": 3,
+    "negative_controls": "All RED; restored candidate GREEN",
+    "seams": "Actual SQLite DML; terminal FOR UPDATE removed; advisory controls stubbed; not concurrency proof"
+  },
+  "native_receipt_concurrency": {
+    "engine": "MySQL5.7.39",
+    "cases": [
+      "identical key/body:one ID/receipt/event",
+      "same key/conflicting body:one winner and payload rejection",
+      "distinct keys:independent IDs/receipts/events"
+    ],
+    "two_waiting_sessions_observed_each_case": true,
+    "request_locks_released": true,
+    "fixture_stopped_socket_pid_absent": true,
+    "native_tested_full_service_sha256": "1ad2ff299382f5e0c770967a63e4cac9e25b2b91602473afd30ff08486bcff37",
+    "tested_method_sha256": "6b1258f5d6e68786d3ec5bdefa79c7635da702d57a00175f5d18bebc21ffe28b",
+    "final_method_unchanged": true,
+    "scope": "Pending receipt registration only; no native cash posting; target MariaDB/native driver/nested ownership untested"
+  },
+  "currency_alias": {
+    "php_versions": [
+      "8.2.0",
+      "8.3.21"
+    ],
+    "assertions": 59,
+    "result": "PASS",
+    "basis": "Actual synthetic SQLite selectors/assertion/settlement; raw native code and original/base amount paths retained",
+    "limits": [
+      "USD base only",
+      "canonical managed receipts; retained allocation alias support",
+      "legacy raw receipt-code reconciliation unchanged",
+      "native cash bootstrap/control guard health assumed; no posting/auth acceptance"
+    ]
+  },
+  "supplier_lifecycle": {
+    "sqlite_cases": 33,
+    "native_mysql_cases": 33,
+    "result": "PASS",
+    "negative_controls": 6,
+    "invalid_evidence_preserved_unresolved": true,
+    "legacy_without_eligible_marker_preserved": true,
+    "native_generated_reads_unmodified": true,
+    "fresh_private_engine_stopped": true,
+    "limits": [
+      "Read-model context only",
+      "native core tables minimal; custom DDL actual and pinned",
+      "No native cash/role/command/history acceptance"
+    ],
+    "php_versions": [
+      "8.2.0",
+      "8.3.21"
+    ],
+    "root_additional_check": "PHP8.2.0 canonical33-case SQLite suite PASS after restored context"
+  },
+  "review": "Independent source review found no material introduced blocker in three bounded slices",
+  "context_interruption": "Temporary Mac unavailability; canonical writes paused; restored exact four finance source/test hashes plus HEAD/empty index verified",
+  "runtime": "No deployment/new backup/restore/rehearsal or production access"
+}
