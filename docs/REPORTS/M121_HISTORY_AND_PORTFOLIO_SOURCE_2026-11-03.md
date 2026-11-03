@@ -37,3 +37,9 @@ The restricted Codex account's Docker metadata operation remains denied by opera
 New code/test patches and raw generated SQL stay in controlled local evidence. This checkpoint publishes sanitized descriptions, hashes and test outcomes only; no source publication or application-path merge is inferred. Existing shared tracker/manual retain all29 task keys, failure history and open integrated gates. Their final readback is recorded with the source evidence manifest.
 
 [Sanitized verification manifest](../evidence/m121-history-design-2026-11-03/manifest.json).
+
+## Subsequent operator result and source work — 2026-11-03
+
+Ahmed subsequently supplied `M121_STAGING_BACKUP_INTEGRITY=PASS RESTORE_PROOF=NO`. This supersedes the prepared/pending guard status above only: the identified OLD retained archive/source originals passed integrity, not freshness or recovery. Shared TestLog M121-MAC-24 and manual follow-up were written/read back. Codex did not execute a denied Docker action, and no grant, fresh backup, import/rehearsal, deployment or production access followed.
+
+The next safe gates remain current target parity/anonymization/full integration isolation, a fresh consistent scoped baseline and a validated isolated scratch/recovery execution path. Existing owner consent already covers backup-only verification; technical safeguards remain unresolved. [Further bounded supplier/payment source work](M121_SUPPLIER_PAYMENT_SOURCE_2026-11-03.md) records the subsequent tested local corrections and independent review. It does not close historical reporting, unified supplier or runtime/recovery acceptance.
