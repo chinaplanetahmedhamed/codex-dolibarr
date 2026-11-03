@@ -1,0 +1,42 @@
+{
+  "scope": "Portfolio currency display and exact appended language keys; no publication",
+  "head": "310deeaa70ced8d1a74aa84c802e2c705e54b2a1",
+  "original_page_baseline_sha256": "9c2db56ee44612f70281fbb4923cc0419fd70cb94e3451df5e9779e0c53eddb3",
+  "current_hashes": {
+    "custom/chinaplanetcustomercenter/admin/financial_portfolio.php": "8ca4ad247f38f173a1389a4e494ca2d6376742c783bece98e45ff505b57ee7ac",
+    "deploy/tests/test_m121_financial_portfolio_currency.php": "d82a8e3d07711a1ffcc95dbebf747199ca2090f0d2a27b9a8b9f571562bdb1b4",
+    "custom/chinaplanetcustomercenter/langs/en_US/chinaplanetcustomercenter.lang": "706f283a8adfc535f72462e773e71031161b7af223830b4eee286bcf026c1938",
+    "custom/chinaplanetcustomercenter/langs/ar_SA/chinaplanetcustomercenter.lang": "60eb8fc15fee5d5ebcf57ff8c5fef51712dafa239c46ddba31b1e75581665fb7",
+    "custom/chinaplanetcustomercenter/lib/financial.lib.php": "297eab8265207af92c49567ec94f517908a27d1b197adad3205116fdb04f0177",
+    "custom/chinaplanetcustomercenter/lib/ui.lib.php": "86a4f4266ac71880d3a4f6fec6691fb60962073c7bc51430ed95365ea48e8f25"
+  },
+  "language_preservation": "Both existing files unchanged prefix; exactly3 new CPCCPortfolio keys each, each unique",
+  "checks": [
+    "native language load red observed before page change",
+    "PHP page/test lint PASS",
+    "new actual PHP+SQLite regression PASS incl EN/AR and escaped3 labels",
+    "direct Arabic fixture PASS",
+    "direct escaped-label fixture PASS",
+    "M028 mobile source contract PASS",
+    "scoped diff check PASS",
+    "each of3 escaping-removal mutations fails; restored candidate passes"
+  ],
+  "patch_sha256": "c0424c2e86c9a39462c878803b913a79ea5c8c57df4b6754b8fee70684039fc7",
+  "limits": [
+    "No full RTL/mobile/browser/native translator runtime acceptance",
+    "No ledger/arithmetic/source helper changes",
+    "No server/network/external publication"
+  ],
+  "verification_limits": [
+    "Synthetic actual PHP rendering and SQLite query execution; bootstrap/translator and auth branches stubbed",
+    "Full native authentication, persistence, RTL/browser/mobile and target schema not accepted",
+    "New four-file application/test/language review patch remains local only; prior exact three-file publication approval does not cover it"
+  ],
+  "root_checks": [
+    "PHP8.3.21 and PHP8.2.0 rendering suite PASS",
+    "Final page/test lint PASS",
+    "M028 mobile source contract PASS",
+    "Scoped diffcheck PASS",
+    "Independent final reviewer found no blocking introduced bug"
+  ]
+}
