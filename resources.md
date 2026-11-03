@@ -55,3 +55,11 @@ The preceding register is the returned local M121 evidence snapshot, not newly v
 | Progress | Google Drive Blueprint workspace | مراحل/Tasks/Test Log | إعادة استخدام الملف القائم، لا نسخة منافسة | وثائق فقط |
 
 تسجل كل ترقية لاحقة: الوحدة/الدالة، المسار، commit/version، سبب التغيير وwhats-new، dependencies/schema، نتيجة الاختبار، environment، deployed SHA/date، backup/rollback. Unknown لا تتحول إلى deployed بالاستنتاج من main أو HTTP200.
+
+## Candidate changes — 2026-11-03
+| Resource | Path | Why / what's new | Version | Deployment / verification |
+| --- | --- | --- | --- | --- |
+| Portfolio + financial summary | custom/chinaplanetcustomercenter/admin/financial_portfolio.php; lib/financial.lib.php | Currency-separated KPIs/obligations/funding and project-scoped invoices | PR59 /6bdc868e7bfeb44c9ffe8b3ca5545300ab0df298 | NOT deployed; PHP lint and4 related source regressions PASS |
+| Boards UI/read projection | custom/chinaplanetoperations/js/boards.js; css/boards.css; class/InternalTaskBoardsService.class.php | Compact/Comfortable, labelled priority bands, source-priority search/shared projection | PR60 /422284e0b26d15ef866c1fb7a886d9d77425e9b3 | NOT deployed; PHP/JS syntax + synthetic DOM PASS; visual/runtime pending |
+| Source CI | .github/workflows/m121-financial-source.yml; m121-boards-source.yml | Read-only hosted regression testing without staging secrets | Candidate branches above | Test-only; no server/backup/deploy capability |
+These deltas require reconciliation with newer local source and P1 gates; see [checkpoint](docs/REPORTS/M121_CLOUD_IMPLEMENTATION_2026-11-03.md). Runtime version/status stays unverified beyond the prior login-page observation.
