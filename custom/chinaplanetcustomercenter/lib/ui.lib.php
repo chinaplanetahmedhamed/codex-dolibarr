@@ -79,7 +79,9 @@ function cpcc_ui_funds_label($key)
 function cpcc_ui_managed_funds(array $position, array $options = array())
 {
     $label = function ($key) { return cpcc_ui_funds_label($key); };
-    if (!empty($options['asof']) && $options['asof'] !== date('Y-m-d')) {
+    $asOf = array_key_exists('asof', $options) ? $options['asof'] : null;
+    // Null/empty mean current mode; malformed falsey values are not dates.
+    if ($asOf !== null && $asOf !== '' && $asOf !== date('Y-m-d')) {
         return '<p class="cpcc-note">'.$label('CPCCFundsCurrentOnly').'</p>';
     }
     $project = isset($position['scope']) && $position['scope'] === 'project_allocations_only';

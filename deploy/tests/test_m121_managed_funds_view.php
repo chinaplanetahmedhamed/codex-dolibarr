@@ -24,6 +24,24 @@ foreach(array('en_US','ar_SA') as $language){$langs=new M121ViewLangs($language)
 $langs=new M121ViewLangs('en_US');$unknown=$base;foreach($unknown['currencies']['USD'] as $key=>$v)if(is_numeric($v))$unknown['currencies']['USD'][$key]=null;$unknown['coverage']='unavailable';$html=cpcc_ui_managed_funds($unknown);m121v_assert(strpos($html,'Unknown')!==false&&strpos($html,'Needs review')!==false,'failure must not become zero');
 $partial=$base;$partial['currencies']['USD']['credit_consumed']=10;$partial['currencies']['USD']['other_settled']=20;$partial['coverage']='partial';$html=cpcc_ui_managed_funds($partial);m121v_assert(strpos($html,'Applied to invoices')!==false&&strpos($html,'Other debits')!==false,'noncash uses distinguished from supplier payments');
 $html=cpcc_ui_managed_funds($base,array('asof'=>'2000-01-01'));m121v_assert(strpos($html,'100.00')===false&&strpos($html,'60.00')===false&&strpos($html,'today')!==false,'current values never appear as historical');
+// Missing/null/empty retain the existing current-mode contract; explicit
+// falsey malformed dates must never reveal today's numeric position.
+$dateGuardCases=0;
+foreach(array('en_US','ar_SA')as$language){
+ $langs=new M121ViewLangs($language);
+ foreach(array('2000-01-01','9999-12-30','2026-02-31',"2026-11-04\n",'0',0,0.0,false,array(),array(date('Y-m-d')),true,'<script>')as$invalid){
+  foreach(array('managed_receipts_only','project_allocations_only')as$scope){
+   $position=$base;$position['scope']=$scope;$html=cpcc_ui_managed_funds($position,array('asof'=>$invalid));
+   m121v_assert(strpos($html,'<table')===false&&strpos($html,'100.00')===false&&strpos($html,'40.00')===false&&strpos($html,'60.00')===false,'Malformed/past/future date must not expose current customer/project amounts: '.var_export($invalid,true));
+   m121v_assert(strpos($html,$langs->trans('CPCCFundsCurrentOnly'))!==false,'Unsupported date must explain current-only coverage');$dateGuardCases++;
+  }
+ }
+ foreach(array(null,'',date('Y-m-d'))as$current){
+  m121v_assert(cpcc_ui_managed_funds($base,array('asof'=>$current))===cpcc_ui_managed_funds($base),'Current/null/empty presenter output must remain byte-identical');$dateGuardCases++;
+ }
+ $langs->probe=true;$html=cpcc_ui_managed_funds($base,array('asof'=>false));list($badDom,$badXp)=m121v_dom($html);m121v_assert($badXp->query('//img|//script|//table')->length===0,'Unavailable-date translation must be escaped without amounts');
+}
+$langs=new M121ViewLangs('en_US');
 $project=$base;$project['scope']='project_allocations_only';$html=cpcc_ui_managed_funds($project,array('customer_url'=>'/custom/chinaplanetcustomercenter/balance.php?socid=7&lang=en_US'));m121v_assert(strpos($html,'socid=7&amp;lang=en_US')!==false,'scoped pool link escaped');
 $hostile=$base;$hostile['currencies']=array('<img src=x onerror=alert(1)>'=>$base['currencies']['USD']);list($hd,$hx)=m121v_dom(cpcc_ui_managed_funds($hostile));m121v_assert($hx->query('//img')->length===0,'currency output escaped');
 $langs->probe=true;list($d,$x)=m121v_dom(cpcc_ui_managed_funds($base));m121v_assert($x->query('//img')->length===0&&strpos($d->textContent,'<img src=x')!==false,'native translated labels escaped');
@@ -36,4 +54,4 @@ class CustomerFundsService {
 $conf=(object)array('entity'=>2);require $root.'/custom/chinaplanetcustomercenter/lib/financial.lib.php';
 $result=cpcc_financial_managed_position(null,7,11);m121v_assert($result['scope']==='project_allocations_only'&&CustomerFundsService::$calls===array(array('entity',2),array(7,11)),'thin wrapper preserves exact entity/customer/project');
 CustomerFundsService::$fail=true;$failed=cpcc_financial_managed_position(null,7);m121v_assert($failed['coverage']==='unavailable'&&$failed['currencies']===array(),'failed read is unavailable, never zero/fallback');
-echo "PASS actual managed-funds presenter EN/AR (".(count($cases)*2)." rendered positions), null/partial/project/privacy/escaping/history/scoped links, thin-wrapper failure and four consumer contracts; no database/browser acceptance\n";
+echo "PASS actual managed-funds presenter EN/AR (".(count($cases)*2)." rendered positions; ".$dateGuardCases." date-guard cases), null/partial/project/privacy/escaping/history/scoped links, thin-wrapper failure and four consumer contracts; no database/browser acceptance\n";
