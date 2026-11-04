@@ -48,6 +48,17 @@ foreach(['en_US','ar_SA']as$locale){
  obligationCheck121($xp->query('//form|//input|//button')->length===0,'Read-only statement has no actions');
  obligationCheck121(str_contains($html,$langs->trans('CPOSupplierObligationLimit'))&&!str_contains($html,'CPOSupplierObligation'),'Labels and limitation translated');
  obligationCheck121($xp->query('//*[@data-obligation-coverage="recorded_payments_only"]')->length===1,'Coverage explicitly bounded');
+ // Actual template distinguishes failed source reads from a loaded empty workflow.
+ $supplierEligible=true;$supplierCanRead=true;
+ foreach(['unavailable'=>null,'not_started'=>array_merge(obligationFixture121(),['supplier_order'=>null,'supplier_invoice'=>null,'summary'=>null]),'order_linked'=>array_merge(obligationFixture121(),['supplier_invoice'=>null,'summary'=>null]),'invoice_linked'=>obligationFixture121()]as$scenario=>$fixture){
+  $supplierState=$fixture;$supplierCanOrder=$supplierCanValidateOrder=$supplierCanInvoice=$supplierCanValidateInvoice=$supplierCanPay=false;
+  ob_start();include __DIR__.'/../../custom/chinaplanetoperations/operations/supplier_workflow.view.php';$body=ob_get_clean();
+  $keys=['unavailable'=>'CPOSupplierWorkflowUnavailable','not_started'=>'CPOSupplierWorkflowNotStarted','order_linked'=>'CPOSupplierWorkflowOrderLinked','invoice_linked'=>'CPOSupplierWorkflowInvoiceLinked'];
+  $previous=libxml_use_internal_errors(true);$doc=new DOMDocument;$doc->loadHTML('<html><meta charset="utf-8"><body>'.$body.'</body></html>');$xp=new DOMXPath($doc);libxml_clear_errors();libxml_use_internal_errors($previous);
+  $badge=$xp->query('//*[contains(concat(" ",normalize-space(@class)," ")," cpo-badge ")]')->item(0);
+  obligationCheck121($langs->trans($keys[$scenario])!==$keys[$scenario]&&$badge&&$badge->textContent===$langs->trans($keys[$scenario]),'Translated exact badge: '.$locale.'/'.$scenario);
+  if($scenario==='unavailable')obligationCheck121(!str_contains($body,'data-obligation-coverage')&&!str_contains($body,'<form'),'Failed source exposes no amounts/forms');
+ }
  // Actual incumbent view gate: denied role receives no new supplier data.
  $supplierEligible=true;$supplierCanRead=false;$supplierState=obligationFixture121();
  ob_start();include __DIR__.'/../../custom/chinaplanetoperations/operations/supplier_workflow.view.php';$denied=ob_get_clean();

@@ -920,3 +920,9 @@ CPOSupplierObligationInvoice_draft=Draft invoice; remaining obligation is pendin
 CPOSupplierObligationInvoice_review=Invoice status, amount or source needs native review. Remaining is unavailable.
 CPOSupplierObligationNoInvoice=No linked native invoice. Invoice payments and remaining are unavailable.
 CPOSupplierObligationLimit=Amounts remain in their original currency. Order and invoice totals are never added together. This is not a full supplier balance: applied deposits, credit notes and closure adjustments are not included in the payment remainder. Recorded invoice payments do not prove bank reconciliation or customer-funds attribution. Review the native invoice for the payable amount.
+
+# Current supplier source read state
+CPOSupplierWorkflowUnavailable=Unavailable
+CPOSupplierWorkflowNotStarted=Not started
+CPOSupplierWorkflowOrderLinked=Order linked
+CPOSupplierWorkflowInvoiceLinked=Invoice linked

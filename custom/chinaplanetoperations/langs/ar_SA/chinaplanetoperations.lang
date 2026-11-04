@@ -913,3 +913,9 @@ CPOSupplierObligationInvoice_draft=فاتورة مسودة؛ الالتزام ا
 CPOSupplierObligationInvoice_review=حالة الفاتورة أو قيمتها أو مصدرها تحتاج مراجعة. المتبقي غير متاح.
 CPOSupplierObligationNoInvoice=لا توجد فاتورة مرتبطة في النظام. دفعات الفاتورة والمتبقي غير متاحين.
 CPOSupplierObligationLimit=كل مبلغ بعملته الأصلية. لا تجمع قيمة الطلب مع الفاتورة. هذا ليس كشف حساب مورد كاملاً: المتبقي بعد الدفعات لا يشمل الدفعات المقدمة المطبقة والإشعارات الدائنة وتسويات الإقفال. الدفعات المسجلة لا تثبت المطابقة البنكية أو نسبتها لأموال العميل. راجع الفاتورة في النظام لمعرفة المستحق.
+
+# Current supplier source read state
+CPOSupplierWorkflowUnavailable=غير متاح
+CPOSupplierWorkflowNotStarted=لم يبدأ
+CPOSupplierWorkflowOrderLinked=طلب مرتبط
+CPOSupplierWorkflowInvoiceLinked=فاتورة مرتبطة
