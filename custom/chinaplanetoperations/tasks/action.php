@@ -40,6 +40,12 @@ try {
             if(count($_SESSION['cpo_m058_requests'])>100)$_SESSION['cpo_m058_requests']=array_slice($_SESSION['cpo_m058_requests'],-100,null,true);
         }
         unset($_SESSION['cpo_m059_create_retry']);
+    } elseif ($action === 'rename') {
+        $service->renameTask($taskId,$version,$posted['title']);
+    } elseif ($action === 'trash') {
+        $service->trashTask($taskId,$version,$posted['reason']);
+    } elseif ($action === 'restore_trash') {
+        $service->restoreTrash($taskId,$version,$posted['reason']);
     } elseif ($action === 'update') {
         $service->updateTask($taskId,$version,$posted);
     } elseif ($action === 'transition') {
@@ -50,6 +56,10 @@ try {
         $service->updateProgress($taskId,$version,$posted['progress']);
     } elseif ($action === 'archive') {
         $service->archive($taskId,$version,$posted['reason']);
+    } elseif ($action === 'cancel_archive') {
+        $service->cancelAndArchive($taskId,$version,$posted['reason']);
+    } elseif ($action === 'restore_cancelled') {
+        $service->restoreCancelled($taskId,$version,$posted['reason']);
     } elseif ($action === 'restore') {
         $service->restore($taskId,$version,$posted['reason']);
     } elseif ($action === 'delete') {
@@ -78,10 +88,12 @@ if ($ajax) {
     echo json_encode(array('ok'=>$status===200,'result'=>$result,'taskId'=>(int)$taskId,'message'=>$langs->trans($status===200?'TaskUpdated':($status===409?'InternalTaskStale':($status===403?'InternalTaskSafeDenied':'InternalTaskValidationError')))));
     exit;
 }
-if($taskId>0&&$embedded&&$action==='delete'&&$result==='success'){
+if($taskId>0&&$embedded&&in_array($action,array('delete','trash'),true)&&$result==='success'){
     header("Content-Security-Policy: frame-ancestors 'self'");
     echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><main role="status">'.dol_escape_htmltag($langs->trans('TaskUpdated')).'</main><script>window.parent.postMessage({type:"cpo-task-mutated",taskId:'.(int)$taskId.'},window.location.origin);</script></body></html>';exit;
 }
+if($action==='trash'&&$result==='success'){header('Location: trash.php');exit;}
+if($action==='restore_trash'&&$result!=='success'){header('Location: trash.php');exit;}
 if ($action==='create') {
     $view=$service->authorization()->normalizeView(GETPOST('return_view','alpha'));
     $query=array('view'=>$view);
@@ -89,5 +101,5 @@ if ($action==='create') {
     if($result!=='success')$query['create_result']=$result;
     header('Location: board.php?'.http_build_query($query));exit;
 }
-if($taskId>0){header('Location: card.php?id='.(int)$taskId.($embedded?'&embed=1&result='.$result:''));exit;}
+if($taskId>0){header('Location: card.php?id='.(int)$taskId.($embedded?'&embed=1&theme='.(GETPOST('theme','aZ09')==='dark'?'dark':'light').'&result='.$result:''));exit;}
 header('Location: board.php');exit;

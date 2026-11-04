@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__.'/InternalTaskMigration.class.php';
+require_once __DIR__.'/InternalTaskSchedule.class.php';
 require_once __DIR__.'/InternalTaskAuthorizationService.class.php';
 require_once __DIR__.'/InternalTaskStageService.class.php';
 
@@ -84,7 +85,7 @@ class InternalTaskService
         if (!empty($filters['status']) && in_array($filters['status'], self::allStatuses(), true)) $where[] = 't.status='.$this->q($filters['status']);
         if (!empty($filters['priority']) && in_array($filters['priority'], self::priorities(), true)) $where[] = 't.priority='.$this->q($filters['priority']);
         if (!empty($filters['team_id']) && ($this->auth->isAdministrator() || $this->auth->hasTeamGrant((int) $filters['team_id']))) $where[] = 't.fk_usergroup='.(int) $filters['team_id'];
-        if (!empty($filters['assignee_id']) && $this->auth->isAdministrator()) $where[] = 't.fk_user_assign='.(int) $filters['assignee_id'];
+        if (!empty($filters['assignee_id'])) $where[] = 't.fk_user_assign='.(int) $filters['assignee_id'];
         if (!empty($filters['due'])) {
             if ($filters['due'] === 'overdue') $where[] = "t.date_deadline<NOW() AND t.status NOT IN ('done','cancelled')";
             elseif ($filters['due'] === 'today') $where[] = 'DATE(t.date_deadline)=CURDATE()';
@@ -146,10 +147,15 @@ class InternalTaskService
             $teamId = 0;
             $assigneeId = 0;
         } else {
-            if (!$this->validTeam($teamId)) throw new RuntimeException('A valid primary team is required.');
             if (!$this->auth->isAdministrator() && (!$this->auth->hasRight('task_manage_team') || !$this->auth->hasTeamGrant($teamId))) {
-                throw new InternalTaskAccessException('Task access denied.');
+                if ($generated || !$this->auth->canCreateOwnTask($teamId)
+                    || ($assigneeId > 0 && $assigneeId !== $this->auth->actorId())
+                    || !empty($data['fk_operation'])) {
+                    throw new InternalTaskAccessException('Task access denied.');
+                }
+                $assigneeId = $this->auth->actorId();
             }
+            if (!$this->validTeam($teamId)) throw new RuntimeException('A valid primary team is required.');
             if ($assigneeId > 0 && !$this->auth->isActiveTeamMember($assigneeId, $teamId)) throw new RuntimeException('Assignee must be an active team member.');
         }
         $operationId = !empty($data['fk_operation']) ? (int) $data['fk_operation'] : 0;
@@ -205,21 +211,91 @@ class InternalTaskService
         }
     }
 
+    public function renameTask($taskId, $expectedVersion, $title)
+    {
+        $title=$this->boundedText($title,255,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canEditTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $this->cas('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET title='.$this->q($title).',fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_renamed',$title,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+
+    public function trashTask($taskId, $expectedVersion, $reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canControlTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $snapshot=json_encode(array('status'=>$task['status'],'date_archived'=>$task['date_archived'],'fk_user_modif'=>$task['fk_user_modif']),JSON_UNESCAPED_UNICODE);
+            $this->cas('UPDATE '.MAIN_DB_PREFIX."cpo_task SET status='deleted',date_archived=COALESCE(date_archived,".$this->q($this->now()).'),fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            // Recovery metadata stays out of operation activity feeds.
+            $this->log(0,(int)$taskId,'task_trash_snapshot',$snapshot,$this->auth->actorId());
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_deleted',$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+
+    public function listTrash()
+    {
+        $this->ensureReady();$this->auth->requireBoard();
+        return $this->rows($this->taskProjectionSql().' WHERE t.entity='.$this->entity." AND t.status='deleted' AND ".$this->auth->readableSql('t').' ORDER BY t.date_archived DESC,t.rowid DESC LIMIT 500');
+    }
+
+    public function restoreTrash($taskId, $expectedVersion, $reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true,true);
+            if(!$task || !$this->auth->canRestoreTrash($task))throw new InternalTaskAccessException('Task access denied.');
+            $rows=$this->rows('SELECT message FROM '.MAIN_DB_PREFIX.'cpo_activity WHERE entity='.$this->entity.' AND fk_task='.(int)$taskId." AND action_code='task_trash_snapshot' ORDER BY rowid DESC LIMIT 1");
+            $original=$rows?json_decode($rows[0]['message'],true):null;
+            // Legacy soft deletion has no snapshot: recover to Archive, never guess an active state.
+            if(!$original)$original=array('status'=>'cancelled','date_archived'=>$task['date_archived'],'fk_user_modif'=>$task['fk_user_modif']);
+            if(!in_array($original['status']??'',array('todo','in_progress','waiting','review','done','cancelled'),true))throw new RuntimeException('Invalid task recovery state.');
+            $archive=$this->dateOrNull($original['date_archived']??null);
+            $modifier=(int)($original['fk_user_modif']??0);
+            $this->cas('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET status='.$this->q($original['status']).',date_archived='.$archive.',fk_user_modif='.($modifier?:'NULL').',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_restored',$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+
     public function updateTask($taskId, $expectedVersion, array $data)
     {
         $this->beginTransaction();
         try {
             $task = $this->getTask($taskId, true);
-            if (!$task || !$this->auth->canManageTask($task)) throw new InternalTaskAccessException('Task access denied.');
+            if (!$task || !$this->auth->canEditTask($task)) throw new InternalTaskAccessException('Task access denied.');
+            $manager = $this->auth->canManageTask($task);
+            if (!$manager) {
+                foreach (array('fk_usergroup', 'fk_user_assign') as $field) {
+                    if (isset($data[$field]) && (int) $data[$field] !== (int) $task[$field]) throw new InternalTaskAccessException('Task access denied.');
+                    $data[$field] = (int) $task[$field];
+                }
+                if (!empty($data['fk_operation'])) throw new InternalTaskAccessException('Task access denied.');
+            }
             $teamId = !empty($data['fk_usergroup']) ? (int) $data['fk_usergroup'] : (int) $task['fk_usergroup'];
             if (!$this->validTeam($teamId)) throw new RuntimeException('A valid primary team is required.');
-            if (!$this->auth->isAdministrator() && !$this->auth->hasTeamGrant($teamId)) throw new InternalTaskAccessException('Task access denied.');
+            if ($manager && !$this->auth->isAdministrator() && !$this->auth->hasTeamGrant($teamId)) throw new InternalTaskAccessException('Task access denied.');
             $assigneeId = !empty($data['fk_user_assign']) ? (int) $data['fk_user_assign'] : 0;
             if ($assigneeId > 0 && !$this->auth->isActiveTeamMember($assigneeId, $teamId)) throw new RuntimeException('Assignee must be an active team member.');
             $title = $this->boundedText(isset($data['title']) ? $data['title'] : $task['title'], 255, true);
             $description = $this->boundedText(isset($data['description']) ? $data['description'] : $task['description'], 20000, true);
             $priority = in_array(isset($data['priority']) ? $data['priority'] : '', self::priorities(), true) ? $data['priority'] : $task['priority'];
             $deadline = $this->dateOrNull(isset($data['date_deadline']) ? $data['date_deadline'] : $task['date_deadline']);
+            // The task row is locked, serializing deadline and details edits.
+            $scheduleResult = $this->db->query('SELECT payload FROM '.MAIN_DB_PREFIX.'cpo_task_details WHERE entity='.$this->entity.' AND fk_task='.(int)$taskId);
+            if (!$scheduleResult) throw new RuntimeException('Unable to validate task schedule.');
+            $scheduleRow = $this->db->fetch_object($scheduleResult);
+            $scheduleDetails = $scheduleRow ? json_decode($scheduleRow->payload, true) : array();
+            if (!is_array($scheduleDetails)) throw new RuntimeException('Invalid task details.');
+            InternalTaskSchedule::validate($scheduleDetails, isset($data['date_deadline']) ? $data['date_deadline'] : $task['date_deadline']);
             $sql = 'UPDATE '.MAIN_DB_PREFIX.'cpo_task SET title='.$this->q($title).',description='.$this->q($description).',fk_usergroup='.$teamId.',fk_user_assign='.($assigneeId > 0 ? $assigneeId : 'NULL').',priority='.$this->q($priority).',date_deadline='.$deadline.',fk_user_modif='.$this->auth->actorId().',version=version+1';
             $sql .= ' WHERE entity='.$this->entity.' AND rowid='.(int) $taskId.' AND version='.(int) $expectedVersion;
             $this->cas($sql);
@@ -264,6 +340,7 @@ class InternalTaskService
     public function moveToStage($taskId, $expectedVersion, $targetStageId, array $data = array())
     {
         $this->beginTransaction();
+        $nativeSavepoint=null;if(!empty($GLOBALS['conf']->global->CPO_PROJECT_TASK_BRIDGE_ENABLED)){$nativeSavepoint='cpo_stage_'.bin2hex(random_bytes(6));if(!$this->db->query('SAVEPOINT '.$nativeSavepoint))throw new RuntimeException('Native completion transaction unavailable.');}
         try {
             // Task authorization deliberately happens before a supplied stage is resolved.
             $task = $this->getTask($taskId, true);
@@ -310,16 +387,18 @@ class InternalTaskService
                 $reason = $this->boundedText(isset($data['reason']) ? $data['reason'] : '', 500, true);
                 $action = 'task_returned'; $suffix = ': '.$reason;
             }
-            if ($behavior === 'done') { $progress=100; $completed=$this->q($this->now()); $action='task_completed'; }
+            if ($behavior === 'done') { require_once __DIR__.'/InternalTaskCompletionService.class.php';(new InternalTaskCompletionService($this->db,$this->actor,$this->entity))->nativeTask($taskId,true);$progress=100; $completed=$this->q($this->now()); $action='task_completed'; }
             $fromCode = !empty($task['stage_code']) ? (string)$task['stage_code'] : (string)$task['status'];
             $message = $fromCode.' > '.(string)$targetStage['code'].$suffix;
             $sql = 'UPDATE '.MAIN_DB_PREFIX.'cpo_task SET fk_stage='.(int)$targetStageId.',status='.$this->q($status).',progress='.$progress.',waiting_reason='.$waitingReason.',waiting_on='.$waitingOn.',date_followup='.$followup.',date_completed='.$completed.',fk_user_modif='.$this->auth->actorId().',version=version+1';
             $sql .= ' WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion;
             $this->cas($sql);
             $this->log((int)$task['fk_operation'], (int)$taskId, $action, $message, $this->auth->actorId());
+            if($nativeSavepoint)$this->db->query('RELEASE SAVEPOINT '.$nativeSavepoint);
             $this->commitTransaction();
             return (int)$expectedVersion + 1;
         } catch (Throwable $e) {
+            if($nativeSavepoint){$this->db->query('ROLLBACK TO SAVEPOINT '.$nativeSavepoint);$this->db->query('RELEASE SAVEPOINT '.$nativeSavepoint);}
             $this->db->rollback();
             throw $e;
         }
@@ -348,6 +427,40 @@ class InternalTaskService
     public function archive($taskId, $expectedVersion, $reason)
     {
         return $this->lifecycle($taskId, $expectedVersion, 'archive', $reason);
+    }
+
+    public function cancelAndArchive($taskId,$expectedVersion,$reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canCancelTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $this->cas('UPDATE '.MAIN_DB_PREFIX."cpo_task SET status='cancelled',date_archived=".$this->q($this->now()).',fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_cancelled','cancelled: '.$reason,$this->auth->actorId());
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_archived','archive: '.$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e) {$this->db->rollback();throw $e;}
+    }
+
+    public function restoreCancelled($taskId,$expectedVersion,$reason)
+    {
+        $reason=$this->boundedText($reason,500,true);
+        $this->beginTransaction();
+        try {
+            $task=$this->getTask($taskId,true);
+            if(!$task || !$this->auth->canRestoreCancelledTask($task))throw new InternalTaskAccessException('Task access denied.');
+            $behavior=(string)$task['stage_behavior'];$stageId=(int)$task['fk_stage'];
+            if(empty($task['stage_active']) || !in_array($behavior,array('todo','work','waiting','review'),true)) {
+                $stage=$this->stages->systemStage('todo',false);
+                if(!$stage)throw new RuntimeException('Internal task board is not ready.');
+                $stageId=(int)$stage['rowid'];$behavior='todo';
+            }
+            $status=$behavior==='work'?'in_progress':$behavior;
+            $this->cas('UPDATE '.MAIN_DB_PREFIX.'cpo_task SET status='.$this->q($status).',fk_stage='.$stageId.',date_archived=NULL,fk_user_modif='.$this->auth->actorId().',version=version+1 WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' AND version='.(int)$expectedVersion);
+            $this->log((int)$task['fk_operation'],(int)$taskId,'task_restored','restore: '.$reason,$this->auth->actorId());
+            $this->commitTransaction();return (int)$expectedVersion+1;
+        } catch(Throwable $e) {$this->db->rollback();throw $e;}
     }
 
     public function restore($taskId, $expectedVersion, $reason)
@@ -396,7 +509,7 @@ class InternalTaskService
         $task = $this->requireReadableTask($taskId);
         $sql = 'SELECT a.rowid,a.action_code,a.message,a.fk_user,a.date_action,u.login FROM '.MAIN_DB_PREFIX.'cpo_activity a';
         $sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=a.fk_user AND u.entity=a.entity';
-        $sql .= ' WHERE a.entity='.$this->entity.' AND a.fk_task='.(int) $task['rowid']." AND a.action_code<>'task_create_request'";
+        $sql .= ' WHERE a.entity='.$this->entity.' AND a.fk_task='.(int) $task['rowid']." AND a.action_code NOT IN ('task_create_request','task_trash_snapshot')";
         $sql .= ' ORDER BY a.date_action DESC,a.rowid DESC LIMIT 200';
         return $this->rows($sql);
     }
@@ -453,14 +566,23 @@ class InternalTaskService
         return $this->rows($sql);
     }
 
+    public function ownTaskTeams()
+    {
+        if (!$this->auth->hasRight('task_read_own') || !$this->auth->hasRight('task_update_own')) return array();
+        $sql = 'SELECT DISTINCT g.rowid,g.nom FROM '.MAIN_DB_PREFIX.'usergroup g';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_usergroup=g.rowid AND gu.entity=g.entity';
+        $sql .= ' WHERE g.entity='.$this->entity.' AND gu.fk_user='.$this->auth->actorId().' ORDER BY g.nom,g.rowid';
+        return $this->rows($sql);
+    }
+
     public function userOptionsForTeam($teamId)
     {
         $teamId = (int) $teamId;
         if (!$this->auth->isAdministrator() && (!$this->auth->hasRight('task_manage_team') || !$this->auth->hasTeamGrant($teamId))) return array();
         $sql = 'SELECT u.rowid,u.login,u.firstname,u.lastname FROM '.MAIN_DB_PREFIX.'user u';
-        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity=u.entity';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity='.$this->entity;
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
-        $sql .= ' WHERE g.rowid='.$teamId.' AND u.entity='.$this->entity.' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0 ORDER BY u.firstname,u.lastname,u.login';
+        $sql .= ' WHERE g.rowid='.$teamId.' AND g.entity='.$this->entity.' AND (u.entity='.$this->entity.' OR (u.entity=0 AND u.admin=1)) AND u.statut=1 AND COALESCE(u.fk_soc,0)=0 ORDER BY u.firstname,u.lastname,u.login';
         return $this->rows($sql);
     }
 
@@ -505,7 +627,7 @@ class InternalTaskService
     public function internalUsers()
     {
         if (!$this->auth->isAdministrator()) return array();
-        $sql = 'SELECT rowid,login,firstname,lastname FROM '.MAIN_DB_PREFIX.'user WHERE entity='.$this->entity.' AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login';
+        $sql = 'SELECT rowid,login,firstname,lastname FROM '.MAIN_DB_PREFIX.'user WHERE (entity='.$this->entity.' OR (entity=0 AND admin=1)) AND statut=1 AND COALESCE(fk_soc,0)=0 ORDER BY firstname,lastname,login';
         return $this->rows($sql);
     }
 
@@ -522,7 +644,7 @@ class InternalTaskService
 
     private function taskProjectionSql()
     {
-        return 'SELECT t.*,s.code stage_code,s.behavior stage_behavior,s.color stage_color,s.position stage_position,s.active stage_active,s.label_en stage_label_en,s.label_ar stage_label_ar,s.label_zh stage_label_zh,o.ref operation_ref,o.title operation_title,u.login owner_login,u.firstname owner_firstname,u.lastname owner_lastname,g.nom team_name,'
+        return 'SELECT t.*,s.code stage_code,s.behavior stage_behavior,s.color stage_color,s.position stage_position,s.active stage_active,s.label_en stage_label_en,s.label_ar stage_label_ar,s.label_zh stage_label_zh,o.ref operation_ref,o.title operation_title,u.login owner_login,u.firstname owner_firstname,u.lastname owner_lastname,g.nom team_name,creator.login creator_login,creator.firstname creator_firstname,creator.lastname creator_lastname,'
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX."cpo_task_asset ac WHERE ac.entity=t.entity AND ac.fk_task=t.rowid AND ac.status='active') asset_count,"
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_comment cc WHERE cc.entity=t.entity AND cc.fk_task=t.rowid) comment_count,'
             .'(SELECT COUNT(*) FROM '.MAIN_DB_PREFIX.'cpo_task_checklist ci WHERE ci.entity=t.entity AND ci.fk_task=t.rowid AND ci.active=1) checklist_count,'
@@ -532,7 +654,8 @@ class InternalTaskService
             .' FROM '.MAIN_DB_PREFIX.'cpo_task t'
             .' INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_stage s ON s.rowid=t.fk_stage AND s.entity=t.entity'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'cpo_operation o ON o.rowid=t.fk_operation AND o.entity=t.entity'
-            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND u.entity=t.entity AND u.statut=1 AND COALESCE(u.fk_soc,0)=0'
+            .' LEFT JOIN '.MAIN_DB_PREFIX.'user u ON u.rowid=t.fk_user_assign AND (u.entity=t.entity OR (u.entity=0 AND u.admin=1)) AND COALESCE(u.fk_soc,0)=0'
+            .' LEFT JOIN '.MAIN_DB_PREFIX.'user creator ON creator.rowid=t.fk_user_creat AND (creator.entity=t.entity OR (creator.entity=0 AND creator.admin=1)) AND COALESCE(creator.fk_soc,0)=0'
             .' LEFT JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=t.fk_usergroup AND g.entity=t.entity';
     }
 
@@ -582,12 +705,8 @@ class InternalTaskService
 
     private function dateOrNull($value)
     {
-        $value = trim((string) $value);
-        if ($value === '') return 'NULL';
-        $value = str_replace('T', ' ', $value);
-        if (strlen($value) === 16) $value .= ':00';
-        if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $value)) throw new RuntimeException('Invalid date.');
-        return $this->q($value);
+        $value = InternalTaskSchedule::dateTime($value);
+        return $value === '' ? 'NULL' : $this->q($value);
     }
 
     private function boundedText($value, $max, $required)

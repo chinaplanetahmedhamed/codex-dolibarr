@@ -1,0 +1,16 @@
+const fs=require('fs'),assert=require('assert'),vm=require('vm');
+const src=fs.readFileSync('custom/chinaplanetoperations/js/boards.js','utf8'),start=src.indexOf('/* M116 cash card summaries'),end=src.indexOf('/* End M116 cash card summaries */',start);assert(start>=0&&end>start,'cash card integration missing');
+const tick=()=>new Promise(setImmediate);
+function harness(fetcher,enabled=true){const nodes=[],calls=[];function el(tag,cls,text){return{tag,className:cls,textContent:text,children:[],isConnected:true,append(...x){this.children.push(...x)},replaceChildren(...x){this.children=x},remove(){this.removed=true}}}const ctx={cfg:{accountStatements:enabled},wsText:(ar,en)=>en,el,fetch:async(url,opts)=>{calls.push({url,opts});return fetcher(url,nodes)},URLSearchParams,queueMicrotask,BigInt,console};vm.createContext(ctx);vm.runInContext(src.slice(start,end),ctx);return{ctx,nodes,calls,add(customer=1,project=0){ctx.accountCardSummary({append:n=>nodes.push(n)},customer,project)}};}
+function textOf(n){return typeof n==='string'?n:(n.textContent||'')+(n.children||[]).map(textOf).join('');}
+function walk(n){return [n,...(n.children||[]).flatMap(walk)];}
+function reply(url){const raw=new URLSearchParams(url.split('?')[1]).get('scopes');return{ok:true,json:async()=>({ok:true,summaries:raw.split(',').map(x=>{const [customer,project,task]=x.split(':').map(Number);return{scope:{customer,project,task},available:true,totals:{base_currency:'USD',balance_minor:'-70',due_minor:'70',currencies:{CNY:{balance_minor:'-500',due_minor:'500'},USD:{balance_minor:'0',due_minor:'0'}}}}})})}}
+(async()=>{
+let h=harness(async()=>({ok:false}));h.add(1,10);await tick();assert.equal(h.calls.length,1);assert(h.nodes[0].removed);assert(!JSON.stringify(h.nodes).includes('balance_minor'));
+h=harness(async url=>reply(url));h.add(1,10);await tick();let output=h.nodes.map(textOf).join('');assert(output.includes('Balance: −0.70 USD')&&output.includes('Due: 0.70 USD'));assert(output.includes('CNY balance −5.00 / due 5.00')&&output.includes('USD balance 0.00 / due 0.00'));assert.equal(h.calls[0].opts.cache,'no-store');assert(walk(h.nodes[0]).some(n=>n.tag==='bdi'&&n.dir==='ltr'&&n.textContent==='−0.70 USD'),'negative base amount must be directionally isolated');assert(walk(h.nodes[0]).some(n=>n.tag==='bdi'&&n.dir==='ltr'&&n.textContent==='−5.00'),'negative original amount must be directionally isolated');
+h=harness(async url=>{const r=reply(url),d=await r.json();d.summaries[0].scope.customer=999;return{ok:true,json:async()=>d}});h.add();await tick();assert(h.nodes[0].removed);
+h=harness(async(url,nodes)=>{nodes[0].isConnected=false;return reply(url)});h.add();await tick();assert.equal(h.nodes[0].children.length,0,'late detached reply rendered');
+h=harness(async url=>reply(url));for(let i=0;i<41;i++)h.add(i+1);await tick();assert.equal(h.calls.length,3);for(const c of h.calls)assert(new URLSearchParams(c.url.split('?')[1]).get('scopes').split(',').length<=20);
+h=harness(async url=>reply(url),false);h.add();await tick();assert.equal(h.calls.length,0);assert.equal(h.nodes.length,0);
+console.log('PASS card summaries: denial, success exact/currencies, mismatch, stale DOM, 20-scope batching, disabled feature');
+})().catch(e=>{console.error(e);process.exit(1)});

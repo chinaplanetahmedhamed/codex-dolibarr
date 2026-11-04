@@ -1,28 +1,31 @@
 <?php
 require $_SERVER['DOCUMENT_ROOT'].'/main.inc.php';
 require_once __DIR__.'/lib/main.lib.php';
+require_once __DIR__.'/lib/task_experience.lib.php';
 require_once __DIR__.'/class/OperationsService.class.php';
 require_once __DIR__.'/class/InternalTaskService.class.php';
 require_once __DIR__.'/../chinaplanetlogistics/lib/chinaplanetlogistics.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
-cpo_require($user, 'read');
+if (!cpo_can($user, 'read') && !cpo_task_can_open($db, $user)) accessforbidden();
+header('Cache-Control: private, no-store');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
 $workspaceArabic = cpcc_ui_language() === 'ar_SA';
 $entity = (int) $conf->entity;
 $operationsService = new OperationsService($db);
 $taskService = new InternalTaskService($db, $user, $entity);
 $taskAuth = $taskService->authorization();
-$canManage = !empty($user->admin) || cpo_can($user, 'operation_write');
+$canManage = !empty($user->admin);
+$canReadOperations = cpo_can($user, 'read');
 $canCreateOperation = cpo_can($user, 'operation_write');
-$canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
+$canReadCustomers = $canReadOperations && (!empty($user->admin) || $user->hasRight('societe', 'lire'));
 $canReadOrders = !empty($user->admin) || $user->hasRight('commande', 'lire');
 $canReadProjects = !empty($user->admin) || $user->hasRight('projet', 'all', 'lire');
 $canReadShipments = !empty($user->admin) || $user->hasRight('chinaplanetlogistics', 'read');
 $canWriteShipments = !empty($user->admin) || $user->hasRight('chinaplanetlogistics', 'write');
 $customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client', 'voir') ? '' : ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'societe_commerciaux csc WHERE csc.fk_soc=s.rowid AND csc.fk_user='.(int) $user->id.')';
 $view = GETPOST('view', 'aZ09');
-if (!in_array($view, array('manager', 'my', 'customers', 'customer'), true)) $view = $canManage ? 'manager' : 'my';
+if (!in_array($view, array('manager', 'my', 'customers', 'customer'), true)) $view = 'my';
 if (!$canManage && $view === 'manager') $view = 'my';
 if (!$canReadCustomers && in_array($view, array('customers', 'customer'), true)) accessforbidden();
 
@@ -40,8 +43,8 @@ $userLabel = static function (array $row) use ($langs) {
 $isDone = static function ($stage) { return in_array((string) $stage, array('completed', 'cancelled'), true); };
 $isOverdue = static function ($date, $done = false) { return !$done && $date && strtotime((string) $date) < time(); };
 
-$operationStats = $operationsService->stats($user);
-$allOperations = $canManage ? $operationsService->search() : array();
+$operationStats = $canManage && $view === 'manager' ? $operationsService->stats($user) : array();
+$allOperations = $canManage && $view === 'manager' ? $operationsService->search() : array();
 $myTasks = array();
 $taskError = '';
 try {
@@ -56,7 +59,7 @@ $myOpenTasks = array_values(array_filter($myTasks, static function ($task) {
 $shipmentCountSql = $canReadShipments ? ',COUNT(DISTINCT l.rowid) shipment_count' : ',0 shipment_count';
 $shipmentJoinSql = $canReadShipments ? " LEFT JOIN ".MAIN_DB_PREFIX."chinaplanetlogistics l ON l.entity=s.entity AND l.fk_soc=s.rowid" : '';
 $customerSortSql = $canReadShipments ? 'MAX(COALESCE(l.tms,o.tms,s.tms))' : 'MAX(COALESCE(o.tms,s.tms))';
-$customers = !$canReadCustomers ? array() : $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".$shipmentCountSql.
+$customers = !$canReadCustomers || !in_array($view, array('manager','customers'), true) ? array() : $rows($db, "SELECT s.rowid,s.nom,s.code_client,COUNT(DISTINCT o.rowid) operation_count,COUNT(DISTINCT c.rowid) contact_count".$shipmentCountSql.
     " FROM ".MAIN_DB_PREFIX."societe s".
     " LEFT JOIN ".MAIN_DB_PREFIX."cpo_operation o ON o.entity=s.entity AND o.fk_soc=s.rowid AND o.status=1".
     " LEFT JOIN ".MAIN_DB_PREFIX."socpeople c ON c.entity=s.entity AND c.fk_soc=s.rowid AND c.statut=1".
@@ -82,9 +85,9 @@ if ($view === 'customer') {
     if ($canReadShipments) $customerShipments = $rows($db, "SELECT rowid,ref,container_no,bl_no,date_eta,fk_statut,customer_visible FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".$entity." AND fk_soc=".(int) $socid." ORDER BY rowid DESC LIMIT 20");
 }
 
-$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'));
-llxHeader('', $langs->trans('WsTitle'), '', '', 0, 0, array(), $morecss);
-cpcc_admin_shell_open('workspace', $langs->trans('WsTitle'), '', 'fa-compass');
+$morecss = array(cpo_asset('/custom/chinaplanetoperations/css/operations.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'), cpo_asset('/custom/chinaplanetoperations/css/task_experience.css'));
+llxHeader('', $langs->trans($view === 'my' ? 'WsToday' : 'WsTitle'), '', '', 0, 0, array(), $morecss);
+cpcc_admin_shell_open('workspace', $langs->trans($view === 'my' ? 'WsToday' : 'WsTitle'), '', 'fa-compass', array('flat'=>in_array($view,array('my','manager'),true)));
 ?>
 <main class="cpo-page cpw-page" dir="<?php echo $workspaceArabic ? 'rtl' : 'ltr'; ?>">
   <section class="cpw-hero">

@@ -68,3 +68,52 @@ function cpcc_ui_language_controls()
     print '<option value="zh_CN" lang="zh" disabled>中文</option>';
     print '</select></div>';
 }
+
+/** Escaped, allowlisted current-position presentation; never expose evidence IDs or private reasons. */
+function cpcc_ui_funds_label($key)
+{
+    global $langs;
+    $langs->load('chinaplanetcustomercenter@chinaplanetcustomercenter');
+    return dol_escape_htmltag($langs->trans($key));
+}
+function cpcc_ui_managed_funds(array $position, array $options = array())
+{
+    $label = function ($key) { return cpcc_ui_funds_label($key); };
+    if (!empty($options['asof']) && $options['asof'] !== date('Y-m-d')) {
+        return '<p class="cpcc-note">'.$label('CPCCFundsCurrentOnly').'</p>';
+    }
+    $project = isset($position['scope']) && $position['scope'] === 'project_allocations_only';
+    $fields = $project ? array('assigned'=>'CPCCFundsAssigned','reserved'=>'CPCCFundsReserved','paid_cash'=>'CPCCFundsPaid')
+        : array('received_cash'=>'CPCCFundsReceived','paid_cash'=>'CPCCFundsPaid','reserved'=>'CPCCFundsReserved','available_to_allocate'=>'CPCCFundsAvailable');
+    $currencies = isset($position['currencies']) && is_array($position['currencies']) ? $position['currencies'] : array();
+    if (!empty($options['currency'])) $currencies = array_intersect_key($currencies, array($options['currency']=>true));
+    ksort($currencies);
+    foreach (array('credit_consumed'=>'CPCCFundsApplied','other_settled'=>'CPCCFundsOtherDebits') as $field=>$key) {
+        foreach ($currencies as $bucket) if (isset($bucket[$field]) && (float) $bucket[$field] > 0.00000001) { $fields[$field]=$key; break; }
+    }
+    $html = '<section class="cpcc-managed-funds" dir="'.(cpcc_ui_language()==='ar_SA'?'rtl':'ltr').'" aria-label="'.$label('CPCCFundsCurrent').'">';
+    $html .= '<h2>'.$label($project?'CPCCFundsProject':'CPCCFundsCurrent').'</h2><p class="cpcc-note">'.$label($project?'CPCCFundsProjectScope':'CPCCFundsSubset').'</p>';
+    $coverage = isset($position['coverage']) ? $position['coverage'] : 'unavailable';
+    if ($coverage !== 'verified_managed') $html .= '<p class="warning">'.$label($coverage==='not_managed'?'CPCCFundsNoVerified':'CPCCFundsReview').'</p>';
+    if (!$currencies) $html .= '<p>'.$label('CPCCFundsUnknown').'</p>';
+    else {
+        $html .= '<div class="cpcc-table-wrap div-table-responsive"><table class="cpcc-table noborder centpercent"><thead><tr><th>'.$label('CPCCFundsCurrency').'</th>';
+        foreach ($fields as $field=>$key) $html .= '<th data-fund-field="'.$field.'">'.$label($key).'</th>';
+        $html .= '</tr></thead><tbody>';
+        foreach ($currencies as $currency=>$bucket) {
+            $html .= '<tr data-fund-currency="'.dol_escape_htmltag($currency).'"><th scope="row">'.dol_escape_htmltag($currency).'</th>';
+            foreach ($fields as $field=>$key) {
+                $value = array_key_exists($field, $bucket) ? $bucket[$field] : null;
+                $known = $value !== null && is_numeric($value) && is_finite((float) $value);
+                $text = $known ? dol_escape_htmltag(number_format((float)$value, 2, '.', ',')) : $label('CPCCFundsUnknown');
+                $html .= '<td data-label="'.$label($key).'" data-fund-field="'.$field.'">'.$text.'</td>';
+            }
+            $html .= '</tr>';
+        }
+        $html .= '</tbody></table></div>';
+    }
+    if ($project && !empty($options['customer_url']) && strpos($options['customer_url'], '/') === 0 && strpos($options['customer_url'], '//') !== 0) {
+        $html .= '<p><a href="'.dol_escape_htmltag($options['customer_url']).'">'.$label('CPCCFundsCustomerPool').'</a></p>';
+    }
+    return $html.'</section>';
+}

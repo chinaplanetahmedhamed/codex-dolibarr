@@ -22,25 +22,50 @@ function cpcc_project_lifecycle($db, $socid, $projectid, $currencyFallback)
     // M082 native supplier evidence supersedes the legacy manual commitment
     // projection when a guided supplier invoice exists. Only boolean lifecycle
     // state leaves this server-side query; supplier identity and cost stay private.
-    $supplierMarkerReady = false;
     $tableCheck = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.'cpo_supplier_action')."'");
-    if ($tableCheck && $db->num_rows($tableCheck) === 1) {
-        $sql = "SELECT f.rowid,CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN f.multicurrency_total_ttc ELSE f.total_ttc END invoice_total,";
+    if (!$tableCheck) {
+        $supplierPaidAny = false;
+        $supplierFullyPaid = false;
+    } elseif (($nativeTableCount = $db->num_rows($tableCheck)) === 1) {
+        // Keep confirmed markers visible even when their native evidence has
+        // disappeared or drifted. Such a marker cannot become a paid fallback.
+        $sql = "SELECT a.fk_supplier expected_supplier,a.fk_project expected_project,";
+        $sql .= "f.rowid invoice_id,f.fk_soc invoice_supplier,f.fk_projet invoice_project,f.type invoice_type,f.fk_statut invoice_status,";
+        $sql .= "so.rowid order_id,so.fk_soc order_supplier,so.fk_projet order_project,";
+        $sql .= "EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."element_element link WHERE link.sourcetype='order_supplier' AND link.targettype='invoice_supplier' AND link.fk_source=so.rowid AND link.fk_target=f.rowid) order_linked,";
+        $sql .= "CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN f.multicurrency_total_ttc ELSE f.total_ttc END invoice_total,";
         $sql .= "COALESCE((SELECT SUM(CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END) FROM ".MAIN_DB_PREFIX."paiementfourn_facturefourn pf WHERE pf.fk_facturefourn=f.rowid),0) paid_total ";
-        $sql .= "FROM ".MAIN_DB_PREFIX."cpo_supplier_action a JOIN ".MAIN_DB_PREFIX."facture_fourn f ON f.rowid=a.fk_supplier_invoice AND f.entity=a.entity ";
-        $sql .= "WHERE a.entity=".(int)$GLOBALS['conf']->entity." AND a.fk_soc_customer=".(int)$socid." AND a.fk_project=".(int)$projectid." AND a.action_type='supplier_invoice' AND a.status='confirmed' AND f.fk_statut>0";
+        $sql .= "FROM ".MAIN_DB_PREFIX."cpo_supplier_action a LEFT JOIN ".MAIN_DB_PREFIX."facture_fourn f ON f.rowid=a.fk_supplier_invoice AND f.entity=a.entity ";
+        $sql .= "LEFT JOIN ".MAIN_DB_PREFIX."commande_fournisseur so ON so.rowid=a.fk_supplier_order AND so.entity=a.entity ";
+        $sql .= "WHERE a.entity=".(int)$GLOBALS['conf']->entity." AND a.fk_soc_customer=".(int)$socid." AND a.fk_project=".(int)$projectid." AND a.action_type='supplier_invoice' AND a.status='confirmed'";
         $res = $db->query($sql);
         $nativeCount = 0; $nativePaidAny = false; $nativeAllPaid = true;
         while ($res && ($native = $db->fetch_object($res))) {
             $nativeCount++;
+            // Same identity contract as the supplier owner: a standard invoice
+            // and its linked historical order share entity, supplier/project.
+            // Do not apply mutation-only active/latest-order admission rules.
+            $valid = (int)$native->expected_supplier > 0 && (int)$native->expected_project > 0
+                && (int)$native->invoice_id > 0 && (int)$native->invoice_type === 0 && (int)$native->invoice_status > 0
+                && (int)$native->invoice_supplier === (int)$native->expected_supplier
+                && (int)$native->invoice_project === (int)$native->expected_project
+                && (int)$native->order_id > 0 && (int)$native->order_linked === 1
+                && (int)$native->order_supplier === (int)$native->expected_supplier
+                && (int)$native->order_project === (int)$native->expected_project;
+            if (!$valid) {
+                $nativeAllPaid = false;
+                continue;
+            }
             if ((float)$native->paid_total > 0.005) $nativePaidAny = true;
             if ((float)$native->invoice_total - (float)$native->paid_total > 0.005) $nativeAllPaid = false;
         }
-        if ($nativeCount > 0) {
-            $supplierMarkerReady = true;
-            $supplierPaidAny = $nativePaidAny;
-            $supplierFullyPaid = $nativeAllPaid;
+        if (!$res || $nativeCount > 0) {
+            $supplierPaidAny = $res && $nativePaidAny;
+            $supplierFullyPaid = $res && $nativeAllPaid;
         }
+    } elseif ($nativeTableCount !== 0) {
+        $supplierPaidAny = false;
+        $supplierFullyPaid = false;
     }
 
     $invoiceCount = 0;

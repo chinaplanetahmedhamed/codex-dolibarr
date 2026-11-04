@@ -5,6 +5,7 @@ use Luracast\Restler\RestException;
 require_once DOL_DOCUMENT_ROOT.'/api/class/api.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetlogistics/class/chinaplanetlogistics.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/portal.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetlogistics/lib/shipment_upload.lib.php';
 
 /**
  * REST API for China Planet Logistics shipments and shipment document repository.
@@ -47,7 +48,7 @@ class ChinaplanetlogisticsApi extends DolibarrApi
             throw new RestException(500, 'Active entity is unavailable');
         }
 
-        $sql = "SELECT s.rowid AS id, s.ref, s.fk_soc, c.nom AS socname, s.booking_no, s.voyage_no, s.vessel_name,";
+        $sql = "SELECT s.rowid AS id, s.ref, s.entity, s.fk_soc, s.fk_project, c.nom AS socname, s.booking_no, s.voyage_no, s.vessel_name,";
         $sql .= " s.port_loading AS origin_port, s.port_destination AS destination_port, s.container_no,";
         $sql .= " s.container_type, s.nb_containers, s.fk_statut AS status, s.date_eta, s.date_etd";
         $sql .= " FROM ".MAIN_DB_PREFIX."chinaplanetlogistics s";
@@ -79,6 +80,8 @@ class ChinaplanetlogisticsApi extends DolibarrApi
                 'id' => (string) $row->id,
                 'ref' => (string) $row->ref,
                 'fk_soc' => (string) $row->fk_soc,
+                'entity' => (string) (int) $row->entity,
+                'fk_project' => (string) (int) $row->fk_project,
                 'socname' => (string) ($row->socname ?? ''),
                 'booking_no' => (string) ($row->booking_no ?? ''),
                 'voyage_no' => (string) ($row->voyage_no ?? ''),
@@ -112,9 +115,15 @@ class ChinaplanetlogisticsApi extends DolibarrApi
             throw new RestException(403, 'Permission denied: read access required for logistics shipments');
         }
 
+        global $conf;
+        $entity = !empty($conf->entity) ? (int) $conf->entity : 0;
+        if ($entity <= 0) {
+            throw new RestException(500, 'Active entity is unavailable');
+        }
+
         $shipment = new ChinaPlanetLogistics($this->db);
         $result = is_numeric($id) ? $shipment->fetch((int) $id) : $shipment->fetch(0, $id);
-        if ($result <= 0 || empty($shipment->id)) {
+        if ($result <= 0 || empty($shipment->id) || (int) $shipment->entity !== $entity) {
             throw new RestException(404, "Shipment '".$id."' was not found");
         }
 
@@ -122,6 +131,8 @@ class ChinaplanetlogisticsApi extends DolibarrApi
             'id' => (string) $shipment->id,
             'ref' => (string) $shipment->ref,
             'fk_soc' => (string) $shipment->fk_soc,
+            'entity' => (string) (int) $shipment->entity,
+            'fk_project' => (string) (int) $shipment->fk_project,
             'container_no' => (string) $shipment->container_no,
             'container_type' => (string) $shipment->container_type,
             'nb_containers' => (string) $shipment->nb_containers,
@@ -242,22 +253,20 @@ class ChinaplanetlogisticsApi extends DolibarrApi
         $storedName = $shipmentPrefix.'-'.$safeName;
 
         if (empty($overwrite)) {
-            $pathinfo = pathinfo($safeName);
-            $baseName = !empty($pathinfo['filename']) ? $pathinfo['filename'] : $safeName;
-            $ext = !empty($pathinfo['extension']) ? '.'.$pathinfo['extension'] : '';
-            $counter = 2;
-            while (file_exists($uploadDir.'/'.$storedName)) {
-                $storedName = $shipmentPrefix.'-'.$baseName.'-'.$counter.$ext;
-                $counter++;
+            try {
+                $storedName = chinaplanetlogistics_store_new_upload($uploadDir, $shipment->id, $safeName, $content);
+            } catch (Throwable $e) {
+                throw new RestException(500, 'Failed to store a new shipment document');
             }
+        } else {
+            // Preserve the existing explicit-overwrite contract.
+            $destination = $uploadDir.'/'.$storedName;
+            $written = file_put_contents($destination, $content);
+            if ($written === false || $written !== $actualSize) {
+                throw new RestException(500, 'Failed to write file to disk');
+            }
+            @chmod($destination, 0640);
         }
-
-        $destination = $uploadDir.'/'.$storedName;
-        $written = file_put_contents($destination, $content);
-        if ($written === false || $written !== $actualSize) {
-            throw new RestException(500, 'Failed to write file to disk');
-        }
-        @chmod($destination, 0640);
 
         // Optional publication to customer gallery/documents portal
         $published = false;

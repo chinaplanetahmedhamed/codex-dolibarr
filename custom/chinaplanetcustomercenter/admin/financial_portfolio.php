@@ -12,10 +12,12 @@ if (empty($user->id) || !empty($user->socid) || (!$user->admin && !$user->hasRig
 if (!cpcc_financial_schema_ready($db)) {
     accessforbidden('Financial tables are not installed. Re-enable the module or run the module upgrade first.');
 }
+$langs->load('chinaplanetcustomercenter@chinaplanetcustomercenter');
 
 function cpad_portfolio_currency_text($summary, $field = 'amount')
 {
     $parts = array();
+    ksort($summary);
     foreach ($summary as $currency => $value) {
         if (is_array($value)) {
             $amount = isset($value[$field]) ? (float) $value[$field] : 0.0;
@@ -34,6 +36,7 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
     $asOf = date('Y-m-d');
 }
 
+$showCurrentManaged = $asOf === date('Y-m-d');
 $summaryTemplate = cpcc_financial_empty_summary();
 $summaryFields = array_keys($summaryTemplate);
 
@@ -72,10 +75,6 @@ if ($customerResult) {
             $portfolioOverdueByCurrency[$c] += $amount;
         }
 
-        $custAvailable = 0.0;
-        $custObligations = 0.0;
-        $custUnpaid = 0.0;
-        $custRequired = 0.0;
         foreach ($summary as $currency => $values) {
             if (!isset($portfolioSummary[$currency])) {
                 $portfolioSummary[$currency] = $summaryTemplate;
@@ -83,10 +82,6 @@ if ($customerResult) {
             foreach ($summaryFields as $field) {
                 $portfolioSummary[$currency][$field] += isset($values[$field]) ? (float) $values[$field] : 0.0;
             }
-            $custAvailable += $values['available'];
-            $custObligations += $values['obligations'];
-            $custUnpaid += $values['unpaid_invoices'];
-            $custRequired += $values['required_funding'];
         }
 
         $usd = cpcc_financial_total_usd($summary);
@@ -108,18 +103,18 @@ if ($customerResult) {
         }
         $totalUnpaidInvoices += $unpaidCount;
 
+        $managedPosition = $showCurrentManaged ? cpcc_financial_managed_position($db, $customerId) : null;
+        if ($managedPosition !== null) cpcc_financial_require_live_connection($managedPosition);
         $customers[] = array(
             'id' => $customerId,
+            'managed_position' => $managedPosition,
             'name' => (string) $customer->nom,
             'as_of' => $asOf,
             'summary' => $summary,
             'unpaid_count' => $unpaidCount,
             'overdue_count' => $overdueCount,
             'overdue_by_currency' => $overdueByCurrency,
-            'available' => $custAvailable,
-            'obligations' => $custObligations,
-            'unpaid_invoices' => $custUnpaid,
-            'required_funding' => $custRequired,
+            'needs_funding' => $requiredForCustomer,
             'usd_total' => $usd['total'],
             'usd_missing' => $usd['missing'],
         );
@@ -127,10 +122,12 @@ if ($customerResult) {
 }
 
 usort($customers, function ($left, $right) {
-    $l = (float) $left['required_funding'];
-    $r = (float) $right['required_funding'];
-    if ($l === $r) return 0;
-    return ($l < $r) ? 1 : -1;
+    // Currency units cannot determine a customer's relative funding priority.
+    if ($left['needs_funding'] !== $right['needs_funding']) {
+        return $left['needs_funding'] ? -1 : 1;
+    }
+    $nameOrder = strcasecmp($left['name'], $right['name']);
+    return $nameOrder !== 0 ? $nameOrder : ($left['id'] <=> $right['id']);
 }
 );
 
@@ -153,24 +150,27 @@ cpcc_admin_shell_open('financial', 'Financial Center', 'Overview totals and per-
 <form method="get" class="cpad-context-form">
   <div class="cpad-context-fields">
     <label>
-      <span>As of</span>
+      <span><?php echo dol_escape_htmltag($langs->trans('CPCCPortfolioTransactionCutoff')); ?></span>
       <input type="date" name="asof" value="<?php echo dol_escape_htmltag($asOf); ?>">
     </label>
     <button class="button" type="submit">Apply</button>
   </div>
 </form>
+<p class="cpad-footnote"><?php echo dol_escape_htmltag($langs->trans('CPCCPortfolioDiagnosticLimitations')); ?></p>
+<p class="cpad-footnote"><?php echo cpcc_ui_funds_label('CPCCFundsEstimateBasis'); ?></p>
+<?php if (!$showCurrentManaged) echo cpcc_ui_managed_funds(array(),array('asof'=>$asOf)); ?>
 
 <section class="cpad-kpis">
   <div class="cpad-kpi"><b><?php echo $totalCustomers; ?></b><span>Total Customers</span><small>customers with customer profile</small></div>
   <div class="cpad-kpi danger"><b><?php echo $customersLate; ?></b><span>Customers With Late Invoices</span><small>due date already passed</small></div>
-  <div class="cpad-kpi gold"><b><?php echo $customersNeedFunds; ?></b><span>Customers Needing Funds</span><small>required funding > 0</small></div>
+  <div class="cpad-kpi gold"><b><?php echo $customersNeedFunds; ?></b><span><?php echo cpcc_ui_funds_label('CPCCFundsEstimateCustomers'); ?></span><small><?php echo cpcc_ui_funds_label('CPCCFundsEstimateBasis'); ?></small></div>
   <div class="cpad-kpi"><b><?php echo $totalUnpaidInvoices; ?></b><span>Unpaid Invoices</span><small>Total count</small></div>
 </section>
 <section class="cpad-kpis">
   <div class="cpad-kpi"><b><?php echo $totalOverdueInvoices; ?></b><span>Overdue Open Invoices</span><small>overdue count</small></div>
-  <div class="cpad-kpi"><b><?php echo cpcc_portal_money($globalUsd['total']); ?></b><span>All Customer Cash (USD)</span><small>exchange-rate valuation only</small></div>
-  <div class="cpad-kpi"><b><?php echo cpcc_portal_money(array_sum(array_column($portfolioSummary, 'supplier_remaining'))); ?></b><span>Supplier Remaining</span><small>approved supplier obligations</small></div>
-  <div class="cpad-kpi"><b><?php echo cpcc_portal_money(array_sum(array_column($portfolioSummary, 'future_services'))); ?></b><span>Future Services</span><small>approved future service commitments</small></div>
+  <div class="cpad-kpi"><b><?php echo cpcc_portal_money($globalUsd['total']); ?></b><span><?php echo dol_escape_htmltag($langs->trans('CPCCPortfolioWalletUsdValuation')); ?></span><small>exchange-rate valuation only</small></div>
+  <div class="cpad-kpi"><b><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($portfolioSummary, 'supplier_remaining')); ?></b><span>Supplier Remaining</span><small>approved supplier obligations</small></div>
+  <div class="cpad-kpi"><b><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($portfolioSummary, 'future_services')); ?></b><span>Future Services</span><small>approved future service commitments</small></div>
 </section>
 
 <section class="cpad-panel">
@@ -180,22 +180,22 @@ cpcc_admin_shell_open('financial', 'Financial Center', 'Overview totals and per-
       <thead>
         <tr>
           <th>Currency</th>
-          <th>Available</th>
+          <th><?php echo cpcc_ui_funds_label('CPCCFundsInvoiceCredit'); ?></th>
           <th>Obligations</th>
           <th>Unpaid Invoices</th>
           <th>Overdue Invoices</th>
-          <th>Required Funding</th>
+          <th><?php echo cpcc_ui_funds_label('CPCCFundsEstimate'); ?></th>
         </tr>
       </thead>
       <tbody>
       <?php foreach ($portfolioSummary as $currency => $totals) { ?>
         <tr>
           <td data-label="Currency"><span class="cpad-cell-value"><b><?php echo dol_escape_htmltag($currency); ?></b></span></td>
-          <td data-label="Available"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['available']); ?></span></td>
+          <td data-label="<?php echo cpcc_ui_funds_label('CPCCFundsInvoiceCredit'); ?>"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['available']); ?></span></td>
           <td data-label="Obligations"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['obligations']); ?></span></td>
           <td data-label="Unpaid Invoices"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['unpaid_invoices']); ?></span></td>
           <td data-label="Overdue Invoices"><span class="cpad-cell-value"><?php echo cpcc_portal_money(isset($portfolioOverdueByCurrency[$currency]) ? $portfolioOverdueByCurrency[$currency] : 0); ?></span></td>
-          <td data-label="Required Funding"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['required_funding']); ?></span></td>
+          <td data-label="<?php echo cpcc_ui_funds_label('CPCCFundsEstimate'); ?>"><span class="cpad-cell-value"><?php echo cpcc_portal_money($totals['required_funding']); ?></span></td>
         </tr>
       <?php } ?>
       </tbody>
@@ -213,12 +213,12 @@ cpcc_admin_shell_open('financial', 'Financial Center', 'Overview totals and per-
       <thead>
         <tr>
           <th>Customer</th>
-          <th>Available (USD)</th>
-          <th>Available by Currency</th>
+          <th><?php echo cpcc_ui_funds_label('CPCCFundsInvoiceCreditUsd'); ?></th>
+          <th><?php echo cpcc_ui_funds_label('CPCCFundsInvoiceCredit'); ?></th>
           <th>Obligations</th>
           <th>Unpaid</th>
           <th>Overdue</th>
-          <th>Required Funding</th>
+          <th><?php echo cpcc_ui_funds_label('CPCCFundsEstimate'); ?></th>
           <th>Action</th>
         </tr>
       </thead>
@@ -234,17 +234,17 @@ cpcc_admin_shell_open('financial', 'Financial Center', 'Overview totals and per-
         $lateInvoiceUrl = dol_buildpath('/compta/facture/list.php',1).'?search_status=1&search_socid='.(int)$row['id'].'&search_datelimit_end='.urlencode($row['as_of']);
       ?>
         <tr>
-          <td data-label="Customer"><span class="cpad-cell-value"><a href="<?php echo $balanceUrl; ?>"><?php echo $name; ?> <small>(<?php echo (int)$row['id']; ?>)</small></a></span></td>
-          <td data-label="Available (USD)"><span class="cpad-cell-value"><b><?php echo cpcc_portal_money($row['usd_total']); ?></b></span></td>
-          <td data-label="Available by Currency"><span class="cpad-cell-value"><?php echo cpad_portfolio_currency_text($row['summary'], 'available'); ?></span></td>
-          <td data-label="Obligations"><span class="cpad-cell-value"><?php echo cpcc_portal_money($row['obligations']); ?></span></td>
+          <td data-label="Customer"><span class="cpad-cell-value"><a href="<?php echo $balanceUrl; ?>"><?php echo $name; ?> <small>(<?php echo (int)$row['id']; ?>)</small></a></span><?php if ($showCurrentManaged) { ?><details><summary><?php echo cpcc_ui_funds_label('CPCCFundsPortfolioLink'); ?></summary><?php echo cpcc_ui_managed_funds($row['managed_position'],array('asof'=>$asOf)); ?></details><?php } ?></td>
+          <td data-label="<?php echo cpcc_ui_funds_label('CPCCFundsInvoiceCreditUsd'); ?>"><span class="cpad-cell-value"><b><?php echo cpcc_portal_money($row['usd_total']); ?></b></span></td>
+          <td data-label="<?php echo cpcc_ui_funds_label('CPCCFundsInvoiceCredit'); ?>"><span class="cpad-cell-value"><?php echo cpad_portfolio_currency_text($row['summary'], 'available'); ?></span></td>
+          <td data-label="Obligations"><span class="cpad-cell-value"><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($row['summary'], 'obligations')); ?></span></td>
           <td data-label="Unpaid"><span class="cpad-cell-value"><?php echo cpad_portfolio_currency_text($row['summary'], 'unpaid_invoices'); ?></span></td>
           <td data-label="Overdue"><span class="cpad-cell-value">
             <a href="<?php echo $lateInvoiceUrl; ?>"><b><?php echo (int) $row['overdue_count']; ?></b></a>
             <?php if ($row['overdue_count'] > 0) { echo ' · '.cpad_portfolio_currency_text($row['overdue_by_currency'], 'amount'); } ?>
           </span></td>
-          <td data-label="Required Funding" class="<?php echo $row['required_funding'] > 0 ? 'warn' : ''; ?>">
-            <span class="cpad-cell-value"><b><?php echo cpcc_portal_money($row['required_funding']); ?></b></span>
+          <td data-label="<?php echo cpcc_ui_funds_label('CPCCFundsEstimate'); ?>" class="<?php echo $row['needs_funding'] ? 'warn' : ''; ?>">
+            <span class="cpad-cell-value"><b><?php echo dol_escape_htmltag(cpad_portfolio_currency_text($row['summary'], 'required_funding')); ?></b></span>
           </td>
           <td data-label="Action"><span class="cpad-cell-value cpad-cell-actions">
             <a href="<?php echo $financeUrl; ?>">Admin Entry</a>

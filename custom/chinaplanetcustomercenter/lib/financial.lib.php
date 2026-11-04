@@ -120,15 +120,46 @@ function cpcc_financial_invoice_amounts($netTotal, $directPaid, $appliedCredit)
     );
 }
 
-/** SQL aggregate for credits/down payments consumed by a target invoice. */
-function cpcc_financial_applied_credit_sql()
+/**
+ * Inclusive named-day limit for stored DATE/DATETIME columns, without timezone conversion.
+ * Empty cutoffs retain current mode; invalid nonempty dates must not broaden a read.
+ */
+function cpcc_financial_cutoff_sql($db, $column, $asOf)
 {
-    return "SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture,"
+    if (!is_string($column) || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?\z/', $column)) {
+        throw new InvalidArgumentException('Invalid internal financial date column.');
+    }
+    if ($asOf === '' || $asOf === null) return '';
+    if (!is_string($asOf) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})\z/', $asOf, $parts)
+        || (int) $parts[1] < 1000 || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) || $asOf === '9999-12-31') {
+        return ' AND 1=0';
+    }
+    // UTC is used only for calendar arithmetic; no timestamp or timezone is converted.
+    $day = DateTimeImmutable::createFromFormat('!Y-m-d', $asOf, new DateTimeZone('UTC'));
+    if ($day === false || $day->format('Y-m-d') !== $asOf) return ' AND 1=0';
+    $nextDay = $day->modify('+1 day')->format('Y-m-d');
+    return " AND ".$column."<'".$db->escape($nextDay)."'";
+}
+
+/**
+ * Current credit links, optionally bounded by creation day and explicit source scope.
+ * Creation time is not application history; unknown dates are excluded by a cutoff.
+ * The no-argument SQL remains compatible with existing undated mobile consumers.
+ */
+function cpcc_financial_applied_credit_sql($db = null, $asOf = '', $entity = 0, $socid = 0)
+{
+    if ($db === null && $asOf !== '' && $asOf !== null) {
+        throw new InvalidArgumentException('A database handle is required for a financial cutoff.');
+    }
+    $sql = "SELECT COALESCE(r.fk_facture,fd.fk_facture) fk_facture,"
         ." SUM(r.amount_ttc) amount,SUM(r.multicurrency_amount_ttc) multicurrency_amount"
         ." FROM ".MAIN_DB_PREFIX."societe_remise_except r"
         ." LEFT JOIN ".MAIN_DB_PREFIX."facturedet fd ON fd.rowid=r.fk_facture_line"
-        ." WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL"
-        ." GROUP BY COALESCE(r.fk_facture,fd.fk_facture)";
+        ." WHERE COALESCE(r.fk_facture,fd.fk_facture) IS NOT NULL";
+    if ((int) $entity > 0) $sql .= " AND r.entity=".(int) $entity;
+    if ((int) $socid > 0) $sql .= " AND r.fk_soc=".(int) $socid;
+    if ($db !== null) $sql .= cpcc_financial_cutoff_sql($db, 'r.datec', $asOf);
+    return $sql." GROUP BY COALESCE(r.fk_facture,fd.fk_facture)";
 }
 
 function cpcc_financial_empty_summary()
@@ -179,13 +210,11 @@ function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $project
     $sql .= " COALESCE(SUM(CASE WHEN e.status=1 AND e.direction='D' THEN COALESCE(e.allocated_amount,0) ELSE 0 END),0) paid,";
     $sql .= " fi.rowid billed_invoice_id,fi.ref billed_invoice_ref,fi.fk_statut billed_invoice_status,fi.type billed_invoice_type";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_project_charge c";
-    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpcc_financial_entry e ON e.fk_charge=c.rowid";
+    $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."cpcc_financial_entry e ON e.fk_charge=c.rowid AND e.entity=c.entity AND e.fk_soc=c.fk_soc".cpcc_financial_cutoff_sql($db, 'e.entry_date', $asOf);
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=c.fk_project AND p.entity=c.entity AND p.fk_soc=c.fk_soc";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."facture fi ON c.source_type IN ('customer_invoice','invoice') AND fi.rowid=c.source_id AND fi.fk_soc=c.fk_soc";
     $sql .= " WHERE c.entity=".(int) $GLOBALS['conf']->entity." AND c.fk_soc=".(int) $socid." AND c.status=1 AND c.customer_visible=1";
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
-        $sql .= " AND c.charge_date<='".$db->escape($asOf)."'";
-    }
+    $sql .= cpcc_financial_cutoff_sql($db, 'c.charge_date', $asOf);
     if ((int) $projectid > 0) $sql .= " AND c.fk_project=".(int) $projectid;
     $sql .= " GROUP BY c.rowid,c.fk_project,c.charge_date,c.category,c.label,c.supplier_label,c.amount,c.currency_code,c.reference,c.source_type,c.source_id,p.ref,p.title,fi.rowid,fi.ref,fi.fk_statut,fi.type";
     $sql .= " ORDER BY c.charge_date,c.rowid";
@@ -234,13 +263,11 @@ function cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, $project
     $sql .= " COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi,";
     $sql .= " p.ref project_ref,p.title project_title";
     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
-    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
-    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
+    $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." AND ppay.entity=".(int) $GLOBALS['conf']->entity.cpcc_financial_cutoff_sql($db, 'ppay.datep', $asOf)." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
+    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql($db, $asOf, (int) $GLOBALS['conf']->entity, $socid).") discount ON discount.fk_facture=f.rowid";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
     $sql .= " WHERE f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut=1 AND f.paye=0 AND f.type IN (0,1,5)";
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
-        $sql .= " AND f.datef<='".$db->escape($asOf)."'";
-    }
+    $sql .= cpcc_financial_cutoff_sql($db, 'f.datef', $asOf);
     if ((int) $projectid > 0) $sql .= " AND f.fk_projet=".(int) $projectid;
     $sql .= " ORDER BY f.datef,f.rowid";
 
@@ -302,7 +329,7 @@ function cpcc_financial_customer_invoices($db, $socid, $currencyFallback, $proje
     $sql .= " COALESCE(pay.amount,0) paid_base,COALESCE(pay.multicurrency_amount,0) paid_multi,COALESCE(discount.amount,0) discount_base,COALESCE(discount.multicurrency_amount,0) discount_multi,p.ref project_ref,p.title project_title";
     $sql .= " FROM ".MAIN_DB_PREFIX."facture f";
     $sql .= " LEFT JOIN (SELECT pf.fk_facture,SUM(pf.amount) amount,SUM(pf.multicurrency_amount) multicurrency_amount FROM ".MAIN_DB_PREFIX."paiement_facture pf INNER JOIN ".MAIN_DB_PREFIX."paiement ppay ON ppay.rowid=pf.fk_paiement WHERE ".cpcc_financial_payment_status_sql('ppay')." GROUP BY pf.fk_facture) pay ON pay.fk_facture=f.rowid";
-    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql().") discount ON discount.fk_facture=f.rowid";
+    $sql .= " LEFT JOIN (".cpcc_financial_applied_credit_sql($db, '', (int) $GLOBALS['conf']->entity, $socid).") discount ON discount.fk_facture=f.rowid";
     $sql .= " LEFT JOIN ".MAIN_DB_PREFIX."projet p ON p.rowid=f.fk_projet AND p.entity=f.entity AND p.fk_soc=f.fk_soc";
     $sql .= " WHERE f.entity=".(int)$GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND f.type IN (0,1,5)";
     if ((int)$projectid>0) $sql .= " AND f.fk_projet=".(int)$projectid;
@@ -329,9 +356,7 @@ function cpcc_financial_native_receipts($db, $socid, $currencyFallback, $asOf = 
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid";
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
     $sql .= " WHERE p.entity=".(int) $GLOBALS['conf']->entity." AND f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND ".cpcc_financial_payment_status_sql('p');
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
-        $sql .= " AND p.datep<='".$db->escape($asOf)."'";
-    }
+    $sql .= cpcc_financial_cutoff_sql($db, 'p.datep', $asOf);
     if (cpcc_financial_schema_ready($db)) {
         $sql .= " AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpcc_financial_entry ce WHERE ce.entity=p.entity AND ce.fk_soc=f.fk_soc AND ce.source_type='payment' AND ce.source_id=p.rowid AND ce.status=1)";
     }
@@ -380,7 +405,8 @@ function cpcc_financial_native_allocations($db, $socid, $currencyFallback, $proj
     $sql .= " WHERE r.entity=".(int) $GLOBALS['conf']->entity." AND r.fk_soc=".$socid;
     $sql .= " AND target.entity=".(int) $GLOBALS['conf']->entity." AND target.fk_soc=".$socid." AND target.fk_statut>0";
     if ((int) $projectid > 0) $sql .= " AND target.fk_projet=".(int) $projectid;
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) $sql .= " AND target.datef<='".$db->escape($asOf)."'";
+    $sql .= cpcc_financial_cutoff_sql($db, 'target.datef', $asOf);
+    $sql .= cpcc_financial_cutoff_sql($db, 'r.datec', $asOf);
     $sql .= " ORDER BY target.datef,r.rowid";
     $resql = $db->query($sql);
     if ($resql) {
@@ -417,7 +443,7 @@ function cpcc_financial_native_allocations($db, $socid, $currencyFallback, $proj
     $sql .= " INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture";
     $sql .= " WHERE p.entity=".(int) $GLOBALS['conf']->entity." AND f.entity=".(int) $GLOBALS['conf']->entity." AND f.fk_soc=".$socid." AND f.fk_statut>0 AND f.type IN (0,1,5) AND ".cpcc_financial_payment_status_sql('p');
     if ((int) $projectid > 0) $sql .= " AND f.fk_projet=".(int) $projectid;
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) $sql .= " AND p.datep<='".$db->escape($asOf)."'";
+    $sql .= cpcc_financial_cutoff_sql($db, 'p.datep', $asOf);
     $sql .= " ORDER BY p.datep,p.rowid,f.rowid";
     $resql = $db->query($sql);
     if ($resql) {
@@ -479,9 +505,7 @@ function cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projecti
     if (!cpcc_financial_schema_ready($db)) return $rows;
     $sql = "SELECT rowid,entry_date,entry_type,direction,description,amount,currency_code,reference,bank_label,fk_project,fk_charge,allocated_amount,allocated_currency,exchange_rate,transfer_group,proof_ecm_id";
     $sql .= " FROM ".MAIN_DB_PREFIX."cpcc_financial_entry WHERE entity=".(int) $GLOBALS['conf']->entity." AND fk_soc=".(int) $socid." AND status=1 AND customer_visible=1";
-    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
-        $sql .= " AND entry_date<='".$db->escape($asOf)."'";
-    }
+    $sql .= cpcc_financial_cutoff_sql($db, 'entry_date', $asOf);
     if ($projectid > 0) $sql .= " AND fk_project=".(int) $projectid;
     $sql .= " ORDER BY entry_date,rowid";
     $resql = $db->query($sql);
@@ -543,7 +567,7 @@ function cpcc_financial_summary($db, $socid, $currencyFallback, $projectid = 0, 
             $summary[$currency]['future_services'] += $remaining;
         }
     }
-    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, 0, $asOf) as $invoice) {
+    foreach (cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback, (int) $projectid, $asOf) as $invoice) {
         $currency = $invoice['currency'];
         if (!isset($summary[$currency])) $summary[$currency] = cpcc_financial_empty_summary();
         $summary[$currency]['unpaid_invoices'] += (float) $invoice['remaining'];
@@ -579,4 +603,37 @@ function cpcc_financial_summarize_rows($rows)
 function cpcc_financial_project_charges($db, $socid, $projectid, $currencyFallback, $includeSupplierIdentity = false)
 {
     return cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid, '', $includeSupplierIdentity);
+}
+
+/** Current managed subset only; callers retain their existing customer/project authorization. */
+function cpcc_financial_managed_position($db, $socid, $projectid = 0)
+{
+    global $conf;
+    $unavailable = array('scope'=>(int)$projectid > 0?'project_allocations_only':'managed_receipts_only', 'coverage'=>'unavailable', 'currencies'=>array());
+    try {
+        if (!class_exists('CustomerFundsService', false)) {
+            $file = __DIR__.'/../class/CustomerFundsService.class.php';
+            if (!is_file($file)) return $unavailable;
+            require_once $file;
+        }
+        return (new CustomerFundsService($db, (int)$conf->entity))->currentPosition((int)$socid, (int)$projectid);
+    } catch (Throwable $error) { return $unavailable; }
+}
+
+/** A retired handle must not reach another query, native menu/hook or fallback.
+ * Healthy unsupported snapshots retain the ordinary unavailable panel.
+ */
+function cpcc_financial_require_live_connection(array $position)
+{
+    if (empty($position['connection_retired'])) return;
+    http_response_code(503);
+    if (!headers_sent()) {
+        header('Content-Type: text/html; charset=UTF-8');
+        header('Cache-Control: no-store, max-age=0');
+    }
+    global $langs;
+    $rtl = isset($langs->defaultlang) && strpos((string)$langs->defaultlang, 'ar') === 0;
+    print '<!doctype html><html lang="'.($rtl?'ar':'en').'" dir="'.($rtl?'rtl':'ltr').'"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+    print '<title>'.cpcc_ui_funds_label('CPCCFundsUnknown').'</title><main><h1>'.cpcc_ui_funds_label('CPCCFundsUnknown').'</h1><p>'.cpcc_ui_funds_label('CPCCFundsTemporarilyUnavailable').'</p></main></html>';
+    exit;
 }

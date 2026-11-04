@@ -511,7 +511,7 @@ function cpcc_portal_gallery_file_metadata($shipment, $file)
 }
 
 /** Publish exactly one validated shipment file to its owning customer. */
-function cpcc_portal_gallery_publish($db, $shipment, $user, $file, $sourceOrigin = 'staff')
+function cpcc_portal_gallery_publish_legacy($db, $shipment, $user, $file, $sourceOrigin = 'staff')
 {
     if (!cpcc_portal_gallery_schema_ready($db)) return array('ok' => false, 'error' => 'Shipment Gallery schema is not installed.');
     $shipmentId = !empty($shipment->id) ? (int) $shipment->id : (int) $shipment->rowid;
@@ -558,6 +558,12 @@ function cpcc_portal_gallery_publish($db, $shipment, $user, $file, $sourceOrigin
     if ($publicationId <= 0) $publicationId = (int) $db->last_insert_id(MAIN_DB_PREFIX.'cpl_shipment_public_document');
     $db->commit();
     return array('ok' => true, 'id' => $publicationId, 'error' => '');
+}
+
+/** Preserve existing entrypoints while shared owner code calls the legacy implementation. */
+function cpcc_portal_gallery_publish($db, $shipment, $user, $file, $sourceOrigin = 'staff')
+{
+    return cpcc_portal_gallery_publish_legacy($db, $shipment, $user, $file, $sourceOrigin);
 }
 
 /** Unpublish one owned gallery row without deleting or moving the source file. */

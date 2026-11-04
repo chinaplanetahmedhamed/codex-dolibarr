@@ -67,3 +67,35 @@ CPLShipmentFileDelete=حذف وأرشفة / Delete / Archive
 CPLShipmentFileArchiveConfirm=أؤكد إزالة الملف من الاستخدام النشط ونقله إلى الأرشيف الخاص.
 CPLShipmentFileArchiveAction=إزالة وأرشفة
 CPLShipmentFileArchived=تمت إزالة ملف الشحنة من الاستخدام النشط وأرشفته بأمان.
+CPCCPortfolioTransactionCutoff=تاريخ قطع الحركات
+CPCCPortfolioDiagnosticLimitations=يجمع هذا العرض التشخيصي الحالات الحالية مع السجلات المؤرخة حتى اليوم المحدد. وهو ليس رصيدًا تاريخيًا كاملًا ولا الرصيد القابل للتحصيل اليوم.
+CPCCPortfolioWalletUsdValuation=رصيد ائتمان الفواتير (تقييم بالدولار الأمريكي)
+
+# M121 current managed funds presentation
+CPCCFundsCurrent=الأموال المُدارة الحالية
+CPCCFundsProject=تخصيصات تمويل المشروع
+CPCCFundsReceived=المستلم
+CPCCFundsPaid=المدفوع من أموال العميل
+CPCCFundsReserved=المحجوز
+CPCCFundsAvailable=المتاح للتخصيص
+CPCCFundsAssigned=المخصص
+CPCCFundsApplied=المستخدم للفواتير
+CPCCFundsOtherDebits=خصومات أخرى
+CPCCFundsUnknown=غير معلوم
+CPCCFundsReview=تحتاج إلى مراجعة. تعذرت المطابقة الكاملة لبعض المبالغ؛ تُعرض حدود التخصيص بصورة منفصلة.
+CPCCFundsNoVerified=لا توجد أموال مُدارة موثقة يمكن عرضها.
+CPCCFundsSubset=الأموال المُدارة الموثقة الحالية فقط؛ وليست رصيد العميل الكامل. المتاح للتخصيص ليس رصيدًا نقديًا.
+CPCCFundsProjectScope=تخصيصات المشروع فقط. تظهر إيصالات العميل ومجموعة أمواله المشتركة في حساب العميل.
+CPCCFundsCurrentOnly=تُعرض الأموال المُدارة الحالية لليوم فقط؛ وليست رصيدًا تاريخيًا.
+CPCCFundsCustomerPool=عرض مجموعة أموال العميل
+CPCCFundsCurrency=العملة
+CPCCFundsInvoiceCredit=رصيد ائتمان الفواتير
+CPCCFundsInvoiceCreditUsd=رصيد ائتمان الفواتير (تقييم بالدولار الأمريكي)
+CPCCFundsHistory=سجل ائتمان الفواتير
+CPCCFundsEstimate=تقدير التمويل على أساس ائتمان الفواتير
+CPCCFundsEstimateBasis=يستخدم هذا التقدير أرصدة ائتمان الفواتير والالتزامات المسجلة، وليس متطلبات التمويل الحالية للأموال المُدارة.
+CPCCFundsPortfolioLink=الأموال المُدارة الحالية
+CPCCFundsLegacyPaid=المخصص مقابل الالتزامات
+CPCCFundsEstimateCustomers=عملاء لديهم عجز في ائتمان الفواتير
+
+CPCCFundsTemporarilyUnavailable=البيانات المالية غير متاحة مؤقتًا. أعد تحميل الصفحة للمحاولة مجددًا؛ لم يتم تأكيد أي رصيد.

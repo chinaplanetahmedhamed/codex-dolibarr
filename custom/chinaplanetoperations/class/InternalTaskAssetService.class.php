@@ -1,10 +1,13 @@
 <?php
 
 require_once __DIR__.'/InternalTaskService.class.php';
+require_once __DIR__.'/InternalTaskFileValidator.class.php';
 
 /** Secure, task-scoped M058 asset storage. No asset is customer-visible. */
 class InternalTaskAssetService
 {
+    const MAX_FILE_BYTES = 200 * 1024 * 1024;
+
     private $db;
     private $entity;
     private $tasks;
@@ -42,7 +45,7 @@ class InternalTaskAssetService
         $row = $res ? $this->db->fetch_object($res) : null;
         if (!$row) throw new InternalTaskAccessException('Task access denied.');
         $asset = get_object_vars($row);
-        $task = array('entity'=>(int)$asset['task_entity'],'status'=>$asset['task_status'],'date_archived'=>$asset['task_archived'],'fk_user_assign'=>$asset['fk_user_assign'],'fk_usergroup'=>$asset['fk_usergroup']);
+        $task = $this->tasks->requireReadableTask((int)$asset['fk_task']);
         if ($task['status'] === 'deleted' || !$this->auth->canUseTaskFiles($task, false, $history)) throw new InternalTaskAccessException('Task access denied.');
         if (!$history && $asset['status'] !== 'active') throw new InternalTaskAccessException('Task access denied.');
         if ($history && !in_array($asset['status'], array('active','superseded','archived'), true)) throw new InternalTaskAccessException('Task access denied.');
@@ -168,10 +171,11 @@ class InternalTaskAssetService
         $extension = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         $size = filesize($path);
         if (!$size) throw new RuntimeException('Empty files are not allowed.');
+        if ($size > self::MAX_FILE_BYTES) throw new LengthException('Task file exceeds 200 MB.');
         $mime = (string)(new finfo(FILEINFO_MIME_TYPE))->file($path);
         $images = array('jpg'=>'image/jpeg','jpeg'=>'image/jpeg','png'=>'image/png','webp'=>'image/webp');
         if (isset($images[$extension])) {
-            if ($size > 10*1024*1024 || $mime !== $images[$extension]) throw new RuntimeException('Invalid image file.');
+            if ($mime !== $images[$extension]) throw new RuntimeException('Invalid image file.');
             $info = @getimagesize($path);
             if (!$info || $info[0] > 10000 || $info[1] > 10000 || $info[0]*$info[1] > 25000000) throw new RuntimeException('Image dimensions exceed the limit.');
             $normalized = dirname($path).'/'.bin2hex(random_bytes(20)).'.'.$extension;
@@ -192,29 +196,15 @@ class InternalTaskAssetService
             $mime = $images[$extension];
             $type = 'image';
         } elseif ($extension === 'pdf') {
-            if ($size > 50*1024*1024 || $mime !== 'application/pdf') throw new RuntimeException('Invalid PDF file.');
-            $head = file_get_contents($path,false,null,0,1024);
-            $tail = file_get_contents($path,false,null,max(0,$size-2048),2048);
-            $content = file_get_contents($path);
-            $decodedNames = preg_replace_callback('/#([0-9A-Fa-f]{2})/', function ($match) { return chr(hexdec($match[1])); }, (string) $content);
-            $activePdfPattern = '#(<\?php|<script|<html|javascript:|/JavaScript|/JS\b|/Launch|/EmbeddedFile|/OpenAction|/AA\b|/RichMedia|/SubmitForm|/ImportData)#i';
-            $filterOccurrences=preg_match_all('#/Filter\b#',(string)$decodedNames,$ignoredFilterOccurrences);
-            $parsedFilters=preg_match_all('#/Filter\s*(/\w+|\[[^\]]+\]).*?stream(?:\r\n|\n|\r)(.*?)(\r\n|\n|\r)endstream#s',(string)$content,$streams,PREG_SET_ORDER);
-            if($filterOccurrences!==$parsedFilters)throw new RuntimeException('Unsupported PDF filter reference.');
-            if ($parsedFilters) {
-                foreach($streams as $stream){$filters=array();preg_match_all('#/([A-Za-z0-9]+)#',$stream[1],$filterNames);$filters=$filterNames[1];if(count($filters)!==1)throw new RuntimeException('Chained PDF stream filters are not allowed.');$filter=$filters[0];$streamBody=$stream[2];if(preg_match('#/Length\s+(\d+)\b.*?stream#s',$stream[0],$lengthMatch)){$declaredLength=(int)$lengthMatch[1];$capturedLength=strlen($streamBody);if($declaredLength<$capturedLength){$extra=substr($streamBody,$declaredLength);if(trim($extra,"\r\n\t ")!=='')throw new RuntimeException('PDF stream length mismatch.');$streamBody=substr($streamBody,0,$declaredLength);}elseif($declaredLength>$capturedLength){$missing=$declaredLength-$capturedLength;if($missing>strlen($stream[3]))throw new RuntimeException('PDF stream length mismatch.');$streamBody.=substr($stream[3],0,$missing);}}if($filter==='FlateDecode'){$inflated=@gzuncompress($streamBody,10*1024*1024);if($inflated===false)$inflated=@gzinflate($streamBody,10*1024*1024);if($inflated===false)throw new RuntimeException('Unsupported compressed PDF stream.');$inflatedNames=preg_replace_callback('/#([0-9A-Fa-f]{2})/',function($match){return chr(hexdec($match[1]));},$inflated);if(preg_match($activePdfPattern,$inflatedNames))throw new RuntimeException('Active compressed PDF content is not allowed.');}elseif(!in_array($filter,array('DCTDecode','JPXDecode','CCITTFaxDecode','JBIG2Decode'),true))throw new RuntimeException('Unsupported PDF stream filter.');}
-            }
-            $hasClassicXref = preg_match('/\bxref\s+\d+\s+\d+\s+/s',(string)$content) && preg_match('/\btrailer\s*<</s',(string)$content);
-            $hasXrefStream = preg_match('#/Type\s*/XRef\b#',(string)$decodedNames);
-            if (!preg_match('/^%PDF-1\.[0-7][\r\n]/',(string)$content) || !preg_match('/\d+\s+\d+\s+obj\b.*?endobj/s',(string)$content) || !preg_match('/startxref\s+\d+\s+%%EOF\s*$/s',(string)$content) || (!$hasClassicXref && !$hasXrefStream) || preg_match($activePdfPattern,(string)$decodedNames)) throw new RuntimeException('Invalid PDF content.');
+            if ($mime !== 'application/pdf') throw new RuntimeException('Invalid PDF file.');
+            InternalTaskFileValidator::pdf($path, $size);
             $type='document';
         } elseif (in_array($extension,array('docx','xlsx'),true)) {
-            if ($size > 50*1024*1024) throw new RuntimeException('Office file exceeds the limit.');
             $this->validateOoxml($path,$extension);
             $mime = $extension==='docx'?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
             $type='document';
         } elseif (in_array($extension,array('csv','txt'),true)) {
-            if ($size > 10*1024*1024 || !in_array($mime,array('text/plain','text/csv','application/csv'),true)) throw new RuntimeException('Invalid text file.');
+            if (!in_array($mime,array('text/plain','text/csv','application/csv'),true)) throw new RuntimeException('Invalid text file.');
             $sample=file_get_contents($path,false,null,0,min($size,1024*1024));
             if (strpos((string)$sample,"\0")!==false || (function_exists('mb_check_encoding') && !mb_check_encoding($sample,'UTF-8'))) throw new RuntimeException('Unsafe text encoding.');
             $mime=$extension==='csv'?'text/csv':'text/plain';$type='document';
@@ -246,41 +236,19 @@ class InternalTaskAssetService
             if (substr($name,-1)!=='/' && !preg_match('/\.(xml|rels|png|jpe?g|gif|bmp|tiff?|emf|wmf)$/i',$name)) {$zip->close();throw new RuntimeException('Unexpected Office package part.');}
             if(preg_match('#(^|/)(embeddings|activeX|customUI)(/|$)|vbaProject|oleObject|\.bin$#i',$name)){$zip->close();throw new RuntimeException('Active Office content is not allowed.');}
             if (preg_match('/\.(xml|rels)$/i',$name)) {
-                $xml = $zip->getFromIndex($i);
-                if ($xml === false || preg_match('/<!DOCTYPE|<!ENTITY/i',$xml)) {$zip->close();throw new RuntimeException('Unsafe Office XML.');}
-                $doc = new DOMDocument();
-                $previous = libxml_use_internal_errors(true);
-                $valid = $doc->loadXML($xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
-                libxml_clear_errors();
-                libxml_use_internal_errors($previous);
-                if (!$valid) {$zip->close();throw new RuntimeException('Invalid Office XML.');}
-                if (substr($name,-5)==='.rels') {
-                    foreach ($doc->getElementsByTagName('Relationship') as $relationship) {
-                        if (strtolower($relationship->getAttribute('TargetMode'))==='external') {$zip->close();throw new RuntimeException('External Office relationships are not allowed.');}
-                        $type = strtolower($relationship->getAttribute('Type'));
-                        if (strpos($type,'oleobject')!==false || strpos($type,'package')!==false || strpos($type,'attachedtemplate')!==false) {$zip->close();throw new RuntimeException('Embedded Office relationships are not allowed.');}
-                    }
-                }
+                try {InternalTaskFileValidator::officeXml($path, $name, $extension);}
+                catch (Throwable $e) {$zip->close(); throw $e;}
             }
         }
-        $contentTypes = $zip->getFromName('[Content_Types].xml');
-        $requiredPart = $extension==='docx'?'/word/document.xml':'/xl/workbook.xml';
-        $requiredType = $extension==='docx'?'wordprocessingml.document.main+xml':'spreadsheetml.sheet.main+xml';
-        $rootName = $extension==='docx'?'word/document.xml':'xl/workbook.xml';
-        $rootXml = $zip->getFromName($rootName);
         $zip->close();
-        if(!$hasContent||!$hasRoot||$contentTypes===false||$rootXml===false)throw new RuntimeException('Office content type mismatch.');
-        $typesDoc=new DOMDocument();$rootDoc=new DOMDocument();$previous=libxml_use_internal_errors(true);$typesValid=$typesDoc->loadXML($contentTypes,LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING);$rootValid=$rootDoc->loadXML($rootXml,LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING);libxml_clear_errors();libxml_use_internal_errors($previous);
-        if(!$typesValid||!$rootValid||!$typesDoc->documentElement||$typesDoc->documentElement->localName!=='Types'||$typesDoc->documentElement->namespaceURI!=='http://schemas.openxmlformats.org/package/2006/content-types')throw new RuntimeException('Office content type mismatch.');
-        $overrideValid=false;foreach($typesDoc->getElementsByTagNameNS('http://schemas.openxmlformats.org/package/2006/content-types','Override') as $override){if($override->getAttribute('PartName')===$requiredPart&&strpos($override->getAttribute('ContentType'),$requiredType)!==false)$overrideValid=true;}
-        $expectedRoot=$extension==='docx'?'document':'workbook';$expectedNamespace=$extension==='docx'?'http://schemas.openxmlformats.org/wordprocessingml/2006/main':'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
-        if(!$overrideValid||!$rootDoc->documentElement||$rootDoc->documentElement->localName!==$expectedRoot||$rootDoc->documentElement->namespaceURI!==$expectedNamespace)throw new RuntimeException('Office root part mismatch.');
+        if (!$hasContent || !$hasRoot) throw new RuntimeException('Office content type mismatch.');
     }
 
     private function assertUpload(array $file)
     {
+        if (isset($file['error']) && in_array((int)$file['error'], array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) throw new LengthException('Upload exceeds server limit.');
         if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name']) || !isset($file['error']) || (int)$file['error']!==UPLOAD_ERR_OK) throw new RuntimeException('No valid uploaded file.');
-        if ((int)$file['size']<=0 || (int)$file['size']>50*1024*1024) throw new RuntimeException('File exceeds the allowed size.');
+        if ((int)$file['size']<=0 || (int)$file['size']>self::MAX_FILE_BYTES) throw new LengthException('Task file exceeds 200 MB.');
     }
 
     private function activeQuota($taskId)

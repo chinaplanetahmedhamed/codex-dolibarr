@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__.'/InternalTaskWorkspaceService.class.php';
+require_once __DIR__.'/InternalTaskBoardPolicy.class.php';
 
 class InternalTaskAccessException extends RuntimeException
 {
@@ -15,6 +17,12 @@ class InternalTaskAuthorizationService
 
     /** @var int */
     private $entity;
+
+    private $customerWorkspaceScope;
+    private function workspaceScope() {
+        if(!$this->customerWorkspaceScope)$this->customerWorkspaceScope=new InternalTaskWorkspaceService($this->db,$this->actor,$this->entity);
+        return $this->customerWorkspaceScope;
+    }
 
     public function __construct($db, $actor, $entity)
     {
@@ -81,6 +89,7 @@ class InternalTaskAuthorizationService
             $views[] = 'unassigned';
             $views[] = 'archive';
         }
+        if ($this->hasRight('task_read_own')) $views[] = 'archive';
         if ($this->isAdministrator()) {
             $views[] = 'unclassified';
             $views[] = 'grants';
@@ -103,6 +112,9 @@ class InternalTaskAuthorizationService
     {
         if (!$this->taskEntityValid($task) || (string) $task['status'] === 'deleted') return false;
         if ($this->isAdministrator()) return true;
+        if (!$this->canOpenBoard()) return false;
+        $boardAccess=(new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid']);
+        if ($boardAccess!==null) return $boardAccess;
         if ($this->isOwnTask($task) && $this->hasRight('task_read_own')) return true;
         return $this->hasRight('task_manage_team') && $this->hasTeamGrant((int) $task['fk_usergroup']);
     }
@@ -110,6 +122,7 @@ class InternalTaskAuthorizationService
     public function canUpdateOwnTask(array $task)
     {
         return $this->canReadTask($task)
+            && ((new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid'],true)!==false)
             && $this->isOwnTask($task)
             && $this->hasRight('task_read_own')
             && $this->hasRight('task_update_own')
@@ -119,15 +132,33 @@ class InternalTaskAuthorizationService
 
     public function canManageTask(array $task)
     {
-        if (!$this->taskEntityValid($task) || (string) $task['status'] === 'deleted') return false;
+        if (!$this->canReadTask($task)) return false;
         if ($this->isAdministrator()) return true;
+        if ((new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid'],true)===false) return false;
         return $this->hasRight('task_manage_team') && $this->hasTeamGrant((int) $task['fk_usergroup']);
+    }
+
+    public function canCreateOwnTask($teamId)
+    {
+        return $this->hasRight('task_read_own') && $this->hasRight('task_update_own')
+            && $this->isActiveTeamMember($this->actorId(), (int) $teamId);
+    }
+
+    public function canEditOwnInstructions(array $task)
+    {
+        return $this->canUpdateOwnTask($task)
+            && (int) $task['fk_user_creat'] === $this->actorId()
+            && empty($task['fk_operation']);
     }
 
     public function canUseTaskFiles(array $task, $write = false, $history = false)
     {
         if (!$this->taskEntityValid($task) || (string) $task['status'] === 'deleted' || !$this->hasRight('task_upload_own')) return false;
         $scoped = false;
+        $boardAccess=(new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid'],$write);
+        if ($boardAccess!==null && !$this->isAdministrator()) {
+            return $boardAccess && (!$write || (empty($task['date_archived']) && $this->canEditTask($task))) && (!$history || $this->canManageTask($task));
+        }
         if ($this->isAdministrator()) $scoped = true;
         elseif ($this->isOwnTask($task) && $this->hasRight('task_read_own')) $scoped = true;
         elseif ($this->hasRight('task_manage_team') && $this->hasTeamGrant((int) $task['fk_usergroup'])) $scoped = true;
@@ -140,9 +171,50 @@ class InternalTaskAuthorizationService
 
     public function canArchiveTask(array $task)
     {
-        if (!$this->taskEntityValid($task) || !$this->hasRight('task_archive')) return false;
+        if (!$this->canReadTask($task) || !$this->hasRight('task_archive')) return false;
+        if (!$this->isAdministrator() && (new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid'],true)===false) return false;
         if ($this->isAdministrator()) return true;
         return $this->hasRight('task_manage_team') && $this->hasTeamGrant((int) $task['fk_usergroup']);
+    }
+
+    public function canControlTask(array $task)
+    {
+        return $this->canReadTask($task) && ((new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid'],true)!==false) && ($this->canManageTask($task)
+            || ($this->isOwnTask($task) && $this->hasRight('task_update_own')
+                && (int)$task['fk_user_creat'] === $this->actorId() && empty($task['fk_operation'])));
+    }
+
+    public function canEditTask(array $task)
+    {
+        if (!$this->canReadTask($task) || !empty($task['date_archived'])) return false;
+        if ($this->isAdministrator()) return true;
+        $access=(new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid'],true);
+        if ($access!==null) return $access && ($this->hasRight('task_update_own') || $this->hasRight('task_manage_team'));
+        return $this->canControlTask($task);
+    }
+
+    public function canRestoreTrash(array $task)
+    {
+        if ((string)$task['status'] !== 'deleted') return false;
+        $original=$task; $original['status']='cancelled';
+        return $this->canControlTask($original) && ($this->canManageTask($original)
+            || (int)$task['fk_user_modif'] === $this->actorId());
+    }
+
+    public function canCancelTask(array $task)
+    {
+        return empty($task['date_archived'])
+            && in_array((string)$task['status'],array('todo','in_progress','waiting','review'),true)
+            && $this->canControlTask($task);
+    }
+
+    public function canRestoreCancelledTask(array $task)
+    {
+        if (empty($task['date_archived']) || (string)$task['status'] !== 'cancelled') return false;
+        if ($this->canManageTask($task)) return true;
+        return $this->canReadTask($task) && ((new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->access($task['rowid'],true)!==false) && $this->isOwnTask($task) && $this->hasRight('task_update_own')
+            && (int)$task['fk_user_creat'] === $this->actorId() && empty($task['fk_operation'])
+            && (int)$task['fk_user_modif'] === $this->actorId();
     }
 
     public function canDeleteTask(array $task)
@@ -168,16 +240,40 @@ class InternalTaskAuthorizationService
         $teamId = (int) $teamId;
         if ($userId <= 0 || $teamId <= 0) return false;
         $sql = 'SELECT u.rowid FROM '.MAIN_DB_PREFIX.'user u';
-        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity=u.entity';
+        $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user gu ON gu.fk_user=u.rowid AND gu.entity='.$this->entity;
         $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
-        $sql .= ' WHERE u.rowid='.$userId.' AND u.entity='.$this->entity.' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0';
+        $sql .= ' WHERE u.rowid='.$userId.' AND (u.entity='.$this->entity.' OR (u.entity=0 AND u.admin=1)) AND u.statut=1 AND COALESCE(u.fk_soc,0)=0';
         $sql .= ' AND g.rowid='.$teamId.' AND g.entity='.$this->entity.' LIMIT 1';
         $res = $this->db->query($sql);
         return $res && (bool) $this->db->fetch_object($res);
     }
 
+    /** View an employee's personal layout within the existing management scope. */
+    public function canViewPersonalBoard($userId)
+    {
+        $userId = (int)$userId;
+        if ($userId <= 0 || !$this->canOpenBoard()) return false;
+        if ($userId === $this->actorId()) return true;
+        if (!$this->isAdministrator() && !$this->hasRight('task_manage_team')) return false;
+        $sql = 'SELECT u.rowid FROM '.MAIN_DB_PREFIX.'user u WHERE u.rowid='.$userId;
+        $sql .= ' AND u.statut=1 AND COALESCE(u.fk_soc,0)=0 AND (u.entity='.$this->entity.' OR (u.entity=0 AND u.admin=1))';
+        if (!$this->isAdministrator()) {
+            $sql .= ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'usergroup_user gu';
+            $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'usergroup g ON g.rowid=gu.fk_usergroup AND g.entity=gu.entity';
+            $sql .= ' INNER JOIN '.MAIN_DB_PREFIX.'cpo_task_team_manager tm ON tm.fk_usergroup=g.rowid AND tm.entity=g.entity';
+            $sql .= ' WHERE gu.entity='.$this->entity.' AND gu.fk_user=u.rowid AND tm.fk_user='.$this->actorId().' AND tm.status=1)';
+        }
+        $res = $this->db->query($sql.' LIMIT 1');
+        return $res && (bool)$this->db->fetch_object($res);
+    }
+
     /** Return a SQL predicate containing only server-owned integers. */
     public function visibilitySql($alias, $view)
+    {
+        return '('.$this->workspaceLegacyVisibilitySql($alias,$view).') AND ('.($this->workspaceScope())->taskScopeSql($alias).')';
+    }
+
+    private function workspaceLegacyVisibilitySql($alias, $view)
     {
         if (!$this->canOpenBoard()) throw new InternalTaskAccessException('Task access denied.');
         $alias = preg_replace('/[^a-z0-9_]/i', '', (string) $alias);
@@ -186,13 +282,13 @@ class InternalTaskAuthorizationService
         $team = $this->teamGrantSql($alias);
         $admin = $this->isAdministrator();
 
-        if ($view === 'my') return $own;
-        if ($view === 'team') return $admin ? $alias.'.fk_usergroup IS NOT NULL' : $team;
-        if ($view === 'unassigned') return $alias.'.fk_user_assign IS NULL AND '.($admin ? $alias.'.fk_usergroup IS NOT NULL' : $team);
+        if ($view === 'my') return $own.' AND '.$this->readableSql($alias);
+        if ($view === 'team') return ($admin ? $alias.'.fk_usergroup IS NOT NULL' : $team).' AND '.$this->readableSql($alias);
+        if ($view === 'unassigned') return $alias.'.fk_user_assign IS NULL AND '.($admin ? $alias.'.fk_usergroup IS NOT NULL' : $team).' AND '.$this->readableSql($alias);
         if ($view === 'all') return $admin ? '1=1' : '1=0';
         if ($view === 'unclassified') return $admin ? $alias.'.fk_usergroup IS NULL' : '1=0';
         if ($view === 'archive') {
-            $scope = $admin ? '1=1' : '(('.$own.') OR ('.$team.'))';
+            $scope = $this->readableSql($alias);
             return $scope.' AND ('.$alias.'.date_archived IS NOT NULL OR '.$alias.".status='cancelled')";
         }
         return '1=0';
@@ -202,11 +298,12 @@ class InternalTaskAuthorizationService
     {
         if (!$this->canOpenBoard()) return '1=0';
         $alias = preg_replace('/[^a-z0-9_]/i', '', (string) $alias);
-        if ($this->isAdministrator()) return '1=1';
+        if ($this->isAdministrator()) return ($this->workspaceScope())->taskScopeSql($alias);
         $parts = array();
         if ($this->hasRight('task_read_own')) $parts[] = '('.$this->ownSql($alias).')';
         if ($this->hasRight('task_manage_team')) $parts[] = '('.$this->teamGrantSql($alias).')';
-        return $parts ? '('.implode(' OR ', $parts).')' : '1=0';
+        $legacy=$parts ? '('.implode(' OR ', $parts).')' : '1=0';
+        return '('.(new InternalTaskBoardPolicy($this->db,$this->actorId(),$this->entity))->readableSql($alias,$legacy).') AND ('.($this->workspaceScope())->taskScopeSql($alias).')';
     }
 
     public function requireBoard()
@@ -221,7 +318,7 @@ class InternalTaskAuthorizationService
 
     private function taskEntityValid(array $task)
     {
-        return $this->isInternalActive() && isset($task['entity']) && (int) $task['entity'] === $this->entity;
+        return $this->isInternalActive() && isset($task['entity']) && (int) $task['entity'] === $this->entity && ($this->workspaceScope())->taskAllowed($task['rowid']);
     }
 
     private function isOwnTask(array $task)
@@ -238,9 +335,9 @@ class InternalTaskAuthorizationService
         return $alias.'.fk_user_assign='.$userId
             .' AND '.$alias.'.fk_usergroup IS NOT NULL'
             .' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'user cpo_ou'
-            .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user cpo_ogu ON cpo_ogu.fk_user=cpo_ou.rowid AND cpo_ogu.entity=cpo_ou.entity'
+            .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup_user cpo_ogu ON cpo_ogu.fk_user=cpo_ou.rowid AND cpo_ogu.entity='.$this->entity
             .' INNER JOIN '.MAIN_DB_PREFIX.'usergroup cpo_og ON cpo_og.rowid=cpo_ogu.fk_usergroup AND cpo_og.entity=cpo_ogu.entity'
-            .' WHERE cpo_ou.rowid='.$userId.' AND cpo_ou.entity='.$this->entity.' AND cpo_ou.statut=1 AND COALESCE(cpo_ou.fk_soc,0)=0'
+            .' WHERE cpo_ou.rowid='.$userId.' AND (cpo_ou.entity='.$this->entity.' OR (cpo_ou.entity=0 AND cpo_ou.admin=1)) AND cpo_ou.statut=1 AND COALESCE(cpo_ou.fk_soc,0)=0'
             .' AND cpo_ogu.fk_usergroup='.$alias.'.fk_usergroup)';
     }
 

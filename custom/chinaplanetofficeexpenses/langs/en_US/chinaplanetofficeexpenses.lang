@@ -1,0 +1,44 @@
+OfficeExpenses=Office Expenses
+OfficeExpensesMenuAdded=Office Expenses was added to the Dolibarr menu.
+OfficeExpensesMenuAlreadyPresent=Office Expenses is already in the Dolibarr menu.
+
+OfficeExpensesDraftReturns=Draft advance returns
+OfficeExpensesDraftSummaryHelp=Filtered draft requests only; these totals are not a staff balance or proof of payment.
+
+OfficeExpensesBeforeSaving=Before saving
+OfficeExpensesDraftOnlyReview=Save a draft request only. Approval and financial posting remain separate.
+OfficeExpensesSavingDraft=Saving draft…
+
+OfficeExpensesFlowTitle=Request status and next step
+OfficeExpensesFlowStatus=Recorded status
+OfficeExpensesFlowNextActor=Who acts next
+OfficeExpensesFlowEntryTitle=Employee entry draft
+OfficeExpensesFlowEntryHelp=This page saves an entry draft only. No linked approval status is available here. Ask the request preparer to review its identity in the existing branch workspace; submission, approval or payment cannot be inferred.
+OfficeExpensesFlowPreparer=Authorized branch request preparer
+OfficeExpensesFlowApprover=Authorized branch approver
+OfficeExpensesFlowExecutor=Authorized finance executor
+OfficeExpensesFlowReviewer=Authorized financial reviewer
+OfficeExpensesFlowRecordManager=Authorized record manager
+OfficeExpensesFlowDraft=Draft · not submitted
+OfficeExpensesFlowSubmitted=Submitted for approval
+OfficeExpensesFlowApproved=Approved · unpaid
+OfficeExpensesFlowRejected=Returned for correction
+OfficeExpensesFlowPosted=Posted
+OfficeExpensesFlowReversed=Reversed
+OfficeExpensesFlowArchived=Archived
+OfficeExpensesFlowDraftHelp=Review the request and evidence, then use existing preparation controls if permitted. Saving a draft does not submit it for approval.
+OfficeExpensesFlowSubmittedHelp=The authorized approver reviews this request and may approve or return it for correction. Submission is not approval or payment.
+OfficeExpensesFlowApprovedHelp=Approval alone is unpaid. The authorized finance executor uses the existing execution controls.
+OfficeExpensesFlowRejectedHelp=Review the reason, correct through the existing Edit action if permitted, then prepare the request for approval again. Saving edits does not resubmit or approve it.
+OfficeExpensesFlowPostedHelp=The existing record is posted and editing is locked. Further changes use the existing authorized review or reversal controls.
+OfficeExpensesFlowReversedHelp=The original and its linked reversal remain in history. Ask the authorized financial reviewer about any next step.
+OfficeExpensesFlowArchivedHelp=The record is archived. The existing restore action and permission are required before editing.
+OfficeExpensesFlowReason=Current return reason
+OfficeExpensesFlowReasonMissing=No current reason is attached; check revision history.
+OfficeExpensesFlowYourApproval=Your current approval permission allows review through the existing controls.
+OfficeExpensesFlowYourPosting=Your current posting permission allows execution through the existing approved action.
+OfficeExpensesFlowDisabled=Payments remain disabled. The authorized finance administrator reviews existing settings; this notice does not change request status.
+OfficeExpensesFlowUnknown=Status unavailable; reopen the record within your authorized scope.
+OfficeExpensesFlowEgypt=Egypt
+OfficeExpensesFlowChina=China
+OfficeExpensesFlowRevision=Record revision

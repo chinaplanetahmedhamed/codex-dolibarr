@@ -1,0 +1,44 @@
+OfficeExpenses=مصروفات المكتب
+OfficeExpensesMenuAdded=تمت إضافة رابط مصروفات المكتب إلى قائمة دوليبار.
+OfficeExpensesMenuAlreadyPresent=رابط مصروفات المكتب موجود بالفعل في قائمة دوليبار.
+
+OfficeExpensesDraftReturns=مسودات مرتجعات العهد
+OfficeExpensesDraftSummaryHelp=طلبات مسودة حسب التصفية فقط؛ هذه الإجماليات لا تمثل رصيد موظف أو إثبات دفع.
+
+OfficeExpensesBeforeSaving=راجع قبل الحفظ
+OfficeExpensesDraftOnlyReview=الحفظ ينشئ طلبًا مسودة فقط. الموافقة والتسجيل المالي خطوتان منفصلتان.
+OfficeExpensesSavingDraft=جارٍ حفظ المسودة…
+
+OfficeExpensesFlowTitle=حالة الطلب والخطوة التالية
+OfficeExpensesFlowStatus=الحالة المسجلة
+OfficeExpensesFlowNextActor=الدور المطلوب منه التصرف
+OfficeExpensesFlowEntryTitle=مسودة إدخال الموظف
+OfficeExpensesFlowEntryHelp=هذه الصفحة تحفظ مسودة فقط. لا توجد حالة موافقة مرتبطة بهذه المسودة هنا. اطلب من مُجهّز الطلب مراجعة الربط في مساحة الفرع القائمة؛ لا يُفترض أنها أُرسلت أو اعتُمدت أو دُفعت.
+OfficeExpensesFlowPreparer=مُجهّز الطلب المخوّل في الفرع
+OfficeExpensesFlowApprover=معتمد الطلبات المخوّل في الفرع
+OfficeExpensesFlowExecutor=منفذ العمليات المالية المخوّل
+OfficeExpensesFlowReviewer=المراجع المالي المخوّل
+OfficeExpensesFlowRecordManager=مسؤول السجل المخوّل
+OfficeExpensesFlowDraft=مسودة · لم تُرسل للاعتماد
+OfficeExpensesFlowSubmitted=أُرسل للاعتماد
+OfficeExpensesFlowApproved=معتمد · غير مدفوع
+OfficeExpensesFlowRejected=مُعاد للتصحيح
+OfficeExpensesFlowPosted=مسجل ومرحل ماليًا
+OfficeExpensesFlowReversed=معكوس ماليًا
+OfficeExpensesFlowArchived=مؤرشف
+OfficeExpensesFlowDraftHelp=راجع بيانات الطلب والإثبات، ثم استخدم إجراءات التجهيز الحالية إذا سمحت صلاحياتك. حفظ المسودة لا يعني إرسالها للاعتماد.
+OfficeExpensesFlowSubmittedHelp=ينتظر مراجعة المعتمد المخوّل ليعتمده أو يعيده للتصحيح. الإرسال لا يعني الموافقة أو الدفع.
+OfficeExpensesFlowApprovedHelp=الموافقة وحدها لا تعني الدفع. ينفذ المخوّل ماليًا الإجراء المعتمد من أدوات التنفيذ القائمة.
+OfficeExpensesFlowRejectedHelp=راجع سبب الإرجاع، وصحح من إجراء التعديل القائم إن كانت لديك صلاحية، ثم جهّز الطلب للاعتماد مجددًا. الحفظ لا يعيد الإرسال ولا يمنح الموافقة.
+OfficeExpensesFlowPostedHelp=السجل الحالي مرحل. التعديل مقفل؛ أي تغيير لاحق يمر بالمراجعة أو العكس المالي المصرح به في الأدوات القائمة.
+OfficeExpensesFlowReversedHelp=تبقى العملية الأصلية والعكس المرتبط بها في السجل. راجع المخوّل ماليًا بشأن الخطوة التالية.
+OfficeExpensesFlowArchivedHelp=السجل مؤرشف. يلزم إجراء الاستعادة القائم وصلاحيته قبل التعديل.
+OfficeExpensesFlowReason=سبب الإرجاع الحالي
+OfficeExpensesFlowReasonMissing=لا يوجد سبب حالي مرفق؛ راجع سجل التعديلات.
+OfficeExpensesFlowYourApproval=صلاحية الاعتماد الحالية تتيح لك مراجعة الطلب عبر الإجراءات القائمة.
+OfficeExpensesFlowYourPosting=صلاحية التنفيذ الحالية تتيح لك تنفيذ الطلب المعتمد عبر الإجراء القائم.
+OfficeExpensesFlowDisabled=الدفع متوقف. يراجع مسؤول المالية المخوّل الإعدادات القائمة؛ هذا التنبيه لا يغير حالة الطلب.
+OfficeExpensesFlowUnknown=الحالة غير متاحة؛ أعد فتح السجل المصرح لك به.
+OfficeExpensesFlowEgypt=مصر
+OfficeExpensesFlowChina=الصين
+OfficeExpensesFlowRevision=نسخة السجل

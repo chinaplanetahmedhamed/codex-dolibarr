@@ -1,0 +1,10 @@
+{
+  "version": "m119_office_expenses_workspace_v1",
+  "requires": {
+    "m119_office_expenses_drafts_v1": "a88a40ae71abc63fa836036488b51d3edef72645e349f396a1ed3a4d4aeef88b"
+  },
+  "files": {
+    "001_documents.sql": "2fef634a4677339897a75d7e74d95b49c94e53ce97f4572dc7d2941f5f3d66a6",
+    "002_audit.sql": "db5af87b2f56c37ae7eedb062754915369e1ca24772e04681ddf5c45a3d24d32"
+  }
+}

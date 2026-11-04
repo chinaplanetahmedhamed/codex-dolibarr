@@ -1,0 +1,11 @@
+.cpd-workspace { max-width: 1100px; }
+.cpd-context:empty { display: none; }
+.cpd-context { padding: 0.25rem 1rem; border-inline-start: 3px solid currentColor; }
+.cpd-templates { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.75rem; list-style: none; padding: 0; }
+.cpd-templates li { border: 1px solid #aaa6; border-radius: 4px; padding: 1rem; }
+.cpd-workspace .butAction { display: inline-block; margin-inline: 0; white-space: normal; }
+@media (max-width: 480px) { .cpd-templates { grid-template-columns: 1fr; } }
+
+.cpd-select { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-block: 0.75rem; }
+.cpd-select label { min-width: 6rem; }
+.cpd-select select { max-width: 100%; }

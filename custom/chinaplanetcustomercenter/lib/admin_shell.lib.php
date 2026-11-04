@@ -36,11 +36,12 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
     function cpcc_admin_shell_navigation($active = '', $context = array())
     {
         global $user;
+        $taskOnly = empty($user->admin) && empty($user->socid) && $user->hasRight('chinaplanetoperations', 'task_read_own') && !$user->hasRight('chinaplanetoperations', 'read');
         cpcc_ui_assets();
         cpcc_ui_language_controls();
         // A stable home destination, independent of browser history or customer context.
-        $onToday = basename($_SERVER['SCRIPT_NAME'] ?? '') === 'workspace.php' && in_array(GETPOST('view', 'aZ09'), array('', 'manager'), true);
-        if (!$onToday && !empty($user->id) && empty($user->socid) && (!empty($user->admin) || $user->hasRight('chinaplanetoperations', 'read'))) {
+        $onToday = basename($_SERVER['SCRIPT_NAME'] ?? '') === 'workspace.php' && in_array(GETPOST('view', 'aZ09'), array('', 'my', 'manager'), true);
+        if (!$onToday && !empty($user->id) && empty($user->socid) && (!empty($user->admin) || $taskOnly || $user->hasRight('chinaplanetoperations', 'read'))) {
             print '<a class="cpad-mobile-home" href="'.dol_escape_htmltag(cpcc_admin_shell_url('/chinaplanetoperations/workspace.php')).'"><span class="fas fa-home" aria-hidden="true"></span> '.dol_escape_htmltag(cpcc_ui_t('UIBackToToday')).'</a>';
         }
         $items = array(
@@ -62,6 +63,16 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
             'work'=>array('fa-briefcase', cpcc_ui_t('UIWork00040'), array('tasks', 'sop')),
             'records'=>array('fa-folder-open', cpcc_ui_t('UIMore4bab2'), array('dashboard', 'documents', 'reports')),
         );
+
+        if ($taskOnly) {
+            $primaryKeys = array('workspace', 'tasks'); $groups = array();
+            $items['tasks'][2] = cpcc_ui_t('UIMyTasks');
+            $items['workspace'][2] = $items['workspace'][3] = cpcc_ui_t('UIMyDay');
+        }
+        if (function_exists('getDolGlobalInt') && getDolGlobalInt('CPO_BOARDS_ENABLED')) {
+            $items['tasks'][0] = '/chinaplanetoperations/tasks/boards.php';
+            $items['tasks'][2] = cpcc_ui_t('UIBoards');
+        }
 
         // Older shipping pages still pass their former section key. Keep those
         // calls compatible while presenting one clear Shipping Center entry.
@@ -103,8 +114,10 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
         }
         $newShipmentUrl = cpcc_admin_shell_url('/chinaplanetlogistics/card.php', $context);
         $newShipmentUrl .= (strpos($newShipmentUrl, '?') === false ? '?' : '&').'action=create';
+        if (!empty($user->admin) || $user->hasRight('chinaplanetlogistics', 'write')) {
         print '<a class="new" href="'.dol_escape_htmltag($newShipmentUrl).'">';
         print '<span class="fas fa-plus-circle"></span>' . dol_escape_htmltag(cpcc_ui_t('UINewShipmentd3340')) . '</a>';
+        }
         print '</div>';
         print '</nav>';
         print '<script>(function(){var nav=document.currentScript.previousElementSibling;if(!nav||!nav.matches("[data-cpad-mobile-nav]"))return;var button=nav.querySelector(".cpad-nav-toggle");if(!button)return;var groups=Array.prototype.slice.call(nav.querySelectorAll("[data-cpad-nav-group]"));function closeGroups(except){groups.forEach(function(group){if(group===except)return;group.classList.remove("is-open");var toggle=group.querySelector(".cpad-nav-group-toggle");if(toggle)toggle.setAttribute("aria-expanded","false");});}function closeNav(focus){nav.classList.remove("is-open");button.setAttribute("aria-expanded","false");closeGroups();if(focus)button.focus();}button.addEventListener("click",function(){var open=!nav.classList.contains("is-open");nav.classList.toggle("is-open",open);button.setAttribute("aria-expanded",open?"true":"false");});groups.forEach(function(group){var toggle=group.querySelector(".cpad-nav-group-toggle");if(!toggle)return;toggle.addEventListener("click",function(event){event.stopPropagation();var open=!group.classList.contains("is-open");closeGroups(group);group.classList.toggle("is-open",open);toggle.setAttribute("aria-expanded",open?"true":"false");});});nav.addEventListener("keydown",function(event){if(event.key==="Escape"){closeGroups();closeNav(true);}});nav.querySelectorAll(".cpad-nav-links a").forEach(function(link){link.addEventListener("click",function(){closeNav(false);});});document.addEventListener("click",function(event){if(!nav.contains(event.target))closeNav(false);else if(!event.target.closest("[data-cpad-nav-group]"))closeGroups();});})();</script>';
@@ -127,14 +140,15 @@ if (!function_exists('cpcc_admin_shell_header')) {
 if (!function_exists('cpcc_admin_shell_open')) {
     function cpcc_admin_shell_open($active, $title, $subtitle = '', $icon = 'fa-layer-group', $context = array())
     {
-        print '<div class="cpad-shell cpad-section-shell">';
+        $flat = !empty($context['flat']);
+        print '<div class="cpad-shell cpad-section-shell'.($flat?' cpad-flat-page':'').'">';
         cpcc_admin_shell_navigation($active, $context);
-        cpcc_admin_shell_header(true);
-        print '<section class="cpad-section-heading">';
+        if (!$flat) cpcc_admin_shell_header(true);
+        if (!$flat) { print '<section class="cpad-section-heading">';
         print '<div class="cpad-section-icon"><span class="fas '.dol_escape_htmltag($icon).'"></span></div>';
         print '<div><h2>'.dol_escape_htmltag($title).'</h2>';
         if ($subtitle !== '') print '<p>'.dol_escape_htmltag($subtitle).'</p>';
-        print '</div></section>';
+        print '</div></section>'; }
         print '<div class="cpad-section-content">';
     }
 }

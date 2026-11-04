@@ -26,6 +26,7 @@ class InternalTaskCollaborationService
     public function canComment(array $task)
     {
         return $this->auth->canReadTask($task)&&empty($task['date_archived'])
+            && ((new InternalTaskBoardPolicy($this->db,$this->auth->actorId(),$this->entity))->access($task['rowid'],true)!==false)
             && in_array((string)$task['status'],array('todo','in_progress','waiting','review','done'),true)
             && ($this->auth->isDolibarrAdministrator()||$this->auth->hasRight('task_comment'));
     }
@@ -33,13 +34,13 @@ class InternalTaskCollaborationService
     public function canChecklist(array $task)
     {
         return empty($task['date_archived'])&&in_array((string)$task['status'],array('todo','in_progress','waiting'),true)
-            && ($this->auth->isDolibarrAdministrator()||($this->auth->hasRight('task_checklist')&&($this->auth->canUpdateOwnTask($task)||$this->auth->canManageTask($task))));
+            && ($this->auth->isDolibarrAdministrator()||($this->auth->hasRight('task_checklist')&&($this->auth->canEditTask($task)||$this->auth->canUpdateOwnTask($task)||$this->auth->canManageTask($task))));
     }
 
     public function canAssignLabels(array $task)
     {
         return empty($task['date_archived'])&&in_array((string)$task['status'],array('todo','in_progress','waiting','review'),true)
-            && ($this->auth->isAdministrator()||$this->auth->canUpdateOwnTask($task)||$this->auth->canManageTask($task));
+            && ($this->auth->isAdministrator()||$this->auth->canEditTask($task)||$this->auth->canUpdateOwnTask($task)||$this->auth->canManageTask($task));
     }
 
     public function listComments($taskId,$cursorDate='',$cursorId=0,$limit=50)

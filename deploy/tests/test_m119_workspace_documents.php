@@ -1,0 +1,29 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__,2).'/custom/chinaplanetofficeexpenses/class/OfficeExpenseWorkspaceDocument.php';
+$passed=0;$failed=0;
+function wdtest($name,$f){global$passed,$failed;try{$f();$passed++;echo "PASS $name\n";}catch(Throwable$e){$failed++;fwrite(STDERR,"FAIL $name: ".$e->getMessage()."\n");}}
+function wdeq($a,$b){if($a!==$b)throw new RuntimeException(var_export([$a,$b],true));}
+function wdbad($f){try{$f();}catch(InvalidArgumentException$e){return;}throw new RuntimeException('Expected validation refusal.');}
+$d=new OfficeExpenseWorkspaceDocument(new OfficeExpenseMoney());
+$pay=['user_id'=>'7','month'=>'2026-11','base'=>'8000','bonus'=>'0','deduction'=>'0','loan_repayment'=>'4000','currency'=>'EGP','date'=>'2026-11-30','notes'=>''];
+wdtest('payroll preserves gross salary separately from loan reduction and net cash',function()use($d,$pay){$v=$d->validate('payroll','egypt',$pay);wdeq($v['gross'],'8000.00');wdeq($v['net'],'4000.00');wdeq($v['loan_repayment'],'4000.00');});
+wdtest('original currency precision uses exact strings including a decimal bonus',function()use($d,$pay){$v=$d->validate('payroll','china',array_replace($pay,['base'=>'1200.10','bonus'=>'0.20','loan_repayment'=>'0','currency'=>'CNY']));wdeq($v['gross'],'1200.30');wdeq($v['net'],'1200.30');});
+wdtest('negative net, floats, scientific notation and wrong branch currency are rejected',function()use($d,$pay){foreach([['base'=>'10','loan_repayment'=>'11'],['base'=>8000.0],['bonus'=>'1e2'],['currency'=>'CNY']]as$p)wdbad(fn()=>$d->validate('payroll','egypt',array_replace($pay,$p)));});
+wdtest('calendar date and salary month must both be real',function()use($d,$pay){foreach([['date'=>'2026-02-30'],['month'=>'2026-13'],['month'=>'2026-1']]as$p)wdbad(fn()=>$d->validate('payroll','egypt',array_replace($pay,$p)));});
+wdtest('identity status approval and calculated totals cannot be supplied by the client',function()use($d,$pay){foreach(['entity','owner_id','status','native_id','gross','net']as$key)wdbad(fn()=>$d->validate('payroll','egypt',$pay+[$key=>'1']));});
+wdtest('cash receipts have a payer, real date, method, exact positive original amount',function()use($d){$p=['amount'=>'0.10','currency'=>'EGP','date'=>'2026-11-02','payer'=>'SYNTHETIC payer','phone'=>'','method'=>'cash','purpose'=>'SYNTHETIC office funding','notes'=>''];$v=$d->validate('receipt','egypt',$p);wdeq($v['amount'],'0.10');foreach([['amount'=>'0'],['method'=>'other'],['payer'=>'']]as$x)wdbad(fn()=>$d->validate('receipt','egypt',array_replace($p,$x)));});
+wdtest('category inactive flag and allowlisted icon are normalized without accepting HTML attributes',function()use($d){$v=$d->validate('category','egypt',['name'=>'  Office supplies  ','icon'=>'folder','active'=>'0']);wdeq($v['name'],'Office supplies');wdeq($v['active'],false);wdbad(fn()=>$d->validate('category','egypt',['name'=>'Supplies','icon'=>'x" onclick="bad','active'=>'1']));});
+wdtest('employee salary profiles identify an existing native staff subject without storing passwords',function()use($d){$p=['user_id'=>'7','job'=>'Coordinator','phone'=>'','salary'=>'8000','currency'=>'EGP','hired_on'=>'2026-11-01','active'=>'1','notes'=>''];$v=$d->validate('employee','egypt',$p);wdeq($v['user_id'],7);wdeq($v['salary'],'8000.00');wdbad(fn()=>$d->validate('employee','egypt',$p+['password'=>'secret']));});
+wdtest('settings record branding and a native account reference without changing entity base currency',function()use($d){$v=$d->validate('settings','china',['name'=>'China Planet China','phone'=>'','currency'=>'CNY','account_id'=>'0']);wdeq($v['account_id'],0);wdbad(fn()=>$d->validate('settings','china',['name'=>'China Planet','phone'=>'','currency'=>'USD','account_id'=>'1']));});
+wdtest('payroll and profiles have stable uniqueness keys while independent vouchers do not collide',function()use($d,$pay){$v=$d->validate('payroll','egypt',$pay);wdeq($d->objectKey('payroll',$v,'a'),'payroll:7:2026-11');wdeq($d->objectKey('employee',['user_id'=>7],'a'),'employee:7');wdeq($d->objectKey('settings',[],'a'),'settings');wdeq($d->objectKey('receipt',[],'a'),'receipt:a');});
+wdtest('payroll computed gross cannot overflow the declared money bounds',function()use($d,$pay){wdbad(fn()=>$d->validate('payroll','egypt',array_replace($pay,['base'=>'999999999999.99','bonus'=>'0.01'])));});
+wdtest('multiline notes are accepted but other control characters are refused',function()use($d,$pay){$v=$d->validate('payroll','egypt',array_replace($pay,['notes'=>"Line one\r\nLine two"]));wdeq($v['notes'],"Line one\nLine two");wdbad(fn()=>$d->validate('payroll','egypt',array_replace($pay,['notes'=>"bad\0text"])));});
+wdtest('logos reject SVG executable data invalid base64 and oversized images',function(){foreach(['data:image/svg+xml;base64,'.base64_encode('<svg/>'),'data:image/png;base64,@@@','javascript:alert(1)']as$p)wdbad(fn()=>OfficeExpenseWorkspaceLogo::validate($p));wdbad(fn()=>OfficeExpenseWorkspaceLogo::fromBytes(str_repeat('x',131073)));$im=imagecreatetruecolor(3,2);ob_start();imagepng($im);$bytes=ob_get_clean();imagedestroy($im);$logo=OfficeExpenseWorkspaceLogo::fromBytes($bytes);wdeq(OfficeExpenseWorkspaceLogo::validate($logo),$logo);});
+wdtest('USD is independently available in Egypt and China while primary currencies remain branch-specific',function()use($d){
+    $p=['amount'=>'7.25','currency'=>'USD','date'=>'2026-11-02','source'=>'SYNTHETIC funding','purpose'=>'SYNTHETIC USD request','notes'=>''];
+    foreach(['egypt','china']as$office)wdeq($d->validate('deposit',$office,$p)['currency'],'USD');
+    wdbad(fn()=>$d->validate('deposit','egypt',array_replace($p,['currency'=>'CNY'])));
+    wdbad(fn()=>$d->validate('deposit','china',array_replace($p,['currency'=>'EGP'])));
+});
+echo "$passed passed, $failed failed\n";exit($failed?1:0);
