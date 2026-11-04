@@ -67,8 +67,8 @@ CPLShipmentFileDelete=Delete / Archive / حذف وأرشفة
 CPLShipmentFileArchiveConfirm=I confirm removing this file from active use and moving it to the private archive.
 CPLShipmentFileArchiveAction=Remove & archive
 CPLShipmentFileArchived=The shipment file was removed from active use and archived safely.
-CPCCPortfolioTransactionCutoff=Transaction cutoff
-CPCCPortfolioDiagnosticLimitations=This diagnostic view combines current statuses with records dated through the selected day. It is neither a complete historical balance nor today’s collectible balance.
+CPCCPortfolioTransactionCutoff=Statement date
+CPCCPortfolioDiagnosticLimitations=Current invoice-credit projection only; not a complete historical statement. Invoice lifecycle and credit application history are not reconstructed.
 CPCCPortfolioWalletUsdValuation=Invoice-credit balance (USD valuation)
 
 # M121 current managed funds presentation
@@ -99,3 +99,9 @@ CPCCFundsLegacyPaid=Allocated against obligations
 CPCCFundsEstimateCustomers=Customers with invoice-credit shortfalls
 
 CPCCFundsTemporarilyUnavailable=Financial data is temporarily unavailable. Reload this page to try again; no balance is confirmed.
+
+CPCCPortfolioHistoryUnavailable=Historical statement unavailable
+CPCCPortfolioFutureUnavailable=Future statement unavailable
+CPCCPortfolioInvalidDate=Invalid statement date
+CPCCPortfolioHistoryCoverage=The selected date cannot be verified from current invoice statuses and credit links. Historical totals and counts are unavailable, not zero. Select the current view to inspect current projections.
+CPCCPortfolioToday=Show current view

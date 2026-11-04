@@ -9,9 +9,6 @@ if (empty($user->id) || !empty($user->socid) || (!$user->admin && !$user->hasRig
     accessforbidden();
 }
 
-if (!cpcc_financial_schema_ready($db)) {
-    accessforbidden('Financial tables are not installed. Re-enable the module or run the module upgrade first.');
-}
 $langs->load('chinaplanetcustomercenter@chinaplanetcustomercenter');
 
 function cpad_portfolio_currency_text($summary, $field = 'amount')
@@ -31,12 +28,16 @@ function cpad_portfolio_currency_text($summary, $field = 'amount')
 }
 
 $currencyFallback = cpcc_financial_currency(!empty($conf->currency) ? $conf->currency : 'USD');
-$asOf = GETPOST('asof', 'alphanohtml');
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $asOf)) {
-    $asOf = date('Y-m-d');
+// Preserve raw input until strict calendar classification; sanitizing to an
+// empty string must not silently select today's financial view.
+$reportingDay = date('Y-m-d');
+$reportPeriod = cpcc_financial_report_period(GETPOST('asof', 'none', 1, null, null, 1, 1), $reportingDay);
+$asOf = $reportPeriod['date'] ?? '';
+$showCurrentManaged = $reportPeriod['can_show_current'];
+if ($showCurrentManaged && !cpcc_financial_schema_ready($db)) {
+    accessforbidden('Financial tables are not installed. Re-enable the module or run the module upgrade first.');
 }
 
-$showCurrentManaged = $asOf === date('Y-m-d');
 $summaryTemplate = cpcc_financial_empty_summary();
 $summaryFields = array_keys($summaryTemplate);
 
@@ -49,7 +50,7 @@ $totalUnpaidInvoices = 0;
 $totalOverdueInvoices = 0;
 $customers = array();
 $customerSql = "SELECT rowid, nom FROM ".MAIN_DB_PREFIX."societe WHERE entity IN (0,".(int) $conf->entity.") AND client IN (1,2,3) ORDER BY nom";
-$customerResult = $db->query($customerSql);
+$customerResult = $showCurrentManaged ? $db->query($customerSql) : false;
 if ($customerResult) {
     while ($customer = $db->fetch_object($customerResult)) {
         $customerId = (int) $customer->rowid;
@@ -131,14 +132,14 @@ usort($customers, function ($left, $right) {
 }
 );
 
-$globalUsd = cpcc_financial_total_usd($portfolioSummary);
+$globalUsd = $showCurrentManaged ? cpcc_financial_total_usd($portfolioSummary) : array('total'=>null,'missing'=>array());
 
 if (empty($customers)) {
     $customers = array();
 }
 
 llxHeader('', 'Financial Center', '', '', 0, 0, array(), array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
-cpcc_admin_shell_open('financial', 'Financial Center', 'Overview totals and per-customer funding status', 'fa-chart-pie', array());
+cpcc_admin_shell_open('financial', 'Financial Center', $showCurrentManaged ? 'Current invoice-credit projections and funding estimates' : $langs->trans('CPCCPortfolioHistoryUnavailable'), 'fa-chart-pie', array());
 ?>
 
 <div class="cpad-finance-portfolio-theme">
@@ -156,9 +157,18 @@ cpcc_admin_shell_open('financial', 'Financial Center', 'Overview totals and per-
     <button class="button" type="submit">Apply</button>
   </div>
 </form>
+<?php if (!$showCurrentManaged) {
+    $reasonKey = $reportPeriod['mode'] === 'invalid_date' ? 'CPCCPortfolioInvalidDate' : ($reportPeriod['mode'] === 'future_unavailable' ? 'CPCCPortfolioFutureUnavailable' : 'CPCCPortfolioHistoryUnavailable');
+    $historyDirection = isset($langs->defaultlang) && strpos(strtolower($langs->defaultlang), 'ar') === 0 ? 'rtl' : 'ltr';
+?>
+<section class="cpad-panel" role="status" dir="<?php echo $historyDirection; ?>" data-history-coverage="unavailable" data-history-reason="<?php echo dol_escape_htmltag($reportPeriod['mode']); ?>">
+  <h2><?php echo dol_escape_htmltag($langs->trans($reasonKey)); ?></h2>
+  <p><?php echo dol_escape_htmltag($langs->trans('CPCCPortfolioHistoryCoverage')); ?></p>
+  <a class="button" data-current-financial-view="1" href="<?php echo dol_escape_htmltag(dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php', 1)); ?>"><?php echo dol_escape_htmltag($langs->trans('CPCCPortfolioToday')); ?></a>
+</section>
+<?php } else { ?>
 <p class="cpad-footnote"><?php echo dol_escape_htmltag($langs->trans('CPCCPortfolioDiagnosticLimitations')); ?></p>
 <p class="cpad-footnote"><?php echo cpcc_ui_funds_label('CPCCFundsEstimateBasis'); ?></p>
-<?php if (!$showCurrentManaged) echo cpcc_ui_managed_funds(array(),array('asof'=>$asOf)); ?>
 
 <section class="cpad-kpis">
   <div class="cpad-kpi"><b><?php echo $totalCustomers; ?></b><span>Total Customers</span><small>customers with customer profile</small></div>
@@ -257,6 +267,7 @@ cpcc_admin_shell_open('financial', 'Financial Center', 'Overview totals and per-
     </table>
   </div>
 </section>
+<?php } ?>
 </div>
 
 <?php

@@ -14,7 +14,17 @@ function m121p_assert($condition, $message) {
 }
 function getDolGlobalInt($key) { return 0; }
 function getDolGlobalString($key) { return ''; }
-function GETPOST($key, $type) { global $scenario; return $key === 'asof' ? ($scenario==='historical'?'2000-01-01':'2026-11-03') : ''; }
+function GETPOST($key, $type, $method=0, $filter=null, $options=null, $noreplace=0, $nodefault=0) {
+    global $scenario;
+    if ($key !== 'asof') return '';
+    m121p_assert($type === 'none' && $method===1 && $noreplace===1 && $nodefault===1, 'Date classification must receive unnormalized GET without saved/default values');
+    if (in_array($scenario, array('historical','historical-ar','historical-escaped','historical-later-full','historical-later-partial','historical-ambiguous-credit'), true)) return '2000-01-01';
+    if ($scenario === 'future') return date('Y-m-d', strtotime('+1 day'));
+    if ($scenario === 'invalid-date') return '2026-02-31';
+    if ($scenario === 'tainted-date') return date('Y-m-d').'<script>';
+    if ($scenario === 'array-date') return array('2026-11-03');
+    return date('Y-m-d');
+}
 function dol_escape_htmltag($text) { return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'); }
 function cpcc_portal_money($amount) { return number_format($amount, 2, '.', ','); }
 function dol_buildpath($path, $absolute) { return $path; }
@@ -34,6 +44,7 @@ class M121PortfolioRows {
 }
 class M121PortfolioDb {
     public $pdo;
+    public $queries = array();
     public function __construct() {
         $this->pdo = new PDO('sqlite::memory:', null, null, array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION));
         foreach (array(
@@ -61,6 +72,7 @@ class M121PortfolioDb {
     }
     public function escape($value) { return str_replace("'", "''", $value); }
     public function query($sql) {
+        $this->queries[] = $sql;
         if (preg_match("/^SHOW TABLES LIKE '([a-zA-Z0-9_]+)'$/", $sql, $match)) {
             $statement = $this->pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?");
             $statement->execute(array($match[1]));
@@ -76,11 +88,12 @@ class M121PortfolioDb {
 }
 class M121PortfolioLangs {
     public $loaded = false;
+    public $defaultlang;
     private $values = array();
     private $language;
     private $escapeProbe;
     public function __construct($language, $escapeProbe) {
-        $this->language = $language; $this->escapeProbe = $escapeProbe;
+        $this->language = $language; $this->defaultlang = $language; $this->escapeProbe = $escapeProbe;
     }
     public function load($module) {
         m121p_assert($module === 'chinaplanetcustomercenter@chinaplanetcustomercenter', 'Native module language domain');
@@ -101,7 +114,7 @@ class M121PortfolioLangs {
     }
 }
 $scenario = isset($argv[1]) ? $argv[1] : 'mixed';
-$langs = new M121PortfolioLangs($scenario === 'arabic' ? 'ar_SA' : 'en_US', $scenario === 'escaped-label');
+$langs = new M121PortfolioLangs(in_array($scenario,array('arabic','historical-ar'),true) ? 'ar_SA' : 'en_US', in_array($scenario,array('escaped-label','historical-escaped'),true));
 $conf = (object) array('entity'=>2,'currency'=>'USD');
 $user = new class {
     public $id = 1;
@@ -126,12 +139,18 @@ if (!in_array($scenario, array('empty','external','no-right'), true)) {
     $db->entry(66, 25, 'USD', 'D'); $db->entry(66, 25, 'USD', 'C');
     $db->entry(66, 999, 'USD', 'D', array('status'=>0));
     // Real SQL must omit future, private, wrong-entity and inactive commitments.
-    $db->charge(11, 900000, 'USD', 'supplier', array('charge_date'=>'2026-11-04'));
+    $db->charge(11, 900000, 'USD', 'supplier', array('charge_date'=>date('Y-m-d',strtotime('+1 day'))));
     $db->charge(11, 800000, 'USD', 'supplier', array('entity'=>3));
     $db->charge(11, 700000, 'USD', 'supplier', array('customer_visible'=>0));
     $db->charge(11, 600000, 'USD', 'supplier', array('status'=>0));
     $db->insert('societe', array('rowid'=>100,'entity'=>3,'client'=>1,'nom'=>'Foreign entity'));
     $db->insert('societe', array('rowid'=>101,'entity'=>2,'client'=>0,'nom'=>'Not a customer'));
+}
+if(in_array($scenario,array('historical-later-full','historical-later-partial','historical-ambiguous-credit'),true)) {
+    $db->insert('facture',array('rowid'=>1,'ref'=>'HISTORY-PRIVATE-PROBE','entity'=>2,'fk_soc'=>11,'fk_projet'=>0,'datef'=>'1999-12-01','date_lim_reglement'=>'1999-12-31','multicurrency_code'=>'USD','total_ttc'=>100,'multicurrency_total_ttc'=>100,'fk_statut'=>$scenario==='historical-later-full'?2:1,'paye'=>$scenario==='historical-later-full'?1:0,'type'=>0));
+    $db->insert('paiement',array('rowid'=>1,'entity'=>2,'datep'=>'2000-02-01','statut'=>1));
+    $db->insert('paiement_facture',array('fk_paiement'=>1,'fk_facture'=>1,'amount'=>$scenario==='historical-later-full'?100:25,'multicurrency_amount'=>$scenario==='historical-later-full'?100:25,'multicurrency_code'=>'USD'));
+    if($scenario==='historical-ambiguous-credit')$db->insert('societe_remise_except',array('rowid'=>1,'entity'=>2,'fk_soc'=>11,'datec'=>'1999-11-01','amount_ttc'=>25,'multicurrency_amount_ttc'=>25,'multicurrency_code'=>'USD','fk_facture'=>1));
 }
 $root = dirname(__DIR__, 2);
 $temp = sys_get_temp_dir().'/m121-portfolio-'.bin2hex(random_bytes(6));
@@ -162,22 +181,32 @@ function m121p_kpi($xpath, $label) {
     return m121p_text($node->item(0));
 }
 $text = m121p_text($dom);
-if ($scenario==='historical') {
-    m121p_assert(CustomerFundsService::$reads===0, 'Past diagnostic must not read current managed positions');
-    m121p_assert(strpos($text,'Current managed funds are shown only for today')!==false, 'Past diagnostic explains missing current amounts');
-    echo 'M121 portfolio historical excludes current positions (actual page guard)'.PHP_EOL; exit(0);
+$unsupported = in_array($scenario,array('historical','historical-ar','historical-escaped','historical-later-full','historical-later-partial','historical-ambiguous-credit','future','invalid-date','tainted-date','array-date'),true);
+if ($unsupported) {
+    m121p_assert(CustomerFundsService::$reads===0, 'Unsupported date must not read current managed positions');
+    m121p_assert(count($db->queries)===0, 'Unsupported date must precede schema, customer, financial and FX reads');
+    m121p_assert($xpath->query('//*[@data-history-coverage="unavailable"]')->length===1,'Unsupported date shows explicit unavailable state');
+    m121p_assert($xpath->query('//*[contains(concat(" ",normalize-space(@class)," ")," cpad-kpi ")]')->length===0&&$xpath->query('//table')->length===0,'Unsupported balances/counts must not render zero KPIs or tables');
+    m121p_assert(strpos($text,'No customers found')===false,'Unknown must not look like empty portfolio');
+    m121p_assert($xpath->query('//a[@data-current-financial-view="1"]')->length===1,'Current-view navigation remains available');
+    $label=$scenario==='historical-ar'?'الكشف التاريخي غير متاح':(in_array($scenario,array('future'),true)?'Future statement unavailable':(in_array($scenario,array('invalid-date','tainted-date','array-date'),true)?'Invalid statement date':'Historical statement unavailable'));
+    m121p_assert(strpos($text,$label)!==false,'Localized unavailable reason absent');
+    if($scenario==='historical-escaped')m121p_assert($xpath->query('//img')->length===0&&strpos($text,'<img src=x onerror=alert(1)>')!==false,'History labels must be escaped');
+    if(getenv('M121_HISTORY_RENDER_DIR'))file_put_contents(getenv('M121_HISTORY_RENDER_DIR').'/'.$scenario.'.html',$html);
+    echo 'M121 portfolio '.$scenario.' unavailable without current/hybrid queries or totals'.PHP_EOL;exit(0);
 }
+
 m121p_assert($langs->loaded, 'Portfolio must load its native module language domain');
 if ($scenario === 'mixed') m121p_assert(m121p_kpi($xpath, 'Supplier Remaining') === 'EGP 10,050.00 · RMB 1,200.00 · USD 121.00', 'Supplier KPI must not mix currency units');
 $walletLabel = $scenario === 'arabic' ? 'رصيد ائتمان الفواتير (تقييم بالدولار الأمريكي)' : 'Invoice-credit balance (USD valuation)';
-$cutoffLabel = $scenario === 'arabic' ? 'تاريخ قطع الحركات' : 'Transaction cutoff';
+$cutoffLabel = $scenario === 'arabic' ? 'تاريخ الكشف' : 'Statement date';
 if ($scenario === 'escaped-label') $walletLabel .= ' <img src=x onerror=alert(1)>';
 m121p_assert(m121p_kpi($xpath, $walletLabel) !== '', 'Translated valuation label identifies invoice-credit balance');
 m121p_assert(strpos($text, $cutoffLabel) !== false, 'Translated cutoff control remains visible');
 if ($scenario === 'arabic') {
-    m121p_assert(strpos($text, 'ليس رصيدًا تاريخيًا كاملًا') !== false && strpos($text, 'ولا الرصيد القابل للتحصيل اليوم') !== false, 'Arabic diagnostic notice states both balance limitations');
+    m121p_assert(strpos($text, 'ليس كشفًا تاريخيًا كاملًا') !== false, 'Arabic diagnostic notice states both balance limitations');
 } else {
-    m121p_assert(stripos($text, 'neither a complete historical balance') !== false && stripos($text, 'nor today') !== false && stripos($text, 'collectible balance') !== false, 'English diagnostic notice states both balance limitations');
+    m121p_assert(stripos($text, 'current invoice-credit projection') !== false && stripos($text, 'not a complete historical statement') !== false, 'English diagnostic notice states both balance limitations');
 }
 if ($scenario === 'escaped-label') {
     m121p_assert($xpath->query('//img')->length === 0 && substr_count($text, '<img src=x onerror=alert(1)>') >= 3, 'All three translations are escaped without hiding their contents');
@@ -210,7 +239,7 @@ m121p_assert($xpath->query('//script')->length === 0, 'Customer name must not be
 m121p_assert(strpos($text, 'X<script>alert(1)</script> & "quoted"') !== false, 'Escaped customer name retains readable text');
 m121p_assert(strpos($text, 'Internal fixture supplier') === false, 'Supplier identities remain absent from the portfolio');
 m121p_assert(strpos($text, 'Foreign entity') === false && strpos($text, 'Not a customer') === false, 'Actual customer query preserves current scope');
-foreach ($scenario === 'mixed' ? array('empty','external','no-right','arabic','escaped-label','historical') : array() as $child) {
+foreach ($scenario === 'mixed' ? array('empty','external','no-right','arabic','escaped-label','historical','historical-ar','historical-escaped','historical-later-full','historical-later-partial','historical-ambiguous-credit','future','invalid-date','tainted-date','array-date') : array() as $child) {
     $process = proc_open(array(PHP_BINARY, __FILE__, $child), array(1=>array('pipe','w'),2=>array('pipe','w')), $pipes);
     m121p_assert(is_resource($process), 'Fixture subprocess starts');
     $out = stream_get_contents($pipes[1]); $err = stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]);

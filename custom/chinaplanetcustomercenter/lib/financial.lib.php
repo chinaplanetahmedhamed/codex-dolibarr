@@ -144,6 +144,28 @@ function cpcc_financial_invoice_amounts($netTotal, $directPaid, $appliedCredit)
 }
 
 /**
+ * Reporting eligibility only. Current rows cannot certify past invoice lifecycle,
+ * credit application or complete opening/closing balances. Never promote a date
+ * filter or an empty result into verified historical money/counts.
+ */
+function cpcc_financial_report_period($asOf, $today = null)
+{
+    $validDay = static function ($day) {
+        return is_string($day) && preg_match('/^(\d{4})-(\d{2})-(\d{2})\z/', $day, $parts)
+            && (int) $parts[1] >= 1000 && $day !== '9999-12-31'
+            && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
+    };
+    if ($today === null) $today = date('Y-m-d');
+    if (!$validDay($today)) throw new InvalidArgumentException('Invalid internal reporting day.');
+    $date = $asOf === '' || $asOf === null ? $today : $asOf;
+    $mode = !$validDay($date) ? 'invalid_date' : ($date === $today ? 'current' : ($date < $today ? 'historical_unavailable' : 'future_unavailable'));
+    return array('mode'=>$mode, 'date'=>$validDay($date) ? $date : null,
+        'can_show_current'=>$mode === 'current', 'historical_complete'=>false,
+        'historical_totals'=>null, 'time_basis'=>'application_calendar_day',
+        'reasons'=>$mode === 'current' ? array('current_eligibility_only') : array($mode, 'invoice_lifecycle_history_unverified', 'credit_application_history_unverified'));
+}
+
+/**
  * Inclusive named-day limit for stored DATE/DATETIME columns, without timezone conversion.
  * Empty cutoffs retain current mode; invalid nonempty dates must not broaden a read.
  */

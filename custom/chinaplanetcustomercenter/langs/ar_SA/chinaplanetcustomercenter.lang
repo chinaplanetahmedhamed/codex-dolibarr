@@ -67,8 +67,8 @@ CPLShipmentFileDelete=حذف وأرشفة / Delete / Archive
 CPLShipmentFileArchiveConfirm=أؤكد إزالة الملف من الاستخدام النشط ونقله إلى الأرشيف الخاص.
 CPLShipmentFileArchiveAction=إزالة وأرشفة
 CPLShipmentFileArchived=تمت إزالة ملف الشحنة من الاستخدام النشط وأرشفته بأمان.
-CPCCPortfolioTransactionCutoff=تاريخ قطع الحركات
-CPCCPortfolioDiagnosticLimitations=يجمع هذا العرض التشخيصي الحالات الحالية مع السجلات المؤرخة حتى اليوم المحدد. وهو ليس رصيدًا تاريخيًا كاملًا ولا الرصيد القابل للتحصيل اليوم.
+CPCCPortfolioTransactionCutoff=تاريخ الكشف
+CPCCPortfolioDiagnosticLimitations=يعرض هذا القسم إسقاط ائتمان الفواتير الحالي فقط؛ وهو ليس كشفًا تاريخيًا كاملًا. لم تتم إعادة بناء تاريخ حالات الفواتير وتطبيق الائتمان.
 CPCCPortfolioWalletUsdValuation=رصيد ائتمان الفواتير (تقييم بالدولار الأمريكي)
 
 # M121 current managed funds presentation
@@ -99,3 +99,9 @@ CPCCFundsLegacyPaid=المخصص مقابل الالتزامات
 CPCCFundsEstimateCustomers=عملاء لديهم عجز في ائتمان الفواتير
 
 CPCCFundsTemporarilyUnavailable=البيانات المالية غير متاحة مؤقتًا. أعد تحميل الصفحة للمحاولة مجددًا؛ لم يتم تأكيد أي رصيد.
+
+CPCCPortfolioHistoryUnavailable=الكشف التاريخي غير متاح
+CPCCPortfolioFutureUnavailable=الكشف المستقبلي غير متاح
+CPCCPortfolioInvalidDate=تاريخ الكشف غير صالح
+CPCCPortfolioHistoryCoverage=لا يمكن التحقق من التاريخ المحدد باستخدام الحالات الحالية للفواتير وروابط الائتمان. الإجماليات والأعداد التاريخية غير متاحة وليست صفرًا. اختر العرض الحالي لمراجعة الإسقاطات الحالية.
+CPCCPortfolioToday=عرض الوضع الحالي
