@@ -37,7 +37,7 @@ def native_chrome(lang):
  header='<div class="tmenudiv"><ul class="tmenu" aria-label="Synthetic native top menu">'+''.join(items)+'</ul></div><div class="preview-session"><span class="preview-chrome-note">Local fixture · Dolibarr 24 defaults<br>Not an authenticated ERP session</span><span class="preview-avatar" aria-label="Synthetic user">S</span></div>'
  return '<style>'+css+'</style>',header
 
-CAPTURE_DIR=Path(DEFAULT)/'docs/evidence/m121-upcoming-deadlines/screenshots'
+CAPTURE_DIR=Path(DEFAULT)/'docs/evidence/m121-shipment-attention/screenshots'
 CAPTURE_NAMES=('combined-en-desktop','combined-ar-desktop','combined-en-phone','combined-ar-phone')
 def one(q,k,d=''): return q.get(k,[d])[0]
 def number(v,d=0):
@@ -52,7 +52,8 @@ def language(root,lang):
   if '=' in line and not line.lstrip().startswith('#'):
    k,v=line.split('=',1); values[k.strip()]=v.strip()
  keys={'density':'BoardsDensity','displayDensity':'BoardsDisplayDensity','compact':'BoardsDensityCompact','comfortable':'BoardsDensityComfortable','priority':'Priority','sidebarMenu':'BoardsSidebarMenu','sidebarClose':'BoardsSidebarClose','sidebarNavigation':'BoardsSidebarNavigation','sidebarActions':'BoardsSidebarActions',**{'priority_'+p:'Priority_'+p for p in ('urgent','high','normal','low')}}
- keys.update({key:'BoardsWork'+value for key,value in {'dashboardTitle':'Dashboard','dashboardOpen':'Open','dashboardUrgent':'Urgent','dashboardOverdue':'Overdue','dashboardEmpty':'Empty','dashboardError':'Unavailable','dashboardNote':'Note','dashboardLimit':'Limit','dashboardMore':'More','dashboardUpcoming':'Upcoming','dashboardDue':'Due','dashboardNoDue':'NoDue','dashboardCustomer':'Customer','dashboardProject':'Project'}.items()})
+ keys.update({key:'BoardsWork'+value for key,value in {'dashboardTitle':'Dashboard','dashboardOpen':'Open','dashboardUrgent':'Urgent','dashboardOverdue':'Overdue','dashboardEmpty':'Empty','dashboardError':'Unavailable','dashboardNote':'Note','dashboardLimit':'Limit','dashboardMore':'More','dashboardUpcoming':'Upcoming','dashboardDue':'Due','dashboardNoDue':'NoDue','dashboardCustomer':'Customer','dashboardProject':'Project','dashboardShipments':'Shipments','shipmentAttentionScope':'ShipmentAttentionScope','shipmentAttentionEmpty':'ShipmentAttentionEmpty','shipmentAttentionPartial':'ShipmentAttentionPartial','shipmentAttentionAsOf':'ShipmentAttentionAsOf','shipmentAttentionLimit':'ShipmentAttentionLimit'}.items()})
+ for key in ['shipmentAttentionScope','shipmentAttentionEmpty','shipmentAttentionPartial','shipmentAttentionAsOf','shipmentAttentionLimit']:keys[key]='Boards'+key[0].upper()+key[1:]
  return {k:values.get(v,v) for k,v in keys.items()}
 def seeds(c):
  ar=c['lang']=='ar'; edit=c['role'] in ('editor','manager')
@@ -115,6 +116,14 @@ class Handler(BaseHTTPRequestHandler):
     for card in cards[2:]: card['date_deadline']=str(today+datetime.timedelta(days=1))
     cards[2]['date_deadline']=str(today+datetime.timedelta(days=6));cards[3]['date_deadline']=str(today+datetime.timedelta(days=7));cards[5]['date_deadline']=None
     data={'mode':'summary','archived':False,'tasks':[{**t,'board':{'id':1,'title':board['title']},'list':{'id':t['fk_list'],'title':lists[t['fk_list']-1]['title']},'shipment':None,'customer':{'id':7,'label':'عميل تجريبي · Fictional customer'} if t['id']!=106 else None,'project':{'id':11,'title':'مشروع تجريبي · Fictional project','ref':'SYN-P11','label':'SYN-P11 · Fictional project'} if t['id']!=106 else None,'location':'available'} for t in cards]}
+    if one(q,'attention')=='1':
+     command=['php',str(self.server.source_root/'deploy/tests/test_m121_shipment_attention.php'),'--fixture']
+     if c['lang']=='ar':command.append('--ar')
+     data['shipmentAttention']=json.loads(subprocess.check_output(command,cwd=self.server.source_root))
+     taskMap={t['id']:t for t in cards}
+     for shipment in data['shipmentAttention']['shipments']:
+      for task in shipment['tasks']:
+       if task['id'] in taskMap:task['title']=taskMap[task['id']]['title'];task['ref']=taskMap[task['id']]['ref']
    elif action in ('customers','customer_projects'):
     data=dict(enhanced=True,customers=customers,customer={'rowid':7,'nom':customers[0]['nom']},projects=[dict(rowid=11,ref='SYN-P11',title=board['title'],open_tasks=5,done_tasks=1,board={**board,'starred':1},deadline={'date':'2026-11-08','display':'2026-11-08','indicator':'urgent'})],appearance={'background':'#1c4a51','background_image':'','appearance_version':1},can_manage_appearance=edit,can_create=edit,can_create_customer=False,can_create_project=False,people=[],teams=[])
    elif action in ('gallery','deleted_boards'): data={'boards':[{**board,'starred':1},{**board,'rowid':2,'title':'General synthetic board · لوحة عامة','background':'#4d5576','starred':0}],'can_create':edit,'teams':[],'people':[]}
@@ -200,14 +209,23 @@ class Handler(BoardsHandler):
    if c.get('customer'): c['customer']={'id':7,'label':'عميل تجريبي · Fictional customer'}
    if c.get('project'): c['project']={'id':11,'label':'مشروع تجريبي · Fictional project'}
    if c.get('shipment'): c['shipment']['label']='SYN-SHIP-001'
+   if c.get('shipment') and one(parse_qs(urlsplit(self.path).query),'mode','normal')=='normal':
+    command=['php',str(self.server.source_root/'deploy/tests/test_m121_shipment_attention.php'),'--fixture']
+    if one(parse_qs(urlsplit(self.path).query),'lang')=='ar':command.append('--ar')
+    sources=json.loads(subprocess.check_output(command,cwd=self.server.source_root))['shipments']
+    tid=number(one(parse_qs(urlsplit(self.path).query),'task_id'))
+    matched=next((source for source in sources if any(task['id']==tid for task in source['tasks'])),None)
+    if matched:c['shipment']={'id':matched['id'],'label':matched['label'],'tracking':matched['tracking']}
    payload['data']['documentsWorkspace']=None
    if not c.get('restricted') and c.get('customer'):
     command=['php',str(self.server.source_root/'deploy/tests/test_m121_task_documents_link.php'),'--fixture']
+    if c.get('shipment',{}).get('id')==18:command.append('--shipment=18')
     if one(parse_qs(urlsplit(self.path).query),'lang')=='ar': command.append('--ar')
     payload['data']['documentsWorkspace']=json.loads(subprocess.check_output(command,cwd=self.server.source_root))
    data=json.dumps(payload,ensure_ascii=False)
   if getattr(self,'shipping_page',False) and isinstance(data,str) and '<script>let fixtureMode=' in data:
    kind='text/html; charset=utf-8'
+   data=data.replace('"id":41','"id":'+str(getattr(self,'card_task_id',41)),1)
    data=data.replace('<h1>Synthetic fixture','<body class="cpo-board-card"><h1>Synthetic fixture',1)
    data=re.sub(r'<script>let fixtureMode=.*?</script>','<script src="/shipping-fixture-controls.js"></script>',data,flags=re.S)
   return super().send(data,status,kind)
@@ -215,6 +233,7 @@ class Handler(BoardsHandler):
   u=urlsplit(self.path); q=parse_qs(u.query)
   if u.path=='/shipping-fixture-controls.js': return self.send(fixture_controls,kind='text/javascript')
   if u.path=='/card.php':
+   self.card_task_id=number(one(q,'id'),41)
    self.shipping_page=True
    self.path='/?lang='+('ar' if one(q,'lang').startswith('ar') else 'en')
    return shipping_fixture.Handler.do_GET(self)

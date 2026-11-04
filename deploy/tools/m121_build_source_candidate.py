@@ -27,6 +27,7 @@ EXACT = {
     "docs/REPORTS/M121_DOCUMENT_COMMIT_RECOVERY_2026-11-04.md",
     "docs/REPORTS/M121_HISTORY_COVERAGE_GUARD_2026-11-04.md",
     "docs/REPORTS/M121_DATED_CONSUMER_INVENTORY_2026-11-04.md",
+    "docs/REPORTS/M121_SHIPMENT_ATTENTION_INTEGRATION_2026-11-04.md",
 }
 FORBIDDEN = {".env", ".git", "node_modules", "__pycache__"}
 FORBIDDEN_SUFFIXES = {".db", ".sqlite", ".sqlite3", ".log", ".pyc", ".pem", ".key"}
@@ -119,6 +120,7 @@ def main():
         "not_authorized_by_packaging": ["Deployment", "Module activation or migrations", "Grant changes", "Real posting", "Production access"],
         "remaining_gates": "See docs/REPORTS/M121_IMMUTABLE_CANDIDATE_GAPS_2026-11-04.md",
         "current_journey_report": "docs/REPORTS/M121_NATIVE_THREE_SUPPLIER_JOURNEY_2026-11-04.md",
+        "current_shipment_attention_report": "docs/REPORTS/M121_SHIPMENT_ATTENTION_INTEGRATION_2026-11-04.md",
         "current_dated_consumer_report": "docs/REPORTS/M121_DATED_CONSUMER_INVENTORY_2026-11-04.md",
         "current_history_coverage_report": "docs/REPORTS/M121_HISTORY_COVERAGE_GUARD_2026-11-04.md",
         "current_document_recovery_report": "docs/REPORTS/M121_DOCUMENT_COMMIT_RECOVERY_2026-11-04.md",

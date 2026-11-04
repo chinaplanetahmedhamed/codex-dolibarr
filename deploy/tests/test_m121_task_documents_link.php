@@ -10,7 +10,7 @@ $langs=new LinkLang121;
 $r=new ReflectionClass(InternalTaskContextService::class);$svc=$r->newInstanceWithoutConstructor();$actor=new LinkActor121;$r->getProperty('actor')->setValue($svc,$actor);$method=$r->getMethod('documentsWorkspace');
 $context=['restricted'=>false,'customer'=>['id'=>7],'project'=>['id'=>11],'shipment'=>['id'=>17]];
 $n=0;function linkCheck121($ok,$message){global $n;if(!$ok)throw new RuntimeException($message);$n++;}
-if(in_array('--fixture',$argv,true)){echo json_encode($method->invoke($svc,$context),JSON_UNESCAPED_UNICODE);exit;}
+if(in_array('--fixture',$argv,true)){if(in_array('--shipment=18',$argv,true))$context['shipment']['id']=18;echo json_encode($method->invoke($svc,$context),JSON_UNESCAPED_UNICODE);exit;}
 $url=$method->invoke($svc,$context);linkCheck121($url['url']==='/erp/custom/chinaplanetdocuments/index.php?socid=7&projectid=11&shipmentid=17&returnto=shipment','canonical scoped shipment link');
 linkCheck121($url['label']!=='DocumentsWorkspace','native language label');
 $c=$context;$c['shipment']=null;linkCheck121(str_ends_with($method->invoke($svc,$c)['url'],'projectid=11&returnto=project'),'project return');

@@ -301,3 +301,5 @@ body.cpo-board-sidebar #cp-boards[data-density=compact] :is(.cb-completion-summa
 .cb-work-context{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.cb-work-context bdi,.cb-work-context a{overflow-wrap:anywhere;max-width:100%}.cb-work-deadline{font-weight:600;flex-basis:100%}
 
 .cb-work-deadline{display:flex;gap:4px;align-items:baseline}.cb-work-deadline time{unicode-bidi:isolate}
+
+.cb-shipment-attention-card{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px solid #9fadbc55}.cb-shipment-attention-card p{margin:0}.cb-shipment-attention-card .cb-work-task{flex:none;min-height:44px;width:100%}.cb-shipment-source{display:inline-flex;align-items:center;min-height:44px;font-weight:700}.cb-shipment-attention time{unicode-bidi:isolate}.cb-attention-warning{border:1px solid currentColor!important;font-weight:700}.cb-shipment-attention-card bdi,.cb-shipment-reason{overflow-wrap:anywhere}

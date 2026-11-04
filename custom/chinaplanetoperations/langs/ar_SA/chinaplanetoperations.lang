@@ -886,3 +886,11 @@ CPOSupplierSavedPaymentNote=راجع إجمالي المدفوع من سجلات
 CPOSupplierVerifySavedPayment=التحقق من الدفعة المحفوظة
 CPOSupplierPaymentReviewRequired=راجع أدلة الدفعة المحفوظة قبل تسجيل دفعة أخرى. قد تحتاج روابط التخصيص غير المكتملة أو المعكوسة إلى تصحيح.
 CPOSupplierPaymentManualReview=هوية الدفعة الأصلية المحفوظة مفقودة أو غير محسومة. يلزم التصحيح؛ الاسترجاع التلقائي غير متاح.
+
+# M121 linked shipment attention
+BoardsWorkShipments=شحنات تحتاج متابعة
+BoardsShipmentAttentionScope=الشحنات المرتبطة بمهامك المفتوحة المسندة إليك.
+BoardsShipmentAttentionEmpty=لا توجد مؤشرات متابعة في الشحنات المرتبطة المتاحة لك.
+BoardsShipmentAttentionPartial=الفحص غير مكتمل بسبب حد المهام أو الشحنات أو تعذر قراءة مصدر.
+BoardsShipmentAttentionAsOf=حتى تاريخ
+BoardsShipmentAttentionLimit=يشمل الفحص حتى 500 صف من المهام المسندة و50 شحنة مرتبطة.

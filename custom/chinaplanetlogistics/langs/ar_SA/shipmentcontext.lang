@@ -17,3 +17,8 @@ CPLContextStatus4=تحت التخليص الجمركي
 CPLContextStatus5=تم التخليص الجمركي
 CPLContextStatus6=تم التسليم
 CPLContextStatus7=مغلقة
+
+# Read-only shipment attention reasons
+CPLAttentionEtaUnconfirmed=انقضى الوصول المتوقع؛ الوصول الفعلي غير مسجل
+CPLAttentionFreeTimeExpired=انتهى الوقت الحر
+CPLAttentionFreeTimeSoon=ينتهي الوقت الحر خلال 5 أيام

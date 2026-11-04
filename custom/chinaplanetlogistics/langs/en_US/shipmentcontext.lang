@@ -17,3 +17,8 @@ CPLContextStatus4=Under Customs
 CPLContextStatus5=Customs Cleared
 CPLContextStatus6=Delivered
 CPLContextStatus7=Closed
+
+# Read-only shipment attention reasons
+CPLAttentionEtaUnconfirmed=ETA passed; actual arrival not recorded
+CPLAttentionFreeTimeExpired=Free time expired
+CPLAttentionFreeTimeSoon=Free time ends within 5 days

@@ -893,3 +893,11 @@ CPOSupplierSavedPaymentNote=Check the native Paid total above. Verify a saved pa
 CPOSupplierVerifySavedPayment=Verify saved payment
 CPOSupplierPaymentReviewRequired=Review saved payment evidence before recording another payment. Incomplete or reversed allocation links may require correction.
 CPOSupplierPaymentManualReview=Saved native payment identity is missing or unresolved. Correction is required; automatic recovery is unavailable.
+
+# M121 linked shipment attention
+BoardsWorkShipments=Shipments needing attention
+BoardsShipmentAttentionScope=Shipments linked to your open assigned tasks.
+BoardsShipmentAttentionEmpty=No attention signals in the linked shipments you can access.
+BoardsShipmentAttentionPartial=Coverage is incomplete: a task or shipment limit, or a source error, prevented full checking.
+BoardsShipmentAttentionAsOf=As of
+BoardsShipmentAttentionLimit=Checks cover up to 500 assigned task rows and 50 linked shipments.
