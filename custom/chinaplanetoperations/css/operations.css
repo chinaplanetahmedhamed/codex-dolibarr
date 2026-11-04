@@ -255,3 +255,5 @@
 @media(max-width:980px){.cpw-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.cpw-action-card{grid-template-columns:1fr}.cpw-action-card>.button{width:100%}.cpw-two-columns{grid-template-columns:1fr}}
 @media(max-width:700px){.cpw-page{padding:0 8px 22px}.cpw-hero,.cpw-customer-head{align-items:stretch;flex-direction:column;padding:18px}.cpw-hero h1{font-size:25px}.cpw-hero-actions .button,.cpw-customer-head .button,.cpw-card-actions .button{width:100%}.cpw-summary{grid-template-columns:1fr 1fr;gap:8px}.cpw-summary>a{min-height:112px;padding:13px}.cpw-summary strong{font-size:25px}.cpw-tabs a{padding:0 13px}.cpw-section{padding:13px!important}.cpw-task-grid{grid-template-columns:1fr}.cpw-native-row{align-items:flex-start;flex-direction:column}}
 @media(max-width:430px){.cpw-summary{grid-template-columns:1fr}.cpw-summary>a{min-height:100px}.cpw-card-actions{align-items:stretch;flex-direction:column}}
+
+.cpo-task-kanban .cpo-drag-handle{touch-action:none}.cpo-task-kanban .kanban-pointer-dragging{opacity:.55}.kanban-pointer-active,.kanban-pointer-active *{user-select:none!important;-webkit-user-select:none!important}

@@ -1,0 +1,9 @@
+# M089 C02 R3 — complete employee access boundary
+
+Application commit `b793819793791ef4dc35ff93b1e8a70d44451e01`. R2 authenticated staging testing passed personal Today, own task creation/edit/reload, manager instructions protection, status updates, denied other-task/customer routes and forged manager view. It discovered an existing direct URL leak in cpkanban: board/card did not check internal read permissions. R2 was rolled back on staging; production was not deployed. Test user/group and synthetic tasks remain.
+
+R3 includes the same ten compatible dashboard files plus `cpkanban/lib/main.lib.php`. Its shared bootstrap now rejects internal users lacking Kanban or Customer Center read/write rights, before any card/customer/file access. Native administrators remain allowed; external customers continue through existing per-company/card authorization. Existing deployed cpkanban move/class security fixes are not replaced. Both environments preserve their existing interface variants as in R2.
+
+The added bootstrap predecessor is pinned to the known repository bytes and www-data:www-data0644; remote compare must prove that exact baseline before writing. Every other predecessor/dependency pin is from the current root inspection and matches the restored R2 baseline. Helpers are fixed, single-use eleven-file releases with private scoped backup/rollback and exact staging acceptance hash requirements. No migration or business-data mutation is included in release.
+
+Validation: ten bootstrap authorization scenarios, shared route coverage, PHP syntax and fourteen payload-integrity/recovery tests PASS. Native staging worker session remains signed in for correction acceptance. Existing authorization covers bounded repair and staging-to-production release; root installation of the new fixed eleven-file command is required because R2 cannot expand its allowlist.

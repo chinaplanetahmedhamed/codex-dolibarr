@@ -110,3 +110,5 @@
 
 .cpad-section-content .cpk-toolbar,
 .cpad-section-content .cpk-toolbar .cpk-hint{color:#dbe6f8}
+
+.cpk-drag-handle{position:absolute;inset-block-start:4px;inset-inline-end:4px;z-index:1;width:40px;height:40px;border:0;border-radius:8px;background:#eef1f5;color:#29445d;cursor:grab;touch-action:none}.cpk-card.kanban-pointer-dragging{opacity:.55}.kanban-pointer-active,.kanban-pointer-active *{user-select:none!important;-webkit-user-select:none!important}

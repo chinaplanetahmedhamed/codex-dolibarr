@@ -1,0 +1,97 @@
+{
+  "release": "M089-C02-R3",
+  "commit": "b793819793791ef4dc35ff93b1e8a70d44451e01",
+  "files": {
+    "chinaplanetcustomercenter/lib/admin_shell.lib.php": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "2dfe217ae1c636376c3f57de0b9386b83fc9b390c4399350973a10aa51fb28b7",
+      "sha256": "a85f3e6b0d4f06f26a97aebb00bfb6ad72e14b473aae7d7f7834f36567b40d03"
+    },
+    "chinaplanetoperations/class/InternalTaskAuthorizationService.class.php": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "5d814cf5583a98218a897837f97a90a96150482301e41e02525a4f97d9b3621a",
+      "sha256": "347d25d6d6af37fece99543106f0efe03b0c76435cc0e4c12be1c8ce26d7c59d"
+    },
+    "chinaplanetoperations/class/InternalTaskService.class.php": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "43f21cd4a72b83961c923444ff509af5e4cf03c786e7c2c639fe04e3fa8386c1",
+      "sha256": "b009e0c0c447c50d4741f20f20fff31b969e602f1686023e495c69d9686dcf71"
+    },
+    "chinaplanetoperations/js/internal_tasks.js": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "eee0b55114f3a79350b88a717b2585ab54d38727b880cd58d01ed36ea492891b",
+      "sha256": "ef8eec5063fda18c7f7e5e6d6696d6476c48c8dfb07953fb860dc23e6c168409"
+    },
+    "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "4ff54718ac8d079c63ed207a243e34275c0455c4600c77cfdd2da682f33c654f",
+      "sha256": "b78b83cb48bafbae474a1370d4507bebad35705fc91e45b1b0aa44b0df101224"
+    },
+    "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "7991f87c0085dff61ce536b8536ac157fa5b4989d365ea6eb9ce8243a33d4ddb",
+      "sha256": "feba3c5a3ed94e403685137c5904c49d47f73c3c2b28bd4ee51d78815c3644e8"
+    },
+    "chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "e6ccc5eb77e8cca3d94bfa8c1daa7f1063a4125b0b1fbe529315dbe573166d9c",
+      "sha256": "dcdae279507eabfe6fe85b5576e013f9a200a3f886c7f69ea994c31ecd5e8066"
+    },
+    "chinaplanetoperations/tasks/board.php": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "24ebf8397905e15dc1f04b6a075bdce22fe191ba9db67bc9ef1579baf4851704",
+      "sha256": "fb732b5a6d01e768f32529624b2487050d9c96aedaf187542931afb5ec21d55d"
+    },
+    "chinaplanetoperations/tasks/card.php": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "834b50e50ba8daee4f9c041006e967425e2a1ef6d780d29b213feae57ffc23fe",
+      "sha256": "7e94a5ddf581edd4e0a98c50121f949b5a93da1d802555c7e085cc260a55d354"
+    },
+    "chinaplanetoperations/workspace.php": {
+      "uid": 1002,
+      "gid": 1002,
+      "mode": 420,
+      "before": "1083e7059f6f629c3e71582f35aabcc12e17fb350ecf4a36ac4171db45a4d339",
+      "sha256": "acc0f8b79fbf98e96e0c9d04192971b7a5fd4670429474268f81082a8e88c5e3"
+    },
+    "cpkanban/lib/main.lib.php": {
+      "uid": 33,
+      "gid": 33,
+      "mode": 420,
+      "before": "aeef59b1798036dfe955ad77cbb36ad73849a30203dc8346a15044ea38ffdd7c",
+      "sha256": "4bee65d741de40ebd089dffa9452080d9a7aa27ec44f11d7fa46045a08ab16f3"
+    }
+  },
+  "prerequisites": {
+    "chinaplanetcustomercenter/css/admin_dashboard.css": "44338556ddcdb95088f7cb1d6878179bfaedfcdb1d192d4c9170468741f35419",
+    "chinaplanetoperations/class/InternalTaskAssetService.class.php": "09e2711a5a42f6f019bfd0d3d0f11938bcf5f1abc5af569ecc1effc612babefc",
+    "chinaplanetoperations/class/InternalTaskCollaborationService.class.php": "01900a7c82941b7ca65e8d4682c0fc3cfc0c7ea56e7d49d760a6308506a5d438",
+    "chinaplanetoperations/class/InternalTaskMigration.class.php": "252c52be436268bcab505f6a0c79a65cc47bcc8f835ed18b09b0072d05d2975d",
+    "chinaplanetoperations/class/InternalTaskStageService.class.php": "f9ea28fad1b5ed0e42bafd3cf66eefc2472f2957b7989b8ef772bdaf366c8595",
+    "chinaplanetoperations/class/OperationsService.class.php": "54efe3114877f2053ee8139d9183b6bf86b33cca97530e6fe4bcb808fe1c2673",
+    "chinaplanetoperations/core/modules/modChinaPlanetOperations.class.php": "ce70cc62a7598bb26c4eeeb75aaa106e56b5e46597d18af08f18ddc5f6471428",
+    "chinaplanetoperations/css/operations.css": "6f10042e39aa0539d15009a5cc65535076a85f50d6bd679a49b9819a1d3d1233",
+    "chinaplanetoperations/lib/main.lib.php": "acbe61d637a6da356240296371fbe1219aa8b6490632e58bf601b1b49ad39243",
+    "chinaplanetoperations/tasks/action.php": "9e1751e0c68594217fc39c4c146d982d5ef4841550b9ddba9591f46bf1981098",
+    "chinaplanetoperations/tasks/asset.php": "60ebe9499a882683beac6f9042d99d319b3275c16712976e0062e85963a9d6e6",
+    "chinaplanetoperations/tasks/collaboration_action.php": "dffd27e05711deb5dd7690b0fbf6fd82279d1d0274e347254492b2a9f308fc21"
+  }
+}

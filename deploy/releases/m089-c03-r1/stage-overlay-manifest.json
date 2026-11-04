@@ -1,0 +1,42 @@
+{
+  "files": {
+    "chinaplanetcustomercenter/lib/admin_shell.lib.php": {
+      "after": "0c287c9dec4ad2c5e2595fc3423a07ca0c1df3aa33c4a9e0480de387f1aec5a5",
+      "before": "582e07a4da51dcf552793fc68a19ec6ce4eee23a0a6df204f0bc5431ede4e53b"
+    },
+    "chinaplanetoperations/css/operations.css": {
+      "after": "ea2c66b4945d60ff48d7547ce384867bf33fbdb6d10b1eb181ebb8e77ee1458f",
+      "before": "c420370617f297fb64aa5b15139c56581dc55a706ccac74666c6637be8e07c0a"
+    },
+    "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": {
+      "after": "4e826fc9681fc3c53050fb418f0bf73b8afea52ddb8102d0e12053e314239fe2",
+      "before": "e7762c50159300e4ebbf6be464897af2feb9b1791b2302926bb5d405cf20f451"
+    },
+    "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": {
+      "after": "3497da90ee00bc8cce23ee3e0e5d27f71053027a9b234fda41a080fbdb608adb",
+      "before": "f27157459b9a37ad0e2d20b7e3bb155e5373642db6555fcfc2efb88ba7af35a1"
+    },
+    "chinaplanetoperations/langs/zh_CN/chinaplanetoperations.lang": {
+      "after": "75f42ac406104b3d2cf9e74bb98f391b465acb0e94eef57e67e5ade4ea2fabcc",
+      "before": "b0993a81d33a0639884d75dbcc39e76855d1f5c1198356fcb038f76b7e33df36"
+    },
+    "chinaplanetoperations/tasks/card.php": {
+      "after": "849938ef5091740692eabee3335adf5c32af467f866e660b36dd052740552415",
+      "before": "31d62b46a39e95112810b415ad09e9663fd68163296de1785f2cffd39a8179e5"
+    },
+    "chinaplanetoperations/workspace.php": {
+      "after": "36d4e64ea27d00e8c2fc224db29c91a89c1c14aed370c0388d8151512141af4a",
+      "before": "1c26475f51236396b80ec79a83bfe4939f2a0900687b6350c3158f98b95272fd"
+    },
+    "cpkanban/board.php": {
+      "after": "4e39bf180894b5d3006097b614c86c4c8487c305b0dbf699e2f021bb41040a8a",
+      "before": "4107aa9dfb91812d29654e9e34007a5f60686ebf192687d9bcc9a4055be2d9c2"
+    },
+    "cpkanban/js/board.js": {
+      "after": "936087d91ad936a4372ebf20a5c2a9e0fb390b91d4f512ca8b139383796d56f1",
+      "before": "287d2a3c0351866fef1f5c08865c13299b671c91f9105b56d85de9c544077432"
+    }
+  },
+  "payload_sha256": "fedf5bbc35d92d010a754ac102a9a77274353644e31286baa5022cc90baa751f",
+  "release": "M089-C03-R1-staging-overlay"
+}

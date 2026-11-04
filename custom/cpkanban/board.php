@@ -72,10 +72,11 @@ if ($is_external) {
     $board = cpkanban_fold_customer_board($board, $columns, $all_columns);
 }
 $customerStats = $is_external ? cpkanban_customer_center_stats($db, $socid) : array();
+$boardRevision = hash('sha256', json_encode(array($board, $columns), JSON_INVALID_UTF8_SUBSTITUTE));
 
 llxHeader('', 'Customer Projects / مشاريع العملاء', '', '', 0, 0,
-    array('/custom/cpkanban/js/board.js'),
-    array('/custom/cpkanban/css/board.css', cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
+    array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/js/kanban_pointer.js'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/js/kanban_refresh.js'), cpcc_admin_shell_asset('/custom/cpkanban/js/board.js')),
+    array(cpcc_admin_shell_asset('/custom/cpkanban/css/board.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css'), cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css')));
 if ($is_external) {
     cpcc_portal_navigation($user, 'dashboard');
 } else {
@@ -88,6 +89,8 @@ $ajaxtoken = newToken();
 <div class="cpk-wrap" dir="rtl"
      data-ajax="<?php echo dol_buildpath('/cpkanban/ajax/move.php', 1); ?>"
      data-token="<?php echo $ajaxtoken; ?>"
+     data-kanban-revision="<?php echo $boardRevision; ?>"
+     data-kanban-revision-url="<?php echo dol_escape_htmltag(dol_buildpath('/cpkanban/ajax/board_revision.php', 1)); ?>"
      data-canwrite="<?php echo $canwrite ? 1 : 0; ?>">
 
 <?php
@@ -155,7 +158,8 @@ if ($is_external) {
             $pri = cpkanban_priority($c->priority);
             $cardurl = dol_buildpath('/chinaplanetcustomercenter/card.php', 1).'?id='.(int) $c->rowid;
         ?>
-            <?php if ($is_external): ?><a class="cpk-card cpk-card-link" data-id="<?php echo (int) $c->rowid; ?>" href="<?php echo dol_escape_htmltag($cardurl); ?>"><?php else: ?><div class="cpk-card" data-id="<?php echo (int) $c->rowid; ?>" draggable="true" onclick="window.location='<?php echo dol_escape_js($cardurl); ?>'"><?php endif; ?>
+            <?php if ($is_external): ?><a class="cpk-card cpk-card-link" data-id="<?php echo (int) $c->rowid; ?>" href="<?php echo dol_escape_htmltag($cardurl); ?>"><?php else: ?><div class="cpk-card" data-id="<?php echo (int) $c->rowid; ?>" onclick="window.location='<?php echo dol_escape_js($cardurl); ?>'"><?php endif; ?>
+                <?php if (!$is_external): ?><button type="button" class="cpk-drag-handle" aria-label="اسحب البطاقة" title="اسحب البطاقة">⋮⋮</button><?php endif; ?>
                 <?php if (!empty($c->cover_asset_id)): ?><img class="cpk-card-cover" src="<?php echo dol_escape_htmltag(dol_buildpath('/cpkanban/cover.php', 1).'?id='.(int)$c->cover_asset_id); ?>" alt="" loading="lazy"><?php endif; ?>
                 <div class="cpk-tline" style="background:<?php echo dol_escape_htmltag($col->color); ?>"></div>
                 <h4><?php echo dol_escape_htmltag($c->title); ?></h4>
