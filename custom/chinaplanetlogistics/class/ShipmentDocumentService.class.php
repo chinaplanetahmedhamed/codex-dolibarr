@@ -3,33 +3,63 @@ require_once __DIR__.'/ShipmentDocumentMigration.class.php';
 require_once __DIR__.'/../../chinaplanetcustomercenter/lib/portal.lib.php';
 class ShipmentDocumentAccessException extends RuntimeException {}
 class ShipmentDocumentConflictException extends RuntimeException {}
+/** Retained private bytes require fresh trusted reconciliation; never an upload success. */
+class ShipmentDocumentRecoveryException extends RuntimeException {
+    private $recovery;
+    public function __construct(array $recovery,Throwable $previous){$this->recovery=$recovery;parent::__construct('Document outcome requires reconciliation. Do not repeat the change until reviewed.',0,$previous);}
+    public function recoveryInfo(){return $this->recovery;}
+}
 /** M099: one shipment-owned document, immutable stored versions, two UI adapters. */
 class ShipmentDocumentService
 {
     private $db; private $actor; private $entity; private $schemaVerified=false; private $storageVerified=[];
     public static function enabled(){global $conf;return !empty($conf->global->CPO_SHIPMENT_CARDS_ENABLED)||!empty($conf->global->CPL_SHARED_DOCUMENTS_ENABLED);}
     public function __construct($db,$actor,$entity=null){global $conf;$this->db=$db;$this->actor=$actor;$this->entity=$entity===null?(int)$conf->entity:(int)$entity;}
-    public function ensureReady(){if(!self::enabled())throw new ShipmentDocumentAccessException('Shared shipment documents are unavailable.');if(!$this->schemaVerified){if(!ShipmentDocumentMigration::ready($this->db))throw new ShipmentDocumentAccessException('Shared shipment documents are unavailable.');$this->schemaVerified=true;}}
-    private $scopes=[];
+    public function ensureReady(){if($this->quarantined)throw new RuntimeException('Document connection requires reconciliation.');if(!self::enabled())throw new ShipmentDocumentAccessException('Shared shipment documents are unavailable.');if(!$this->schemaVerified){if(!ShipmentDocumentMigration::ready($this->db))throw new ShipmentDocumentAccessException('Shared shipment documents are unavailable.');$this->schemaVerified=true;}}
+    private $scopes=[]; private $quarantined=false; private $connectionRetired=false; private $callerTransaction=false;
     /** Dolibarr nesting is a counter, not a savepoint. Protect callers' outer transactions explicitly. */
     private function beginScope(){
+        if($this->quarantined)throw new RuntimeException('Document connection requires reconciliation.');
         $depth=(int)$this->db->transaction_opened;$name='m099_'.bin2hex(random_bytes(8));
-        if(!$this->db->begin())throw new RuntimeException('Transaction unavailable.');
-        if($depth>0&&!$this->db->query('SAVEPOINT '.$name)){$this->db->rollback();throw new RuntimeException('Transaction savepoint unavailable.');}
-        $this->scopes[]=['depth'=>$depth,'name'=>$name];
+        $scope=['depth'=>$depth,'name'=>$name];
+        try{
+            if(!$this->db->begin())throw new RuntimeException('Transaction startup unconfirmed.');
+            if($depth>0&&!$this->db->query('SAVEPOINT '.$name))throw new RuntimeException('Transaction savepoint unconfirmed.');
+            $this->scopes[]=$scope;
+        }catch(Throwable $e){$this->quarantineScope($scope);throw new ShipmentDocumentRecoveryException(['outcome'=>'unknown','callerTransaction'=>$this->callerTransaction,'connectionRetired'=>$this->connectionRetired],$e);}
+    }
+    private function quarantineScope(array $scope){
+        $this->quarantined=true;$this->callerTransaction=$scope['depth']>0;
+        // Never close or roll back a caller-owned outer transaction. The caller
+        // must abort/reconcile it; this service performs no further SQL.
+        if(!$this->callerTransaction){
+            try{$this->connectionRetired=(bool)$this->db->close();}catch(Throwable $ignored){}
+            // Prevent reuse of the closed raw native handle; never reconnect.
+            if(property_exists($this->db,'db'))$this->db->db=null;
+            if(property_exists($this->db,'connected'))$this->db->connected=false;
+        }
     }
     private function commitScope(){
-        $scope=end($this->scopes);if(!$scope)throw new RuntimeException('Transaction scope missing.');
-        if($scope['depth']>0&&!$this->db->query('RELEASE SAVEPOINT '.$scope['name']))throw new RuntimeException('Transaction release failed.');
-        if(!$this->db->commit())throw new RuntimeException('Transaction commit failed.');array_pop($this->scopes);
+        $scope=end($this->scopes);if(!$scope||$this->quarantined)throw new RuntimeException('Transaction scope unavailable.');
+        try{
+            if($scope['depth']>0&&!$this->db->query('RELEASE SAVEPOINT '.$scope['name']))throw new RuntimeException('Transaction release unconfirmed.');
+            if(!$this->db->commit())throw new RuntimeException('Transaction commit unconfirmed.');
+            array_pop($this->scopes);
+        }catch(Throwable $e){$this->quarantineScope($scope);throw new ShipmentDocumentRecoveryException(['outcome'=>'unknown','callerTransaction'=>$this->callerTransaction,'connectionRetired'=>$this->connectionRetired],$e);}
     }
     private function rollbackScope(){
-        $scope=array_pop($this->scopes);if(!$scope)return;
-        if($scope['depth']>0){if(!$this->db->query('ROLLBACK TO SAVEPOINT '.$scope['name']))throw new RuntimeException('Transaction recovery requires operator attention.');$this->db->query('RELEASE SAVEPOINT '.$scope['name']);}
-        $this->db->rollback();
+        if($this->quarantined)return false;
+        $scope=array_pop($this->scopes);if(!$scope)return true;
+        try{
+            if($scope['depth']>0){
+                if(!$this->db->query('ROLLBACK TO SAVEPOINT '.$scope['name'])||!$this->db->query('RELEASE SAVEPOINT '.$scope['name']))throw new RuntimeException('Transaction recovery unconfirmed.');
+            }
+            if(!$this->db->rollback()||(int)$this->db->transaction_opened!==$scope['depth'])throw new RuntimeException('Transaction rollback unconfirmed.');
+            return true;
+        }catch(Throwable $e){$this->quarantineScope($scope);return false;}
     }
     private function q($s){return "'".$this->db->escape((string)$s)."'";}
-    private function query($sql){$r=$this->db->query($sql);if(!$r)throw new RuntimeException('Shipment document operation failed.');return $r;}
+    private function query($sql){if($this->quarantined)throw new RuntimeException('Document connection requires reconciliation.');$r=$this->db->query($sql);if(!$r)throw new RuntimeException('Shipment document operation failed.');return $r;}
     private function one($sql){$r=$this->query($sql);$o=$this->db->fetch_object($r);return $o?(array)$o:null;}
     private function rows($sql){$r=$this->query($sql);$out=[];while($o=$this->db->fetch_object($r))$out[]=(array)$o;return $out;}
     private function now(){return $this->db->idate(dol_now());}
@@ -131,7 +161,7 @@ class ShipmentDocumentService
         $root=DOL_DATA_ROOT.'/chinaplanetlogistics';$dir=cpcc_portal_shipment_doc_root($shipmentId);
         if((!is_dir($root)&&!dol_mkdir($root))||(!is_dir($dir)&&!dol_mkdir($dir))||is_link($dir)||!cpcc_portal_path_is_within($dir,$root))throw new RuntimeException('Document storage is unavailable.');
         $stored='DOC-'.bin2hex(random_bytes(20)).'.'.strtolower(pathinfo($meta['name'],PATHINFO_EXTENSION));$target=$dir.'/'.$stored;$key=basename($dir).'/'.$stored;
-        $moved=false;$this->beginScope();try{
+        $callerDepth=(int)$this->db->transaction_opened;$moved=false;$this->beginScope();try{
             $this->lockShipment($shipmentId);$old=null;
             if($replaceId){$old=$this->lockDocument($replaceId,$revision);if((int)$old['fk_shipment']!==(int)$shipmentId)throw new ShipmentDocumentAccessException('Shipment document access denied.');$id=(int)$replaceId;$number=(int)$old['version_no']+1;}
             else{$this->query('INSERT INTO '.MAIN_DB_PREFIX.'cpl_shared_document(entity,fk_shipment,display_name,fk_user_creat,fk_user_modif,date_creation) VALUES('.$this->entity.','.(int)$shipmentId.','.$this->q($meta['name']).','.(int)$this->actor->id.','.(int)$this->actor->id.','.$this->q($this->now()).')');$id=(int)$this->db->last_insert_id(MAIN_DB_PREFIX.'cpl_shared_document');$number=1;}
@@ -142,7 +172,18 @@ class ShipmentDocumentService
             // Old publication continues to serve immutable old bytes until explicit new publication.
             $this->event($id,$v,$old?'replaced':'uploaded');$this->commitScope();
             return ['id'=>$id,'versionId'=>$v,'version'=>$number,'revision'=>$old?(int)$old['revision']+1:1,'file'=>$stored,'storageKey'=>$key];
-        }catch(Throwable $e){$this->rollbackScope();if($moved&&is_file($target)&&!unlink($target))throw new RuntimeException('Document cleanup requires operator attention.',0,$e);throw $e;}
+        }catch(Throwable $e){
+            $rolledBack=$this->rollbackScope();
+            if($moved){
+                // Never infer durable absence from this handle, even after a
+                // rollback acknowledgement. Retain this attempt's random path.
+                // Cleanup is operator-only after the original transaction ends
+                // and a fresh trusted same-database connection checks ALL version
+                // and publication references plus the exact private fingerprint.
+                throw new ShipmentDocumentRecoveryException(['shipmentId'=>(int)$shipmentId,'documentId'=>(int)($id??0),'versionId'=>(int)($v??0),'storageKey'=>$key,'sha256'=>$hash??null,'size'=>(int)$meta['size'],'outcome'=>$rolledBack?'rolled_back':'unknown','callerTransaction'=>$callerDepth>0,'connectionRetired'=>$this->connectionRetired],$e);
+            }
+            throw $e;
+        }
     }
     public function rename($id,$revision,$name){
         $name=cpcc_portal_validate_shipment_filename($name);if($name==='')throw new RuntimeException('File name is not allowed.');
@@ -175,10 +216,14 @@ class ShipmentDocumentService
         $path=cpcc_portal_resolve_shipment_doc_path($shipmentId,$s['ref'],$key);if($path==='')throw new ShipmentDocumentAccessException('Shipment document access denied.');$key=cpcc_portal_gallery_storage_key($path);
         $r=$this->one('SELECT d.rowid,d.current_version_id,d.status,v.rowid version_id,v.source_origin,v.fk_user_creat FROM '.MAIN_DB_PREFIX.'cpl_shared_document d JOIN '.MAIN_DB_PREFIX.'cpl_shared_document_version v ON v.fk_document=d.rowid AND v.entity=d.entity WHERE d.entity='.$this->entity.' AND d.fk_shipment='.(int)$shipmentId.' AND v.storage_key='.$this->q($key));
         if(!$r||$r['status']!=='active'||(int)$r['current_version_id']!==(int)$r['version_id']||($this->external()&&($r['source_origin']!=='customer'||(int)$r['fk_user_creat']!==(int)$this->actor->id||$origin!=='customer')))throw new ShipmentDocumentAccessException('Shipment document access denied.');
+        if(!in_array($r['source_origin'],['staff','customer'],true))throw new ShipmentDocumentAccessException('Document provenance requires review.');
+        if($r['source_origin']==='customer'&&!cpcc_portal_collaboration_schema_ready($this->db))throw new ShipmentDocumentAccessException('Customer document provenance is unavailable.');
+        $origin=$r['source_origin']; // Immutable retained version is authoritative, including staff publication.
         $this->beginScope();try{$this->lockShipment($shipmentId);
             $fresh=$this->one('SELECT current_version_id,status FROM '.MAIN_DB_PREFIX.'cpl_shared_document WHERE entity='.$this->entity.' AND rowid='.(int)$r['rowid'].' FOR UPDATE');if(!$fresh||$fresh['status']!=='active'||(int)$fresh['current_version_id']!==(int)$r['version_id'])throw new ShipmentDocumentConflictException('Document changed. Reload and retry.');
             $this->query('UPDATE '.MAIN_DB_PREFIX.'cpl_shipment_public_document p JOIN '.MAIN_DB_PREFIX.'cpl_shared_document_version v ON v.entity=p.entity AND v.storage_key=p.storage_key SET p.customer_visible=0,p.status=0,p.fk_user_modif='.(int)$this->actor->id.' WHERE p.entity='.$this->entity.' AND p.fk_shipment='.(int)$shipmentId.' AND v.fk_document='.(int)$r['rowid'].' AND v.rowid<>'.(int)$r['version_id']);
             $previous=$this->one('SELECT * FROM '.MAIN_DB_PREFIX.'cpl_shipment_public_document WHERE entity='.$this->entity.' AND fk_shipment='.(int)$shipmentId.' AND storage_key='.$this->q($key));
+            if($previous&&(!isset($previous['source_origin'])||$previous['source_origin']!==$origin))throw new ShipmentDocumentConflictException('Document provenance requires review.');
             if($previous&&!empty($previous['status'])&&!empty($previous['customer_visible'])){$this->commitScope();return ['ok'=>true,'id'=>(int)$previous['rowid'],'error'=>''];}
             $result=cpcc_portal_gallery_publish_legacy($this->db,(object)$s,$this->actor,$key,$origin);if(empty($result['ok']))throw new RuntimeException('Document publication failed.');
             if($previous){$sets=[];foreach(['response_status','customer_upload_status','response_note','fk_user_response','date_response'] as $field)if(array_key_exists($field,$previous))$sets[]=$field.'='.($previous[$field]===null?'NULL':$this->q($previous[$field]));if($sets)$this->query('UPDATE '.MAIN_DB_PREFIX.'cpl_shipment_public_document SET '.implode(',',$sets).' WHERE entity='.$this->entity.' AND rowid='.(int)$result['id']);}

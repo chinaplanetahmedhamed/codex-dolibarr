@@ -7,12 +7,12 @@ class InternalTaskContextService
 {
     private $db; private $actor; private $entity; private $tasks; private $auth; private $docs;
     public function __construct($db,$actor,$entity=null){global $conf;$this->db=$db;$this->actor=$actor;$this->entity=$entity===null?(int)$conf->entity:(int)$entity;$this->tasks=new InternalTaskService($db,$actor,$this->entity);$this->auth=$this->tasks->authorization();$this->docs=new ShipmentDocumentService($db,$actor,$this->entity);}
-    private $scopes=[];
+    private $scopes=[]; private $documentQuarantined=false;
     /** Dolibarr nesting is a counter, not a savepoint. Protect callers' outer transactions explicitly. */
-    private function beginScope(){
+    private function beginScope($document=false){
         $depth=(int)$this->db->transaction_opened;$name='m099_'.bin2hex(random_bytes(8));
         if(!$this->db->begin())throw new RuntimeException('Transaction unavailable.');
-        if($depth>0&&!$this->db->query('SAVEPOINT '.$name)){$this->db->rollback();throw new RuntimeException('Transaction savepoint unavailable.');}
+        if($depth>0&&!$this->db->query('SAVEPOINT '.$name)){if(!$document)$this->db->rollback();throw new RuntimeException('Transaction savepoint unavailable.');}
         $this->scopes[]=['depth'=>$depth,'name'=>$name];
     }
     private function commitScope(){
@@ -29,7 +29,7 @@ class InternalTaskContextService
     private function query($sql){$r=$this->db->query($sql);if(!$r)throw new RuntimeException('Task context operation failed.');return $r;}
     private function rows($sql){$r=$this->query($sql);$out=[];while($o=$this->db->fetch_object($r))$out[]=(array)$o;return $out;}
     private function one($sql){$r=$this->rows($sql);return $r?$r[0]:null;}
-    private function task($id,$write=false){if(empty($GLOBALS['conf']->global->CPO_SHIPMENT_CARDS_ENABLED))throw new ShipmentDocumentAccessException('Operation cards are unavailable.');$this->docs->ensureReady();$t=$this->tasks->requireReadableTask($id);if($write&&!$this->auth->canEditTask($t))throw new InternalTaskAccessException('Task access denied.');return $t;}
+    private function task($id,$write=false){if($this->documentQuarantined)throw new RuntimeException('Document transaction requires reconciliation.');if(empty($GLOBALS['conf']->global->CPO_SHIPMENT_CARDS_ENABLED))throw new ShipmentDocumentAccessException('Operation cards are unavailable.');$this->docs->ensureReady();$t=$this->tasks->requireReadableTask($id);if($write&&!$this->auth->canEditTask($t))throw new InternalTaskAccessException('Task access denied.');return $t;}
     private $projectShipments=[];
     private function shipmentDefaults($customer,$project){
         $key=(int)$customer.':'.(int)$project;if(isset($this->projectShipments[$key]))return $this->projectShipments[$key];
@@ -146,14 +146,37 @@ class InternalTaskContextService
     private function ownedDocument($taskId,$documentId,$write=false,$archive=false,$history=false){$c=$this->requireDocuments($taskId,$write,$archive);$allowArchived=$archive||($history&&$this->auth->canEditTask($this->tasks->requireReadableTask($taskId))&&$this->docs->can($c['fk_shipment'],'archive'));$d=$this->docs->document($documentId,$archive?'archive':($write?'write':'read'),$allowArchived);if((int)$d['fk_shipment']!==(int)$c['fk_shipment'])throw new InternalTaskAccessException('Task document access denied.');return $d;}
     /** Serialize context mutations and document commands on the task row, then recheck access. */
     private function documentMutation($taskId,$command){
-        $this->task($taskId,true);$this->beginScope();try{
+        if($this->documentQuarantined)throw new RuntimeException('Document transaction requires reconciliation.');
+        $this->task($taskId,true);$startingDepth=(int)$this->db->transaction_opened;$commitAttempted=false;$startupConfirmed=false;
+        try{$this->beginScope(true);$startupConfirmed=true;
             $this->query('SELECT rowid FROM '.MAIN_DB_PREFIX.'cpo_task WHERE entity='.$this->entity.' AND rowid='.(int)$taskId.' FOR UPDATE');
-            $result=$command();$this->commitScope();return $result;
-        }catch(Throwable $e){$this->rollbackScope();throw $e;}
+            $result=$command();$commitAttempted=true;$this->commitScope();return $result;
+        }catch(Throwable $e){
+            if(!$startupConfirmed||($commitAttempted&&is_array($result??null)&&isset($result['storageKey']))){
+                $this->documentQuarantined=true;$retired=false;
+                if($startingDepth===0){try{$retired=(bool)$this->db->close();}catch(Throwable $ignored){}
+                    if(property_exists($this->db,'db'))$this->db->db=null;
+                    if(property_exists($this->db,'connected'))$this->db->connected=false;
+                }
+                // Nested document success was provisional. An uncertain outer
+                // commit must not become an ordinary retry response or cleanup.
+                throw new ShipmentDocumentRecoveryException(['documentId'=>(int)($result['id']??0),'versionId'=>(int)($result['versionId']??0),'storageKey'=>$result['storageKey']??null,'outcome'=>'unknown','callerTransaction'=>$startingDepth>0,'connectionRetired'=>$retired],$e);
+            }
+            try{$this->rollbackScope();}catch(Throwable $recovery){$this->documentQuarantined=true;if($e instanceof ShipmentDocumentRecoveryException)throw $e;throw $recovery;}
+            if($e instanceof ShipmentDocumentRecoveryException)$this->documentQuarantined=true;
+            throw $e;
+        }
     }
     public function upload($taskId,$file,$replace=0,$revision=0){
+        $outerDepth=(int)$this->db->transaction_opened;
         $r=$this->documentMutation($taskId,function()use($taskId,$file,$replace,$revision){$c=$this->requireDocuments($taskId,true);if($replace)$this->ownedDocument($taskId,$replace,true);return $this->docs->upload($c['fk_shipment'],$file,$replace,$revision);});
-        $out=$this->get($taskId);$out['uploaded']=$r;unset($out['uploaded']['file'],$out['uploaded']['storageKey']);return $out;
+        try{$out=$this->get($taskId);}catch(Throwable $e){
+            $this->documentQuarantined=true;
+            // The write was acknowledged; a failed display refresh must never
+            // invite another upload or turn durable bytes into rollback cleanup.
+            throw new ShipmentDocumentRecoveryException(['documentId'=>(int)$r['id'],'versionId'=>(int)$r['versionId'],'storageKey'=>$r['storageKey'],'outcome'=>$outerDepth>0?'unknown':'committed','callerTransaction'=>$outerDepth>0,'connectionRetired'=>false],$e);
+        }
+        $out['uploaded']=$r;unset($out['uploaded']['file'],$out['uploaded']['storageKey']);return $out;
     }
     public function rename($taskId,$documentId,$revision,$name){$this->documentMutation($taskId,function()use($taskId,$documentId,$revision,$name){$this->ownedDocument($taskId,$documentId,true);return $this->docs->rename($documentId,$revision,$name);});return $this->get($taskId);}
     public function archive($taskId,$documentId,$revision,$restore=false){$this->documentMutation($taskId,function()use($taskId,$documentId,$revision,$restore){$this->ownedDocument($taskId,$documentId,false,true);return $this->docs->archive($documentId,$revision,$restore);});return $this->get($taskId,true);}

@@ -30,6 +30,7 @@ try{
 catch(ShipmentDocumentAccessException $e){http_response_code(403);$error='Card or linked record access denied.';}
 catch(InternalTaskConflictException $e){http_response_code(409);$error=$e->getMessage();}
 catch(ShipmentDocumentConflictException $e){http_response_code(409);$error=$e->getMessage();}
+catch(ShipmentDocumentRecoveryException $e){error_log('M121 document reconciliation: '.json_encode($e->recoveryInfo()));http_response_code(503);$error='Document outcome needs review. Do not repeat the upload. / نتيجة المستند تحتاج مراجعة؛ لا تكرر الرفع.';}
 catch(LengthException $e){http_response_code(413);$error=$e->getMessage();}
 catch(Throwable $e){if(http_response_code()!==405)http_response_code(422);$error='Unable to save. Check the selected records or file and retry.';error_log('M099 task context: '.get_class($e));}
 if(isset($error)){header('Content-Type: application/json; charset=utf-8');echo json_encode(['ok'=>false,'error'=>$error]);}$db->close();
