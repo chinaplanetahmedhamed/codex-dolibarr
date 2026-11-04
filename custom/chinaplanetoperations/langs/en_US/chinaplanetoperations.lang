@@ -901,3 +901,22 @@ BoardsShipmentAttentionEmpty=No attention signals in the linked shipments you ca
 BoardsShipmentAttentionPartial=Coverage is incomplete: a task or shipment limit, or a source error, prevented full checking.
 BoardsShipmentAttentionAsOf=As of
 BoardsShipmentAttentionLimit=Checks cover up to 500 assigned task rows and 50 linked shipments.
+
+# M121 current linked supplier obligation presentation
+CPOSupplierObligationTitle=Linked supplier obligations
+CPOSupplierObligationScope=Current linked operation only. Order commitments and invoices are separate; completing work does not settle finance.
+CPOSupplierObligationUnknown=Needs native review
+CPOSupplierObligationOrder=Native supplier order
+CPOSupplierObligationOrderAmount=Order amount
+CPOSupplierObligationInvoice=Native supplier invoice
+CPOSupplierObligationInvoiceTotal=Invoice total
+CPOSupplierObligationRecordedPaid=Recorded invoice payments
+CPOSupplierObligationRemaining=Remaining after recorded payments
+CPOSupplierObligationOrder_committed=Validated order commitment; not a payment.
+CPOSupplierObligationOrder_draft=Draft order; obligation pending.
+CPOSupplierObligationOrder_cancelled=Cancelled or refused order; review the linked invoice separately.
+CPOSupplierObligationOrder_review=Order status or amount needs native review.
+CPOSupplierObligationInvoice_draft=Draft invoice; remaining obligation is pending validation.
+CPOSupplierObligationInvoice_review=Invoice status, amount or source needs native review. Remaining is unavailable.
+CPOSupplierObligationNoInvoice=No linked native invoice. Invoice payments and remaining are unavailable.
+CPOSupplierObligationLimit=Amounts remain in their original currency. Order and invoice totals are never added together. This is not a full supplier balance: applied deposits, credit notes and closure adjustments are not included in the payment remainder. Recorded invoice payments do not prove bank reconciliation or customer-funds attribution. Review the native invoice for the payable amount.

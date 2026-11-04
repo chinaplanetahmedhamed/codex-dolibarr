@@ -291,3 +291,8 @@
 
 .cpad-shell .cpo-public-requests .cpo-request-confirm{scroll-margin-top:70px}
 .cpad-shell .cpo-public-requests .cpo-request-confirm h2,.cpad-shell .cpo-public-requests .cpo-request-confirm p,.cpad-shell .cpo-public-requests .cpo-request-confirm strong{color:#431407!important}
+
+/* Current linked supplier facts; each amount keeps its native currency. */
+.cpo-supplier-position{margin-block:16px;padding:16px;border:1px solid #dce2eb;border-radius:8px;max-width:100%;box-sizing:border-box}
+.cpo-supplier-position dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;margin:12px 0}
+.cpo-supplier-position dl>div{min-width:0;padding:12px;border:1px solid #dce2eb;border-radius:6px}.cpo-supplier-position dt{font-weight:600}.cpo-supplier-position dd{font-size:1.2em;margin:8px 0 0}.cpo-supplier-position p,.cpo-supplier-position small,.cpo-supplier-position dd{overflow-wrap:anywhere}.cpo-supplier-position-source a{display:inline-flex;align-items:center;min-height:44px}.cpo-supplier-position bdi{unicode-bidi:isolate}

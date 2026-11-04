@@ -894,3 +894,22 @@ BoardsShipmentAttentionEmpty=لا توجد مؤشرات متابعة في الش
 BoardsShipmentAttentionPartial=الفحص غير مكتمل بسبب حد المهام أو الشحنات أو تعذر قراءة مصدر.
 BoardsShipmentAttentionAsOf=حتى تاريخ
 BoardsShipmentAttentionLimit=يشمل الفحص حتى 500 صف من المهام المسندة و50 شحنة مرتبطة.
+
+# M121 current linked supplier obligation presentation
+CPOSupplierObligationTitle=التزامات المورد المرتبطة
+CPOSupplierObligationScope=العملية المرتبطة الحالية فقط. التزام الطلب منفصل عن الفاتورة؛ إكمال العمل لا يسوي الحسابات.
+CPOSupplierObligationUnknown=تحتاج مراجعة في المصدر
+CPOSupplierObligationOrder=طلب المورد في النظام
+CPOSupplierObligationOrderAmount=قيمة الطلب
+CPOSupplierObligationInvoice=فاتورة المورد في النظام
+CPOSupplierObligationInvoiceTotal=إجمالي الفاتورة
+CPOSupplierObligationRecordedPaid=دفعات الفاتورة المسجلة
+CPOSupplierObligationRemaining=المتبقي بعد الدفعات المسجلة
+CPOSupplierObligationOrder_committed=التزام طلب معتمد؛ ليس دفعة مالية.
+CPOSupplierObligationOrder_draft=طلب مسودة؛ الالتزام قيد الاعتماد.
+CPOSupplierObligationOrder_cancelled=طلب ملغى أو مرفوض؛ راجع الفاتورة المرتبطة بشكل منفصل.
+CPOSupplierObligationOrder_review=حالة الطلب أو قيمته تحتاج مراجعة في المصدر.
+CPOSupplierObligationInvoice_draft=فاتورة مسودة؛ الالتزام المتبقي قيد الاعتماد.
+CPOSupplierObligationInvoice_review=حالة الفاتورة أو قيمتها أو مصدرها تحتاج مراجعة. المتبقي غير متاح.
+CPOSupplierObligationNoInvoice=لا توجد فاتورة مرتبطة في النظام. دفعات الفاتورة والمتبقي غير متاحين.
+CPOSupplierObligationLimit=كل مبلغ بعملته الأصلية. لا تجمع قيمة الطلب مع الفاتورة. هذا ليس كشف حساب مورد كاملاً: المتبقي بعد الدفعات لا يشمل الدفعات المقدمة المطبقة والإشعارات الدائنة وتسويات الإقفال. الدفعات المسجلة لا تثبت المطابقة البنكية أو نسبتها لأموال العميل. راجع الفاتورة في النظام لمعرفة المستحق.

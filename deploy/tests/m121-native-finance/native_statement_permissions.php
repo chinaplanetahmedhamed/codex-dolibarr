@@ -123,6 +123,28 @@ nb_case('Read-only supplier role cannot recover an unresolved saved payment',fun
   nb_expect_actor_refusal(fn($d,$a)=>(new OperationSupplierWorkflowService($d,1))->resumePayment($ops[0],$id,$a),$reader);
  }finally{$pdo->exec("UPDATE llx_cpo_supplier_action SET status='confirmed',error_code=NULL WHERE rowid=$id");}
 });
+// Current read-only obligation increment, using actual native state/controller/template.
+foreach(['en_US','ar_SA'] as $locale)foreach($ops as $i=>$op)nb_case('Linked supplier obligation native values '.$locale.' supplier'.($i+1),function()use($locale,$op,$i,$vendors,&$nb){
+ global $langs,$conf;$langs=new Translate('',$conf);$langs->setDefaultLang($locale);$langs->loadLangs(['main','chinaplanetoperations@chinaplanetoperations']);
+ $reader=nb_actor(59);$reader->rights->chinaplanetoperations=(object)['read'=>1];$reader->rights->fournisseur=(object)['commande'=>(object)['lire'=>1],'facture'=>(object)['lire'=>1]];
+ $before=nb_cash_signature();$html=nb_supplier_view($reader,$op);$state=(new OperationSupplierWorkflowService($GLOBALS['db'],1))->state($op);$p=cpo_supplier_obligation_projection($state);
+ nb_assert($p['invoice']['total']===[300.0,250.0,200.0][$i]&&$p['invoice']['paid']===[203.0,150.0,100.0][$i]&&$p['invoice']['remaining']===[97.0,100.0,100.0][$i],'Actual native invoice/payment residual mismatch');
+ nb_assert(str_contains($html,'data-obligation-coverage="recorded_payments_only"'),'Actual statement block missing');
+ nb_assert(str_contains($html,dol_escape_htmltag($langs->trans('CPOSupplierObligationLimit')))&&$langs->trans('CPOSupplierObligationLimit')!=='CPOSupplierObligationLimit','Actual translated limitation missing');
+ nb_assert(str_contains($html,'/fourn/facture/card.php?facid='.(int)$state['supplier_invoice']->id)&&str_contains($html,dol_escape_htmltag($vendors[$i]->name)),'Exact authorized native invoice/vendor missing');
+ nb_assert(!str_contains($html,'Record native supplier payment')&&nb_cash_signature()===$before,'Readonly obligation view changed cash or actions');
+ $nb['views']['supplier_obligation_'.$locale.'_'.($i+1)]=$html;
+});
+class NbObligationQueryFailure {
+ private $inner;public $hit=false;function __construct($db){$this->inner=$db;}
+ function __get($name){return $this->inner->$name;}function __call($name,$args){return $this->inner->$name(...$args);}
+ function query($sql,...$args){if(str_starts_with($sql,'SELECT * FROM llx_cpo_supplier_action WHERE entity=')){$this->hit=true;return false;}return $this->inner->query($sql,...$args);}
+}
+nb_case('Supplier marker read failure is unavailable, never empty obligations',function()use($ops){
+ global $db;$before=nb_cash_signature();$fault=new NbObligationQueryFailure($db);$blocked=false;
+ try{(new OperationSupplierWorkflowService($fault,1))->state($ops[0]);}catch(RuntimeException $e){$blocked=str_contains($e->getMessage(),'evidence is unavailable');}
+ nb_assert($fault->hit&&$blocked,'Missing query result silently became no linked invoice');nb_assert(nb_cash_signature()===$before,'Read failure changed cash');
+});
 $nb['status']=$nb['failed']?'failed':'passed';
 file_put_contents($s['output'].'/native-statement-permissions.json',json_encode($nb,JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR));chmod($s['output'].'/native-statement-permissions.json',0600);
 foreach($nb['cases']as$c)echo 'BOUNDARY '.strtoupper($c['status']).' '.$c['name'].(isset($c['error'])?': '.$c['error']:'')."\n";
