@@ -51,13 +51,13 @@ class NativeAdvanceWorkflowService
             }
             $origin->deposit_percent = (float) $term->deposit_percent;
             require_once DOL_DOCUMENT_ROOT.'/compta/facture/class/facture.class.php';
-            $this->db->begin();
+            $this->beginTransaction();
             $started = true;
             $deposit = Facture::createDepositFromOrigin($origin, dol_now(), (int) $term->rowid, $user, 0, true, array('ref_ext'=>$token, 'note_private'=>'Guided managed-funds deposit from '.$originType.' #'.$originId));
             if (!$deposit || empty($deposit->id)) throw new RuntimeException($origin->error ?: 'Unable to create the native deposit invoice.');
             $sql="INSERT INTO ".MAIN_DB_PREFIX."cpcc_guided_receipt(entity,fk_soc,fk_invoice,origin_type,origin_id,request_token,payload_hash,status,fk_user_creat,date_creation) VALUES(".$this->entity.",".$socid.",".(int)$deposit->id.",'".$this->db->escape($originType)."',".$originId.",'".$this->db->escape($token)."','".$payloadHash."','invoice_ready',".(int)$user->id.",NOW())";
             if(!$this->db->query($sql)) throw new RuntimeException('Unable to create the guided native-payment guard marker: '.$this->db->lasterror());
-            $this->db->commit();
+            $this->commitTransaction();
             $started = false;
             return (int) $deposit->id;
         } catch (Throwable $e) {
@@ -90,7 +90,7 @@ class NativeAdvanceWorkflowService
             $global = $this->one("SELECT p.rowid payment_id,p.fk_bank,b.fk_account,p.fk_paiement,DATE(p.datep) datep,p.note note_private,pf.fk_facture,CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END amount,f.fk_soc,(SELECT COUNT(*) FROM ".MAIN_DB_PREFIX."paiement_facture pf2 WHERE pf2.fk_paiement=p.rowid) invoice_count FROM ".MAIN_DB_PREFIX."paiement p INNER JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_paiement=p.rowid INNER JOIN ".MAIN_DB_PREFIX."facture f ON f.rowid=pf.fk_facture LEFT JOIN ".MAIN_DB_PREFIX."bank b ON b.rowid=p.fk_bank WHERE p.entity=".$this->entity." AND p.num_paiement='".$this->db->escape($token)."' LIMIT 1");
             if ($global && ((int) $global->fk_facture !== $invoiceId || (int) $global->fk_soc !== $socid)) throw new RuntimeException('Payment retry payload changed.');
             $invoiceLock = $this->lock('CPMF-INV-'.$this->entity.'-'.$invoiceId);
-            $this->db->begin();
+            $this->beginTransaction();
             $started = true;
             $invoice = $this->one("SELECT f.rowid,f.fk_soc,f.fk_statut,f.type,f.datef,f.total_ttc,f.multicurrency_total_ttc,UPPER(CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN f.multicurrency_code ELSE '".$this->db->escape($conf->currency)."' END) currency,COALESCE(SUM(CASE WHEN TRIM(COALESCE(f.multicurrency_code,''))<>'' THEN pf.multicurrency_amount ELSE pf.amount END),0) paid FROM ".MAIN_DB_PREFIX."facture f LEFT JOIN ".MAIN_DB_PREFIX."paiement_facture pf ON pf.fk_facture=f.rowid WHERE f.entity=".$this->entity." AND f.rowid=".$invoiceId." GROUP BY f.rowid FOR UPDATE");
             if (!$invoice || (int) $invoice->fk_soc !== $socid || (int) $invoice->type !== 3 || !in_array((int) $invoice->fk_statut, array(1, 2), true)) throw new RuntimeException('Choose a validated guided deposit invoice for the selected customer.');
@@ -126,20 +126,20 @@ class NativeAdvanceWorkflowService
                 $authorizationSet = false;
                 if(!$this->db->query("UPDATE ".MAIN_DB_PREFIX."cpcc_guided_receipt SET fk_payment=".$paymentId.",status='bank_posted' WHERE entity=".$this->entity." AND rowid=".(int)$marker->rowid))throw new RuntimeException('Unable to finalize the guided bank marker: '.$this->db->lasterror());
             }
-            $this->db->commit();
+            $this->commitTransaction();
             $started = false;
             $funds = new CustomerFundsService($this->db, $this->entity);
             $receiptKey = hash('sha256', 'native-bank-receipt:'.$token);
             $receiptId = $funds->createPendingReceipt(array('fk_soc'=>$socid, 'receipt_date'=>$date, 'amount'=>$amount, 'currency_code'=>(string) $invoice->currency, 'reference'=>$reference, 'note_private'=>'Bank-posted native deposit payment #'.$paymentId, 'request_key'=>$receiptKey), (int) $user->id);
 
-            $this->db->begin();
+            $this->beginTransaction();
             $started = true;
             $marker = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_guided_receipt WHERE entity=".$this->entity." AND rowid=".(int)$marker->rowid." FOR UPDATE");
             if (!$marker || (int) $marker->fk_soc !== $socid || (int) $marker->fk_invoice !== $invoiceId || (int) $marker->fk_payment !== $paymentId || (string) $marker->payment_token !== $token || !in_array((string) $marker->status, array('bank_posted','confirmed'), true)) throw new RuntimeException('Persisted guided receipt changed before confirmation; receipt confirmation is blocked.');
             $this->lockedResumeEvidence($marker, $socid);
             $funds->confirmReceipt($receiptId, $paymentId, (int) $user->id);
             if(!$this->db->query("UPDATE ".MAIN_DB_PREFIX."cpcc_guided_receipt SET status='confirmed' WHERE entity=".$this->entity." AND rowid=".(int)$marker->rowid." AND fk_payment=".$paymentId))throw new RuntimeException('Managed receipt confirmed but workflow marker update failed; retry safely.');
-            $this->db->commit();
+            $this->commitTransaction();
             $started = false;
             return array('invoice_id'=>$invoiceId, 'payment_id'=>$paymentId, 'receipt_id'=>$receiptId);
         } catch (Throwable $e) {
@@ -208,7 +208,7 @@ class NativeAdvanceWorkflowService
 
             $requestLock = $this->lock((string) $hint->payment_token);
             $invoiceLock = $this->lock('CPMF-INV-'.$this->entity.'-'.(int) $hint->fk_invoice);
-            $this->db->begin();
+            $this->beginTransaction();
             $started = true;
             $marker = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_guided_receipt WHERE entity=".$this->entity." AND rowid=".$markerId." FOR UPDATE");
             if (!$marker || (int) $marker->fk_soc !== $socid || (int) $marker->fk_invoice !== (int) $hint->fk_invoice || (int) $marker->fk_payment !== (int) $hint->fk_payment || (string) $marker->payment_token !== (string) $hint->payment_token || !in_array((string) $marker->status, array('bank_posted','confirmed'), true)) {
@@ -217,7 +217,7 @@ class NativeAdvanceWorkflowService
 
             $native = $this->lockedResumeEvidence($marker, $socid);
 
-            $this->db->commit();
+            $this->commitTransaction();
             $started = false;
 
             $funds = new CustomerFundsService($this->db, $this->entity);
@@ -235,7 +235,7 @@ class NativeAdvanceWorkflowService
             // Re-lock and revalidate the complete server-owned evidence after
             // the durable pending receipt is created, closing the mutation
             // window before confirmation while preserving retryability.
-            $this->db->begin();
+            $this->beginTransaction();
             $started = true;
             $marker = $this->one("SELECT * FROM ".MAIN_DB_PREFIX."cpcc_guided_receipt WHERE entity=".$this->entity." AND rowid=".$markerId." FOR UPDATE");
             if (!$marker || (int) $marker->fk_soc !== $socid || !in_array((string) $marker->status, array('bank_posted','confirmed'), true)) throw new RuntimeException('Persisted guided receipt changed before confirmation; resume is blocked.');
@@ -243,7 +243,7 @@ class NativeAdvanceWorkflowService
             $funds->confirmReceipt($receiptId, (int) $native->payment_id, (int) $user->id);
             $sql = "UPDATE ".MAIN_DB_PREFIX."cpcc_guided_receipt SET status='confirmed' WHERE entity=".$this->entity." AND rowid=".$markerId." AND fk_soc=".$socid." AND fk_payment=".(int)$native->payment_id." AND payment_token='".$this->db->escape((string)$marker->payment_token)."' AND status IN ('bank_posted','confirmed')";
             if (!$this->db->query($sql)) throw new RuntimeException('Managed receipt confirmed but workflow marker update failed; retry safely.');
-            $this->db->commit();
+            $this->commitTransaction();
             $started = false;
             return array('invoice_id'=>(int)$marker->fk_invoice, 'payment_id'=>(int)$native->payment_id, 'receipt_id'=>$receiptId);
         } catch (Throwable $e) {
@@ -276,6 +276,16 @@ class NativeAdvanceWorkflowService
     private function clearGuidedAuthorization()
     {
         return (bool) $this->db->query("SET @cpcc_guided_receipt_token=NULL");
+    }
+
+    private function beginTransaction()
+    {
+        if (!$this->db->begin()) throw new RuntimeException('Guided receipt transaction could not be started. No action was confirmed.');
+    }
+
+    private function commitTransaction()
+    {
+        if (!$this->db->commit()) throw new RuntimeException('Guided receipt transaction commit was not confirmed. Retry the same action to reconcile its stored evidence.');
     }
 
     private function token($kind, $key)

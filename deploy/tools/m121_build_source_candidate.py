@@ -22,6 +22,7 @@ EXACT = {
     "docs/REPORTS/M121_FINANCE_OFFICE_INTEGRATION_2026-11-03.md",
     "docs/REPORTS/M121_LOCAL_ASSEMBLY_2026-11-03.md",
     "docs/REPORTS/M121_IMMUTABLE_CANDIDATE_GAPS_2026-11-04.md",
+    "docs/REPORTS/M121_NATIVE_THREE_SUPPLIER_JOURNEY_2026-11-04.md",
 }
 FORBIDDEN = {".env", ".git", "node_modules", "__pycache__"}
 FORBIDDEN_SUFFIXES = {".db", ".sqlite", ".sqlite3", ".log", ".pyc", ".pem", ".key"}
@@ -113,6 +114,7 @@ def main():
         "target_state_protected": ["Office finance-bridge.json and business-settings/mapping state", "Installed runtime CSS variants", "Module/config/rights/schema/data/private storage"],
         "not_authorized_by_packaging": ["Deployment", "Module activation or migrations", "Grant changes", "Real posting", "Production access"],
         "remaining_gates": "See docs/REPORTS/M121_IMMUTABLE_CANDIDATE_GAPS_2026-11-04.md",
+        "current_journey_report": "docs/REPORTS/M121_NATIVE_THREE_SUPPLIER_JOURNEY_2026-11-04.md",
         "verification": "Each archive byte re-read against SHA256 of exact Git blob; selected working tree matched commit before packaging",
     }
     path = output / "manifest.json"

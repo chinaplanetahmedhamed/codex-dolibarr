@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Explicit fresh socket-only native financial fixture. Never uses installed config/data."""
-import argparse, hashlib, json, os, subprocess, tempfile, time
+import argparse, hashlib, json, os, re, subprocess, tempfile, time
 from pathlib import Path
 
 HERE=Path(__file__).resolve().parent
@@ -12,6 +12,15 @@ MYSQL=Path('/Applications/MAMP/Library/bin/mysql')
 MYSQLD=Path('/Applications/MAMP/Library/bin/mysqld')
 
 def main():
+    global OUT
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--journey',action='store_true',help='Also run the actual three-supplier service journey')
+    parser.add_argument('--evidence-name',default='native-lifecycle')
+    args=parser.parse_args()
+    if not re.fullmatch(r'[a-z0-9-]{1,70}',args.evidence_name): raise ValueError('Bounded local evidence name required')
+    OUT=SOURCE/'outputs/M121/local-assembly-2026-11-03'/args.evidence_name
+    if args.journey and OUT.exists(): raise ValueError('Preserve previous journey evidence; choose a new evidence name')
+    if args.journey and not (HERE/'native_journey.php').read_bytes().startswith(b'<?php'): raise ValueError('Journey must be an executable PHP source file')
     OUT.mkdir(parents=True,exist_ok=True); os.chmod(OUT,0o700)
     fixture=Path(tempfile.mkdtemp(prefix='m121-native-finance-',dir='/tmp')); os.chmod(fixture,0o700)
     data=fixture/'data'; data.mkdir(mode=0o700)
@@ -19,10 +28,10 @@ def main():
     for item in CORE.iterdir():
         if item.name not in ('conf','custom'): (overlay/item.name).symlink_to(item,target_is_directory=item.is_dir())
     (overlay/'conf').mkdir(mode=0o700); (overlay/'custom').mkdir(mode=0o700)
-    for name in ('chinaplanetcustomercenter','chinaplanetoperations','chinaplanetlogistics'):
+    for name in ('chinaplanetcustomercenter','chinaplanetoperations','chinaplanetlogistics','chinaplanetdocuments'):
         (overlay/'custom'/name).symlink_to(SOURCE/'custom'/name,target_is_directory=True)
     (fixture/'documents').mkdir(mode=0o700)
-    settings={'fixture':str(fixture),'source':str(SOURCE),'core':str(CORE),'overlay':str(overlay),'schema_source':str(SCHEMA_SOURCE),'database':'m121_native_finance_synthetic','output':str(OUT)}
+    settings={'fixture':str(fixture),'source':str(SOURCE),'core':str(CORE),'overlay':str(overlay),'schema_source':str(SCHEMA_SOURCE),'database':'m121_native_finance_synthetic','output':str(OUT),'journey':args.journey}
     (fixture/'fixture.json').write_text(json.dumps(settings)); os.chmod(fixture/'fixture.json',0o600)
     process=None; started=time.time(); result={'status':'failed','scope':'disposable native fixture only'}
     try:
@@ -43,6 +52,9 @@ def main():
         (OUT/'native-run.log').write_text(run.stdout+run.stderr); os.chmod(OUT/'native-run.log',0o600)
         print((run.stdout+run.stderr)[-3500:],flush=True)
         if run.returncode: raise RuntimeError('Native scenario failed; bounded diagnostic retained in native-run.log')
+        if args.journey:
+            journey=json.loads((OUT/'native-journey.json').read_text())
+            if journey.get('status')!='passed' or not journey.get('checks'): raise RuntimeError('Structured journey evidence missing/failed')
         result={'status':'passed','scope':'actual native payment/bank methods in disposable fixture','scenario':json.loads((OUT/'result.json').read_text())}
     except Exception as exc:
         result['error']=str(exc); print(str(exc),flush=True)
