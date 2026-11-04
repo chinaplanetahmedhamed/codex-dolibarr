@@ -1,6 +1,29 @@
 <?php
 require_once __DIR__.'/ui.lib.php';
 
+/** Native rights remain authoritative; also verify the persisted financial actor. */
+function cpcc_financial_require_internal_actor($db, $actor, $entity)
+{
+    global $conf;
+    $entity = (int) $entity;
+    $denied = 'Active internal financial access is required.';
+    if ($entity <= 0 || $entity !== (int) ($conf->entity ?? 0)
+        || !is_object($actor) || empty($actor->id) || (int) $actor->id <= 0
+        || !method_exists($actor, 'hasRight') || !empty($actor->socid) || !empty($actor->fk_soc)
+        || (isset($actor->statut) && (int) $actor->statut !== 1)) {
+        throw new RuntimeException($denied);
+    }
+    $result = $db->query('SELECT rowid,entity,admin,fk_soc FROM '.MAIN_DB_PREFIX.'user WHERE rowid='.(int) $actor->id.' AND statut=1');
+    $stored = $result ? $db->fetch_object($result) : null;
+    // Native entity-zero users use rights loaded for the current entity. Do not
+    // compare object entity: native fetch can normalize company admins to zero.
+    if (!$stored || !empty($stored->fk_soc)
+        || !in_array((int) $stored->entity, array(0, $entity), true)
+        || (!empty($actor->admin) && empty($stored->admin))) {
+        throw new RuntimeException($denied);
+    }
+}
+
 function cpcc_financial_schema_ready($db)
 {
     $resql = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX."cpcc_financial_entry")."'");

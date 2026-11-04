@@ -886,3 +886,10 @@ AccountManualScopeTitle=Manual operational account
 AccountManualScopeNote=This page shows manual account entries. These figures are separate from the customer funds available to allocate.
 
 AccountCustomerFundsLink=View customer funds
+
+# M121 saved supplier payment verification
+CPOSupplierSavedPayments=Saved supplier payments
+CPOSupplierSavedPaymentNote=Check the native Paid total above. Verify a saved payment instead of recording it again; verification creates no new payment.
+CPOSupplierVerifySavedPayment=Verify saved payment
+CPOSupplierPaymentReviewRequired=Review saved payment evidence before recording another payment. Incomplete or reversed allocation links may require correction.
+CPOSupplierPaymentManualReview=Saved native payment identity is missing or unresolved. Correction is required; automatic recovery is unavailable.

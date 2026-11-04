@@ -25,6 +25,7 @@ class OperationSupplierWorkflowService
         $orderMarker=!empty($markers['supplier_order'])?end($markers['supplier_order']):null;$invoiceMarker=!empty($markers['supplier_invoice'])?end($markers['supplier_invoice']):null;
         $supplierOrder=$orderMarker&&(int)$orderMarker->fk_supplier_order>0?$this->supplierOrder((int)$orderMarker->fk_supplier_order,$operation,(int)$orderMarker->fk_supplier):null;
         $supplierInvoice=$invoiceMarker&&(int)$invoiceMarker->fk_supplier_invoice>0?$this->supplierInvoice((int)$invoiceMarker->fk_supplier_invoice,$operation,(int)$invoiceMarker->fk_supplier,$supplierOrder):null;
+        if($supplierOrder&&($supplierOrder->fetch_thirdparty()<=0||!is_object($supplierOrder->thirdparty)))throw new RuntimeException('Supplier statement identity is unavailable.');
         $summary=$supplierInvoice?$this->invoiceSummary((int)$supplierInvoice->id):null;
         return array('operation'=>$operation,'customer_order'=>$customerOrder,'markers'=>$markers,'supplier_order'=>$supplierOrder,'supplier_invoice'=>$supplierInvoice,'summary'=>$summary,'suppliers'=>$controls&&!$supplierOrder?$this->suppliers():array(),'banks'=>$controls&&$summary?$this->bankAccounts($summary['currency']):array(),'payment_modes'=>$controls?$this->paymentModes():array(),'allocations'=>$controls&&$summary?$this->availableAllocations($operation,$summary['currency']):array());
     }
@@ -165,7 +166,7 @@ class OperationSupplierWorkflowService
     private static function isInternal($user){return !empty($user)&&!empty($user->id)&&empty($user->socid);}
     private static function rightEither($user,array$paths){foreach($paths as$path)if(call_user_func_array(array(__CLASS__,'right'),array_merge(array($user),$path)))return true;return false;}
     private static function right($user){$path=array_slice(func_get_args(),1);return !empty($user)&&method_exists($user,'hasRight')&&(bool)call_user_func_array(array($user,'hasRight'),$path);}
-    private function assertStaff($user){if(!self::isInternal($user))throw new RuntimeException('Staff access required.');if(empty($user->admin)&&!$user->hasRight('chinaplanetoperations','operation_write'))throw new RuntimeException('Operation write permission is required.');}
+    private function assertStaff($user){cpcc_financial_require_internal_actor($this->db,$user,$this->entity);if(!self::isInternal($user))throw new RuntimeException('Staff access required.');if(empty($user->admin)&&!$user->hasRight('chinaplanetoperations','operation_write'))throw new RuntimeException('Operation write permission is required.');}
     private function assertOrderCreatePermission($user){$this->assertStaff($user);if(!self::canCreateSupplierOrder($user))throw new RuntimeException('Native supplier-order create permission is required.');}
     private function assertOrderValidatePermission($user){$this->assertStaff($user);if(!self::canValidateSupplierOrder($user))throw new RuntimeException('Native supplier-order validation permission is required.');}
     private function assertInvoiceCreatePermission($user){$this->assertStaff($user);if(!self::canCreateSupplierInvoice($user))throw new RuntimeException('Native supplier-invoice create permission is required.');}

@@ -879,3 +879,10 @@ AccountManualScopeTitle=الحساب التشغيلي اليدوي
 AccountManualScopeNote=تعرض هذه الصفحة قيود الحساب اليدوية. هذه القيم منفصلة عن أموال العميل المتاحة للتخصيص.
 
 AccountCustomerFundsLink=عرض أموال العميل
+
+# M121 saved supplier payment verification
+CPOSupplierSavedPayments=دفعات المورد المحفوظة
+CPOSupplierSavedPaymentNote=راجع إجمالي المدفوع من سجلات النظام أعلاه. تحقّق من الدفعة المحفوظة بدل تسجيلها مرة أخرى؛ التحقق لا ينشئ دفعة جديدة.
+CPOSupplierVerifySavedPayment=التحقق من الدفعة المحفوظة
+CPOSupplierPaymentReviewRequired=راجع أدلة الدفعة المحفوظة قبل تسجيل دفعة أخرى. قد تحتاج روابط التخصيص غير المكتملة أو المعكوسة إلى تصحيح.
+CPOSupplierPaymentManualReview=هوية الدفعة الأصلية المحفوظة مفقودة أو غير محسومة. يلزم التصحيح؛ الاسترجاع التلقائي غير متاح.

@@ -17,6 +17,7 @@ class NativeAdvanceWorkflowService
 
     public function createDepositFromOrigin($socid, $originType, $originId, $user, $requestKey)
     {
+        cpcc_financial_require_internal_actor($this->db, $user, $this->entity);
         if (!$user->hasRight('facture', 'creer')) throw new RuntimeException('Native invoice-create permission is required.');
         if (function_exists('getDolGlobalString') && getDolGlobalString('MAIN_USE_ADVANCED_PERMS') && !$user->hasRight('facture', 'invoice_advance', 'validate')) throw new RuntimeException('Native invoice-validation permission is required.');
         if ($socid <= 0 || !in_array($originType, array('commande', 'propal'), true) || $originId <= 0) throw new RuntimeException('Choose an eligible customer order or proposal.');
@@ -71,6 +72,7 @@ class NativeAdvanceWorkflowService
 
     public function postBankReceipt($socid, $invoiceId, $accountId, $paymentCode, $date, $reference, $user, $requestKey)
     {
+        cpcc_financial_require_internal_actor($this->db, $user, $this->entity);
         global $conf;
         if (!$user->hasRight('facture', 'paiement')) throw new RuntimeException('Native customer-payment permission is required.');
         $reference = trim((string) $reference);
@@ -187,6 +189,7 @@ class NativeAdvanceWorkflowService
      */
     public function resumeBankReceipt($socid, $markerId, $user)
     {
+        cpcc_financial_require_internal_actor($this->db, $user, $this->entity);
         if (!$user->hasRight('facture', 'paiement')) throw new RuntimeException('Native customer-payment permission is required.');
         $socid = (int) $socid;
         $markerId = (int) $markerId;

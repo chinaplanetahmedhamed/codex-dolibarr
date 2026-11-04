@@ -19,6 +19,7 @@ class Handler(boards.Handler):
   return super().send(data,status,kind)
  def do_GET(self):
   u=urlsplit(self.path);fixed={'/':'index.html','/office-en.html':'office-en.html','/office-ar.html':'office-ar.html','/documents-en.html':'documents-en.html','/documents-ar.html':'documents-ar.html'}
+  fixed['/native-statements.html']='native-statements.html'
   if u.path=='/journey.json':return self.send((OUT/'assembled-journey.json').read_bytes(),kind='application/json')
   if u.path.endswith('/custom/chinaplanetdocuments/index.php'):
    q=parse_qs(u.query)

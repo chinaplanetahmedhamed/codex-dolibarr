@@ -15,8 +15,10 @@ def main():
     global OUT
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--journey',action='store_true',help='Also run the actual three-supplier service journey')
+    parser.add_argument('--boundaries',action='store_true',help='Also verify native actor boundaries and actual statement templates')
     parser.add_argument('--evidence-name',default='native-lifecycle')
     args=parser.parse_args()
+    if args.boundaries: args.journey=True
     if not re.fullmatch(r'[a-z0-9-]{1,70}',args.evidence_name): raise ValueError('Bounded local evidence name required')
     OUT=SOURCE/'outputs/M121/local-assembly-2026-11-03'/args.evidence_name
     if args.journey and OUT.exists(): raise ValueError('Preserve previous journey evidence; choose a new evidence name')
@@ -31,7 +33,7 @@ def main():
     for name in ('chinaplanetcustomercenter','chinaplanetoperations','chinaplanetlogistics','chinaplanetdocuments'):
         (overlay/'custom'/name).symlink_to(SOURCE/'custom'/name,target_is_directory=True)
     (fixture/'documents').mkdir(mode=0o700)
-    settings={'fixture':str(fixture),'source':str(SOURCE),'core':str(CORE),'overlay':str(overlay),'schema_source':str(SCHEMA_SOURCE),'database':'m121_native_finance_synthetic','output':str(OUT),'journey':args.journey}
+    settings={'fixture':str(fixture),'source':str(SOURCE),'core':str(CORE),'overlay':str(overlay),'schema_source':str(SCHEMA_SOURCE),'database':'m121_native_finance_synthetic','output':str(OUT),'journey':args.journey,'boundaries':args.boundaries}
     (fixture/'fixture.json').write_text(json.dumps(settings)); os.chmod(fixture/'fixture.json',0o600)
     process=None; started=time.time(); result={'status':'failed','scope':'disposable native fixture only'}
     try:
@@ -55,6 +57,9 @@ def main():
         if args.journey:
             journey=json.loads((OUT/'native-journey.json').read_text())
             if journey.get('status')!='passed' or not journey.get('checks'): raise RuntimeError('Structured journey evidence missing/failed')
+        if args.boundaries:
+            boundary=json.loads((OUT/'native-statement-permissions.json').read_text())
+            if boundary.get('status')!='passed' or not boundary.get('checks'): raise RuntimeError('Structured boundary/view evidence missing/failed')
         result={'status':'passed','scope':'actual native payment/bank methods in disposable fixture','scenario':json.loads((OUT/'result.json').read_text())}
     except Exception as exc:
         result['error']=str(exc); print(str(exc),flush=True)

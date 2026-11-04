@@ -51,7 +51,7 @@ $conf=new Conf(); $conf->entity=1; $conf->currency='USD'; $conf->global->MAIN_DI
 $conf->global->MAIN_MAX_DECIMALS_TOT=2; $conf->global->MAIN_MAX_DECIMALS_UNIT=8; $conf->global->MAIN_MAX_DECIMALS_SHOWN=2;
 $conf->db->type='mysqli'; $conf->db->character_set='utf8mb4'; $conf->db->dolibarr_main_db_collation='utf8mb4_unicode_ci';
 foreach (array('bank','facture','fournisseur','societe') as $module) { $conf->modules[$module]=1; if (!isset($conf->$module)) $conf->$module=new stdClass(); $conf->$module->enabled=1; $conf->$module->dir_output=DOL_DATA_ROOT.'/'.$module; $conf->$module->multidir_output=array(1=>DOL_DATA_ROOT.'/'.$module); }
-$conf->file->dol_document_root=array(DOL_DOCUMENT_ROOT); $conf->modules_parts['models']=array();
+$conf->file->dol_document_root=array('main'=>DOL_DOCUMENT_ROOT,'alt0'=>DOL_DOCUMENT_ROOT.'/custom'); $conf->file->dol_url_root=array('main'=>'','alt0'=>'/custom'); $conf->file->dol_main_url_root='http://127.0.0.1:18780'; $conf->modules_parts['models']=array();
 $langs=new Translate('', $conf); $langs->setDefaultLang('en_US'); $langs->load('main');
 require_once DOL_DOCUMENT_ROOT.'/core/db/mysqli.class.php';
 $db=new DoliDBMysqli('mysqli','localhost','root','',$s['database']);
@@ -100,7 +100,9 @@ $nativeLifecycle=require __DIR__.'/native_cfs_cases.php';
 $nativeSnapshot=require __DIR__.'/native_snapshot_cases.php';
 $nativeJourney=!empty($s['journey'])?require __DIR__.'/native_journey.php':null;
 if(!empty($s['journey'])&&(!is_array($nativeJourney)||($nativeJourney['status']??'')!=='passed'||empty($nativeJourney['checks'])))throw new RuntimeException('Native journey did not return verified structured evidence.');
-$result=array('native_journey'=>$nativeJourney,'native_snapshot'=>$nativeSnapshot,'native_lifecycle'=>$nativeLifecycle,'status'=>'native_cash_methods_passed','core_version'=>'24.0.1','engine'=>$meta['version'],'result_assertions'=>9,'scope'=>'Seeded invoice/company/user/bank-account context; actual unmodified core payment create and addPaymentToBank; closepaidinvoices=0; actual trigger dispatcher; PDF autoupdate disabled in fixture only','generated_ids'=>array('customer_payment'=>$customerPayment,'customer_bank'=>$customerBank,'supplier_payment'=>$supplierPayment,'supplier_bank'=>$supplierBank),'native_rows'=>$rows,'limits'=>array('No authenticated UI or full NativeAdvanceWorkflow/postPayment command acceptance','Not MariaDB or production acceptance'));
+$nativeBoundary=!empty($s['boundaries'])?require __DIR__.'/native_statement_permissions.php':null;
+if(!empty($s['boundaries'])&&(!is_array($nativeBoundary)||($nativeBoundary['status']??'')!=='passed'))throw new RuntimeException('Native boundary/view verification failed.');
+$result=array('native_statement_permissions'=>$nativeBoundary,'native_journey'=>$nativeJourney,'native_snapshot'=>$nativeSnapshot,'native_lifecycle'=>$nativeLifecycle,'status'=>'native_cash_methods_passed','core_version'=>'24.0.1','engine'=>$meta['version'],'result_assertions'=>9,'scope'=>'Seeded invoice/company/user/bank-account context; actual unmodified core payment create and addPaymentToBank; closepaidinvoices=0; actual trigger dispatcher; PDF autoupdate disabled in fixture only','generated_ids'=>array('customer_payment'=>$customerPayment,'customer_bank'=>$customerBank,'supplier_payment'=>$supplierPayment,'supplier_bank'=>$supplierBank),'native_rows'=>$rows,'limits'=>array('No authenticated UI or full NativeAdvanceWorkflow/postPayment command acceptance','Not MariaDB or production acceptance'));
 file_put_contents($s['output'].'/result.json',json_encode($result,JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)); chmod($s['output'].'/result.json',0600);
 $db->close();
 echo "PASS actual native financial methods\n";
