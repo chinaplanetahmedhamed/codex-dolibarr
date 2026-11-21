@@ -3,10 +3,10 @@ name: Verified deployed application baseline
 on:
   pull_request:
     branches: [main]
-    paths: ['custom/**', 'htdocs/**', 'deploy/live-baseline/**', 'deploy/tests/verify_live_baseline.py', '.github/workflows/live-baseline.yml']
+    paths: ['deploy/live-baseline/**', 'deploy/tests/verify_live_baseline.py', '.github/workflows/live-baseline.yml']
   push:
-    branches: [main, 'codex/m140-live-baseline']
-    paths: ['custom/**', 'htdocs/**', 'deploy/live-baseline/**', 'deploy/tests/verify_live_baseline.py', '.github/workflows/live-baseline.yml']
+    branches: ['codex/m140-live-baseline']
+  workflow_dispatch:
 
 permissions:
   contents: read
