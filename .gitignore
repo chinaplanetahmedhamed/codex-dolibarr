@@ -73,3 +73,9 @@ info.text
 **/local-access.json
 **/boards-statements-*.json*
 **/candidate/db/
+
+# Private/generated local evidence is retained outside the code baseline
+/outputs/
+# Public owner-module installation/migration schemas belong in source
+!custom/**/sql/**/*.sql
+!custom/**/schema/**/*.sql
