@@ -1,0 +1,23 @@
+name: Verified deployed application baseline
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['custom/**', 'htdocs/**', 'deploy/live-baseline/**', 'deploy/tests/verify_live_baseline.py', '.github/workflows/live-baseline.yml']
+  push:
+    branches: [main, 'codex/m140-live-baseline']
+    paths: ['custom/**', 'htdocs/**', 'deploy/live-baseline/**', 'deploy/tests/verify_live_baseline.py', '.github/workflows/live-baseline.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  captured-bytes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Verify all captured application files
+        run: python3 deploy/tests/verify_live_baseline.py
