@@ -8,6 +8,7 @@ require_once __DIR__.'/../class/ShippingNoteReviewService.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 
 chinaplanetsp_require_internal($user, 'import');
+chinaplanetsp_use_note_charset($db);
 $id = GETPOSTINT('id');
 $notePage = max(0, GETPOSTINT('note_page'));
 $reviewService = new ShippingNoteReviewService($db, $user);
@@ -68,7 +69,7 @@ cpcc_admin_shell_open('shippingprices', 'Review import / مراجعة ملف ا�
 print '<main class="chinaplanetsp-rates-manager">';
 print '<div class="chinaplanetsp-admin-toolbar"><a class="button" href="import.php">Back to imports</a><a class="button" href="dashboard.php">Control center</a>';
 if ((int)$batch->status !== 2 && $canPublish) {
-    print '<form method="post" action="import.php" onsubmit="return confirm(\'Publish this batch and update current prices?\')"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="publish"><input type="hidden" name="id" value="'.$id.'"><button class="button button-save" type="submit">Publish this batch / نشر الدفعة</button></form>';
+    print '<form method="post" action="import.php" onsubmit="return confirm(\'Publish this batch and update current prices?\')"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="publish"><input type="hidden" name="id" value="'.$id.'"><label>Valid from / صالح من <input type="date" name="valid_from"></label><label>Valid to / صالح إلى <input type="date" name="valid_to"></label><small>Leave blank: publication day through the next 6 days (7 inclusive dates). History imports keep their original dates. / اتركهما فارغين: أسبوع من يوم النشر، والاستيراد التاريخي يحتفظ بتواريخه.</small><button class="button button-save" type="submit">Publish this batch / نشر الدفعة</button></form>';
 } elseif ((int)$batch->status === 2 && !empty($publication['can_reactivate'])) {
     print '<form method="post" action="import.php" onsubmit="return confirm(\'Reactivate this published batch as the current price list?\')"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="activate_current"><input type="hidden" name="id" value="'.$id.'"><button class="button button-save" type="submit">Repair &amp; activate current / إصلاح وتفعيل الحالية</button></form>';
 }
@@ -129,7 +130,7 @@ if ((int)$translationSummary->note_rows > 0) {
 }
 
 print '<section class="chinaplanetsp-rule-list"><div class="chinaplanetsp-list-head"><h2>Accepted prices preview <span>'.count($rates).'</span></h2>';
-if ((int)$batch->status !== 2 && $canPublish) print '<form method="post" action="import.php" onsubmit="return confirm(\'Publish this batch and update current prices?\')"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="publish"><input type="hidden" name="id" value="'.$id.'"><button class="button button-save" type="submit">Publish this batch / نشر الدفعة</button></form>';
+if ((int)$batch->status !== 2 && $canPublish) print '<form method="post" action="import.php" onsubmit="return confirm(\'Publish this batch and update current prices?\')"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="publish"><input type="hidden" name="id" value="'.$id.'"><label>Valid from / صالح من <input type="date" name="valid_from"></label><label>Valid to / صالح إلى <input type="date" name="valid_to"></label><small>Leave blank: publication day through the next 6 days (7 inclusive dates). History imports keep their original dates. / اتركهما فارغين: أسبوع من يوم النشر، والاستيراد التاريخي يحتفظ بتواريخه.</small><button class="button button-save" type="submit">Publish this batch / نشر الدفعة</button></form>';
 print '</div>';
 if (!$rates) {
     print '<div class="warning">No accepted prices were found in this batch. Do not publish it.</div>';

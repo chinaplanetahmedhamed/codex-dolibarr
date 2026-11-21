@@ -1,0 +1,22 @@
+CREATE TABLE llx_cpo_public_request_publication (
+  rowid bigint AUTO_INCREMENT PRIMARY KEY,
+  entity integer NOT NULL DEFAULT 1,
+  fk_request bigint NOT NULL,
+  public_token char(32) NOT NULL,
+  item_type varchar(16) NOT NULL,
+  body_public text NULL,
+  original_name varchar(255) NULL,
+  storage_key varchar(255) NULL,
+  mime_type varchar(100) NULL,
+  file_size bigint NULL,
+  file_sha256 char(64) NULL,
+  customer_visible tinyint NOT NULL DEFAULT 0,
+  status tinyint NOT NULL DEFAULT 1,
+  fk_user_creat integer NOT NULL,
+  fk_user_modif integer NULL,
+  date_creation datetime NOT NULL,
+  date_modification datetime NULL,
+  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_cpo_request_publication_token (entity, public_token),
+  KEY idx_cpo_request_publication_portal (entity, fk_request, customer_visible, status, date_creation)
+) ENGINE=innodb;

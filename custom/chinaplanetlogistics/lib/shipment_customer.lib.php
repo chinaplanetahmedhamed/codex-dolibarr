@@ -7,6 +7,13 @@
  * paths.
  */
 
+/** Display a staff-entered shipment label without changing its canonical reference. */
+function cpl_shipment_display_ref(array $shipment)
+{
+    $manual = trim((string) ($shipment['manual_ref'] ?? ''));
+    return $manual === '' ? (string) $shipment['ref'] : $manual;
+}
+
 /**
  * Small translation proxy used only by the customer shipment command center.
  *
@@ -491,7 +498,6 @@ function cpl_render_shipment_command_center($db, $shipment, $context)
     print '<article class="cpl-snapshot cpl-'.$freeClass.'"><span>'.$langs->trans('CPLFreeTime').'</span><strong>'.dol_escape_htmltag($freeTitle).'</strong><small>'.dol_escape_htmltag($freeText).'</small></article></section>';
 
     print '<section id="shipment-timeline" class="cpl-panel" aria-labelledby="cpl-timeline-title"><div class="cpl-section-title"><div><span>'.$langs->trans('CPLShipmentJourney').'</span><h2 id="cpl-timeline-title">'.$langs->trans('CPLTimeline').'</h2></div>';
-    if ($external && $contextualAlert && $contextualAlert['code'] === 'container_receipt') print '<form method="POST" class="cpl-inline-receipt"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="id" value="'.(int)$shipment->id.'"><input type="hidden" name="action" value="customer_container_received"><button type="submit" class="button button-save">'.dol_escape_htmltag($langs->trans('CPLConfirmContainerReceived')).'</button></form>';
     print '</div><ol class="cpl-timeline">';
     foreach ($timeline as $step) {
         $stateKeys = array('complete'=>'CPLStateComplete','current'=>'CPLStateCurrent','next'=>'CPLStateNext','planned'=>'CPLStatePlanned','unconfirmed'=>'CPLStateUnconfirmed');

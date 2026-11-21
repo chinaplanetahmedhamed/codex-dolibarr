@@ -163,6 +163,20 @@ class OperationsService
             $this->db->rollback();
             throw new RuntimeException('A linked shipment cannot be removed or replaced.');
         }
+        $commercial = $this->getSection($id, 'commercial_workflow');
+        if (!empty($commercial['proposal_id'])) {
+            $requestedSocid = !empty($data['fk_soc']) ? (int) $data['fk_soc'] : 0;
+            $requestedProject = !empty($data['fk_project']) ? (int) $data['fk_project'] : 0;
+            $requestedOrder = !empty($data['fk_commande']) ? (int) $data['fk_commande'] : 0;
+            if ($requestedSocid !== (int) $operation['fk_soc'] || $requestedProject !== (int) $operation['fk_project']) {
+                $this->db->rollback();
+                throw new RuntimeException('Customer and project are locked after the quotation workflow starts.');
+            }
+            if ((!empty($operation['fk_commande']) && $requestedOrder !== (int) $operation['fk_commande']) || (empty($operation['fk_commande']) && $requestedOrder > 0)) {
+                $this->db->rollback();
+                throw new RuntimeException('The commercial workflow controls the linked customer order.');
+            }
+        }
         $this->validateAssignment($data, true);
         $this->validateContextLinks($data);
         $this->validateShipmentLink($data);

@@ -1,0 +1,9 @@
+.cpcc-activation{max-width:640px;margin:32px auto;padding:0 18px}
+.cpcc-activation .fichecenter{background:#fff;border:1px solid #d8e1ea;border-radius:16px;padding:24px}
+.cpcc-activation form{display:grid;gap:18px}
+.cpcc-activation label,.cpcc-activation label span{display:block}
+.cpcc-activation label span{margin-bottom:7px;font-weight:700}
+.cpcc-activation input[type=password],.cpcc-activation input[type=email]{box-sizing:border-box;width:100%;min-height:44px;font-size:16px;padding:10px 12px}
+.cpcc-activation button{min-height:44px;padding:10px 16px}
+.cpcc-activation input:focus-visible,.cpcc-activation button:focus-visible,.cpcc-activation a:focus-visible{outline:3px solid #1769aa;outline-offset:3px}
+@media(max-width:420px){.cpcc-activation{margin:18px auto;padding:0 12px}.cpcc-activation .fichecenter{padding:18px 14px}}

@@ -1,0 +1,20 @@
+<?php
+require_once __DIR__.'/InternalTaskBoardsService.class.php';
+require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';
+/** Explicit placement migration. Never invoked during web reads or task writes. */
+class InternalTaskBoardsLegacyMigration
+{
+    private $db;private $actor;private $entity;
+    public function __construct($db,$actor,$entity){$this->db=$db;$this->actor=$actor;$this->entity=(int)$entity;}
+    public function apply()
+    {
+        $tasks=new InternalTaskService($this->db,$this->actor,$this->entity);$auth=$tasks->authorization();if(!$auth->isAdministrator())throw new InternalTaskAccessException('Administrator required for migration.');$svc=new InternalTaskBoardsService($this->db,$this->actor,$this->entity);$rows=[];$r=$this->db->query('SELECT t.* FROM '.MAIN_DB_PREFIX.'cpo_task t WHERE t.entity='.$this->entity." AND t.status<>'deleted' AND NOT EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX.'cpo_board_card c WHERE c.entity=t.entity AND c.fk_task=t.rowid) ORDER BY t.fk_usergroup,t.fk_user_assign,t.position,t.rowid');if(!$r)throw new RuntimeException('Cannot inspect legacy tasks.');while($o=$this->db->fetch_object($r))$rows[]=(array)$o;if(!$rows)return ['boards'=>0,'tasks'=>0];
+        $teams=array_column($tasks->teamOptions(false),'nom','rowid');if(!$teams)throw new RuntimeException('Create a native internal team before migration.');$stages=array_column($tasks->stageService()->listStages(true),null,'rowid');$people=$tasks->internalUsers();$groups=[];foreach($rows as $t){$key=(int)$t['fk_usergroup'].':'.(int)$t['fk_user_assign'];$groups[$key][]=$t;}
+        $this->db->begin();try{$count=0;foreach($groups as $group){$first=$group[0];$team=(int)$first['fk_usergroup'];$owner=(int)$first['fk_user_assign'];$u=new User($this->db);if($owner)$u->fetch($owner);$title=($teams[$team]??'Unclassified').' · '.($owner?((trim(($u->firstname??'').' '.($u->lastname??'')))?:($u->login??'Former assignee')):'Unassigned');$bid=$svc->mutate('create_board',['title'=>$title,'team'=>isset($teams[$team])?$team:(int)array_key_first($teams),'background'=>'#172b4d'])['id'];$lists=$svc->workspace($bid)['lists'];$mapping=[];$i=0;foreach(array_unique(array_map('intval',array_column($group,'fk_stage'))) as $stage){$name=$stages[$stage]['label_en']??'Legacy tasks';if($i<count($lists)){$lid=(int)$lists[$i]['rowid'];$svc->mutate('rename_list',['board'=>$bid,'version'=>$svc->board($bid)['version'],'list'=>$lid,'title'=>$name]);}else{$svc->mutate('add_list',['board'=>$bid,'version'=>$svc->board($bid)['version'],'title'=>$name]);$all=$svc->workspace($bid)['lists'];$lid=(int)end($all)['rowid'];}$mapping[$stage]=$lid;$i++;}
+                // Owner cohorts keep staff from acquiring visibility of other assignees' cards.
+                foreach($people as $person){$candidate=new User($this->db);$candidate->fetch((int)$person['rowid']);$candidate->loadRights();$native=new InternalTaskAuthorizationService($this->db,$candidate,$this->entity);if($native->isAdministrator())continue;$role=null;if((int)$candidate->id===$owner&&$native->hasRight('task_read_own')&&$native->isActiveTeamMember($owner,$team))$role=$native->hasRight('task_update_own')?'editor':'viewer';if($native->hasRight('task_manage_team')&&$native->hasTeamGrant($team))$role='manager';if($role)$svc->mutate('share_board',['board'=>$bid,'version'=>$svc->board($bid)['version'],'user'=>$candidate->id,'role'=>$role]);}
+                foreach($group as $position=>$t){$archived=!empty($t['date_archived'])||$t['status']==='cancelled';$sql='INSERT INTO '.MAIN_DB_PREFIX.'cpo_board_card(entity,fk_board,fk_list,fk_task,position,archived) VALUES('.$this->entity.','.$bid.','.$mapping[(int)$t['fk_stage']].','.(int)$t['rowid'].','.(($position+1)*1024).','.(int)$archived.')';if(!$this->db->query($sql))throw new RuntimeException('Cannot place legacy task.');$count++;}
+            }if(!$this->db->commit())throw new RuntimeException('Migration could not commit.');return ['boards'=>count($groups),'tasks'=>$count];
+        }catch(Throwable $e){$this->db->rollback();throw $e;}
+    }
+}

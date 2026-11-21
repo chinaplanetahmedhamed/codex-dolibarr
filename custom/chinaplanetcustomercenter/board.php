@@ -23,6 +23,7 @@ $activeShipmentsUrl = cpcc_portal_scoped_url('/chinaplanetlogistics/list.php', $
 $allOrdersUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/orders.php', $is_external, $socid, array('status'=>'all'));
 $activeProjectsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/projects.php', $is_external, $socid, array('status'=>'active'));
 $invoicesUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/invoices.php', $is_external, $socid);
+$quotationsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/quotations.php', $is_external, $socid);
 $documentsUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/documents.php', $is_external, $socid);
 $customerOptions = array();
 if (!$is_external) {
@@ -64,6 +65,7 @@ $ordersTotal = 0;
 $projectsActive = 0;
 $projectsTotal = 0;
 $invoiceTotal = 0;
+$quotationTotal = 0;
 $documentTotal = 0;
 $operationReportTotal = 0;
 $canViewShippingOrders = !$is_external && cpo_can($user, 'read');
@@ -71,7 +73,8 @@ $shippingOrderStats = array('total_current'=>0,'active'=>0,'confirmed'=>0,'close
 $shippingOrderLabels = array('active'=>'نشط / Active','confirmed'=>'مؤكد / تم استلام SO / Confirmed','closed'=>'مغلق / Closed','cancelled'=>'ملغي / Cancelled');
 $recentShippingOrders = array();
 if ($socid > 0) {
-    $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")");
+    $shipmentVisibilitySql = $is_external ? ' AND customer_visible=1' : '';
+    $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")".$shipmentVisibilitySql);
     if ($resql && ($obj=$db->fetch_object($resql))) $shipActive=(int)$obj->nb;
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."commande WHERE entity IN (".getEntity('commande').") AND fk_soc=".$socid." AND fk_statut>=3");
     if ($resql && ($obj=$db->fetch_object($resql))) $ordersCompleted=(int)$obj->nb;
@@ -85,6 +88,8 @@ if ($socid > 0) {
     if ($resql && ($obj=$db->fetch_object($resql))) $projectsTotal=(int)$obj->nb;
     $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."facture WHERE entity IN (".getEntity('invoice').") AND fk_soc=".$socid." AND fk_statut>0");
     if ($resql && ($obj=$db->fetch_object($resql))) $invoiceTotal=(int)$obj->nb;
+    $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."propal WHERE entity IN (".getEntity('propal').") AND fk_soc=".$socid." AND fk_statut>0");
+    if ($resql && ($obj=$db->fetch_object($resql))) $quotationTotal=(int)$obj->nb;
 	$documentTotal = cpcc_portal_customer_document_count($db, $user, $socid);
     if (cpcc_operation_reports_schema_ready($db)) {
         $resql = $db->query("SELECT COUNT(*) nb FROM ".MAIN_DB_PREFIX."cpo_operation WHERE entity=".(int)$conf->entity." AND fk_soc=".$socid." AND status=1 AND customer_visible=1");
@@ -146,6 +151,7 @@ else cpcc_admin_shell_open('portal', 'Customer Center / مركز العملاء'
       <a href="<?php echo dol_escape_htmltag($allOrdersUrl); ?>" class="cpcc-card"><span>الطلبات / Orders</span><strong><?php echo $ordersTotal; ?> <em>الكل</em></strong><small><?php echo $ordersActive; ?> Active · <?php echo $ordersCompleted; ?> Completed · <?php echo $ordersTotal; ?> Total</small></a>
       <a href="<?php echo dol_escape_htmltag($activeProjectsUrl); ?>" class="cpcc-card"><span>المشاريع / Projects</span><strong><?php echo $projectsActive; ?> <em>نشطة</em></strong><small><?php echo $projectsActive; ?> Active · <?php echo $projectsTotal; ?> Total</small></a>
       <a href="<?php echo dol_escape_htmltag($invoicesUrl); ?>" class="cpcc-card"><span>الفواتير / Invoices</span><strong><?php echo $invoiceTotal; ?></strong><small>Approved customer invoices</small></a>
+      <a href="<?php echo dol_escape_htmltag($quotationsUrl); ?>" class="cpcc-card"><span>عروض الأسعار / Quotations</span><strong><?php echo $quotationTotal; ?></strong><small>Validated customer quotations</small></a>
       <a href="<?php echo dol_escape_htmltag($documentsUrl); ?>" class="cpcc-card"><span>المستندات / Documents</span><strong><?php echo $documentTotal; ?></strong><small>Published customer documents</small></a>
       <a href="<?php echo dol_escape_htmltag(cpcc_portal_scoped_url('/chinaplanetcustomercenter/operation_reports.php',$is_external,$socid)); ?>" class="cpcc-card"><span>التقارير / Reports</span><strong><?php echo $operationReportTotal; ?></strong><small>Approved customer reports</small></a>
       <?php if ($canViewShippingOrders) { ?><a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/shipping_orders.php',1).'?'.http_build_query(array('socid'=>$socid)); ?>" class="cpcc-card shipping-orders"><span>طلبات الشحن / Shipping Orders</span><strong><?php echo (int) $shippingOrderStats['total_current']; ?> <em>الحالي</em></strong><small><?php echo (int) $shippingOrderStats['active']; ?> Active · <?php echo (int) $shippingOrderStats['confirmed']; ?> Confirmed · <?php echo (int) $shippingOrderStats['closed']; ?> Closed · <?php echo (int) $shippingOrderStats['cancelled']; ?> Cancelled</small></a><?php } ?>

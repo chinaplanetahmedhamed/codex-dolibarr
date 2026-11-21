@@ -1,0 +1,228 @@
+@font-face {
+  font-family: 'Nunito';
+  src: url('../../fonts/NunitoSans.ttf') format('ttf');
+  font-weight: normal;
+  font-style: normal;
+}
+  p {
+    margin-block-start: 0px;
+    margin-block-end: 0px;
+  }
+  a.kontava {
+    outline: none;
+    text-decoration: none;
+    display: inline-block;
+    width: auto;
+    margin: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
+    text-align: center;
+    line-height: 3;
+    color: #FFFFFF;
+    background: #006633;
+    border-radius: 10px;
+    white-space: nowrap;
+    /* text-align: center; */
+    /* vertical-align: middle; */
+    /* align-content: center; */
+  }
+  
+  a.kontava:link, a.kontava:visited, a.kontava:focus {
+    background: #006633;
+  }
+  
+  a.kontava:hover {
+    background: #f49739;
+    cursor: pointer;
+  }
+  
+  a.kontava:active {
+    background: #006633;
+    color: white;
+  }
+  button.kontava {
+    outline: none;
+    text-decoration: none;
+    display: inline-block;
+    width: auto;
+    margin: 2px;
+    padding-left: 10px;
+    padding-right: 10px;
+    text-align: center;
+    line-height: 1;
+    color: #FFFFFF;
+    background: #f49739;
+    border-radius: 10px;
+    white-space: nowrap;
+    /* text-align: center; */
+    /* vertical-align: middle; */
+    /* align-content: center; */
+  }
+  button.red {
+    background: #dc2713!important;
+  }
+  
+  button.kontava:hover {
+    background: #006633;
+    cursor: pointer;
+  }
+  button.red:hover {
+    background: #006633!important;
+  }
+  i.kontava {
+    /* outline: none;
+    text-decoration: none;
+    display: inline-block;
+    width: auto;
+    margin: 2px;
+    padding-left: 10px;
+    padding-right: 10px;
+    text-align: center;
+    line-height: 1; */
+    color: #f49739;
+    /* background: #f49739; */
+    /* border-radius: 10px;
+    white-space: nowrap; */
+    /* text-align: center; */
+    /* vertical-align: middle; */
+    /* align-content: center; */
+  }
+  
+  i.kontava:hover {
+    /* background: #006633; */
+    color: #006633;
+    /* cursor: pointer; */
+  }
+
+  p.kontava{
+    font-size: 14px;
+    color: #006633;
+    font-family: "Nunito", sans-serif;
+  }
+  span.kontava{
+    font-size: 14px;
+    color: #006633;
+    font-family: "Nunito", sans-serif;
+  }
+  div.kontava{
+    font-size: 14px;
+    color: #006633;
+    font-family: "Nunito", sans-serif;
+  }
+  p.titre{
+    font-weight: bolder;
+    font-size: 18px;
+
+  }
+
+  p.user{
+    font-size: 45px;
+    color: #006633;
+    font-weight: bolder;
+    font-family: "Nunito", sans-serif;
+  }
+/* Pour plier et déplier les widgets */
+  .widget-container {
+    display:flex;
+    justify-content: space-between;
+    height: 100%;
+  }
+
+  .widget-content {
+    max-height: 900px;  /* Ajuste selon ton contenu */
+    opacity: 1;
+    overflow: hidden;
+    /* transition: gérée par le js */
+    transition: 0.5s ease-in-out;
+    display: flex; 
+    justify-content: space-between; 
+    flex-wrap: wrap;
+  }
+  
+  .widget-content.hidden {
+     opacity: 1;
+     /*Ca sert à rien mais je le laisse pour garder l'existence de cette sousclasse car utilisée par le js pour savoir dans quel sens se tourne la flêche*/
+   }
+
+  .widget-tr-content {
+    max-height: 30px;  /* Ajuste selon ton contenu */
+    overflow: hidden;
+    opacity: 1;
+    transition: 0.3s ease-in-out;
+  }
+  .widget-tr-content.hidden {
+    opacity: 1;
+  }
+  
+  .widget-title {
+    display: flex;
+    align-items: center;
+    justify-content:flex-start;
+    width:fit-content;
+    cursor: pointer; /* Ajoute un curseur pour indiquer le clic */
+  }
+  
+  .widget-title a {
+    /* flex-grow: 1; */
+    text-decoration: none;
+  }
+   
+  .widget-arrow {
+    transition: transform 0.3s ease-in-out;
+    font-size: 16px;
+  }
+
+/* Styles pour input file stylé et dropzone */
+.kv-file-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.kv-file-btn {
+  cursor: pointer;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  background: #f49739;
+  border-radius: 8px;
+  border: none;
+  font-family: "Nunito", sans-serif;
+}
+.kv-file-btn:hover { background: #00552a; color: #fff; }
+.kv-file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* max-width: 220px; */
+  color: #004d33;
+  font-family: "Nunito", sans-serif;
+}
+.kv-dropzone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 2px dashed rgba(0,77,51,0.15);
+  background: rgba(255,255,255,0.02);
+}
+.kv-dropzone.kv-dragover {
+  border-color: #f49739;
+  background: rgba(244,151,57,0.03);
+}
+.kv-file-input-hidden {
+  position: absolute !important;
+  left: -9999px !important;
+}
+.kv-file-error {
+  color: #c33;
+  font-size: 12px;
+  margin-left: 8px;
+  font-family: "Nunito", sans-serif;
+}
+

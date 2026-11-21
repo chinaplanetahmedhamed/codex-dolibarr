@@ -3,6 +3,8 @@ if (!isset($_SERVER['QUERY_STRING'])) $_SERVER['QUERY_STRING'] = '';
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/admin_shell.lib.php';
 require_once __DIR__.'/lib/portal.lib.php';
+require_once __DIR__.'/lib/financial.lib.php';
+require_once __DIR__.'/lib/commercial_trace.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/commande/class/commande.class.php';
 
 $langs->loadLangs(array('orders', 'companies'));
@@ -14,7 +16,19 @@ $canOpenCoreOrder = !$is_external && isModEnabled('order') && $user->hasRight('c
 $id = GETPOSTINT('id');
 $order = new Commande($db);
 if ($id <= 0 || $order->fetch($id) <= 0) cpcc_portal_access_denied($user, 'orders');
+if ((int) $order->entity !== (int) $conf->entity) cpcc_portal_access_denied($user, 'orders');
 if ($is_external && (int) $order->socid !== (int) $scope['socid']) cpcc_portal_access_denied($user, 'orders');
+if ($is_external && (int) $order->statut <= 0) cpcc_portal_access_denied($user, 'orders');
+$currencyFallback = cpcc_financial_currency(!empty($conf->currency) ? $conf->currency : 'USD');
+$orderHasMulticurrency = trim((string) $order->multicurrency_code) !== '';
+$orderCurrency = cpcc_financial_currency($order->multicurrency_code, $currencyFallback);
+$orderTotal = $orderHasMulticurrency ? (float) $order->multicurrency_total_ttc : (float) $order->total_ttc;
+$orderTrace = cpcc_customer_order_trace($db, $order->id, $order->socid, $is_external);
+$orderProject = null;
+if ((int) $order->fk_project > 0) {
+	$resql = $db->query("SELECT rowid,ref,title FROM ".MAIN_DB_PREFIX."projet WHERE entity IN (".getEntity('project').") AND rowid=".(int) $order->fk_project." AND fk_soc=".(int) $order->socid);
+	$orderProject = $resql ? $db->fetch_object($resql) : null;
+}
 
 $orderStatusLabels = array(
 	-1 => 'Canceled / ملغي',
@@ -27,7 +41,7 @@ $orderStatusLabel = isset($orderStatusLabels[(int) $order->statut])
 	? $orderStatusLabels[(int) $order->statut]
 	: $order->getLibStatut(1);
 
-$pageCss = array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'));
+$pageCss = array(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/customer_dashboard.css'), cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/quotations.css'));
 if (!$is_external) {
 	$pageCss[] = cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
 }
@@ -40,13 +54,20 @@ if($is_external) cpcc_portal_navigation($user, 'orders'); else cpcc_admin_shell_
   <?php if ($canOpenCoreOrder) { ?><p><a class="button" target="_blank" rel="noopener" href="<?php echo dol_escape_htmltag(dol_buildpath('/commande/card.php',1).'?id='.(int)$order->id); ?>">Vision Advanced / فتح السجل المتقدم ↗</a></p><?php } ?>
   <section class="cpcc-financial-cards">
     <div class="cpcc-card"><span>التاريخ</span><strong><?php echo dol_escape_htmltag(dol_print_date($order->date,'day')); ?></strong><small>Order date</small></div>
-    <div class="cpcc-card"><span>الإجمالي</span><strong><?php echo cpcc_portal_money($order->total_ttc); ?></strong><small>Total incl. tax</small></div>
+    <div class="cpcc-card"><span>الإجمالي</span><strong><?php echo cpcc_portal_money($orderTotal).' '.dol_escape_htmltag($orderCurrency); ?></strong><small>Total incl. tax</small></div>
     <div class="cpcc-card"><span>الحالة / Status</span><strong><?php echo dol_escape_htmltag($orderStatusLabel); ?></strong><small>Current order status / حالة الطلب الحالية</small></div>
   </section>
+  <section class="cpcc-commercial-trace" aria-label="Commercial trace"><h2>مسار الطلب / Order Journey</h2><div class="cpcc-trace-grid">
+    <article><span>المشروع / Project</span><?php if($orderProject){$url=cpcc_portal_scoped_url('/chinaplanetcustomercenter/project.php',$is_external,$order->socid,array('id'=>(int)$orderProject->rowid));?><a href="<?php echo dol_escape_htmltag($url); ?>"><?php echo dol_escape_htmltag($orderProject->ref); ?></a><?php }else{ ?><strong>غير مرتبط / Not linked</strong><?php } ?></article>
+    <article><span>عرض السعر / Quotation</span><?php if($orderTrace['quotations']){foreach($orderTrace['quotations'] as $quotation){$url=cpcc_portal_scoped_url('/chinaplanetcustomercenter/quotation.php',$is_external,$order->socid,array('id'=>(int)$quotation->rowid));?><a href="<?php echo dol_escape_htmltag($url); ?>"><?php echo dol_escape_htmltag($quotation->ref); ?></a><?php }}else{ ?><strong>غير مرتبط / Not linked</strong><?php } ?></article>
+    <article><span>طلب البيع / Sales Order</span><strong><?php echo dol_escape_htmltag($order->ref); ?></strong></article>
+    <article><span>الفاتورة / Invoice</span><?php if($orderTrace['invoices']){foreach($orderTrace['invoices'] as $invoice){$url=cpcc_portal_scoped_url('/chinaplanetcustomercenter/invoice.php',$is_external,$order->socid,array('id'=>(int)$invoice->rowid));?><a href="<?php echo dol_escape_htmltag($url); ?>"><?php echo dol_escape_htmltag($invoice->ref); ?></a><?php }}else{ ?><strong>بانتظار الفاتورة / Pending</strong><?php } ?></article>
+    <article><span>الشحنة / Shipment</span><?php if($orderTrace['shipments']){foreach($orderTrace['shipments'] as $shipment){$url=cpcc_portal_scoped_url('/chinaplanetlogistics/card.php',$is_external,$order->socid,array('id'=>(int)$shipment->rowid));?><a href="<?php echo dol_escape_htmltag($url); ?>"><?php echo dol_escape_htmltag($shipment->ref); ?></a><?php }}else{ ?><strong>بانتظار الربط / Pending</strong><?php } ?></article>
+  </div></section>
   <section class="cpcc-section-head"><div><h2>بنود الطلب</h2><p>Customer-approved sales order lines only.</p></div></section>
   <div class="cpcc-table-wrap"><table class="cpcc-table"><thead><tr><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>
   <?php if (empty($order->lines)) { ?><tr><td colspan="4">لا توجد بنود.</td></tr><?php } ?>
-  <?php foreach ($order->lines as $line) { ?><tr><td><?php echo dol_escape_htmltag($line->desc); ?></td><td><?php echo dol_escape_htmltag((string)$line->qty); ?></td><td><?php echo cpcc_portal_money($line->subprice); ?></td><td><?php echo cpcc_portal_money($line->total_ttc); ?></td></tr><?php } ?>
+  <?php foreach ($order->lines as $line) { $linePrice=$orderHasMulticurrency&&(float)$line->multicurrency_subprice!=0?(float)$line->multicurrency_subprice:(float)$line->subprice; $lineTotal=$orderHasMulticurrency&&(float)$line->multicurrency_total_ttc!=0?(float)$line->multicurrency_total_ttc:(float)$line->total_ttc; ?><tr><td><?php echo dol_escape_htmltag($line->desc); ?></td><td><?php echo dol_escape_htmltag((string)$line->qty); ?></td><td><?php echo cpcc_portal_money($linePrice).' '.dol_escape_htmltag($orderCurrency); ?></td><td><?php echo cpcc_portal_money($lineTotal).' '.dol_escape_htmltag($orderCurrency); ?></td></tr><?php } ?>
   </tbody></table></div>
 </main>
 <?php if(!$is_external) cpcc_admin_shell_close(); llxFooter();

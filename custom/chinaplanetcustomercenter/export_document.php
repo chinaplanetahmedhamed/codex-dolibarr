@@ -21,7 +21,7 @@ $backUrl = cpcc_portal_scoped_url('/chinaplanetcustomercenter/commercial_documen
 ?>
 <div class="cpcc-print-actions" dir="rtl"><a href="<?php echo dol_escape_htmltag($backUrl); ?>">العودة للمستندات</a><button type="button" onclick="window.print()">طباعة / حفظ PDF</button></div>
 <article class="cpcc-export-sheet" dir="ltr">
-  <header class="cpcc-export-title"><div><span>VISION FOR IMPORT AND EXPORT LIMITED</span><h1><?php echo dol_escape_htmltag(strtoupper(cpcc_export_type_label($document->document_type))); ?></h1></div><div><b><?php echo dol_escape_htmltag($document->ref); ?></b><br><?php echo dol_escape_htmltag(dol_print_date($document->document_date,'day')); ?></div></header>
+  <header class="cpcc-export-title"><div><span>VISION FOR IMPORT AND EXPORT LIMITED</span><h1><?php echo dol_escape_htmltag(strtoupper(cpcc_export_type_label($document->document_type))); ?></h1></div><div><b><?php echo dol_escape_htmltag($document->ref); ?></b><br><?php echo dol_escape_htmltag(cpcc_portal_date($document->document_date)); ?></div></header>
   <section class="cpcc-export-meta">
     <div><span>Shipper / Exporter</span><b><?php echo dol_escape_htmltag($document->shipper_name ?: 'Vision for Import and Export Limited'); ?></b></div>
     <div><span>Consignee</span><b><?php echo dol_escape_htmltag($document->consignee_name); ?></b></div>

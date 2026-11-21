@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS llx_cpcc_guided_receipt (
+  rowid bigint AUTO_INCREMENT PRIMARY KEY,
+  entity integer NOT NULL DEFAULT 1,
+  fk_soc integer NOT NULL,
+  fk_invoice bigint NOT NULL,
+  fk_payment bigint NULL,
+  origin_type varchar(16) NOT NULL,
+  origin_id bigint NOT NULL,
+  request_token varchar(45) NOT NULL,
+  payload_hash char(64) NOT NULL,
+  payment_token varchar(45) NULL,
+  payment_payload_hash char(64) NULL,
+  status varchar(24) NOT NULL DEFAULT 'invoice_ready',
+  fk_user_creat integer NOT NULL,
+  date_creation datetime NOT NULL,
+  tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_cpcc_guided_invoice (entity, fk_invoice),
+  UNIQUE KEY uk_cpcc_guided_payment (entity, fk_payment),
+  UNIQUE KEY uk_cpcc_guided_token (entity, request_token),
+  UNIQUE KEY uk_cpcc_guided_payment_token (entity, payment_token),
+  KEY idx_cpcc_guided_customer (entity, fk_soc, status)
+) ENGINE=innodb;

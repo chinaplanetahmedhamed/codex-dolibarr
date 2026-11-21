@@ -116,6 +116,7 @@ $sql.= " FROM ".MAIN_DB_PREFIX."chinaplanetlogistics as t";
 $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."societe as s ON t.fk_soc = s.rowid";
 $sql.= " LEFT JOIN ".MAIN_DB_PREFIX."projet as p ON p.rowid=t.fk_project AND p.entity=t.entity AND p.fk_soc=t.fk_soc";
 $sql.= " WHERE t.entity = ".(int) $conf->entity;
+if ($is_external) $sql.= " AND t.customer_visible=1";
 
 // STRICT FILTERING: external users only see their company's data
 if ($socid > 0) {

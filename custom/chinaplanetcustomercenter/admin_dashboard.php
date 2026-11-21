@@ -68,7 +68,14 @@ $inTransit = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX.
 $arriving = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND date_eta BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)");
 $arrived = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('arrived').")");
 $critical = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity = ".$entity." AND fk_statut IN (".chinaplanetlogistics_status_sql_list('active').") AND ((date_eta < CURDATE()) OR freetime_end BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY))");
-$cardsActive = (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE entity = ".$entity." AND status = 1");
+$cardsActive = 0;
+if (!empty($conf->global->CPO_BOARDS_ENABLED)) {
+    require_once __DIR__.'/../chinaplanetoperations/class/InternalTaskBoardCounts.class.php';
+    require_once __DIR__.'/../chinaplanetoperations/class/InternalTaskBoardLifecycle.class.php';
+    $cardsActive = (int) cpadScalar($db, 'SELECT COALESCE(SUM('.InternalTaskBoardCounts::expression($entity, 'b.rowid')
+        .'),0) value FROM '.MAIN_DB_PREFIX.'cpo_board b WHERE b.entity='.$entity.' AND b.archived=0 AND '
+        .InternalTaskBoardLifecycle::visibleSql('b.entity', 'b.rowid'));
+}
 $exportDocuments = cpadTableExists($db, MAIN_DB_PREFIX.'cpcc_export_document') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."cpcc_export_document WHERE entity=".$entity." AND status=1") : 0;
 $publishedRates = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_rate') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$entity." AND status=1 AND is_current=1") : 0;
 $shippingInquiries = cpadTableExists($db, MAIN_DB_PREFIX.'chinaplanetsp_inquiry') ? (int) cpadScalar($db, "SELECT COUNT(*) value FROM ".MAIN_DB_PREFIX."chinaplanetsp_inquiry WHERE entity=".$entity." AND status=1") : 0;
@@ -183,6 +190,17 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <button type="button" id="cpad-cancel-layout" class="cpad-tool" hidden>Cancel</button>
     <span id="cpad-layout-message" class="cpad-layout-message" hidden></span>
   </div>
+  <section class="cpad-work-start" aria-labelledby="cpad-work-start-title">
+    <div class="cpad-work-start-head"><div><span>DAILY WORK</span><h1 id="cpad-work-start-title">ابدأ العمل من هنا</h1><p>شاشات مبسطة للموظف؛ Dolibarr يحفظ السجلات في الخلفية.</p></div><a href="<?php echo dol_buildpath('/chinaplanetoperations/workspace.php',1); ?>">فتح مساحة العمل اليومية ←</a></div>
+    <div class="cpad-work-start-grid">
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=order',1); ?>"><span class="fas fa-shopping-cart"></span><b>طلب عميل</b><small>Customer order</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=sourcing',1); ?>"><span class="fas fa-search"></span><b>بحث عن منتج</b><small>Product sourcing</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=purchasing',1); ?>"><span class="fas fa-boxes"></span><b>شراء ومتابعة مورد</b><small>Purchasing</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=quality_control',1); ?>"><span class="fas fa-clipboard-check"></span><b>فحص جودة</b><small>Quality control</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=shipping_booking',1); ?>"><span class="fas fa-ship"></span><b>حجز شحن</b><small>Shipping booking</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/operations/edit.php?service_type=customs',1); ?>"><span class="fas fa-file-contract"></span><b>جمارك ومستندات</b><small>Customs & documents</small></a>
+    </div>
+  </section>
   <div id="cpad-widget-grid" class="cpad-widget-grid" aria-live="polite"></div>
 
   <section class="cpad-kpis">
@@ -191,7 +209,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <div class="cpad-kpi" data-cpad-widget="kpi_projects" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><span>Active Projects / المشاريع النشطة</span><small>Open operational projects / فتح المشاريع</small></a></div>
     <div class="cpad-kpi" data-cpad-widget="kpi_shipments" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="cpad-kpi-icon fas fa-ship"></span><b><?php echo $activeShipments; ?></b><span>Active Shipments / الشحنات النشطة</span><small><?php echo $shipTotal; ?> total shipments</small></a></div>
     <div class="cpad-kpi danger" data-cpad-widget="kpi_alerts" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="cpad-kpi-icon fas fa-exclamation-triangle"></span><b><?php echo $critical; ?></b><span>Critical Alerts / تنبيهات حرجة</span><small>ETA or free-time risk / خطر وصول أو وقت حر</small></a></div>
-    <div class="cpad-kpi gold" data-cpad-widget="kpi_tasks" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="cpad-kpi-icon fas fa-columns"></span><b><?php echo $cardsActive; ?></b><span>Active Kanban / مهام كانبان</span><small>Open operations board / فتح لوحة العمليات</small></a></div>
+    <div class="cpad-kpi gold" data-cpad-widget="kpi_tasks" data-default-size="small"><a class="cpad-widget-link" href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/boards.php',1); ?>"><span class="cpad-kpi-icon fas fa-columns"></span><b><?php echo $cardsActive; ?></b><span>Active Kanban / مهام كانبان</span><small>Open operations board / فتح لوحة العمليات</small></a></div>
   </section>
 
   <section class="cpad-panel cpad-attention" data-cpad-widget="attention_center" data-default-size="full">
@@ -200,7 +218,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
       <a class="<?php echo $critical > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=critical',1); ?>"><span class="fas fa-ship"></span><strong><?php echo $critical; ?></strong><b>Critical shipments / شحنات حرجة</b><small>Review ETA and free time</small></a>
       <a class="<?php echo $overdueCount > 0 ? 'is-danger' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/compta/facture/list.php',1); ?>?search_status=1&search_datelimit_end=<?php echo date('Y-m-d'); ?>"><span class="fas fa-file-invoice-dollar"></span><strong><?php echo $overdueCount; ?></strong><b>Overdue invoices / فواتير متأخرة</b><small><?php echo $unpaidCount; ?> total unpaid</small></a>
       <a class="<?php echo $shipmentsWithoutExportDocs > 0 ? 'is-warn' : 'is-safe'; ?>" href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php',1).'?status=missingdocs'; ?>"><span class="fas fa-file-export"></span><strong><?php echo $shipmentsWithoutExportDocs; ?></strong><b>Missing export docs / بدون مستندات تصدير</b><small>Active shipments requiring files</small></a>
-      <a class="is-info" href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-tasks"></span><strong><?php echo $cardsActive; ?></strong><b>Open tasks / مهام مفتوحة</b><small>Continue internal operations</small></a>
+      <a class="is-info" href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/boards.php',1); ?>"><span class="fas fa-tasks"></span><strong><?php echo $cardsActive; ?></strong><b>Open tasks / مهام مفتوحة</b><small>Continue internal operations</small></a>
     </div>
   </section>
 
@@ -234,7 +252,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
     <div class="cpad-flow">
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=active',1); ?>"><span class="fas fa-shopping-basket"></span><b><?php echo $activeOrders; ?></b><small>Active orders / طلبات نشطة</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/projects.php?status=active',1); ?>"><span class="fas fa-project-diagram"></span><b><?php echo $activeProjects; ?></b><small>Active projects / مشاريع نشطة</small></a>
-      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b><?php echo $cardsActive; ?></b><small>Kanban tasks / مهام التشغيل</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/boards.php',1); ?>"><span class="fas fa-columns"></span><b><?php echo $cardsActive; ?></b><small>Board tasks / مهام التشغيل</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-ship"></span><b><?php echo $inTransit; ?></b><small>Live shipments / شحنات جارية</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/commercial_documents.php',1); ?>"><span class="fas fa-file-alt"></span><b><?php echo $exportDocuments; ?></b><small>Export documents / مستندات تصدير</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/orders.php?status=completed',1); ?>"><span class="fas fa-check-circle"></span><b><?php echo $completedOrders; ?></b><small>Completed orders / طلبات مكتملة</small></a>
@@ -324,7 +342,7 @@ llxHeader('', 'Vision Operations Dashboard', '', '', 0, 0, array(cpcc_admin_shel
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/operations.php',1); ?>"><span class="fas fa-project-diagram"></span><b>Customer Project Operations</b><small>عمليات مشاريع العملاء</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/financial.php',1); ?>"><span class="fas fa-wallet"></span><b>Financial Entry</b><small>حركة مالية</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/admin/export_document.php',1); ?>"><span class="fas fa-file-export"></span><b>Export Document</b><small>مستند تصدير</small></a>
-      <a href="<?php echo dol_buildpath('/cpkanban/board.php',1); ?>"><span class="fas fa-columns"></span><b>Operations Kanban</b><small>لوحة كانبان</small></a>
+      <a href="<?php echo dol_buildpath('/chinaplanetoperations/tasks/boards.php',1); ?>"><span class="fas fa-columns"></span><b>Operations Boards</b><small>بوردات العمليات</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetshippingprices/index.php',1); ?>"><span class="fas fa-search-dollar"></span><b>Shipping Price</b><small>سعر شحن</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetcustomercenter/board.php',1); ?>"><span class="fas fa-user-tie"></span><b>Customer Center</b><small>مركز العملاء</small></a>
       <a href="<?php echo dol_buildpath('/chinaplanetlogistics/list.php?status=active',1); ?>"><span class="fas fa-list"></span><b>All Shipments</b><small>كل الشحنات</small></a>

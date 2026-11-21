@@ -1,0 +1,424 @@
+# Copyright (C) 2025 Alberto SuperAdmin <aluquerivasdev@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#
+# Generic
+#
+
+# Module label 'ModuleWhatsappName'
+ModuleWhatsappName = WhatsApp
+# Module description 'ModuleWhatsappDesc'
+ModuleWhatsappDesc = Intégration WhatsApp pour Dolibarr
+
+#
+# Admin page
+#
+WhatsappSetup = Configuration WhatsApp
+WhapiSettings = Paramètres Whapi
+WhatsappSetupPage = Page de configuration WhatsApp
+WHATSAPP_MYPARAM1 = Mon paramètre 1
+WHATSAPP_MYPARAM1Tooltip = Description du paramètre 1
+WHATSAPP_MYPARAM2 = Mon paramètre 2
+WHATSAPP_MYPARAM2Tooltip = Description du paramètre 2
+
+
+#
+# About page
+#
+About = À propos
+WhatsappAbout = À propos de WhatsApp
+WhatsappAboutPage = Page d'information sur WhatsApp
+
+#
+# Sample page
+#
+WhatsappArea = Accueil WhatsApp
+MyPageName = Nom de ma page
+
+#
+# Sample widget
+#
+MyWidget = Mon widget
+MyWidgetDescription = Description de mon widget
+
+#
+# Permissions
+#
+WHATSAPP_RIGHT_READ = Utiliser WhatsApp
+WHATSAPP_RIGHT_WRITE = Modifier la configuration WhatsApp
+WHATSAPP_RIGHT_DELETE = Supprimer les messages WhatsApp
+WHATSAPP_RIGHT_ADMIN = Administrer WhatsApp
+WHATSAPP_RIGHT_TEMPLATE_DELETE = Supprimer les modèles WhatsApp
+WHATSAPP_RIGHT_TEMPLATE_WRITE = Modifier les modèles WhatsApp
+WHATSAPP_RIGHT_TEMPLATE_READ = Utiliser les modèles WhatsApp
+WHATSAPP_RIGHT_WEBHOOKLOG_READ=Voir l'historique Webhook
+WHATSAPP_RIGHT_WEBHOOKLOG_WRITE=Modifier l'historique Webhook
+WHATSAPP_RIGHT_WEBHOOKLOG_DELETE=Supprimer l'historique Webhook
+#
+# Configuration
+#
+WHATSAPP_SERVER_URL = <strong>URL du serveur WhatsApp</strong>
+WHATSAPP_SERVER_URLTooltip = URL du serveur (Contactez l'administrateur de votre serveur pour obtenir cette information)
+WHATSAPP_SERVER_TOKEN = Token de l'instance WhatsApp
+WHATSAPP_SERVER_TOKENTooltip = Token de l'instance (Contactez l'administrateur de votre serveur pour obtenir cette information)
+WHATSAPP_SERVER_INSTANCE_NAME = Nom de l'instance WhatsApp
+WHATSAPP_SERVER_INSTANCE_NAMETooltip = Nom de l'instance (Contactez l'administrateur de votre serveur pour obtenir cette information)
+
+#
+# Messages et chat
+#
+WhatsappMessages = Messages WhatsApp
+WhatsappSendMessage = Envoyer WhatsApp
+WhatsappConfirmSendMessage = Êtes-vous sûr de vouloir envoyer ce message ?
+WhatsappHistory = Historique des conversations
+WhatsappContacts = Contacts WhatsApp
+WhatsappGroups = Groupes WhatsApp
+WhatsappAttachment = Joindre un fichier
+WhatsappSendTo = Envoyer à
+WhatsappMessageSent = Message envoyé avec succès
+WhatsappMessageFailed = Erreur lors de l'envoi du message
+WhatsappNoMessages = Aucun message disponible
+WhatsappSearch = Rechercher dans les conversations
+ServerURL = URL du serveur
+Timestamp = Horodatage
+APIKey = Clé API
+#
+# Statut et connexion
+#
+WhatsappStatus = Statut WhatsApp
+WhatsappConnected = Connecté
+WhatsappConnectedToInstance = Connecté à l'instance <strong>%s</strong>
+WhatsappDisconnected = Déconnecté %s
+WhatsappConnecting = Connexion en cours...
+WhatsappQRCode = Code QR pour la connexion
+WhatsappScanQR = Scannez ce code QR avec votre WhatsApp
+WhatsappConnectionExpired = Connexion expirée
+WhatsappRefreshQR = Actualiser le code QR
+Content = Contenu
+DoSendSubject=Envoyer le sujet
+DoSendSubjectTooltip=Si le titre est envoyé, un type de message spécial avec son en-tête et le corps du message sera envoyé.
+ContentAreRequired=Le contenu est obligatoire
+PhoneNumberAreRequired=Le numéro de téléphone est obligatoire
+IncludePDFFiles=Inclure les fichiers PDF
+#
+# Types de modèles
+#
+WhatsappToUser=Utilisateurs
+WhatsappToMember=Membres
+RecruitmentCandidatures=Candidatures
+WhatsappToThirdparty=Tiers
+WhatsappToProject=Projets
+WhatsappToSendProposal=Propositions
+WhatsappToSendOrder=Commandes
+WhatsappToSendInvoice=Factures
+WhatsappToSendShipment=Expéditions
+WhatsappToSendReception=Réceptions
+WhatsappToSendIntervention=Interventions
+WhatsappToSendSupplierRequestForQuotation=Demandes de devis fournisseurs
+WhatsappToSendSupplierOrder=Commandes fournisseurs
+WhatsappToSendSupplierInvoice=Factures fournisseurs
+WhatsappToSendContract=Contrats
+WhatsappToTicket=Tickets
+WhatsappToExpenseReport=Notes de frais
+WhatsappToSendEventPush=Notifications d'événements
+WhatsappToSendEventOrganization=Organisation d'événements
+WhatsappToPartnership=Partenariats
+WhatsappConfigurationMissing=Configuration WhatsApp manquante
+# Étiquettes pour objets liés
+Company=Société
+Invoice=Facture
+Order=Commande
+Proposal=Proposition
+Project=Projet
+Contract=Contrat
+Ticket=Ticket
+Intervention=Intervention
+Contact=Contact
+SupplierInvoice=Facture fournisseur
+SupplierOrder=Commande fournisseur
+SupplierProposal=Proposition fournisseur
+Expense=Dépense
+ExpenseReport=Note de frais
+Member=Membre
+Shipment=Expédition
+Reception=Réception
+Delivery=Livraison
+Product=Produit
+Service=Service
+
+#
+# Notifications
+#
+WhatsappNotifications = Notifications WhatsApp
+WhatsappEnableNotifications = Activer les notifications
+WhatsappDisableNotifications = Désactiver les notifications
+WhatsappNewMessage = Nouveau message reçu
+WhatsappAPIStatus = Statut de l'API
+WhatsappAPISuccess = API fonctionnant correctement
+WhatsappAPIFailure = Erreur de l'API
+WhatsappTestMessage = Message de test
+PhoneNumber = Numéro de téléphone
+WhatsAppPhoneNumber = Numéro WhatsApp
+PhoneNumberFormat = Format du numéro de téléphone (Y compris l'indicatif pays avant le numéro)
+Message = Message
+MessageSentSuccessfully = Message envoyé avec succès
+ErrorSendingMessage = Erreur lors de l'envoi du message
+WhatsappLogoutSuccess = Vous vous êtes déconnecté avec succès
+WhatsappLogoutError = Erreur lors de la déconnexion
+SendTestMessage = Envoyer un message de test
+ScanQRCodeToConnect = Scannez le code QR pour vous connecter
+WhatsappConnectionInfo = Informations de connexion
+WhatsappConnectionSuccess = Connexion réussie
+WhatsappConnectionError = Erreur de connexion
+WhatsappConnectionFailed = Connexion échouée
+WhatsappReadyToUse = WhatsApp est prêt à être utilisé
+WHATSAPP_SEPARATOR = Paramètres WhatsApp
+WHATSAPP_PHONE_PREFIX = Préfixe du numéro de téléphone
+WHATSAPP_PHONE_PREFIXTooltip = Préfixe du numéro de téléphone (Exemple : +33 pour la France)
+WHATSAPP_PHONE_NUMBER = Numéro de téléphone
+WHATSAPP_PHONE_NUMBERTooltip = Numéro de téléphone (Exemple : 612345678) N'incluez pas le préfixe, les espaces ou les symboles, uniquement le numéro.
+WHATSAPP_SOCIETE_HAVE_WHASTAPP_CONFIGURED = <strong>Le tiers a WhatsApp configuré, mais le numéro fourni peut ne pas être correct lors de l'envoi.</strong>
+TypeOfTemplate = Type de modèle
+WhatsappTemplates= Modèles WhatsApp
+NewWhatsappTemplates = Nouveau modèle
+ListWhatsappTemplates = Liste des modèles
+WhatsappWebhookLog = Journal Webhook
+ListWhatsappWebhookLog = Liste Webhook
+WebhookLogs = Journaux Webhook
+NoContentToGenerateAudio = Aucun contenu pour générer l'audio
+GenerateAudioExample = Générer l'audio
+GenerateAudioExampleTooltip = Pas besoin de le générer pour l'envoyer, c'est un aperçu de comment le message apparaîtra.
+SendAsAudio = Envoyer comme audio %s
+SendAsAudioTooltip = Envoyer comme audio (Le message sera envoyé sous forme de fichier audio)
+Destination = Destination
+WebhhookEvent = Événement Webhook
+#
+# Messages et erreurs spécifiques
+#
+WhatsappConfigIncomplete = La configuration WhatsApp est incomplète. Veuillez configurer tous les paramètres nécessaires.
+WhatsappInstanceNotOpen = L'instance WhatsApp n'est pas ouverte. Veuillez scanner le code QR pour vous connecter.
+WhatsappInvalidNumber = Le numéro %s n'est pas un numéro WhatsApp valide.
+WhatsappAudioSendError = Erreur lors de l'envoi de l'audio : %s
+WhatsappAudioGenerationError = Erreur lors de la génération de l'audio. Veuillez réessayer.
+WhatsappTextSendError = Erreur lors de l'envoi du message : %s
+WhatsappPdfSendError = Erreur lors de l'envoi du fichier %s : %s
+WhatsappAttachmentError = Erreur lors de la pièce jointe du fichier
+WhatsappMediaProcessingError = Erreur lors du traitement du fichier multimédia
+WhatsappTemplateNotFound = Modèle non trouvé
+WhatsappTemplateSaved = Modèle sauvegardé avec succès
+WhatsappTemplateDeleted = Modèle supprimé avec succès
+WhatsappInvalidTemplate = Modèle non valide
+WhatsappInstance=Instance WhatsApp
+#
+# Validation et confirmation
+#
+WhatsappConfirmLogout = Êtes-vous sûr de vouloir vous déconnecter de WhatsApp ?
+WhatsappNumberValidation = Validation du numéro WhatsApp...
+WhatsappNumberValid = Numéro WhatsApp valide
+WhatsappNumberInvalid = Numéro WhatsApp non valide
+WhatsappConfirmDelete = Êtes-vous sûr de vouloir supprimer cet élément ?
+WhatsappProcessing = Traitement de la demande...
+WhatsappConfirmSendingFiles = Êtes-vous sûr de vouloir envoyer ces fichiers ?
+
+#
+# Audio et multimédia
+#
+WhatsappAudioPreview = Aperçu audio
+WhatsappRecordAudio = Enregistrer l'audio
+WhatsappStopRecording = Arrêter l'enregistrement
+WhatsappPlayAudio = Lire l'audio
+WhatsappPauseAudio = Mettre en pause l'audio
+WhatsappDeleteAudio = Supprimer l'audio
+WhatsappAudioTooLong = L'audio est trop long (maximum 2 minutes)
+WhatsappAudioTooShort = L'audio est trop court (minimum 1 seconde)
+WhatsappConvertingText = Conversion du texte en audio...
+
+#
+# Messages informatifs
+#
+WhatsappWaitingForScan = Attente du scan du code QR...
+WhatsappConnectingToPhone = Connexion au téléphone...
+WhatsappCheckingConnection = Vérification de la connexion WhatsApp...
+WhatsappReconnecting = Reconnexion WhatsApp...
+WhatsappUpdatingQR = Mise à jour du code QR...
+
+#
+# Messages spécifiques pour l'envoi
+#
+WhatsappMessageFromSubject = Message WhatsApp %s
+WhatsappMessageReceived = WhatsApp reçu
+WhatsappMessageAudioFromSubject = Message audio WhatsApp %s
+WhatsappMessagePdfFromSubject = Message PDF WhatsApp %s
+WhatsappMessageFooter = Envoyé depuis le système ERP
+AudioMessageSentSuccessfully = Message audio envoyé avec succès
+DocumentSentSuccessfully = Document envoyé avec succès
+ImageSentSuccessfully = Image envoyée avec succès
+VideoSentSuccessfully = Vidéo envoyée avec succès
+FileSentSuccessfully = Fichier envoyé avec succès
+InstanceLogoutSuccessfully = Vous vous êtes déconnecté avec succès de l'instance WhatsApp
+WhatsappImageProcessing = Traitement de l'image...
+WhatsappVideoProcessing = Traitement de la vidéo...
+WhatsappAudioProcessing = Traitement de l'audio...
+WhatsappSubjectSendError = Erreur lors de l'envoi du sujet : %s
+WhatsappContentSendError = Erreur lors de l'envoi du contenu : %s
+WhatsappProcessingAudio = Traitement du fichier audio...
+WhatsappGeneratingAudio = Génération de l'audio à partir du texte...
+WhatsappSending = Envoi en cours...
+WhatsappSendComplete = Envoi terminé
+ActionAC_SEND_WHATSAPP = Envoi WhatsApp
+ActionSEND_WHATSAPP_AUDIO = Envoi Audio WhatsApp
+ActionSEND_WHATSAPP_PDF = Envoi PDF WhatsApp
+ActionAC_RECEIVE_WHATSAPP = Réception WhatsApp
+ActionAC_SEND_WHATSAPP_NOTIFY = Rappel WhatsApp
+WhatsappHistoryTab = Historique WhatsApp
+WhatsAppHistory = Historique WhatsApp
+MessageHistory = Historique des messages
+NoMessagesYet = Aucun message pour le moment
+WHATSAPP_WEBHOOK_ALLOW = Autoriser Webhook
+WHATSAPP_WEBHOOK_ALLOWTooltip = Autoriser Webhook (Activer ou désactiver le webhook pour recevoir des notifications), le webhook doit être configuré sur le serveur par l'administrateur.
+WHATSAPP_WEBHOOK_USER_ID =Utilisateur Webhook
+WHATSAPP_WEBHOOK_USER_IDTooltip =Utilisateur Webhook (Contactez l'administrateur de votre serveur pour obtenir cette information)
+MissingParameters = Paramètres non trouvés
+WhatsappMessageNotSend = Non envoyé
+WhatsappMessageSend = Envoyé %s
+WHATSAPP_MESSAGE_SENT_ON_TIME = Message envoyé à la date et l'heure
+WHATSAPP_MESSAGE_SENT_ON_TIMETooltip = Indique l'heure à laquelle le message a été envoyé
+LoadingMessages = Chargement des messages...
+ErrorLoadingMessages = Erreur lors du chargement des messages
+CronjobWhatsappSendReminder = Envoi de rappel WhatsApp
+CronjobWhatsappSendReminderComment = Cette tâche programmée envoie un rappel WhatsApp aux utilisateurs avec des messages en attente.
+WHATSAPP_SHOW_ON_GETNOMURL =Afficher le chat lié à chaque objet depuis son LIEN
+WHATSAPP_SHOW_ON_GETNOMURLTooltip = Afficher le chat lié à chaque objet depuis son LIEN (Activer ou désactiver l'affichage du chat lié à chaque objet depuis son lien)
+MAIN_WHATSAPP_PHONE_PREFIX= Préfixe du numéro de téléphone par défaut
+WHATSAPP_STATUS_CACHE_TTL = TTL cache état de connexion (secondes)
+WHATSAPP_STATUS_CACHE_TTLTooltip = Temps en secondes pendant lequel l'état de connexion du serveur WhatsApp est mis en cache pour éviter les appels HTTP à chaque chargement de page. Par défaut 300 (5 min). Utiliser 0 pour désactiver le cache.
+PlanUsage=Utilisation du plan
+WHATSAPP_NOTIFICATION_DATETIME = Date de notification WhatsApp
+WHATSAPP_NOTIFICATION_DATETIMETooltip = Date à laquelle la notification sera envoyée
+#
+# Recurrence Designer
+#
+WhatsappScheduleTitle = Planification des envois WhatsApp
+WhatsappScheduleDesigner = Concepteur de récurrence
+WhatsappScheduleBaseDate = Date de base
+WhatsappScheduleBaseTime = Heure
+WhatsappScheduleRepeatEvery = Répéter tous les
+WhatsappScheduleUnit = Unité
+WhatsappScheduleWeeks = Semaine(s)
+WhatsappScheduleMonths = Mois
+WhatsappScheduleYears = Année(s)
+WhatsappScheduleOccurrences = Répétitions
+WhatsappSchedulePreview = Aperçu
+WhatsappScheduleGenerate = Générer les dates
+WhatsappScheduleAddSingle = Ajouter une date manuelle
+WhatsappScheduleSelectDate = Sélectionnez une date de base
+WhatsappScheduleConfirmGenerate = Les dates en attente existantes seront supprimées et de nouvelles seront générées. Continuer ?
+WhatsappScheduleConfirmDelete = Supprimer cette date planifiée ?
+WhatsappScheduleGenerated = %s dates d'envoi ont été générées
+WhatsappScheduleDateAdded = Date ajoutée avec succès
+WhatsappScheduleMaxOccurrences = Le nombre de répétitions doit être entre 1 et 100
+WhatsappScheduleCannotToggle = Seules les dates en attente peuvent être activées/désactivées
+WhatsappScheduleCannotDelete = Seules les dates en attente ou désactivées peuvent être supprimées
+WhatsappScheduleDisabled = Désactivée
+WhatsappSchedulePending = En attente
+WhatsappScheduleSent = Envoyée
+WhatsappScheduleError = Erreur
+WhatsappScheduleDateSent = Date d'envoi
+WhatsappScheduleSentLocked = Cet envoi a déjà été effectué et ne peut pas être modifié
+WhatsappNoSchedules = Aucune date programmée
+WhatsappScheduleCreateNote = Les dates programmées seront créées automatiquement lors de l'enregistrement de l'événement.
+WhatsappSchedulesCreated = %s planifications d'envoi créées
+WhatsappScheduleDatesList = Dates programmées
+WhatsappScheduleOverdue = En retard
+WhatsappScheduleNotFound = Planification non trouvée
+WhatsappScheduleRetryCount = %s/%s tentatives
+WhatsappScheduleViewLog = Voir le log webhook
+WhatsappScheduleClickToEditDate = Cliquez pour modifier la date
+WhatsappScheduleEditDateTitle = Modifier la date d'envoi
+WhatsappScheduleCannotEditDate = Seules les dates en attente ou désactivées peuvent être modifiées
+
+#
+# Message queue
+#
+CronjobWhatsappProcessQueue = Traiter la file de messages WhatsApp
+CronjobWhatsappProcessQueueComment = Envoie les messages de la file WhatsApp de façon échelonnée pour éviter d'être marqué comme SPAM. La cadence (messages par exécution, fenêtre et jitter) et les tentatives se configurent dans la configuration du module, section « File de messages ». Laissez les paramètres de cette tâche vides pour utiliser cette configuration. Vous pouvez éventuellement forcer la cadence avec des paramètres positionnels : maxToSend, windowSeconds, jitterSeconds (ex. : "1, 150, 30").
+WhatsappQueue = File WhatsApp
+WhatsappQueueList = File de messages WhatsApp
+WhatsappQueueMessage = Message en file
+WhatsappQueueSummary = Résumé de la file
+WhatsappQueueRequeue = Remettre en file
+WhatsappQueueCancel = Annuler
+WhatsappQueueRequeued = Message remis en file avec succès
+WhatsappQueueCancelled = Message annulé
+WhatsappQueueNotRequeable = Le message ne peut pas être remis en file dans son état actuel
+WhatsappQueueNotCancellable = Le message ne peut pas être annulé dans son état actuel
+WhatsappQueueConfirmDelete = Voulez-vous vraiment supprimer ce message de la file ?
+WhatsappQueueRecordsUpdated = %s enregistrement(s) mis à jour
+WhatsappQueueNoRecordUpdated = Aucun enregistrement mis à jour
+WhatsappQueueStatusPending = En file
+WhatsappQueueStatusProcessing = En cours
+WhatsappQueueStatusSent = Envoyé
+WhatsappQueueStatusError = Nouvelle tentative
+WhatsappQueueStatusFailed = Échoué
+WhatsappQueueStatusCancelled = Annulé
+WhatsappQueueType = Type
+WhatsappQueueTypeText = Texte
+WhatsappQueueTypeDocument = Document
+WhatsappQueueTypeAudio = Audio
+WhatsappQueuePhone = Téléphone
+WhatsappQueueRecipient = Destinataire
+WhatsappQueueContent = Contenu
+WhatsappQueueFile = Fichier
+WhatsappQueueFilePath = Chemin du fichier
+WhatsappQueueMediaType = Type de média
+WhatsappQueueScheduled = Programmé pour
+WhatsappQueueScheduledHelp = Le message ne sera pas envoyé avant cette date. Vide = envoyer dès que possible.
+WhatsappQueueRetries = Tentatives
+WhatsappQueueLastError = Dernière erreur
+WhatsappQueueHttpCode = Code HTTP
+WhatsappQueueNextRetry = Prochaine tentative
+WhatsappQueueSentDate = Date d'envoi
+WhatsappQueueSource = Module source
+WhatsappQueueProcessingDate = Date de traitement
+WhatsappQueueMaxRetries = Tentatives max.
+WhatsappQueueMaxRetriesHelp = Nombre maximal de tentatives pour ce message. Vide = utiliser la valeur globale de configuration.
+WhatsappQueueTest = Mettre en file des messages de test
+WhatsappQueueTestHelp = Mettez en file un message de test (texte ou document) pour vérifier que la tâche planifiée de la file le délivre. Pensez à activer la tâche cron « Traiter la file de messages WhatsApp ».
+WhatsappQueueEnqueue = Mettre en file
+WhatsappQueueEnqueuedOk = Message mis en file avec succès (réf. #%s)
+WhatsappQueueEnqueuedKo = Impossible de mettre le message en file
+WhatsappQueueUploadFailed = Échec du téléversement du fichier
+WhatsappEnqueueSend = Mettre en file au lieu d'envoyer maintenant
+WhatsappEnqueueSendTooltip = Au lieu d'envoyer immédiatement, le message (et les PDF joints) sont ajoutés à la file et délivrés de façon échelonnée par la tâche planifiée.
+WhatsappMessagesQueued = %s élément(s) ajouté(s) à la file WhatsApp
+WHATSAPP_DEFAULT_COUNTRY_CODE = Indicatif pays par défaut
+WHATSAPP_DEFAULT_COUNTRY_CODETooltip = Indicatif pays (sans « + ») ajouté aux numéros sans préfixe international, lors de la normalisation du téléphone avant l'envoi. Par défaut 34 (Espagne).
+WHATSAPP_REMINDER_MAX_RETRIES = Tentatives des rappels
+WHATSAPP_REMINDER_MAX_RETRIESTooltip = Nombre de tentatives pour les rappels WhatsApp planifiés en échec avant d'abandonner. Par défaut 3.
+WHATSAPP_COMBINE_TEXT_WITH_DOC = Combiner texte et document en un seul message
+WHATSAPP_COMBINE_TEXT_WITH_DOCTooltip = Lors de l'envoi d'un document (PDF/image/vidéo) avec du texte, envoie le texte (objet + corps) comme légende du document en un seul message au lieu de deux messages séparés. S'applique à l'envoi direct et à la file. Si le texte dépasse 1024 caractères, il est envoyé séparément.
+WhatsappQueueSettings = File de messages WhatsApp
+WHATSAPP_QUEUE_MAX_RETRIES = Tentatives max.
+WHATSAPP_QUEUE_MAX_RETRIESTooltip = Nombre de tentatives en cas d'erreurs temporaires (réseau, timeout, 5xx, 429) avant que le message soit marqué Échoué et retiré de la file. Les erreurs permanentes (numéro invalide, 4xx, fichier manquant) ne sont pas réessayées. Par défaut 3.
+WHATSAPP_QUEUE_BACKOFF_SECONDS = Backoff entre tentatives (secondes)
+WHATSAPP_QUEUE_BACKOFF_SECONDSTooltip = Secondes de base d'attente entre les tentatives, multipliées par le numéro de tentative (tentative 1 = 1x, tentative 2 = 2x...). Par défaut 300.
+WHATSAPP_QUEUE_MAX_PER_RUN = Messages par exécution (N)
+WHATSAPP_QUEUE_MAX_PER_RUNTooltip = Nombre maximal de messages envoyés à chaque exécution du cron. Remplacé par le 1er paramètre de la tâche planifiée s'il est fourni. Par défaut 1.
+WHATSAPP_QUEUE_WINDOW_SECONDS = Fenêtre entre lots (secondes)
+WHATSAPP_QUEUE_WINDOW_SECONDSTooltip = Secondes minimales entre les lots d'envoi. Remplacé par le 2e paramètre de la tâche planifiée s'il est fourni. Par défaut 150.
+WHATSAPP_QUEUE_JITTER_SECONDS = Jitter (secondes)
+WHATSAPP_QUEUE_JITTER_SECONDSTooltip = Secondes aléatoires ajoutées à la fenêtre pour un schéma d'envoi plus naturel. Remplacé par le 3e paramètre de la tâche planifiée s'il est fourni. Par défaut 30.
+WHATSAPP_FORCE_QUEUE = Mettre en file les rappels
+WHATSAPP_FORCE_QUEUETooltip = Si activé, les rappels WhatsApp sont mis en file au lieu d'être envoyés immédiatement, soumis à la cadence de la file.

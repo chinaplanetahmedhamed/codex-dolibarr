@@ -1,0 +1,80 @@
+--- a/custom/chinaplanetofficeexpenses/class/OfficeExpensePilotConfiguration.php
++++ b/custom/chinaplanetofficeexpenses/class/OfficeExpensePilotConfiguration.php
+@@ -12,19 +12,23 @@
+     /** Native deployment identity only; no request parameter selects a profile. */
+     public static function path(): string
+     {
++        $local=self::localRoot();if($local!==null)return constant('CPO_OE_LOCAL_LAB_PRIVATE_ROOT').'/pilot.json';
+         return defined('DOL_DATA_ROOT')&&DOL_DATA_ROOT==='/var/www/documents'
+             &&($GLOBALS['dolibarr_main_url_root']??'')==='https://erp.visiontrading.biz'?self::LIVE_PATH:self::PATH;
+     }
+     public function __construct(array $config)
+     {
++        $local=self::localRoot();$environment=$config['environment']??null;
++        $privateRoot=$environment==='local-lab'&&$local!==null?constant('CPO_OE_LOCAL_LAB_PRIVATE_ROOT').'/receipts':($environment==='live-erp'?'/var/www/documents/chinaplanetos-office-expenses/receipts':'/var/lib/chinaplanetos-office-expenses/receipts');
+         $keys=array('version','enabled','environment','entity','user_id','base_currency','offices','precision','private_root');
+         if(count($config)!==count($keys)||array_diff(array_keys($config),$keys)
+-            ||($config['version']??null)!==1||($config['enabled']??null)!==true||!in_array($config['environment']??null,['backup-erp','live-erp'],true)
++            ||($config['version']??null)!==1||($config['enabled']??null)!==true||!in_array($config['environment']??null,['backup-erp','live-erp','local-lab'],true)
++            ||($environment==='local-lab'&&($local===null||($config['entity']??null)!==1||($config['user_id']??null)!==1))
+             ||!is_int($config['entity']??null)||$config['entity']<1||!is_int($config['user_id']??null)||$config['user_id']<1
+             ||!in_array($config['base_currency']??null,array('EGP','CNY','USD'),true)
+             ||($config['offices']??null)!==array('egypt'=>array('EGP'),'china'=>array('CNY'))
+             ||($config['precision']??null)!==array('EGP'=>2,'CNY'=>2,'USD'=>2)
+-            ||($config['private_root']??null)!==(($config['environment']??null)==='live-erp'?'/var/www/documents/chinaplanetos-office-expenses/receipts':'/var/lib/chinaplanetos-office-expenses/receipts')
++            ||($config['private_root']??null)!==$privateRoot
+             ||(($config['environment']??null)==='live-erp'&&(($config['entity']??null)!==1||($config['user_id']??null)!==1)))throw new InvalidArgumentException('Invalid or disabled environment configuration.');
+         $this->config=$config;
+     }
+@@ -45,9 +49,29 @@
+         return $this->config['user_id'];
+     }
+ 
++    /** Explicit private Mac development binding; impossible on Linux production. */
++    private static function localRoot(): ?string
++    {
++        if(PHP_OS_FAMILY!=='Darwin'||!in_array(PHP_SAPI,['cli','cli-server'],true)
++            ||!function_exists('posix_geteuid')||!defined('CPO_OE_LOCAL_LAB_ROOT')||!defined('CPO_OE_LOCAL_LAB_PRIVATE_ROOT')
++            ||!defined('DOL_DOCUMENT_ROOT')||!defined('DOL_DATA_ROOT')
++            ||($GLOBALS['dolibarr_main_url_root']??null)!=='http://127.0.0.1:18121')return null;
++        $root=constant('CPO_OE_LOCAL_LAB_ROOT');
++        if(!is_string($root)||!str_starts_with($root,'/')||realpath($root)!==$root||is_link($root)
++            ||realpath(DOL_DOCUMENT_ROOT)!==$root.'/web'||DOL_DATA_ROOT!==$root.'/documents'
++            ||realpath(DOL_DATA_ROOT)!==DOL_DATA_ROOT||fileowner($root)!==posix_geteuid())return null;
++        $private=constant('CPO_OE_LOCAL_LAB_PRIVATE_ROOT');
++        if(!is_string($private)||realpath($private)!==$private||is_link($private)
++            ||fileowner($private)!==posix_geteuid()||(fileperms($private)&0777)!==0700)return null;
++        return $root;
++    }
++
+     /** Only a root-owned read-only-for-the-app configuration outside the web root is accepted. */
+     public static function read(string $path,string $webRoot): self
+     {
++        $localRoot=self::localRoot();$local=$localRoot!==null&&$path===constant('CPO_OE_LOCAL_LAB_PRIVATE_ROOT').'/pilot.json';
++        if($local&&$webRoot!==$localRoot.'/web')throw new RuntimeException('Local web root differs.');
++        $owner=$local?posix_geteuid():0;
+         $live=$path===self::LIVE_PATH;
+         if($live&&(self::path()!==self::LIVE_PATH||$webRoot!=='/var/www/html'))throw new RuntimeException('Production configuration differs from native deployment.');
+         $web=realpath($webRoot);$real=realpath($path);
+@@ -56,11 +80,11 @@
+         // remain root-owned, so the application cannot forge or edit a trusted profile.
+         for($parent=dirname($path);; $parent=dirname($parent)){
+             $stat=@lstat($parent);
+-            if(!$stat||is_link($parent)||($stat['mode']&0170000)!==0040000||($stat['uid']!==0&&!($live&&in_array($parent,['/var/www','/var/www/documents'],true)&&$stat['uid']===33))||($stat['mode']&0022)!==0)throw new RuntimeException('Unsafe pilot configuration directory.');
++            if(!$stat||is_link($parent)||($stat['mode']&0170000)!==0040000||($stat['uid']!==0&&!($local&&$stat['uid']===$owner)&&!($live&&in_array($parent,['/var/www','/var/www/documents'],true)&&$stat['uid']===33))||($stat['mode']&0022)!==0)throw new RuntimeException('Unsafe pilot configuration directory.');
+             if($parent==='/')break;
+         }
+         $before=@lstat($path);
+-        if(!$before||is_link($path)||($before['mode']&0170000)!==0100000||$before['uid']!==0||($before['mode']&0027)!==0||$before['nlink']!==1||$before['size']<2||$before['size']>8192)throw new RuntimeException('Unsafe pilot configuration file.');
++        if(!$before||is_link($path)||($before['mode']&0170000)!==0100000||$before['uid']!==$owner||($local&&($before['mode']&0777)!==0400)||($before['mode']&0027)!==0||$before['nlink']!==1||$before['size']<2||$before['size']>8192)throw new RuntimeException('Unsafe pilot configuration file.');
+         $raw=@file_get_contents($path);clearstatcache(true,$path);$after=@lstat($path);
+         // Reading can legitimately update atime. Identity, content metadata and protections must remain stable.
+         $unchanged=is_array($after);
+@@ -69,6 +93,7 @@
+         try{$config=json_decode($raw,true,32,JSON_THROW_ON_ERROR);}catch(Throwable $error){throw new RuntimeException('Invalid private pilot configuration.',0,$error);}
+         if(!is_array($config))throw new RuntimeException('Invalid private pilot configuration.');
+         if($live!== (($config['environment']??null)==='live-erp'))throw new RuntimeException('Configuration profile/path mismatch.');
++        if($local!==(($config['environment']??null)==='local-lab'))throw new RuntimeException('Local configuration profile/path mismatch.');
+         return new self($config);
+     }
+ }

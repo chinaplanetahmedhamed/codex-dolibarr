@@ -1,0 +1,136 @@
+#cpo-account{color-scheme:dark;--account-bg:#141c26;--account-panel:#21334e;--account-line:#50627c;--account-text:#f0f5ff;--account-muted:#c0cee0}#cpo-account *{box-sizing:border-box}#cpo-account{margin:0;background:var(--account-bg);color:var(--account-text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}#cpo-account{max-width:1500px;margin:auto;padding:0 26px 30px}#cpo-account a{color:#a9ceff}#cpo-account button,#cpo-account input,#cpo-account select{font:inherit;color:inherit;background:#16253b;border:1px solid #61738d;border-radius:8px;padding:10px 13px;min-height:44px;max-width:100%}#cpo-account button{cursor:pointer}#cpo-account button:disabled{opacity:.55;cursor:wait}#cpo-account .primary{background:#2f63c9;color:#fff;border-color:#719ce9;font-weight:650}#cpo-account a:focus-visible,#cpo-account button:focus-visible,#cpo-account input:focus-visible,#cpo-account select:focus-visible,#cpo-account summary:focus-visible{outline:3px solid #ffd07a;outline-offset:3px}#cpo-account .account-top{display:flex;align-items:center;justify-content:space-between;gap:18px;background:#1d2e4d;padding:20px;margin:0 -26px 16px}#cpo-account .account-top a{font-size:20px;font-weight:750;text-decoration:none}#cpo-account .account-top span{font-size:13px;color:var(--account-muted)}#cpo-account .account-path{font-size:13px;margin:18px 0}#cpo-account .account-heading{margin:22px 0}#cpo-account .account-heading h1{margin:0;font-size:29px}#cpo-account .account-heading p{color:var(--account-muted)}#cpo-account .account-note{padding:13px 16px;background:#1c2d40;border-inline-start:3px solid #91bfff;border-radius:6px;font-size:13px;color:#d0deef;margin:18px 0}#cpo-account .account-totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}#cpo-account .account-totals>div{padding:20px;background:var(--account-panel);border:1px solid var(--account-line);border-radius:13px}#cpo-account .account-totals>div:first-child{background:#274b78}#cpo-account .account-totals strong{display:block;font-size:27px;margin-top:9px;font-variant-numeric:tabular-nums}#cpo-account .received{color:#98ebce}#cpo-account .spent{color:#ffbfc6}#cpo-account .account-original{font-size:13px;color:var(--account-muted)}#cpo-account .account-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0}#cpo-account .account-button{border:1px solid #61738d;border-radius:8px;padding:10px 13px;min-height:44px;text-decoration:none;display:inline-flex;align-items:center}#cpo-account .account-streams{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}#cpo-account .account-stream{border:1px solid var(--account-line);border-radius:14px;overflow:hidden;background:#1a2a40;color:var(--account-text)}#cpo-account .account-stream.received{border-top:3px solid #98ebce}#cpo-account .account-stream.spent{border-top:3px solid #ffbfc6}#cpo-account .account-stream>h2{padding:17px 20px;margin:0;background:#263d5b;font-size:19px}#cpo-account .account-entry{padding:18px 20px;border-top:1px solid var(--account-line);break-inside:avoid;overflow-wrap:anywhere}#cpo-account .account-entry header{display:flex;justify-content:space-between;gap:15px}#cpo-account .account-entry h3{font-size:17px;margin:0}#cpo-account .account-entry header strong{white-space:nowrap;font-size:19px}#cpo-account .account-entry p,#cpo-account .account-entry small{color:var(--account-muted);font-size:12px}#cpo-account .account-entry dl{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;font-size:12px}#cpo-account .account-entry dt{color:var(--account-muted)}#cpo-account .account-entry dd{margin:0;text-align:end}#cpo-account .account-entry details summary{min-height:44px;padding:10px 0;cursor:pointer;font-size:13px}#cpo-account .account-entry .account-actions{margin:10px 0 0}#cpo-account .account-drafts{margin-top:26px;padding:18px;border:1px dashed #7b8eaa;border-radius:12px}#cpo-account .account-drafts h2{font-size:19px}#cpo-account .account-drafts article{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0}#cpo-account .account-drafts article b{flex:1;min-width:180px}#cpo-account .account-empty{padding:20px;color:var(--account-muted)}#cpo-account dialog{background:#1c2f49;color:var(--account-text);border:1px solid #8eaaca;border-radius:16px;width:min(880px,95vw);max-height:92dvh;overflow:auto;padding:24px}#cpo-account dialog::backdrop{background:#080f1cbf}#cpo-account dialog header{display:flex;justify-content:space-between;align-items:center}#cpo-account dialog h2{font-size:22px;margin:0 0 16px}#cpo-account dialog h3{font-size:17px}#cpo-account dialog p{font-size:13px;color:var(--account-muted)}#cpo-account fieldset{border:0;margin:0;padding:0}#cpo-account fieldset:disabled{opacity:.75}#cpo-account .account-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}#cpo-account label{display:flex;flex-direction:column;gap:6px;font-size:13px}#cpo-account input,#cpo-account select{width:100%;min-width:0}#cpo-account .wide{grid-column:1/-1}#cpo-account .allocation-line{display:grid;grid-template-columns:1fr 1.4fr 1.4fr 44px;gap:10px;align-items:end;margin:12px 0;padding:12px;border:1px solid #536d8f;border-radius:10px}#cpo-account .allocation-line>button{padding:8px}#account-message:not(:empty){position:fixed;bottom:16px;inset-inline:16px;background:#ffedc5;color:#3c2a0e;padding:16px;border-radius:8px;z-index:30;max-width:800px;margin:auto}@media(max-width:700px){#cpo-account{padding:0 14px 24px}#cpo-account .account-top{margin:0 -14px 15px;padding:16px;display:block}#cpo-account .account-top span{display:block;margin-top:5px}#cpo-account .account-heading h1{font-size:24px}#cpo-account .account-totals{grid-template-columns:1fr 1fr}#cpo-account .account-totals>div{padding:14px;min-width:0}#cpo-account .account-totals>div:first-child{grid-column:1/-1}#cpo-account .account-totals strong{font-size:21px;overflow-wrap:anywhere}#cpo-account .account-streams,#cpo-account .account-fields{grid-template-columns:1fr}#cpo-account .account-entry{padding:15px}#cpo-account .account-entry header{display:block}#cpo-account .account-entry header strong{display:block;margin-top:7px}#cpo-account .allocation-line{grid-template-columns:1fr 1fr}#cpo-account .allocation-line label:nth-child(3){grid-column:1}#cpo-account .wide{grid-column:auto}#cpo-account dialog{padding:18px}#cpo-account .account-entry dl{font-size:12px}#cpo-account .account-entry dd{overflow-wrap:anywhere}}@media print{#cpo-account{color-scheme:light}#cpo-account{background:#fff;color:#172740;font-size:11px}#cpo-account{padding:0;max-width:none}#cpo-account .screen-only,#cpo-account .account-top,#cpo-account dialog,#account-message,#cpo-account .account-path{display:none!important}#cpo-account .account-heading h1{font-size:21px}#cpo-account .account-heading{margin:0 0 12px}#cpo-account .account-note,#cpo-account .account-totals>div,#cpo-account .account-totals>div:first-child,#cpo-account .account-stream,#cpo-account .account-stream>h2{background:#fff;color:#172740;border-color:#aab2be}#cpo-account .account-totals{grid-template-columns:repeat(4,1fr)}#cpo-account .account-totals>div{padding:10px}#cpo-account .account-totals strong{font-size:20px}#cpo-account .account-original,#cpo-account .account-note,#cpo-account .account-entry p,#cpo-account .account-entry dt,#cpo-account .account-entry small{color:#34465e}#cpo-account .account-entry{padding:10px 12px}#cpo-account .account-entry h3{font-size:13px}#cpo-account .account-entry header strong{font-size:15px}#cpo-account .account-streams{grid-template-columns:1fr 1fr;gap:12px}#cpo-account .account-stream>h2{font-size:15px;padding:10px}#cpo-account .account-entry dl{font-size:10px}#cpo-account .account-entry details{display:none}#cpo-account .account-entry .account-actions{display:none}#cpo-account .account-stream.received{color:#174735}#cpo-account .account-stream.spent{color:#6e2830}#cpo-account .account-note{font-size:10px;margin:10px 0;padding:8px}#cpo-account .account-entry{break-inside:avoid}}@page{size:A4 landscape;margin:12mm}#cpo-account .account-print-allocations{display:none}@media print{#cpo-account .account-print-allocations{display:block;font-size:10px}}
+
+#cpo-account{color-scheme:dark;background:#151f2d;border-radius:12px;margin:12px auto;box-sizing:border-box;max-width:1500px}
+#cpo-account #account-view-controls{margin:16px 0;max-width:360px}#cpo-account .account-shortfall{padding:14px 0}#cpo-account small{display:block}#cpo-account .account-shortfall small{margin-top:6px}
+#cpo-account .account-table-scroll{max-width:100%;overflow:auto;border:1px solid #53647d;border-radius:12px}#cpo-account .account-table{width:100%;border-collapse:collapse;min-width:850px}#cpo-account .account-table th,#cpo-account .account-table td{padding:14px;text-align:start;vertical-align:top;border-bottom:1px solid #53647d}#cpo-account .account-table th{background:#263d5b}#cpo-account .account-table td:nth-child(2){min-width:210px}#cpo-account .account-table details .account-entry{min-width:240px}#cpo-account .account-table .account-entry header{display:block}
+#cpo-account .account-feed{display:grid;gap:16px;max-width:850px;margin:auto}#cpo-account .account-workspace{display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,1.4fr);gap:18px}#cpo-account .account-workspace nav{display:flex;flex-direction:column;gap:8px;max-height:650px;overflow:auto}#cpo-account .account-workspace nav button{text-align:start}#cpo-account .account-workspace [aria-pressed=true]{background:#335987;border-color:#b7d3ff}#cpo-account .account-inspector{min-width:0;background:#1a2a40;border-radius:12px}
+#cpo-account .account-spending-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}#cpo-account .account-group-total{font-size:26px;font-weight:700;padding:12px 20px}#cpo-account .account-spending-groups details{padding:15px}#cpo-account .account-record-detail{margin-top:10px}
+@media(max-width:700px){#cpo-account .account-workspace{grid-template-columns:1fr}#cpo-account .account-workspace nav{max-height:260px}#cpo-account{width:100%;margin:8px 0}#cpo-account .account-spending-groups{grid-template-columns:1fr}}
+@media print{#cpo-account{background:white;color:#172740;margin:0}#cpo-account .account-record-detail>dl{display:grid}#cpo-account .account-record-detail>summary{display:none}#cpo-account .account-record-detail{display:block!important}#cpo-account .account-shortfall{color:#172740}}
+@media print{#cpo-account .account-totals .received{color:#174735}#cpo-account .account-totals .spent{color:#6e2830}#cpo-account .account-heading p{color:#34465e}}@page{background:#fff}
+
+/* M125: same Boards visual contract; screen-only overrides preserve original print layout. */
+@font-face{font-family:ChinaPlanetCairo;src:url('../assets/fonts/Cairo.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
+@media screen{
+ body.cpo-account-ui{background:#f8fafc;overflow-x:hidden}
+ body.cpo-account-ui:has(#cpo-account[data-theme=dark]){background:#0f172a}
+ body.cpo-account-ui #id-top{background:#0f172a;color:#cbd5e1}
+ #cpo-account.account-ui{--account-bg:#f8fafc;--account-panel:#fff;--account-line:#e2e8f0;--account-text:#1e293b;--account-strong:#0f172a;--account-muted:#64748b;--account-input:#64748b;--account-active:#eef2ff;--account-link:#4338ca;--account-good:#047857;--account-bad:#be123c;--account-control:#fff;--account-font:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light;font:14px/1.6 var(--account-font);color:var(--account-text);background:var(--account-bg);max-width:none;margin:0 0 0 256px;padding:0;width:calc(100% - 256px);min-height:calc(100dvh - var(--account-top,56px));border-radius:0;box-sizing:border-box}
+ #cpo-account.account-ui[dir=rtl]{--account-font:ChinaPlanetCairo,ui-sans-serif,system-ui,sans-serif}
+ #cpo-account.account-ui[data-theme=dark]{--account-bg:#0f172a;--account-panel:#1e293b;--account-line:#475569;--account-text:#e2e8f0;--account-strong:#f8fafc;--account-muted:#cbd5e1;--account-input:#94a3b8;--account-active:#312e81;--account-link:#c7d2fe;--account-good:#a7f3d0;--account-bad:#fecdd3;--account-control:#1e293b;color-scheme:dark}
+ #cpo-account.account-ui ::selection{background:#4f46e5;color:#fff}
+ #cpo-account.account-ui :is(input,textarea){caret-color:#4f46e5}
+ #cpo-account.account-ui :is(button,input,select,textarea,a){font-family:var(--account-font)}
+ #cpo-account.account-ui :is(button,input,select,textarea,.account-button){min-height:44px;border-radius:12px;background:var(--account-control);color:var(--account-text);border:1px solid var(--account-input);padding:10px 12px;line-height:1.5}
+ #cpo-account.account-ui button:hover,#cpo-account.account-ui .account-button:hover{background:var(--account-active)}
+ #cpo-account.account-ui .primary{background:#4f46e5;color:#fff;border-color:#4f46e5;font-weight:700}
+ #cpo-account.account-ui .primary:hover{background:#4338ca;border-color:#4338ca}
+ #cpo-account.account-ui :is(a,button,input,select,textarea,summary):focus-visible{outline:3px solid #818cf8;outline-offset:3px}
+ #cpo-account.account-ui a{color:var(--account-link);text-underline-offset:3px;overflow-wrap:anywhere}
+ #cpo-account.account-ui :is(strong,dd,td){font-variant-numeric:tabular-nums}
+ #cpo-account.account-ui .account-main{padding:16px 20px 28px;min-width:0}
+ #cpo-account.account-ui .account-shell-header{display:flex;align-items:center;gap:12px;min-width:0}
+ #cpo-account.account-ui .account-path{margin:0;font-size:12px;color:var(--account-muted);overflow-wrap:anywhere}
+ #cpo-account.account-ui .account-heading{margin:14px 0 16px}
+ #cpo-account.account-ui .account-heading h1{font-size:24px;line-height:1.35;font-weight:800;color:var(--account-strong)}
+ #cpo-account.account-ui .account-heading p{margin:6px 0 0;font-size:12px;color:var(--account-muted)}
+ #cpo-account.account-ui .account-summary{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--account-line)}
+ #cpo-account.account-ui .account-totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}
+ #cpo-account.account-ui .account-totals>div,#cpo-account.account-ui .account-totals>div:first-child{padding:12px 16px;min-width:0;background:var(--account-panel);border:1px solid var(--account-line);border-radius:12px}
+ #cpo-account.account-ui .account-totals span{font-size:12px;color:var(--account-muted)}
+ #cpo-account.account-ui .account-totals strong{font-size:21px;line-height:1.45;margin-top:4px;overflow-wrap:anywhere;unicode-bidi:isolate;direction:ltr}
+ #cpo-account.account-ui .received{color:var(--account-good)}
+ #cpo-account.account-ui .spent{color:var(--account-bad)}
+ #cpo-account.account-ui .account-shortfall{padding:12px 0 0;font-size:13px}
+ #cpo-account.account-ui .account-shortfall strong{color:var(--account-strong)}
+ #cpo-account.account-ui .account-shortfall small,#cpo-account.account-ui .account-original{font-size:12px;color:var(--account-muted);margin:4px 0 0;overflow-wrap:anywhere;unicode-bidi:plaintext}
+ #cpo-account.account-ui .account-sidebar{position:fixed;left:0;right:auto;top:var(--account-top,56px);bottom:0;width:256px;padding:16px 12px;z-index:2002;overflow:auto;overscroll-behavior:contain;background:#0f172a;color:#cbd5e1;border-right:1px solid #334155;display:flex;flex-direction:column;gap:16px;scrollbar-color:#64748b #0f172a}
+ #cpo-account.account-ui .account-sidebar-heading{display:flex;align-items:center;justify-content:space-between;min-height:44px;gap:8px;padding-inline:12px;color:#fff;font-weight:800;font-size:18px}
+ #cpo-account.account-ui .account-sidebar :is(a,button){display:block;text-align:start;width:100%;min-height:44px;padding:10px 12px;border-radius:12px;border:1px solid transparent;background:transparent;color:#cbd5e1;font-size:14px;line-height:1.6;text-decoration:none;white-space:normal;overflow-wrap:anywhere}
+ #cpo-account.account-ui .account-sidebar :is(a,button):hover{background:#1e293b;color:#fff}
+ #cpo-account.account-ui .account-sidebar :is(a,button):focus-visible{outline-color:#a5b4fc;outline-offset:1px}
+ #cpo-account.account-ui .account-sidebar :is(.account-sidebar-links,.account-view-links,.account-actions){display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:0}
+ #cpo-account.account-ui .account-sidebar-group{border-top:1px solid #334155;padding-top:14px}
+ #cpo-account.account-ui .account-sidebar h2{font-size:12px;font-weight:700;line-height:1.5;color:#cbd5e1;padding:0 12px;margin:0 0 8px}
+ #cpo-account.account-ui .account-view-links button[aria-pressed=true]{background:#4f46e5;color:#fff;font-weight:700}
+ #cpo-account.account-ui .account-sidebar .primary{background:#4f46e5;color:#fff;border-color:#4f46e5}
+ #cpo-account.account-ui .account-sidebar .primary:hover{background:#4338ca}
+ #cpo-account.account-ui .account-sidebar-settings{margin-top:auto}
+ #cpo-account.account-ui #account-view-controls{display:none}
+ #cpo-account.account-ui .account-sidebar-toggle,#cpo-account.account-ui .account-sidebar .account-sidebar-close,#cpo-account.account-ui .account-sidebar-backdrop{display:none}
+ #cpo-account.account-ui .account-streams{gap:16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #cpo-account.account-ui .account-stream{background:var(--account-panel);color:var(--account-text);border:1px solid var(--account-line);border-radius:16px;min-width:0}
+ #cpo-account.account-ui .account-stream>h2{background:var(--account-panel);color:var(--account-strong);font-size:16px;font-weight:800;padding:14px 16px;border-bottom:1px solid var(--account-line)}
+ #cpo-account.account-ui .account-stream.received>h2{color:var(--account-good)}
+ #cpo-account.account-ui .account-stream.spent>h2{color:var(--account-bad)}
+ #cpo-account.account-ui .account-entry{padding:16px;border-top:1px solid var(--account-line)}
+ #cpo-account.account-ui .account-stream>h2+.account-entry{border-top:0}
+ #cpo-account.account-ui .account-entry h3{font-size:16px;line-height:1.5;font-weight:750;color:var(--account-strong);overflow-wrap:anywhere}
+ #cpo-account.account-ui .account-entry header{gap:12px;flex-wrap:wrap}
+ #cpo-account.account-ui .account-entry header strong{font-size:18px;line-height:1.5;color:var(--account-strong);white-space:normal;unicode-bidi:isolate;direction:ltr}
+ #cpo-account.account-ui .account-entry :is(p,small,dt){color:var(--account-muted);font-size:12px}
+ #cpo-account.account-ui .account-entry dd{overflow-wrap:anywhere;unicode-bidi:plaintext}
+ #cpo-account.account-ui .account-entry summary{font-size:13px;min-height:44px;padding:10px 0}
+ #cpo-account.account-ui .account-entry .account-actions{gap:8px;flex-wrap:wrap}
+ #cpo-account.account-ui .account-entry button[data-reverse]{color:var(--account-bad)}
+ #cpo-account.account-ui .account-drafts{margin-top:20px;padding:16px;border:1px dashed var(--account-input);border-radius:16px;background:var(--account-panel)}
+ #cpo-account.account-ui .account-drafts h2{font-size:16px;line-height:1.5;margin:0 0 12px;color:var(--account-strong)}
+ #cpo-account.account-ui .account-empty{padding:16px;font-size:14px;color:var(--account-muted)}
+ #cpo-account.account-ui .account-reading-help{margin-top:20px;color:var(--account-muted);font-size:12px}
+ #cpo-account.account-ui .account-reading-help>summary{cursor:pointer;min-height:44px;padding:10px 0}
+ #cpo-account.account-ui .account-note{border:0;border-radius:0;background:transparent;color:var(--account-muted);padding:8px 0;margin:0;font-size:12px}
+ #cpo-account.account-ui .account-reading-help footer br{display:none}
+ #cpo-account.account-ui .account-table-scroll{border-color:var(--account-line);border-radius:16px;scrollbar-color:#64748b var(--account-panel)}
+ #cpo-account.account-ui .account-table :is(th,td){border-color:var(--account-line);padding:12px 14px}
+ #cpo-account.account-ui .account-table th{background:var(--account-panel);color:var(--account-strong)}
+ #cpo-account.account-ui .account-table tbody tr:hover{background:var(--account-active)}
+ #cpo-account.account-ui .account-workspace{grid-template-columns:minmax(210px,.8fr) minmax(0,1.4fr);gap:16px}
+ #cpo-account.account-ui .account-workspace nav{scrollbar-color:#64748b var(--account-panel)}
+ #cpo-account.account-ui .account-workspace nav button{border-color:var(--account-line)}
+ #cpo-account.account-ui .account-workspace nav button[aria-pressed=true]{background:var(--account-active);border-color:#818cf8}
+ #cpo-account.account-ui .account-inspector{background:var(--account-panel);border:1px solid var(--account-line);border-radius:16px}
+ #cpo-account.account-ui .account-spending-groups{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+ #cpo-account.account-ui .account-group-total{font-size:24px;color:var(--account-strong);padding:12px 16px}
+ #cpo-account.account-ui dialog{background:var(--account-panel);color:var(--account-text);border:1px solid var(--account-line);border-radius:24px;box-shadow:0 20px 60px #02061766;padding:24px;max-width:calc(100vw - 24px);width:min(880px,calc(100vw - 24px));scrollbar-color:#64748b var(--account-panel)}
+ #cpo-account.account-ui dialog::backdrop{background:#02061799}
+ #cpo-account.account-ui dialog :is(p,label){color:var(--account-muted)}
+ #cpo-account.account-ui dialog :is(h2,h3){color:var(--account-strong)}
+ #cpo-account.account-ui .allocation-line{border-color:var(--account-line);border-radius:12px;padding:12px}
+ body.cpo-account-ui #account-message:not(:empty){z-index:2100;background:#fffbeb;color:#92400e;border:1px solid #d97706;border-radius:12px;box-shadow:0 8px 24px #02061726}
+ @media(max-width:1100px){#cpo-account.account-ui .account-streams{grid-template-columns:1fr}}
+ @media(max-width:780px){
+  #cpo-account.account-ui{width:100%;margin:0}
+  #cpo-account.account-ui .account-main{padding:12px 14px 24px}
+  #cpo-account.account-ui .account-heading{margin:12px 0 16px}
+  #cpo-account.account-ui .account-heading h1{font-size:22px}
+  #cpo-account.account-ui .account-sidebar{width:min(300px,86vw);transform:translateX(-100%);visibility:hidden;pointer-events:none}
+  #cpo-account.account-ui.account-sidebar-open .account-sidebar{transform:translateX(0);visibility:visible;pointer-events:auto}
+  #cpo-account.account-ui .account-sidebar-toggle,#cpo-account.account-ui .account-sidebar .account-sidebar-close{display:inline-flex;align-items:center;justify-content:center;width:auto;min-height:44px;flex-shrink:0}
+  #cpo-account.account-ui .account-sidebar-toggle{max-width:140px}
+  #cpo-account.account-ui .account-sidebar-close{max-width:100px}
+  #cpo-account.account-ui.account-sidebar-open .account-sidebar-backdrop{display:block;position:fixed;inset:var(--account-top,56px) 0 0;z-index:2001;background:#02061799;border:0;width:100%;height:auto;font-size:0;color:transparent;border-radius:0}
+  #cpo-account.account-ui .account-totals{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #cpo-account.account-ui .account-totals>div:first-child{grid-column:auto}
+  #cpo-account.account-ui .account-totals>div{padding:10px 12px}
+  #cpo-account.account-ui .account-totals strong{font-size:18px}
+  #cpo-account.account-ui .account-workspace{grid-template-columns:1fr}
+  #cpo-account.account-ui .account-workspace nav{max-height:230px}
+  #cpo-account.account-ui dialog{padding:18px;border-radius:16px}
+  #cpo-account.account-ui dialog input,#cpo-account.account-ui dialog select{font-size:16px}
+ }
+ @media(pointer:coarse) and (min-width:1100px){#cpo-account.account-ui :is(button,input,select,.account-button){min-height:56px}}
+}
+@media print{
+ #cpo-account.account-ui{margin:0;width:auto;max-width:none;padding:0}
+ #cpo-account.account-ui .account-main{padding:0}
+ #cpo-account.account-ui :is(.account-sidebar,.account-shell-header,.account-sidebar-backdrop){display:none!important}
+ #cpo-account.account-ui .account-reading-help>summary{display:none}
+ #cpo-account.account-ui .account-reading-help:not([open])>*{display:block}
+}
+
+/* Keep the native account styling while making supplier navigation visible on phones. */
+@media screen and (max-width:780px){
+ #cpo-account.account-ui.supplier-account .account-sidebar{position:static;width:auto;transform:none;visibility:visible;pointer-events:auto;border:0;border-radius:12px;margin:12px}
+ #cpo-account.account-ui.supplier-account .account-sidebar-links{flex-direction:row;flex-wrap:wrap}
+ #cpo-account.account-ui.supplier-account .account-sidebar-links a{width:auto}
+}

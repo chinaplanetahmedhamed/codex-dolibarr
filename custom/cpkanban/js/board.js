@@ -11,38 +11,41 @@
 
         var ajaxUrl = wrap.getAttribute("data-ajax");
         var token = wrap.getAttribute("data-token");
-        var dragId = null;
-
-        var cards = wrap.querySelectorAll(".cpk-card[draggable='true']");
-        var cols = wrap.querySelectorAll(".cpk-col");
-
+        var cards = wrap.querySelectorAll('.cpk-card:not(.cpk-card-link)');
+        var cols = wrap.querySelectorAll('.cpk-col');
+        var board = wrap.querySelector('.cpk-board');
+        var hot = null;
+        function highlight(col) {
+            if (hot) hot.classList.remove('cpk-drop-hot');
+            hot = col;
+            if (hot) hot.classList.add('cpk-drop-hot');
+        }
         cards.forEach(function (card) {
-            card.addEventListener("dragstart", function (e) {
-                dragId = card.getAttribute("data-id");
-                e.dataTransfer.effectAllowed = "move";
-                setTimeout(function () { card.style.opacity = "0.4"; }, 0);
-            });
-            card.addEventListener("dragend", function () {
-                card.style.opacity = "1";
-                cols.forEach(function (c) { c.classList.remove("cpk-drop-hot"); });
-            });
-        });
-
-        cols.forEach(function (col) {
-            col.addEventListener("dragover", function (e) {
-                e.preventDefault();
-                col.classList.add("cpk-drop-hot");
-                e.dataTransfer.dropEffect = "move";
-            });
-            col.addEventListener("dragleave", function () {
-                col.classList.remove("cpk-drop-hot");
-            });
-            col.addEventListener("drop", function (e) {
-                e.preventDefault();
-                col.classList.remove("cpk-drop-hot");
-                if (!dragId) return;
-                var newCol = col.getAttribute("data-col");
-                moveCard(dragId, newCol, col);
+            var handle = card.querySelector('.cpk-drag-handle');
+            if (!handle) return;
+            handle.addEventListener('click', function (event) { event.stopPropagation(); });
+            window.cpKanbanPointer(card, {
+                handle: '.cpk-drag-handle',
+                move: function (event, target) {
+                    var col = target && target.closest('.cpk-col');
+                    highlight(col && wrap.contains(col) ? col : null);
+                    if (board) {
+                        var bounds = board.getBoundingClientRect();
+                        if (event.clientX < bounds.left + 36) board.scrollLeft -= 14;
+                        else if (event.clientX > bounds.right - 36) board.scrollLeft += 14;
+                    }
+                    if (col) {
+                        var list = col.querySelector('.cpk-cards'), bounds = list.getBoundingClientRect();
+                        if (event.clientY < bounds.top + 36) list.scrollTop -= 12;
+                        else if (event.clientY > bounds.bottom - 36) list.scrollTop += 12;
+                    }
+                },
+                drop: function (event, target) {
+                    var col = target && target.closest('.cpk-col');
+                    if (col && wrap.contains(col) && col !== card.closest('.cpk-col'))
+                        moveCard(card.dataset.id, col.dataset.col, col);
+                },
+                end: function () { highlight(null); }
             });
         });
 

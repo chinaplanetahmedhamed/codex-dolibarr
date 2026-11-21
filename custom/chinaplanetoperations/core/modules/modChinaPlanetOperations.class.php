@@ -13,15 +13,15 @@ class modChinaPlanetOperations extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 90;
         $this->description = 'Internal operations center, tasks, service workflows and controlled multilingual SOPs';
-        $this->version = '2.7.0';
+        $this->version = '2.9.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->picto = 'fa-route';
         $this->dirs = array('/chinaplanetoperations/documents');
         $this->config_page_url = array('setup.php@chinaplanetoperations');
-        $this->depends = array('modSociete', 'modProduct', 'modPropale', 'modChinaPlanetShippingPrices');
+        $this->depends = array('modSociete', 'modProduct', 'modPropale', 'modCommande', 'modFacture', 'modBanque', 'modFournisseur', 'modProjet', 'modChinaPlanetShippingPrices', 'modChinaPlanetCustomerCenter');
         $this->phpmin = array(7, 4);
         $this->need_dolibarr_version = array(23, 0);
-        $this->module_parts = array('api' => 1);
+        $this->module_parts = array('api' => 1, 'hooks' => array('login', 'agenda', 'pricesuppliercard', 'thirdpartyconsumption', 'leftblock'));
 
         $this->rights = array();
         $this->rights_class = 'chinaplanetoperations';
@@ -50,6 +50,11 @@ class modChinaPlanetOperations extends DolibarrModules
             array(500522, 'Administer internal task board and team grants', 'task_admin'),
             array(500523, 'Comment on readable internal tasks', 'task_comment'),
             array(500524, 'Manage checklists on scoped internal tasks', 'task_checklist'),
+            array(500580, 'Read internal customer account statements', 'account_read'),
+            array(500581, 'Edit account drafts and custom text columns', 'account_edit'),
+            array(500582, 'Post and reverse manual account entries', 'account_post'),
+            array(500583, 'Reallocate posted customer funds', 'account_reallocate'),
+            array(500584, 'Export internal customer account statements', 'account_export'),
         );
         foreach ($definitions as $index => $definition) {
             $key = $index + 1;

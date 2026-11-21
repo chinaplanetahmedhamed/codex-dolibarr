@@ -32,6 +32,8 @@ if (!function_exists('cpcc_admin_shell_asset')) {
 if (!function_exists('cpcc_admin_shell_navigation')) {
     function cpcc_admin_shell_navigation($active = '', $context = array())
     {
+        global $user;
+        $taskOnly = empty($user->admin) && empty($user->socid) && $user->hasRight('chinaplanetoperations', 'task_read_own') && !$user->hasRight('chinaplanetoperations', 'read');
         $items = array(
             'workspace'=>array('/chinaplanetoperations/workspace.php', 'fa-compass', 'Workspace / مساحة العمل', 'Today / اليوم'),
             'dashboard'=>array('/chinaplanetcustomercenter/admin_dashboard.php', 'fa-chart-line', 'Dashboard / الرئيسية', 'Home / الرئيسية'),
@@ -51,6 +53,18 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
             'work'=>array('fa-briefcase', 'Work / العمل', array('tasks', 'sop')),
             'records'=>array('fa-folder-open', 'More / المزيد', array('dashboard', 'documents', 'reports')),
         );
+
+        if ($taskOnly) {
+            $primaryKeys = array('workspace', 'tasks');
+            $groups = array();
+            $items['tasks'][2] = 'My tasks / مهامي';
+            $items['workspace'][2] = $items['workspace'][3] = 'My day / يومي';
+        }
+
+        if (function_exists('getDolGlobalInt') && getDolGlobalInt('CPO_BOARDS_ENABLED')) {
+            $items['tasks'][0] = '/chinaplanetoperations/tasks/boards.php';
+            $items['tasks'][2] = 'Boards / اللوحات';
+        }
 
         // Older shipping pages still pass their former section key. Keep those
         // calls compatible while presenting one clear Shipping Center entry.
@@ -92,8 +106,10 @@ if (!function_exists('cpcc_admin_shell_navigation')) {
         }
         $newShipmentUrl = cpcc_admin_shell_url('/chinaplanetlogistics/card.php', $context);
         $newShipmentUrl .= (strpos($newShipmentUrl, '?') === false ? '?' : '&').'action=create';
+        if (!empty($user->admin) || $user->hasRight('chinaplanetlogistics', 'write')) {
         print '<a class="new" href="'.dol_escape_htmltag($newShipmentUrl).'">';
         print '<span class="fas fa-plus-circle"></span> New shipment / شحنة</a>';
+        }
         print '</div>';
         print '</nav>';
         print '<script>(function(){var nav=document.currentScript.previousElementSibling;if(!nav||!nav.matches("[data-cpad-mobile-nav]"))return;var button=nav.querySelector(".cpad-nav-toggle");if(!button)return;var groups=Array.prototype.slice.call(nav.querySelectorAll("[data-cpad-nav-group]"));function closeGroups(except){groups.forEach(function(group){if(group===except)return;group.classList.remove("is-open");var toggle=group.querySelector(".cpad-nav-group-toggle");if(toggle)toggle.setAttribute("aria-expanded","false");});}function closeNav(focus){nav.classList.remove("is-open");button.setAttribute("aria-expanded","false");closeGroups();if(focus)button.focus();}button.addEventListener("click",function(){var open=!nav.classList.contains("is-open");nav.classList.toggle("is-open",open);button.setAttribute("aria-expanded",open?"true":"false");});groups.forEach(function(group){var toggle=group.querySelector(".cpad-nav-group-toggle");if(!toggle)return;toggle.addEventListener("click",function(event){event.stopPropagation();var open=!group.classList.contains("is-open");closeGroups(group);group.classList.toggle("is-open",open);toggle.setAttribute("aria-expanded",open?"true":"false");});});nav.addEventListener("keydown",function(event){if(event.key==="Escape"){closeGroups();closeNav(true);}});nav.querySelectorAll(".cpad-nav-links a").forEach(function(link){link.addEventListener("click",function(){closeNav(false);});});document.addEventListener("click",function(event){if(!nav.contains(event.target))closeNav(false);else if(!event.target.closest("[data-cpad-nav-group]"))closeGroups();});})();</script>';
@@ -116,14 +132,15 @@ if (!function_exists('cpcc_admin_shell_header')) {
 if (!function_exists('cpcc_admin_shell_open')) {
     function cpcc_admin_shell_open($active, $title, $subtitle = '', $icon = 'fa-layer-group', $context = array())
     {
-        print '<div class="cpad-shell cpad-section-shell">';
+        $flat=!empty($context['flat']);
+        print '<div class="cpad-shell cpad-section-shell'.($flat?' cpad-flat-page':'').'">';
         cpcc_admin_shell_navigation($active, $context);
-        cpcc_admin_shell_header(true);
-        print '<section class="cpad-section-heading">';
+        if (!$flat) cpcc_admin_shell_header(true);
+        if (!$flat) { print '<section class="cpad-section-heading">';
         print '<div class="cpad-section-icon"><span class="fas '.dol_escape_htmltag($icon).'"></span></div>';
         print '<div><h2>'.dol_escape_htmltag($title).'</h2>';
         if ($subtitle !== '') print '<p>'.dol_escape_htmltag($subtitle).'</p>';
-        print '</div></section>';
+        print '</div></section>'; }
         print '<div class="cpad-section-content">';
     }
 }

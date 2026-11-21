@@ -275,7 +275,11 @@ function cpkanban_render_customer_project_center($card, $column, $data, $isModal
         }
         foreach ($data['reports'] as $report) {
             $url = dol_buildpath('/chinaplanetcustomercenter/operation_report.php', 1).'?id='.(int) $report['rowid'];
-            print '<a href="'.dol_escape_htmltag($url).'" class="cpk-file-card"><span>📋 تقرير خدمة</span><strong>'.dol_escape_htmltag($report['title']).'</strong><small>'.(int) $report['progress'].'%</small></a>';
+            $qcResultLabels = array('pass'=>'ناجح','fail'=>'غير ناجح','pending_corrective_action'=>'بانتظار الإجراء التصحيحي','reinspection_required'=>'إعادة فحص مطلوبة');
+            $reportMeta = $report['service_type'] === 'quality_control'
+                ? 'النتيجة '.dol_escape_htmltag($qcResultLabels[(string)$report['overall_result']] ?? str_replace('_', ' ', (string)$report['overall_result'])).' · الإصدار '.(int)$report['publication_version']
+                : (int)$report['progress'].'%';
+            print '<a href="'.dol_escape_htmltag($url).'" class="cpk-file-card"><span>📋 تقرير خدمة</span><strong>'.dol_escape_htmltag($report['title']).'</strong><small>'.$reportMeta.'</small></a>';
         }
         print '</div>';
     }

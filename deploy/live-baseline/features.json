@@ -1,0 +1,71 @@
+{
+  "entity": 1,
+  "features": [
+    {
+      "entity": 1,
+      "name": "CPO_ACCOUNT_FINANCE_LINK_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_ACCOUNT_STATEMENTS_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_BOARDS_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_BOARDS_SHORTCUT_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_BOARD_COMPLETION_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_BOARD_DELETE_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_CUSTOMER_WORKSPACES_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_PROJECT_TASK_BRIDGE_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_SHIPMENT_CARDS_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_SUPPLIER_CORRECTIONS_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_SUPPLIER_WORKSPACES_ENABLED",
+      "value": 1
+    },
+    {
+      "entity": 1,
+      "name": "CPO_WORKSPACE_GALLERY_ENABLED",
+      "value": 1
+    }
+  ],
+  "module_exception": "CPKanban disabled locally per Ahmed USE BOARDS",
+  "safety_exceptions": [
+    "mail and outbound integrations blocked on nonproduction",
+    "no production credentials or live user authentication copied"
+  ],
+  "data_records_in_git": false
+}

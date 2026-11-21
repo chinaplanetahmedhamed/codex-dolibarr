@@ -1,0 +1,11 @@
+
+PublicCataloguePdf=PDF catalogue et demandes de téléchargement
+PublicPdfBackToEnquiry=Retour à la demande
+PublicPdfNotAvailable=Aucun PDF disponible pour cette demande.
+PublicPdfCreated=Créé le
+PublicPdfDownloadRequests=Demandes de téléchargement
+PublicPdfLastRequest=Dernière demande
+PublicPdfProspectMatch=Correspondance du prospect
+PublicPdfCustomerCopyHelp=Copie du client. Les données commerciales de référence sont celles de la demande. Une demande de téléchargement ne prouve pas que le fichier a été enregistré ou ouvert.
+PublicPdfDownloadCopy=Télécharger la copie client
+PublicPdfOpenProspect=Ouvrir le prospect/client suggéré

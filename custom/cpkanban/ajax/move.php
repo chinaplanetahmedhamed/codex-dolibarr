@@ -30,15 +30,23 @@ if (!empty($user->socid)) cpk_json(false, 'forbidden_external');
 // Write permission required
 if (!$user->hasRight('cpkanban', 'write') && empty($user->admin)) cpk_json(false, 'forbidden_perm');
 
-// CSRF token check
-$token = GETPOST('token', 'alpha');
-if (!$token || $token != $_SESSION['newtoken']) {
-    // Dolibarr stores valid tokens; fall back to checkToken if available
-    if (function_exists('checkToken') && !checkToken($token)) cpk_json(false, 'bad_token');
+// Mutations are POST-only, even when core CSRF configuration is disabled.
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    header('Allow: POST');
+    http_response_code(405);
+    cpk_json(false, 'method_not_allowed');
 }
 
-$card_id = GETPOST('card_id', 'int');
-$col_id  = GETPOST('col_id', 'int');
+// main.inc.php rotates newtoken into token before validating this request.
+$token = GETPOST('token', 'alpha', 2);
+$expectedToken = isset($_SESSION['token']) ? $_SESSION['token'] : '';
+if (!is_string($token) || !is_string($expectedToken) || $expectedToken === '' || $token === '' || !hash_equals($expectedToken, $token)) {
+    http_response_code(403);
+    cpk_json(false, 'bad_token');
+}
+
+$card_id = GETPOST('card_id', 'int', 2);
+$col_id  = GETPOST('col_id', 'int', 2);
 if ($card_id <= 0 || $col_id <= 0) cpk_json(false, 'bad_params');
 
 $card = new CpKanbanCard($db);

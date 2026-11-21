@@ -1,19 +1,15 @@
-# codex-dolibarr
+# Vision Trading Dolibarr — verified live baseline
 
-Private source-control repository for the Vision Trading Dolibarr 23.0.3 production customizations.
+Dolibarr 24.0.1, captured from the actual production container and its mounted custom-module volume on 2026-11-21, reverified unchanged on 2026-11-22 Asia/Shanghai. The immutable source inventory has 16,560 files, including 1,973 custom-module files. A clean deployed Git revision is not asserted.
 
-## Repository policy
+The web root is `htdocs/`. Owning modules remain in `custom/`; `htdocs/custom` is a repository-relative link to that directory. The source manifest records every captured SHA-256. Public installation and schema files are included. Never edit core to build a new feature; extend the existing owner module.
 
-- Track sanitized custom-module source and deployment manifests only.
-- Production snapshots must exclude databases, documents, configuration files, credentials, keys, tokens, logs, sessions, caches, backups, and demo data.
-- Never deploy automatically from `main`.
-- Every release requires a verified allowlist, immutable source commit/tag, read-only production preflight, encrypted off-repository backup, explicit diff, rollback plan, and Ahmed's final deployment approval.
-- The initial production baseline must be captured read-only and reviewed before local module changes are layered on top.
+Production configuration, credentials, databases, records, documents, attachments, sessions and logs are excluded. Create separate private local configuration and data storage. The approved real Boards/statement replica is held privately outside this repository. Do not upload it to GitHub.
 
-## Runtime target
+The Mac acceptance lab is `http://127.0.0.1:18121/`. It uses socket-only MySQL, blocked outbound mail/integrations, retained local administrator credentials and disabled reference users. CPKanban stays disabled by Ahmed's instruction; use Operations Boards. The twelve captured Boards/statement flags are listed in `deploy/live-baseline/features.json`.
 
-- Dolibarr: 23.0.3
-- Production PHP reported: 8.2.7
-- Production database reported: MariaDB 10.6
+One explicit Mac environment adapter is supplied as `deploy/local/office-macos.patch`; it adds a Darwin/loopback/private-root-only Office Expenses profile. Application files in this commit remain identical to live. Apply the adapter only to the private Mac runtime, preserving the original class. Linux production guards remain in the original baseline. This adapter is the known source difference in the running Mac lab; bit-identical runtime parity is not claimed.
 
-Version metadata and production custom-module checksums must be recorded in a sanitized deployment manifest before the first code import.
+Local acceptance: 68 exported business-table projections matched their captured hashes, plus safe display identities; 30 available Boards loaded and one deleted Board was denied; all five customers with statement records matched independent received/spent/balance/unallocated/original-currency calculations; 99 authenticated native HTTP views/API/print checks passed. Office views passed with posting disabled. Customer attachment bytes and live authentication are excluded. Chrome visual review passed for Board 22 and its project statement/ledger. Backup-ERP now runs the same 16,560 application file hashes; isolated 512-table recovery rehearsal passed, and its active native Boards/statement/Office checks passed. Authenticated Chrome acceptance passed on backup-ERP for Boards, project statement/ledger and Office EN/AR. Existing staging administrator permissions were retained by semantic mapping. Canonical source adoption and recoverable historical archives are recorded in M140. The previous Mac8088 PHP server is stopped; use18121.
+
+Historical missions, deployment recipes and branches are retained as history, not proof of current deployment. The retired customer mobile project and its workflows remain in Git history rather than the current tree. Do not run an old release workflow against this baseline. Follow AGENTS.md, M140 and an explicitly approved checksum-pinned release. No production deployment is triggered by this baseline branch.
