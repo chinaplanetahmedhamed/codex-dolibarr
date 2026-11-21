@@ -12,7 +12,7 @@ $socid = cpcc_portal_customer_scope_id($db, $user, GETPOSTINT('socid'));
 $currencyFallback = cpcc_financial_currency(!empty($conf->currency) ? $conf->currency : 'USD');
 $selectedCurrency = cpcc_financial_currency(GETPOST('currency', 'alpha'), '');
 $summary = $socid > 0 ? cpcc_financial_summary($db, $socid, $currencyFallback) : array();
-$commitments = $socid > 0 ? cpcc_financial_commitment_rows($db, $socid, $currencyFallback) : array();
+$commitments = $socid > 0 ? cpcc_financial_commitment_rows($db, $socid, $currencyFallback, 0, '', !$isExternal) : array();
 $invoices = $socid > 0 ? cpcc_financial_unpaid_invoices($db, $socid, $currencyFallback) : array();
 
 if ($selectedCurrency !== '') {

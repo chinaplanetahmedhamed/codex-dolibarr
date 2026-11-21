@@ -26,6 +26,7 @@ CREATE TABLE llx_chinaplanetlogistics (
     fk_statut integer DEFAULT 0,
     notes text,
     customer_note text,
+    customer_visible tinyint NOT NULL DEFAULT 1,
     tms timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     date_creation datetime
 ) ENGINE=innodb;
@@ -38,3 +39,4 @@ ALTER TABLE llx_chinaplanetlogistics ADD UNIQUE INDEX uk_chinaplanetlogistics_re
 -- M011 additive upgrade for existing installations. Dolibarr's module SQL
 -- runner treats an existing column as an accepted idempotent result.
 ALTER TABLE llx_chinaplanetlogistics ADD COLUMN date_atd date AFTER date_etd;
+ALTER TABLE llx_chinaplanetlogistics ADD COLUMN customer_visible tinyint NOT NULL DEFAULT 1 AFTER customer_note;

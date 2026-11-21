@@ -65,3 +65,11 @@ info.text
 !custom/*/
 !custom/*/sql/
 !custom/*/sql/*.sql
+
+# M140 private runtime/configuration never belongs in Git
+/htdocs/conf/conf.php
+**/.env
+**/mysql-local.cnf
+**/local-access.json
+**/boards-statements-*.json*
+**/candidate/db/

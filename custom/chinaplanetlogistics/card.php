@@ -1,7 +1,7 @@
 <?php
 $csrfRequestMethod = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $csrfRequestedAction = isset($_GET['action']) && is_string($_GET['action']) ? $_GET['action'] : '';
-$csrfReadOnlyActions = array('create', 'edit', 'confirm_delete');
+$csrfReadOnlyActions = array('create', 'edit', 'confirm_delete', 'displaycustomerprojects');
 if ($csrfRequestMethod !== 'GET' || !in_array($csrfRequestedAction, $csrfReadOnlyActions, true)) {
     define('CSRFCHECK_WITH_TOKEN', 1);
 }
@@ -14,6 +14,8 @@ if ($csrfRequestMethod !== 'GET' || !in_array($csrfRequestedAction, $csrfReadOnl
 require_once __DIR__.'/lib/main.lib.php';
 require_once __DIR__.'/lib/chinaplanetlogistics.lib.php';
 require_once __DIR__.'/lib/shipment_customer.lib.php';
+require_once __DIR__.'/lib/shipment_form.lib.php';
+require_once __DIR__.'/lib/shipment_loading_media.lib.php';
 
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.form.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formprojet.class.php';
@@ -52,7 +54,7 @@ if ($is_external_customer) {
     $candelete = false;
     $cansendshipmentemail = false;
     if ($id > 0) {
-        if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid) {
+        if (empty($object->id) || (int) $object->fk_soc !== (int) $user->socid || empty($object->customer_visible)) {
             if ($is_modal) {
                 http_response_code(403);
                 header('Content-Type: text/html; charset=UTF-8');
@@ -68,6 +70,46 @@ if ($is_external_customer) {
 
 $listurl = DOL_URL_ROOT.'/custom/chinaplanetlogistics/list.php';
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
+// M082 staff-first boundary: the external customer shipment experience is
+// strictly read-only. Keep the legacy collaboration writers for historical
+// records, but reject every direct external mutation before action routing.
+if ($is_external_customer && $is_post) accessforbidden();
+
+if ($action === 'upload_loading_media') {
+    if (!$is_post || !$canwrite || empty($object->id)) accessforbidden();
+    $result = cpl_store_loading_media($db, $object, $user, $_FILES['loading_media'] ?? array(), GETPOSTINT('publish_media') === 1);
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: private, no-store');
+    if (empty($result['ok'])) http_response_code(422);
+    $result['token'] = newToken();
+    print json_encode($result, JSON_INVALID_UTF8_SUBSTITUTE);
+    $db->close();
+    exit;
+}
+
+$formProjects = new FormProjets($db);
+$shipmentEntity = (int) $conf->entity;
+
+if ($action === 'displaycustomerprojects') {
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: private, no-store');
+    $customer = GETPOSTINT('customer');
+    if ($csrfRequestMethod !== 'GET' || !$canwrite || $is_external_customer
+        || !cpl_shipment_form_customer_allowed($db, $user, $shipmentEntity, $customer)) {
+        http_response_code(403);
+        print '[]';
+    } else {
+        try {
+            $projects = cpl_shipment_form_projects($db, $user, $shipmentEntity, $customer);
+            print json_encode($projects, JSON_INVALID_UTF8_SUBSTITUTE);
+        } catch (RuntimeException $e) {
+            http_response_code(503);
+            print '[]';
+        }
+    }
+    $db->close();
+    exit;
+}
 
 $parseDateTime = function ($value) {
     $value = trim((string) $value);
@@ -87,6 +129,40 @@ $linksAreValid = function ($socid, $projectid) use ($db, $conf) {
     return $res && $db->num_rows($res) === 1;
 };
 
+$submittedContainerRows = null;
+$containerError = '';
+if ($is_post && $canwrite && in_array($action, array('add', 'update'), true)) {
+    $legacyRows = cpl_shipment_container_rows((string) $object->container_type, (int) $object->nb_containers);
+    $legacyType = count($legacyRows) === 1 ? $legacyRows[0][0] : '';
+    if (GETPOSTISSET('container_types') || GETPOSTISSET('container_quantities')) {
+        $submittedTypes = GETPOST('container_types', 'array:alphanohtml', 2);
+        $submittedQuantities = GETPOST('container_quantities', 'array:alphanohtml', 2);
+        $mix = cpl_shipment_container_mix($submittedTypes, $submittedQuantities, $legacyType);
+        if (is_array($submittedTypes) && is_array($submittedQuantities)) {
+            $submittedContainerRows = array();
+            foreach (array_slice($submittedTypes, 0, count(cpl_shipment_container_types()), true) as $key => $type) {
+                if (is_string($type)) {
+                    $submittedContainerRows[] = array($type, is_scalar($submittedQuantities[$key] ?? null) ? $submittedQuantities[$key] : '');
+                }
+            }
+        }
+    } else {
+        $legacyInput = GETPOST('container_type', 'alpha') === '-1' ? '' : GETPOST('container_type', 'alpha');
+        $mix = count($legacyRows) > 1 ? null : cpl_shipment_container_mix(
+            array($legacyInput), array(GETPOST('nb_containers', 'int')), $legacyType
+        );
+    }
+    if (!$mix) {
+        $containerError = $langs->trans('CPLInvalidContainerMix');
+    } elseif (strlen($mix['type']) > 20 && !cpl_shipment_container_mix_fits($db, $mix['type'])) {
+        $containerError = $langs->trans('CPLContainerMixNeedsSchema');
+    }
+    if ($containerError === '') {
+        $object->container_type = $mix['type'];
+        $object->nb_containers = $mix['total'];
+    }
+}
+
 /*
  * ACTIONS
  */
@@ -94,11 +170,10 @@ $linksAreValid = function ($socid, $projectid) use ($db, $conf) {
 // CREATE
 if ($action == 'add' && $canwrite && $is_post) {
     $object->ref              = GETPOST('ref', 'alpha');
+    $object->manual_ref       = trim(GETPOST('manual_ref', 'alphanohtml'));
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
     $object->container_no     = GETPOST('container_no', 'alpha');
-    $object->container_type   = GETPOST('container_type', 'alpha');
-    $object->nb_containers    = (int) GETPOST('nb_containers', 'int');
     $object->booking_no       = GETPOST('booking_no', 'alpha');
     $object->bl_no            = GETPOST('bl_no', 'alpha');
     $object->shipping_line    = GETPOST('shipping_line', 'alpha');
@@ -120,32 +195,45 @@ if ($action == 'add' && $canwrite && $is_post) {
     $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
     $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
     $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
+    $object->customer_visible = GETPOSTINT('customer_visible') ? 1 : 0;
 
-    if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
+    if (!cpl_shipment_form_customer_allowed($db, $user, $shipmentEntity, (int) $object->fk_soc)
+        || !$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
+    if ($object->fk_project > 0) {
+        try {
+            $availableProjects = cpl_shipment_form_projects($db, $user, $shipmentEntity, (int) $object->fk_soc);
+        } catch (RuntimeException $e) {
+            $availableProjects = array();
+        }
+        $availableIds = array_column(array_filter($availableProjects, static function ($project) {
+            return !$project['disabled'];
+        }), 'id');
+        if (!in_array((int) $object->fk_project, $availableIds, true)) accessforbidden();
+    }
 
     // Auto-ref if empty
     if (empty($object->ref) || $object->ref == 'AUTO') {
         $object->ref = 'LOG-'.date('Ymd-His');
     }
 
-    $newid = $object->create($user);
+    if (mb_strlen($object->manual_ref) > 100) $containerError = $langs->trans('CPLManualReferenceTooLong');
+    $newid = $containerError === '' ? $object->create($user) : -1;
     if ($newid > 0) {
         header("Location: ".$_SERVER['PHP_SELF']."?id=".$newid);
         exit;
     } else {
-        setEventMessages($object->error, $object->errors, 'errors');
+        setEventMessages($containerError ?: $object->error, $object->errors, 'errors');
         $action = 'create';
     }
 }
 
 // UPDATE
 if ($action == 'update' && $canwrite && $is_post) {
-    $object->ref              = GETPOST('ref', 'alpha');
+    $manualRef = GETPOSTISSET('manual_ref') ? trim(GETPOST('manual_ref', 'alphanohtml')) : null;
+    if ($manualRef !== null) $object->manual_ref = $manualRef;
     $object->fk_soc           = (int) GETPOST('fk_soc', 'int');
     $object->fk_project       = (int) GETPOST('fk_project', 'int');
     $object->container_no     = GETPOST('container_no', 'alpha');
-    $object->container_type   = GETPOST('container_type', 'alpha');
-    $object->nb_containers    = (int) GETPOST('nb_containers', 'int');
     $object->booking_no       = GETPOST('booking_no', 'alpha');
     $object->bl_no            = GETPOST('bl_no', 'alpha');
     $object->shipping_line    = GETPOST('shipping_line', 'alpha');
@@ -167,11 +255,13 @@ if ($action == 'update' && $canwrite && $is_post) {
     $object->audit_source_label = GETPOST('audit_source_label', 'alphanohtml');
     $object->audit_reason_public = GETPOST('audit_reason_public', 'alphanohtml');
     $object->audit_customer_visible = GETPOSTINT('audit_customer_visible') ? 1 : 0;
+    $object->customer_visible = GETPOSTINT('customer_visible') ? 1 : 0;
     $sendStatusEmail = GETPOSTINT('send_status_email') ? 1 : 0;
 
     if (!$linksAreValid($object->fk_soc, $object->fk_project)) accessforbidden();
 
-    $resu = $object->update($user);
+    if ($manualRef !== null && mb_strlen($manualRef) > 100) $containerError = $langs->trans('CPLManualReferenceTooLong');
+    $resu = $containerError === '' ? $object->update($user, 0, $manualRef) : -1;
     if ($resu >= 0) {
         setEventMessages($langs->trans('CPLShipmentUpdated'), null, 'mesgs');
         if ($sendStatusEmail && !$cansendshipmentemail) {
@@ -196,7 +286,7 @@ if ($action == 'update' && $canwrite && $is_post) {
         header("Location: ".$_SERVER['PHP_SELF']."?id=".$id);
         exit;
     } else {
-        setEventMessages($object->error, $object->errors, 'errors');
+        setEventMessages($containerError ?: $object->error, $object->errors, 'errors');
         $action = 'edit';
     }
 }
@@ -335,11 +425,12 @@ if ($is_modal) {
     $isRtl = ($langs->trans('DIRECTION') === 'rtl');
     header('Content-Type: text/html; charset=UTF-8');
     print '<!doctype html><html lang="'.dol_escape_htmltag($langs->defaultlang).'" dir="'.($isRtl?'rtl':'ltr').'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
-    print '<link rel="stylesheet" href="'.dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260720-m024c01">';
+    print '<link rel="stylesheet" href="'.dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=m131">';
+    print '<link rel="stylesheet" href="'.dol_escape_htmltag(cpcc_portal_asset('/custom/chinaplanetcustomercenter/css/portal.css')).'">';
     print '<style>body{margin:0;padding:20px;background:#fff;color:#172033;font-family:Arial,Tahoma,sans-serif;line-height:1.45}h1,h2,h3{margin-top:0}.fichecenter,.fichehalfleft,.fichehalfright{width:100%}.fiche{margin:0}.fiche-title{margin-bottom:18px}.border{width:100%;border-collapse:collapse;background:#fff}.border td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:start}.border tr:nth-child(even){background:#f8fafc}.titlefield{width:220px}.tabsAction{display:none}.opacitymedium{color:#6b7280}@media(max-width:640px){body{padding:12px}.border td{padding:8px;display:block;width:auto!important}.border tr{display:block;padding:6px 0}}</style>';
     print '</head><body class="cpl-modal-body">';
 } else {
-    $cardCss=array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'), dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=20260720-m024c01');
+    $cardCss=array(cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/ux_fixes.css'), dol_buildpath('/chinaplanetlogistics/css/shipment-command-center.css', 1).'?v=m131');
     if(!$is_external_customer) $cardCss[]=cpcc_admin_shell_asset('/custom/chinaplanetcustomercenter/css/admin_dashboard.css');
     llxHeader('', $langs->trans('CPLShipmentCardTitle'), '', '', 0, 0, array(), $cardCss);
     if($is_external_customer) cpcc_portal_navigation($user, 'shipments');
@@ -347,10 +438,8 @@ if ($is_modal) {
 }
 
 $form = new Form($db);
-$formproject = new FormProjets($db);
 
 $statuses = chinaplanetlogistics_status_map();
-$types = array('20GP'=>'20GP','40GP'=>'40GP','40HQ'=>'40HQ','45HQ'=>'45HQ','LCL'=>'LCL','Other'=>'Other');
 
 // ─── CONFIRM DELETE PAGE ──────────────────────────────────────────────────
 if ($action == 'confirm_delete' && $confirm != 'yes') {
@@ -398,29 +487,97 @@ if ($action == 'create' || $action == 'edit') {
 
     // Reference
     print '<tr><td class="titlefieldcreate">Reference / المرجع</td><td>';
-    print '<input type="text" name="ref" value="'.dol_escape_htmltag($action == 'create' ? 'AUTO' : $object->ref).'" style="width:300px">';
-    print ' <span class="opacitymedium">(leave AUTO for auto-generate)</span></td></tr>';
+    if ($action === 'create') {
+        print '<input type="text" name="ref" value="'.dol_escape_htmltag($object->ref ?: 'AUTO').'" style="width:300px">';
+        print ' <span class="opacitymedium">(leave AUTO for auto-generate)</span>';
+    } else {
+        print '<bdi>'.dol_escape_htmltag($object->ref).'</bdi>';
+    }
+    print '</td></tr>';
+    print '<tr><td><label for="cpl-manual-ref">'.dol_escape_htmltag($langs->trans('CPLManualReference')).'</label></td><td>';
+    print '<input type="text" id="cpl-manual-ref" name="manual_ref" maxlength="100" class="minwidth100 maxwidth300" value="'.dol_escape_htmltag((string) $object->manual_ref).'">';
+    print ' <span class="opacitymedium">'.dol_escape_htmltag($langs->trans('CPLManualReferenceHelp')).'</span></td></tr>';
 
     // Customer
     print '<tr><td class="titlefieldcreate fieldrequired">Customer / العميل</td><td>';
-    print $form->select_company($object->fk_soc, 'fk_soc', '', '-- Select Customer --', 1);
+    $customerFilter = $action === 'create'
+        ? '((s.client:IN:1,3) AND (s.status:=:1) AND (s.entity:=:'.$shipmentEntity.'))' : '';
+    print $form->select_company($object->fk_soc, 'fk_soc', $customerFilter, '-- Select Customer --', 1, $action === 'create' ? 1 : 0);
+    if ($action === 'create' && !empty($conf->use_javascript_ajax)) {
+        require_once DOL_DOCUMENT_ROOT.'/core/lib/ajax.lib.php';
+        print ajax_combobox('fk_soc');
+    }
     print '</td></tr>';
 
     // Project
     print '<tr><td>Project / المشروع</td><td>';
-    print $formproject->select_projects(-1, $object->fk_project, 'fk_project', 0, 0, 1, 0, 0, 0, 0, '', 1);
+    if ($action === 'create') {
+        $validCustomer = cpl_shipment_form_customer_allowed($db, $user, $shipmentEntity, (int) $object->fk_soc);
+        $projects = array();
+        $lookupFailed = false;
+        if ($validCustomer) {
+            try {
+                $projects = cpl_shipment_form_projects($db, $user, $shipmentEntity, (int) $object->fk_soc);
+            } catch (RuntimeException $e) {
+                $lookupFailed = true;
+            }
+        }
+        $status = $lookupFailed ? 'CPLProjectLookupFailed' : (!$validCustomer ? 'CPLSelectCustomerFirst' : (!$projects ? 'CPLNoCustomerProjects' : ''));
+        $projectLookup = dol_buildpath('/chinaplanetlogistics/card.php', 1).'?action=displaycustomerprojects';
+        print '<select name="fk_project" id="fk_project" class="flat minwidth100 maxwidth500" aria-label="'.dol_escape_htmltag($langs->trans('Project')).'" aria-describedby="cpl-project-status"'
+            .($projects ? '' : ' disabled').'>';
+        print '<option value="0"></option>';
+        foreach ($projects as $project) {
+            print '<option value="'.(int) $project['id'].'"'
+                .($project['disabled'] ? ' disabled' : ((int) $object->fk_project === (int) $project['id'] ? ' selected' : ''))
+                .'>'.dol_escape_htmltag($project['label']).'</option>';
+        }
+        print '</select>';
+        print '<span id="cpl-project-status" class="opacitymedium" role="status" data-url="'.dol_escape_htmltag($projectLookup).'"';
+        foreach (array('empty'=>'CPLNoCustomerProjects','choose'=>'CPLSelectCustomerFirst','loading'=>'CPLLoadingProjects','failed'=>'CPLProjectLookupFailed') as $state => $message) {
+            print ' data-'.$state.'="'.dol_escape_htmltag($langs->trans($message)).'"';
+        }
+        print '>'.($status ? dol_escape_htmltag($langs->trans($status)) : '').'</span>';
+        if (!empty($conf->use_javascript_ajax)) {
+            require_once DOL_DOCUMENT_ROOT.'/core/lib/ajax.lib.php';
+            print ajax_combobox('fk_project', array(), 0, 0, 'resolve', '0');
+        }
+    } else {
+        print $formProjects->select_projects(-1, $object->fk_project, 'fk_project', 0, 0, 1, 0, 0, 0, 0, '', 1);
+    }
     print '</td></tr>';
 
     // Container
     print '<tr><td class="fieldrequired">Container Number / رقم الحاوية</td><td>';
     print '<input type="text" name="container_no" value="'.dol_escape_htmltag($object->container_no).'" style="width:300px"></td></tr>';
 
-    print '<tr><td>Container Type / نوع الحاوية</td><td>';
-    print $form->selectarray('container_type', $types, $object->container_type, 1);
-    print '</td></tr>';
-
-    print '<tr><td>Nb Containers / عدد الحاويات</td><td>';
-    print '<input type="number" name="nb_containers" value="'.dol_escape_htmltag($object->nb_containers ? $object->nb_containers : 1).'" style="width:100px"></td></tr>';
+    print '<tr><td>'.dol_escape_htmltag($langs->trans('CPLContainerTypes')).'</td><td>';
+    $containerTypes = cpl_shipment_container_types();
+    $containerRows = $submittedContainerRows ?: cpl_shipment_container_rows((string) $object->container_type, (int) $object->nb_containers);
+    $renderContainerRow = static function ($type, $quantity, $allowLegacy = false) use ($langs, $containerTypes) {
+        $choices = $containerTypes;
+        if ($allowLegacy && $type !== '' && !in_array($type, $choices, true)) {
+            $choices[] = $type;
+        }
+        print '<div class="cpl-container-row" style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-bottom:.5rem">';
+        print '<select name="container_types[]" class="flat" aria-label="'.dol_escape_htmltag($langs->trans('CPLContainerType')).'"><option value=""></option>';
+        foreach ($choices as $choice) {
+            print '<option value="'.dol_escape_htmltag($choice).'"'.($type === $choice ? ' selected' : '').'>'.dol_escape_htmltag($choice).'</option>';
+        }
+        print '</select>';
+        print '<input name="container_quantities[]" type="number" min="1" max="9999" step="1" required value="'.dol_escape_htmltag((string) $quantity)
+            .'" class="width75" aria-label="'.dol_escape_htmltag($langs->trans('CPLContainerQuantity')).'">';
+        print '<button type="button" class="button" data-remove-container hidden>'.dol_escape_htmltag($langs->trans('Remove')).'</button></div>';
+    };
+    print '<div id="cpl-container-rows" data-limit="'.count($containerTypes).'">';
+    foreach ($containerRows as $row) {
+        $renderContainerRow($row[0], $row[1], $row[0] === (string) $object->container_type);
+    }
+    print '</div><template id="cpl-container-template">';
+    $renderContainerRow('', 1);
+    print '</template><button type="button" class="button" id="cpl-container-add" hidden>'.dol_escape_htmltag($langs->trans('CPLAddContainerType')).'</button>';
+    print '</td></tr><tr><td>'.dol_escape_htmltag($langs->trans('CPLContainersQuantity')).'</td><td>';
+    print '<output id="cpl-container-total" aria-live="polite">'.(int) array_sum(array_map('intval', array_column($containerRows, 1))).'</output></td></tr>';
 
     print '<tr><td>Booking No / رقم الحجز</td><td>';
     print '<input type="text" name="booking_no" value="'.dol_escape_htmltag($object->booking_no).'" style="width:300px"></td></tr>';
@@ -477,12 +634,14 @@ if ($action == 'create' || $action == 'edit') {
     print $form->selectarray('fk_statut', $statuses, $object->fk_statut);
     print '</td></tr>';
 
+    print '<tr><td>Customer portal visibility / ظهور الشحنة للعميل</td><td><label><input type="checkbox" name="customer_visible" value="1"'.(!empty($object->customer_visible) && $action === 'edit' ? ' checked' : '').'> Publish the shipment record in the customer portal / إظهار سجل الشحنة في بوابة العميل</label></td></tr>';
+
     print '<tr><td>'.$langs->trans('CPLPublicUpdateSource').'</td><td>';
     $publicSourceOptions = array(); foreach (cpl_public_source_types() as $sourceCode=>$unusedLabel) $publicSourceOptions[$sourceCode] = cpl_public_source_label($langs, $sourceCode);
     print $form->selectarray('audit_source_type', $publicSourceOptions, 'manual_team', 0);
     print '</td></tr>';
     print '<tr><td>'.$langs->trans('CPLPublicUpdateReason').'</td><td><input type="text" name="audit_reason_public" maxlength="1000" style="width:95%"></td></tr>';
-    print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1" checked></td></tr>';
+    print '<tr><td>'.$langs->trans('CPLPublishUpdate').'</td><td><input type="checkbox" name="audit_customer_visible" value="1"'.($action === 'edit' ? ' checked' : '').'></td></tr>';
     if ($action === 'edit') {
         print '<tr><td>'.$langs->trans('CPLSendStatusEmail').'</td><td>';
         if ($cansendshipmentemail) print '<label><input type="checkbox" name="send_status_email" value="1"> '.$langs->trans('CPLSendStatusEmailHelp').'</label>';
@@ -510,8 +669,9 @@ if ($action == 'create' || $action == 'edit') {
     print '</div>';
     print '</form>';
     print '<script src="'.dol_buildpath('/chinaplanetlogistics/js/card-freetime.js', 1).'?v=20260714"></script>';
+    print '<script src="'.dol_buildpath('/chinaplanetlogistics/js/shipment-form.js', 1).'?v=m130"></script>';
     if ($action === 'edit' && $id > 0 && !$is_external_customer) {
-        print cpcc_portal_staff_shipment_files_html($db, $object, $canwrite, $_SERVER['PHP_SELF'].'?id='.(int) $id.'&action=edit', $candelete);
+        print cpcc_portal_staff_shipment_files_html($db, $object, $canwrite, $_SERVER['PHP_SELF'].'?id='.(int) $id.'&action=edit', $candelete, $canwrite ? cpl_loading_media_form($db, $object) : '');
     } elseif ($action === 'create') {
         print '<div class="info">'.$langs->trans('CPLShipmentFilesAfterSave').'</div>';
     }
@@ -561,7 +721,7 @@ if ($action == 'create' || $action == 'edit') {
     // The private file store remains internal until an explicit allowlist row
     // projects a document or media item into the owning customer portal.
     if (!$is_external_customer) {
-        print cpcc_portal_staff_shipment_files_html($db, $object, $canwrite, $_SERVER['PHP_SELF'].'?id='.(int) $id, $candelete);
+        print cpcc_portal_staff_shipment_files_html($db, $object, $canwrite, $_SERVER['PHP_SELF'].'?id='.(int) $id, $candelete, $canwrite ? cpl_loading_media_form($db, $object) : '');
     }
 
     print '<script>(function(){var root=document.querySelector(".cpl-command-center");if(!root)return;var title=root.getAttribute("data-cpl-shipment-title")||document.title;document.title=title;try{if(window.parent!==window){var d=window.parent.document,t=d.querySelector("#cpk-card-dialog .cpk-dialog-title, #cpk-card-dialog h2");if(t)t.textContent=title;}}catch(e){}var b=document.querySelector("[data-cpl-back-project]");if(b)b.addEventListener("click",function(){var fallback=b.getAttribute("data-cpl-back-url");if(window.history.length>1)window.history.back();else if(fallback)window.location.href=fallback;});})();</script>';

@@ -1,1 +1,167 @@
 .cpcc-project-view-cards{display:grid;grid-template-columns:repeat(2,minmax(190px,280px));gap:1rem;margin:1rem 0 1.25rem}.cpcc-project-view{display:flex;flex-direction:column;gap:.3rem;padding:1rem 1.1rem;border:1px solid #d8e4e9;border-radius:14px;background:#fff;color:#173e56;text-decoration:none;box-shadow:0 7px 22px #183b4d0d;transition:.2s}.cpcc-project-view:hover{transform:translateY(-2px);border-color:#c49332}.cpcc-project-view.active{border-color:#167a74;border-top:4px solid #167a74;background:#edf8f7}.cpcc-project-view span{font-weight:700}.cpcc-project-view strong{font-size:1.8rem;color:#0f5f5a}.cpcc-project-view small{color:#6d818c}@media(max-width:600px){.cpcc-project-view-cards{grid-template-columns:1fr}}
+
+.cpcc-project-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 1rem;
+    margin-block-end: 1rem;
+}
+.cpcc-project-tile {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid #d8e4e9;
+    border-radius: .8rem;
+    background: #fff;
+    color: #173e56;
+    overflow-wrap: anywhere;
+}
+a.cpcc-project-tile:hover,
+a.cpcc-project-tile:focus-visible { border-color: #16839a; }
+.cpcc-project-board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.cpcc-project-board-stage {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid #d8e4e9;
+    border-radius: .8rem;
+    background: #f4f8fa;
+    overflow-wrap: anywhere;
+}
+.cpcc-project-board-stage h3 { margin-block: 0 .75rem; }
+.cpcc-project-board-stage .cpcc-project-tile + .cpcc-project-tile { margin-block-start: .6rem; }
+
+/* Customer project detail: status color is always paired with a written label. */
+.cpcc-projects-page .cpcc-project-back {
+    display: inline-block;
+    margin-block: 1.25rem .75rem;
+    color: #174e66;
+    font-weight: 700;
+    text-underline-offset: .25em;
+}
+.cpcc-projects-page .cpcc-project-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.25rem;
+    align-items: center;
+    margin-block: .25rem 1.75rem;
+    padding: 1.5rem;
+    border-radius: 16px;
+    background: #0c2841;
+    color: #fff;
+}
+.cpcc-project-heading h1 {
+    margin: 0 0 .5rem;
+    color: #fff;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.cpcc-projects-page .cpcc-project-heading p { color: #d7e9ef; }
+.cpcc-projects-page .cpcc-project-statement {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-height: 44px;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: .7rem 1rem;
+    border: 0;
+    border-radius: 12px;
+    background: #e2bb61;
+    color: #0c2841;
+    font-size: .9rem;
+    font-weight: 700;
+    line-height: 1.6;
+    white-space: normal;
+    text-align: center;
+    text-decoration: none;
+}
+.cpcc-projects-page .cpcc-project-statement:hover { background: #f0d18a; }
+.cpcc-projects-page a:focus-visible { outline: 3px solid #4f46e5; outline-offset: 4px; }
+.cpcc-projects-page .cpcc-project-heading a:focus-visible { outline-color: #fff; }
+.cpcc-projects-page h2 { margin-block: 1.75rem 1rem; font-size: 1.25rem; line-height: 1.6; }
+.cpcc-project-board-stage {
+    --stage-ink: #1d4ed8;
+    --stage-surface: #eff6ff;
+    --stage-border: #bfdbfe;
+    --stage-track: #dbeafe;
+    padding: 0 1rem 1rem;
+    background: var(--stage-surface);
+    border-color: var(--stage-border);
+    border-radius: 16px;
+}
+.cpcc-project-board-stage[data-stage="in_progress"] {
+    --stage-ink: #92400e;
+    --stage-surface: #fffbeb;
+    --stage-border: #fcd68a;
+    --stage-track: #fef3c7;
+}
+.cpcc-project-board-stage[data-stage="done"] {
+    --stage-ink: #047857;
+    --stage-surface: #ecfdf5;
+    --stage-border: #a7e1c8;
+    --stage-track: #d1fae5;
+}
+.cpcc-project-board-stage h3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    margin: 0;
+    padding-block: 1rem;
+    color: var(--stage-ink);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+.cpcc-stage-count {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 8px;
+    background: var(--stage-ink);
+    color: #fff;
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+}
+.cpcc-project-board-stage .cpcc-project-tile {
+    gap: .85rem;
+    padding: 1rem;
+    border-color: var(--stage-border);
+    border-radius: 12px;
+}
+.cpcc-project-board-stage .cpcc-project-tile strong { color: #152535; font-size: 1rem; line-height: 1.6; }
+.cpcc-card-progress { display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: #475569; }
+.cpcc-card-progress bdi { color: var(--stage-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cpcc-card-progress-bar {
+    display: block;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--stage-track);
+    color: var(--stage-ink);
+    accent-color: var(--stage-ink);
+}
+.cpcc-card-progress-bar::-webkit-progress-bar { background: var(--stage-track); border-radius: 8px; }
+.cpcc-card-progress-bar::-webkit-progress-value { background: var(--stage-ink); border-radius: 8px; }
+.cpcc-card-progress-bar::-moz-progress-bar { background: var(--stage-ink); border-radius: 8px; }
+.cpcc-project-board-stage .opacitymedium { color: #475569; padding-block: .5rem; }
+.cpcc-projects-page .cpcc-empty { border: 1px dashed #cbd5e1; background: #f8fafc; color: #475569; }
+.cpcc-projects-page ::selection { background: #dbeafe; color: #0c2841; }
+@media (max-width: 640px) {
+    .cpcc-project-board { grid-template-columns: 1fr; }
+    .cpcc-projects-page .cpcc-project-heading { flex-direction: column; align-items: stretch; padding: 1.25rem; gap: 1rem; }
+    .cpcc-projects-page .cpcc-project-statement { width: 100%; }
+}

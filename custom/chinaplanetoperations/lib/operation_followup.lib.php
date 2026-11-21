@@ -1,0 +1,11 @@
+<?php
+/** Read-only shipment/document evidence projection for one operation. */
+function cpo_operation_followup($db,array$operation,$entity)
+{
+    $shipment=null;$milestones=array();$documents=array();$published=0;
+    if(!empty($operation['fk_shipment'])){$res=$db->query("SELECT rowid,ref,fk_soc,fk_project,fk_statut,booking_no,container_no,bl_no,date_atd,date_ata,customer_visible FROM ".MAIN_DB_PREFIX."chinaplanetlogistics WHERE entity=".(int)$entity." AND rowid=".(int)$operation['fk_shipment']." AND fk_soc=".(int)$operation['fk_soc']." AND fk_project=".(int)$operation['fk_project']);$shipment=$res?$db->fetch_object($res):null;}
+    if($shipment){$milestones=array('booking'=>!empty($shipment->booking_no)||(int)$shipment->fk_statut!==0,'loading'=>!empty($shipment->container_no)||in_array((int)$shipment->fk_statut,array(8,9,2,3,4,5,6,7),true),'departure'=>!empty($shipment->date_atd)||in_array((int)$shipment->fk_statut,array(2,3,4,5,6,7),true),'arrival'=>!empty($shipment->date_ata)||in_array((int)$shipment->fk_statut,array(3,4,5,6,7),true),'delivery'=>in_array((int)$shipment->fk_statut,array(6,7),true));}
+    foreach(array('commercial_invoice','packing_list','bill_of_lading')as$type){$res=$db->query("SELECT rowid,review_status,visibility FROM ".MAIN_DB_PREFIX."cpo_document WHERE entity=".(int)$entity." AND fk_operation=".(int)$operation['rowid']." AND document_type='".$db->escape($type)."' AND is_current=1 AND review_status IN ('approved','final_received') ORDER BY rowid DESC LIMIT 1");$documents[$type]=$res&&$db->num_rows($res)>0;}
+    $res=$db->query("SELECT COUNT(*) n FROM ".MAIN_DB_PREFIX."cpo_document WHERE entity=".(int)$entity." AND fk_operation=".(int)$operation['rowid']." AND is_current=1 AND visibility='customer_after_approval' AND review_status IN ('approved','final_received')");if($res&&($row=$db->fetch_object($res)))$published=(int)$row->n;
+    return array('shipment'=>$shipment,'steps'=>array('booking'=>!empty($milestones['booking']),'loading'=>!empty($milestones['loading']),'departure'=>!empty($milestones['departure']),'arrival'=>!empty($milestones['arrival']),'delivery'=>!empty($milestones['delivery']),'commercial_invoice'=>!empty($documents['commercial_invoice']),'packing_list'=>!empty($documents['packing_list']),'bill_of_lading'=>!empty($documents['bill_of_lading']),'customer_publication'=>$published>0));
+}

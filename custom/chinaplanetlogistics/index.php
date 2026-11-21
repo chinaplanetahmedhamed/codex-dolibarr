@@ -33,7 +33,7 @@ if ($user->admin) {
 // Build the WHERE clause for company filtering
 $where_soc = "";
 if ($is_external && $socid > 0) {
-    $where_soc = " AND fk_soc = " . $socid;
+    $where_soc = " AND fk_soc = " . $socid . " AND customer_visible=1";
 } elseif ($is_external && $socid <= 0) {
     accessforbidden("No company linked to this user.");
 }
@@ -116,6 +116,7 @@ print '<table class="liste centpercent">';
 print '<tr class="liste_titre"><th>Container No / الحاوية</th><th>Customer / العميل</th><th>ETA / الوصول</th><th class="center">Arrival / الوصول</th><th class="center">Free Time / الوقت الحر</th><th>Status / الحالة</th></tr>';
 
 $sql_shp = "SELECT t.rowid,t.container_no,t.date_eta,t.freetime_end,t.fk_statut,s.nom customer_name FROM ".MAIN_DB_PREFIX."chinaplanetlogistics t LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid=t.fk_soc WHERE t.fk_statut IN (".chinaplanetlogistics_status_sql_list('active').")";
+if ($is_external) $sql_shp .= " AND t.customer_visible=1";
 if ($socid > 0) {
     $sql_shp .= " AND t.fk_soc = " . $socid;
 } elseif ($is_external) {

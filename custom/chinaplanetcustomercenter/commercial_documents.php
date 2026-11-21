@@ -23,7 +23,7 @@ if($isExternal) cpcc_portal_navigation($user, 'commercial_documents'); else cpcc
   <?php } else { ?><section class="cpcc-document-grid">
     <?php foreach ($documents as $document) {
         $url = cpcc_portal_scoped_url('/chinaplanetcustomercenter/export_document.php',$isExternal,$socid,array('id'=>(int)$document->rowid)); ?>
-      <a class="cpcc-document-card" href="<?php echo dol_escape_htmltag($url); ?>"><span><?php echo dol_escape_htmltag(cpcc_export_type_label($document->document_type)); ?></span><strong><?php echo dol_escape_htmltag($document->ref); ?></strong><small><?php echo dol_escape_htmltag($document->project_ref ?: 'بدون مشروع'); ?> · <?php echo dol_escape_htmltag(dol_print_date($document->document_date,'day')); ?></small><?php if(!empty($document->shipment_ref)){ ?><small>Shipment: <?php echo dol_escape_htmltag($document->shipment_ref); ?></small><?php } ?></a>
+      <a class="cpcc-document-card" href="<?php echo dol_escape_htmltag($url); ?>"><span><?php echo dol_escape_htmltag(cpcc_export_type_label($document->document_type)); ?></span><strong><?php echo dol_escape_htmltag($document->ref); ?></strong><small><?php echo dol_escape_htmltag($document->project_ref ?: 'بدون مشروع'); ?> · <?php echo dol_escape_htmltag(cpcc_portal_date($document->document_date)); ?></small><?php if(!empty($document->shipment_ref)){ ?><small>Shipment: <?php echo dol_escape_htmltag($document->shipment_ref); ?></small><?php } ?></a>
     <?php } ?>
   </section><?php } ?>
 </main>

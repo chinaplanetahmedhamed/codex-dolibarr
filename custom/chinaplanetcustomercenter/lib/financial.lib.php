@@ -6,6 +6,16 @@ function cpcc_financial_schema_ready($db)
     return $resql && $db->num_rows($resql) > 0;
 }
 
+/** M077 managed-funds allocation tables are additive to the legacy ledger. */
+function cpcc_managed_funds_schema_ready($db)
+{
+    foreach (array('cpcc_customer_receipt', 'cpcc_fund_allocation', 'cpcc_fund_event') as $table) {
+        $resql = $db->query("SHOW TABLES LIKE '".$db->escape(MAIN_DB_PREFIX.$table)."'");
+        if (!$resql || $db->num_rows($resql) < 1) return false;
+    }
+    return true;
+}
+
 function cpcc_financial_currency($code, $fallback = 'USD')
 {
     $code = strtoupper(trim((string) $code));
@@ -158,7 +168,7 @@ function cpcc_financial_is_supplier_category($category)
  * excluded from future-services totals later, because that invoice is counted
  * in the native unpaid-invoice balance instead.
  */
-function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
+function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid = 0, $asOf = '', $includeSupplierIdentity = false)
 {
     $rows = array();
     if (!cpcc_financial_schema_ready($db) || (int) $socid <= 0) return $rows;
@@ -194,7 +204,7 @@ function cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $project
             'date' => (string) $obj->charge_date,
             'category' => (string) $obj->category,
             'label' => (string) $obj->label,
-            'supplier' => (string) $obj->supplier_label,
+            'supplier' => $includeSupplierIdentity ? (string) $obj->supplier_label : '',
             'amount' => $amount,
             'paid' => $paid,
             'remaining' => max(0.0, $amount - $paid),
@@ -498,6 +508,17 @@ function cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projecti
     return $rows;
 }
 
+/** Resolve a project in the same customer and entity as the Financial Account. */
+function cpcc_financial_statement_project($db, $socid, $projectid)
+{
+    global $conf;
+    if ((int)$socid <= 0 || (int)$projectid <= 0 || empty($conf->entity)) return null;
+
+    $result = $db->query("SELECT rowid, ref, title FROM ".MAIN_DB_PREFIX."projet"
+        ." WHERE rowid=".(int)$projectid." AND fk_soc=".(int)$socid." AND entity=".(int)$conf->entity);
+    return $result ? $db->fetch_object($result) : null;
+}
+
 function cpcc_financial_statement($db, $socid, $currencyFallback, $projectid = 0, $asOf = '')
 {
     $rows = cpcc_financial_custom_entries($db, $socid, $currencyFallback, $projectid, $asOf);
@@ -565,7 +586,26 @@ function cpcc_financial_summarize_rows($rows)
     return $summary;
 }
 
-function cpcc_financial_project_charges($db, $socid, $projectid, $currencyFallback)
+function cpcc_financial_project_charges($db, $socid, $projectid, $currencyFallback, $includeSupplierIdentity = false)
 {
-    return cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid);
+    return cpcc_financial_commitment_rows($db, $socid, $currencyFallback, $projectid, '', $includeSupplierIdentity);
 }
+
+/** Aggregate validated invoices without ever combining different currencies. */
+function cpcc_financial_invoice_totals($invoices)
+{
+    $totals = array();
+    foreach ((array) $invoices as $invoice) {
+        $currency = cpcc_financial_currency(isset($invoice['currency']) ? $invoice['currency'] : '', '');
+        if ($currency === '') continue;
+        if (!isset($totals[$currency])) {
+            $totals[$currency] = array('total'=>0.0, 'paid'=>0.0, 'remaining'=>0.0, 'direct_paid'=>0.0, 'applied_credit'=>0.0);
+        }
+        foreach (array('total', 'paid', 'remaining', 'direct_paid', 'applied_credit') as $key) {
+            $totals[$currency][$key] += isset($invoice[$key]) ? (float) $invoice[$key] : 0.0;
+        }
+    }
+    ksort($totals);
+    return $totals;
+}
+

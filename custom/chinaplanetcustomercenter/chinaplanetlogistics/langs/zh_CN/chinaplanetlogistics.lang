@@ -1,0 +1,10 @@
+CPLStatusInquiry=询价中
+CPLStatusBookingConfirmed=订舱已确认
+CPLStatusLoadedExportCustoms=已装柜，前往出口报关
+CPLStatusExportCustomsCleared=出口报关已完成
+CPLStatusOnVessel=船运途中
+CPLStatusArrivedPort=已抵达港口
+CPLStatusUnderCustoms=进口清关中
+CPLStatusCustomsCleared=进口清关已完成
+CPLStatusDelivered=已交付
+CPLStatusClosed=已关闭

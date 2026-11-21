@@ -7,6 +7,7 @@ require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shel
 cpo_require($user, 'operation_write');
 $canReadCustomers = !empty($user->admin) || $user->hasRight('societe', 'lire');
 if (!$canReadCustomers) accessforbidden();
+$canCreateCustomers = !empty($user->admin) || $user->hasRight('societe', 'creer');
 $canReadOrders = !empty($user->admin) || $user->hasRight('commande', 'lire');
 $canReadProjects = !empty($user->admin) || $user->hasRight('projet', 'all', 'lire');
 $langs->load('chinaplanetoperations@chinaplanetoperations');
@@ -17,7 +18,9 @@ $operation = $id ? $service->get($id) : null;
 if ($id && !$operation) accessforbidden();
 $type = $operation['service_type'] ?? GETPOST('service_type', 'alphanohtml');
 if (!in_array($type, OperationsService::serviceTypes(), true)) $type = 'general';
-$selectedSocid = $operation ? (int) $operation['fk_soc'] : GETPOSTINT('fk_soc');
+$selectedSocid = $operation ? (int) $operation['fk_soc'] : (GETPOSTINT('fk_soc') ?: GETPOSTINT('socid'));
+$operationCreateUrl = dol_buildpath('/custom/chinaplanetoperations/operations/edit.php', 1).'?service_type='.rawurlencode($type);
+$newCustomerUrl = DOL_URL_ROOT.'/societe/card.php?action=create&client=1&backtopage='.rawurlencode($operationCreateUrl);
 $customerAccessSql = !empty($user->admin) || $user->hasRight('societe', 'client', 'voir') ? '' : ' AND EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'societe_commerciaux csc WHERE csc.fk_soc=s.rowid AND csc.fk_user='.(int) $user->id.')';
 
 $companies = array(0=>'— اختر العميل أولاً —');
@@ -121,7 +124,7 @@ cpcc_admin_shell_open('workspace', $langs->trans($id ? 'EditOperation' : 'NewOpe
     <h2>١. العميل والمسؤول · <?php echo $langs->trans('Svc_'.$type); ?></h2>
     <p class="opacitymedium">اختر العميل أولاً؛ بعدها تظهر مشروعاته وطلباته وشحناته فقط.</p>
     <div class="cpo-context-grid">
-      <label class="cpo-field"><span><?php echo $langs->trans('Customer'); ?> *</span><select required id="cpo-customer" name="fk_soc"><?php foreach ($companies as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_soc') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select></label>
+      <div class="cpo-field cpo-customer-control"><span><?php echo $langs->trans('Customer'); ?> *</span><select required id="cpo-customer" name="fk_soc"><?php foreach ($companies as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_soc') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select><?php if (!$id && $canCreateCustomers) { ?><a class="button cpo-new-customer" href="<?php echo dol_escape_htmltag($newCustomerUrl); ?>"><span class="fas fa-user-plus" aria-hidden="true"></span> إضافة عميل جديد في النظام</a><small>يُحفظ العميل في سجل العملاء الأصلي، ثم يعود هنا محدداً تلقائياً.</small><?php } ?></div>
       <label class="cpo-field"><span><?php echo $langs->trans('Title'); ?> *</span><input required name="title" value="<?php echo dol_escape_htmltag($v('title')); ?>" placeholder="مثال: LOCAL TEST - متابعة طلبية وتجهيز الشحن"></label>
       <label class="cpo-field"><span><?php echo $langs->trans('Owner'); ?> *</span><select required id="cpo-owner" name="fk_user_assign"><?php foreach ($users as $key=>$label) { ?><option value="<?php echo $key; ?>"<?php echo (int) $v('fk_user_assign') === $key ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($label); ?></option><?php } ?></select></label>
       <label class="cpo-field"><span>فريق مهام العملية *</span><select required id="cpo-team" name="fk_usergroup"<?php echo !$teams ? ' disabled' : ''; ?>><option value="">— اختر فريق المسؤول —</option><?php foreach ($teams as $team) { ?><option value="<?php echo $team['id']; ?>" data-members="<?php echo dol_escape_htmltag(implode(',', $team['members'])); ?>"<?php echo $selectedTeamId === (int) $team['id'] ? ' selected' : ''; ?>><?php echo dol_escape_htmltag($team['label']); ?></option><?php } ?></select><small>تظهر الفرق التي لديها أعضاء داخليون نشطون فقط.</small></label>
@@ -143,7 +146,6 @@ cpcc_admin_shell_open('workspace', $langs->trans($id ? 'EditOperation' : 'NewOpe
     <label class="cpo-field"><span><?php echo $langs->trans('CustomerVisibleNotes'); ?></span><textarea name="note_public"><?php echo dol_escape_htmltag($v('note_public')); ?></textarea></label>
   </div>
   <label class="cpo-check-option"><input type="checkbox" name="customer_visible" value="1"<?php echo $v('customer_visible') ? ' checked' : ''; ?>> <span><?php echo $langs->trans('AllowApprovedCustomerOutput'); ?> — لا ينشر أو يرسل شيئاً تلقائياً</span></label>
-  <div class="cpo-notice">الحوالات ودفع المورد وCargoX وDHL وإرسال المستندات غير متصلة من هذا النموذج.</div>
   <?php if (!$createReady) { ?><div class="cpo-notice cpo-notice-warning"><strong>الإنشاء متوقف بأمان.</strong> لوحة المهام أو عضوية الفرق غير جاهزة (<?php echo dol_escape_htmltag($taskBoardReady ? 'NO_ACTIVE_TEAM_MEMBERS' : $taskBoardReason); ?>). راجع إعداد لوحة المهام والفرق أولاً؛ لم يتم حفظ عملية ناقصة.</div><?php } ?>
   <div class="cpo-form-actions"><a class="button" href="../workspace.php<?php echo $selectedSocid ? '?view=customer&amp;socid='.(int) $selectedSocid : ''; ?>">إلغاء</a><button class="button button-save"<?php echo !$createReady ? ' disabled' : ''; ?>><?php echo $langs->trans('Save'); ?></button></div>
 </section>

@@ -1,0 +1,328 @@
+# Copyright (C) 2022 SuperAdmin <frederique.gallot@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#
+# Generic
+#
+
+
+# Module label 'ModuleKontavaName'
+ModuleKontavaName = Kontava
+# Module description 'ModuleKontavaDesc'
+ModuleKontavaDesc = Description du module Kontava
+KontavaArea = Kontava
+
+# SITE Demo
+DemoDescKontava=Kontava s'appuie sur Dolibarr, un logiciel open source de gestion proposant plusieurs modules métiers. Une démonstration qui inclut tous ces modules n'a pas de sens car ce cas n'existe jamais (plusieurs centaines de modules disponibles). Aussi, quelques profils type de démo sont proposés ci-dessous.<br>Notez que la base de données de démo est la même pour tous les profiles (celle d'un artisan menuisier).<br><br>Bonne découverte !
+DemoProfileArtisan=Profil Artisan
+DemoProfileCommercant=Profil Commerçant
+DemoProfileAssociation=Profil Association
+DemoProfileEntrepreneur=Profil Auto-Entrepreneur
+DemoProfilePME=Profil TPE-PME
+DemoAllKontava=Choisis tes modules
+
+#
+# Admin page
+#
+KontavaSetup = Kontava setup
+Settings = Réglages
+KontavaSetupPage = Kontava setup page
+KONTAVA_MYPARAM1 = My param 1
+KONTAVA_MYPARAM1Tooltip = My param 1 tooltip
+KONTAVA_MYPARAM2=My param 2
+KONTAVA_MYPARAM2Tooltip=My param 2 tooltip
+
+
+#
+# About page
+#
+About = About
+KontavaAbout = A propos de Kontava
+KontavaAboutPage = Page A propos de Kontava
+
+#
+# Sample page
+#
+MyPageName = Mon nom de page
+
+#
+# Module menu
+#
+ThirdParty = Tiers
+NewThirdParty = Nouveau tiers
+ProductsServices = Produits | Services
+NewProduct = Nouveau produit
+NewService = Nouveau service
+Quotations = Devis
+Quotation = Devis
+NewQuotation = Nouveau devis
+Invoices = Factures
+Invoice = Facture
+NewInvoice = Nouvelle facture
+Orders = Commandes
+NewOrder = Nouvelle Commande
+
+
+#
+# Canvas Product / Service
+#
+AccountancyCode = Code comptable
+Caracteristics = Caracteristiques
+
+
+#
+# Widget Raccourcis
+#
+WidgetNameShortcut = Raccourcis
+WidgetNameShortcutShort = Mes raccourcis
+MyWidgetDescription = Ma description de widget
+KontavaBoxDescription = Mon Widget Kontava
+GoToKontavaModule = Aller vers le module Kontava
+CreateFirstProduct = Je crée mon premier produit
+CreateFirstService = Je crée mon premier service
+CreateFirstThirdParty = Je crée mon premier client / prospect
+CreateFirstQuotation = Je crée mon premier devis
+CreateFirstInvoice = Je crée ma première facture
+CreateAnotherProduct = Je crée un autre produit
+CreateAnotherService = Je crée un autre service
+CreateAnotherThirdParty = Je crée un autre client / prospect
+CreateAnotherQuotation = Je crée un autre devis
+Quotation = Devis
+CreateAnotherInvoice = Je crée une autre facture
+GoToKontavaAccount = Aller sur mon espace d'administration
+WidgetNameShortcutToolTip = 'Vous trouverez ici les premières actions utile au bon démarrage de votre activité'
+
+#
+# Widget Gros bouton
+#
+WidgetNameBigButton = Gros bouton raccourcis
+WidgetNameBigButtonToolTip = 'Aller vers le module Kontava'
+
+#
+# Widget Liste des X devis non acceptés et non refusés
+#
+WidgetNameListXPropnotAccepted = Devis non acceptés
+WidgetNameListXPropnotAcceptedShort = Devis ouverts - non acceptés
+WidgetNameListXPropnotAcceptedToolTip = 'Liste les devis ni acceptés (signés) ni refusés, classés par date de fin de validité'
+
+
+
+#
+# Widget Liste des X devis acceptés - Non programmés
+#
+WidgetNameListXPropAccepted = Devis acceptés - Non programmés
+WidgetNameListXPropAcceptedShort = Devis acceptés - Non programmés
+WidgetNameListXPropAcceptedToolTip = 'Liste les devis acceptés (signés), sans date de livraison renseignée, classés par date de signature'
+
+#
+# Widget Liste des X devis programmés - Non réalisés
+#
+WidgetNameListxpropprognotdone = Devis programmés - Non réalisés
+WidgetNameListxpropprognotdoneShort = Devis programmés - Non réalisés
+DateOfDelivery = Date de livraison
+WidgetNameListxpropprognotdoneToolTip = 'Liste les devis programmés encore non réalisés (date de livraison non dépassée), classés par date de livraison'
+
+#
+# Widget Liste des X devis à facturer
+#
+WidgetNameListxproptobill = Devis à facturer
+WidgetNameListxproptobillShort = Devis à facturer
+WidgetNameListxproptobillToollTip = 'Liste les devis dont la date de livraison est passée, donc théoriquement à facturer'
+
+#
+# Widget Liste des X factures non payées
+#
+WidgetNameListxbillnotpaid = Factures impayées
+WidgetNameListxbillnotpaidShort = Factures impayées
+WidgetNameListxbillnotpaidToollTip = 'Liste des factures encore non payées'
+
+#
+# Widget Pop up Devis signés depuis la dernière connexion
+#
+WidgetNamePropalSignedSinceLastConnection = Devis signé(s) depuis la dernière connexion
+WidgetNamePropalSignedSinceLastConnectionShort = Devis signé(s) depuis la dernière connexion
+NoNewlySignedPropalSinceLastLogin = Pas de devis nouvellement signé depuis la dernière connection
+WidgetNamePropalSignedSinceLastConnectionToolTip = 'Liste des devis signés depuis la dernière connexion'
+
+#
+# Widget Graph des Devis Echarts
+#
+WidgetNameGraphEcharts1 = Visualisation des devis et factures
+WidgetNameGraphEcharts1Short = Visualisation des devis et factures
+WidgetNameGraphEcharts1ToolTip = 'Visualisation des devis et factures sur 1 an glissant - Choisissez la date de fin et cliquez sur les barres pour afficher la liste des devis ou factures concernés - Les devis acceptés sont ceux qui ne sont pas "CLASSER FACTURÉ".'
+WidgetNameGraphEchartsPropalSigned = Devis acceptés
+WidgetNameGraphEchartsPropalBilledUnpaid = Factures impayés
+WidgetNameGraphEchartsPropalBilledPaid = Factures payés
+
+#
+# Widget Graph des Factures Echarts
+#
+WidgetNameGraphFactures = Visualisation des factures
+WidgetNameGraphFacturesShort = Visualisation des factures
+WidgetNameGraphFacturesToolTip = 'Visualisation des factures sur 1 an glissant - Choisissez la date de fin et cliquez sur les barres pour afficher la liste des factures concernées, classées par date de facturation.'
+
+#
+# Widget Graph des Propals Echarts
+#
+WidgetNameGraphPropal = Visualisation des devis
+WidgetNameGraphPropalShort = Visualisation des devis
+WidgetNameGraphPropalToolTip = 'Visualisation des devis sur 1 an glissant - Choisissez la date de fin et cliquez sur les barres pour afficher la liste des devis concernés, classés par date de création.'
+PropalIncoived = Devis facturés
+
+#
+# Widget Commandes brouillon
+#
+WidgetNameListxDraftOrder = Commandes brouillon - A valider
+WidgetNameListxDraftOrderShort = Commandes brouillon - A valider
+WidgetNameListxDraftOrderToolTip = 'Liste des commandes ouvertes encore en état brouillon'
+OrderDate = Date de la commande#
+NoRecordedOrder = Pas de commande
+
+# Widget Commandes Validées
+#
+WidgetNameListxValidatedOrder = Commandes validées - A traiter
+WidgetNameListxValidatedOrderShort = Commandes validées - A traiter
+WidgetNameListxValidatedOrderToolTip = 'Liste des commandes validées à traiter'
+
+# Widget Commandes Livrées
+#
+WidgetNameListxDeliveredOrder = Commandes livrées - A facturer
+WidgetNameListxDeliveredOrderShort = Commandes livrées - A facturer
+WidgetNameListxDeliveredOrderToolTip = 'Liste des commandes livrées à facturer'
+
+# Widget My Account (My AKONT)
+#
+WidgetNameMyAkont = Espace client
+WidgetNameMyAkontShort = Espace client Kontava
+WidgetNameMyAkontToolTip = "Informations liées à l'administration de votre compte Kontava"
+DiskUsage = Espace de stockage
+Users = Utilisateurs
+NextPayment = Prochain Paiement
+Used = Utilisé
+Free = Libre
+Inconnue = Inconnue
+Plan = Formule
+the = le
+LinkToPay = Lien de paiement
+LinkToPayNote = Paiement attendu
+FreeAccount = Compte gratuit
+VersionModule = Version du Module Kontava :
+UpdateModule = Mettre à jour en
+UpdateAvailable = Mise à jour disponible
+UserQuotaExceeded = Nombre d'utilisateurs supérieur au quota défini dans la Formule
+DiskQuota90p = Espace disque > 90%
+DiskQuotaExceeded = Quota d'espace disque dépassé
+DiskQuotaExceededText = Vous avez dépassé votre quota de stockage de 
+DiskQuotaUnit = Mo
+DiskQuotaWarning = Vous avez 7 jours pour libérer de l'espace ou souscrire à du stockage supplémentaire.\n
+ContactUs = Contactez-nous
+DiskQuotaEmailSubject = Demande de stockage supplémentaire
+DiskQuotaEmailBody = Bonjour,\nJe souhaiterais souscrire 1Go d'espace de stockage supplémentaire.\nMerci beaucoup\n\n
+
+
+# Widget First Steps
+#
+WidgetNameFirstSteps = Premiers Pas
+WidgetNameFirstStepsShort = Premiers Pas
+WidgetNameFirstStepsToolTip = 'Laisse nous te montrer comment démarrer en douceur !'
+SettingsCompagny = Je configure ma société
+FirstStepsWelcome = <strong>Bienvenue sur Kontava !</strong><br>Merci d'avoir choisi notre solution.<br>Pour bien démarrer, nous vous conseillons de paramétrer les informations de votre entreprise.<br>Cliquez sur le bouton ci-dessous pour y configurer votre régime TVA, votre SIRET, y ajouter votre logo etc...
+FirstStepsOtherInfo = N'hésitez pas à parcourir tous les autres widgets que nous vous avons préparés dans le sélecteur en haut à droite. Tous les widgets Kontava peuvent se déplacer par glisser-déposer et se minimiser en cliquant sur le titre. Et quand vous êtes prêt vous pourrez fermer ce widget.
+FirstStepsAdmin = Cette configuration est réservée aux administrateurs.
+FirstStepsDiscoverKontava = Ce widget n'est disponible qu'aux clients de Kontava. N'hésitez pas à vister notre site web !
+
+# Widget Import DB
+#
+WidgetNameImportDB = Import de Base de données
+WidgetNameImportDBShort = Import de Base de données
+WidgetNameImportDBToolTip = Vous pouvez importer votre propre base de données existante Dolibarr
+FileLoaded = Fichier chargé :
+DeleteFile = Supprimer le fichier
+UploadFichier = Téléverser le fichier SQL
+BrowseSQL = Parcourir pour sélectionner votre fichier SQL ou déposer votre fichier
+Browse = Parcourir
+NoFile = Aucun fichier sélectionné
+RestoreDatabase = Restaurer base de données
+ExportDatabase = Exporter et télécharger la base de données
+ImportDBText1 = Ce widget vous permet de restaurer une sauvegarde existante de votre base de données.
+ImportDBAdmin = Cette fonctionnalité est réservée aux administrateurs.
+ImportDBText2 = Il vous permet également de charger sur votre instance Kontava, une base de données d'une instance Dolibarr autre que la solution Kontava.
+ImportDBText3 = Dans ce cas, assurez-vous que la sauvegarde soit issue d'une version de Dolibarr antérieure ou identique à celle de Kontava. Si votre sauvegarde est d'une version antérieure, nous allons tenté de migrer votre base de données pour la rendre compatible avec la version de Kontava. Si vous utilisiez des modules externes, nous vous suggérons de les réinstaller avant d'effectuer la votre restauration de sauvegarde.
+ImportDBText4 = Attention, cette action est irréversible, nous vous conseillons vivement d'effectuer une sauvegarde de votre base actuelle avant toute restauration.
+ImportDBConfirmRestoration1 = Confirmer la restauration de la base de données à partir du fichier 
+ImportDBVersionHigher1 = La sauvegarde a été créée pour Dolibarr version
+ImportDBVersionHigher2 = qui est supérieure à la version actuelle (
+ImportDBVersionHigher3 = ). La restauration vers une version plus récente n'est pas autorisée. Veuillez contacter Kontava.
+ImportDBLoadedFileVersion = Version Dolibarr du fichier chargé :
+ImportDBNoVersion = Le fichier SQL n'a pas été identifié comme une sauvegarde Dolibarr valide. Restauration impossible.
+RestoreSuccessText = La restauration s'est achevée avec succès !
+RestoreSuccessStatus = Restauration terminée
+BadCSRFTokenStatus = Token manquant
+BadCSRFTokenText = Problème de token CRSF manquant. SVP, rafraichissez la page et réessayez.
+NoFileStatus = Fichier téléversé manquant
+NoFileText = Le fichier de sauvegarde téléversé est manquant. SVP, rafraichissez la page et réessayez.
+RestoreInitStatus = Initialisation
+YesKontavaInBackupText = Votre sauvegarde inclut déjà le module Kontava --> nous la restaurons telle quelle.
+NoKontavaInBackupText = Votre sauvegarde n'inclut pas le module Kontava --> nous allons l'ajouter.
+backupFolderCleanupText = ** Nettoyage du répertoire de backup... **
+backupCurrentDBStatus = Sauvegarde DB
+backupCurrentDBText = ** Création d'une sauvegarde de votre base de données courante en cas de problème... **
+backupCurrentDBOverText = Sauvegarde terminée :
+backupKeyDataStatus = Sauvegarde des données de votre compte
+backupKeyDataText = ** Sauvegarde des doonnées essentielles relatives votre compte Kontava avant la restauration... **
+backupKeyConstantText = Sauvegarde des constantes terminée
+backupKeyConstantError = Problème survenu lors de la lecture des constantes dans la base de donnée. Veuillez contacter Kontava
+backupKeyAdminText = Sauvegarde des données utilisateur admin terminée
+backupKeyAdminError = Problème survenu lors de la lecture des données utilisateur admin dans la base de donnée. Veuillez contacter Kontava
+backupKeyTableText = Sauvegarde de la table Kontava terminée
+backupKeyTableError = Problème survenu lors de la lecture de la table Kontava dans la base de donnée. Veuillez contacter Kontava
+backupKeyWidgetText = Sauvegarde du positionnement des widgets sur l'accueil Kontava pour l'admin terminée
+backupKeyWidgetError = Problème survenu lors de la lecture du positionnement des widgets dans la base de donnée. Veuillez contacter Kontava
+backupKeyDataJSONText = Données de votre compte enregistrées dans le fichier JSON:
+RestoreInProgressStatus = Restauration en cours
+RestoreInProgressText = ** Lancement de la restauration de votre fichier de sauvegarde... **
+RestoreInProgressDBError = Erreur: Base de donnée de la sauvegarde non compatible --> Seulement les base mySQL sont autorisées
+RestoreInProgressSuccess = La restauration s'est terminée avec succès
+RestoreInProgressError = Erreur: La restauration a échoué. Le log est le suivant:
+RestoreMigrationStatus = Migration base de données
+RestoreMigrationText = ** Migration de votre base de données dans un format compatible avec la version Dolibarr de Kontava... ** 
+NoMigrationText = Votre sauvegarde est issue d'une version Dolibarr identique à la version courante de Kontava --> pas besoin de migrer la base de donnée !
+YesMigrationText = Votre sauvegarde est issue d'une version Dolibarr antérieure à la version courante de Kontava --> votre base de données aura besoin d'une migration !
+RestoreMigrationSuccess = La migration s'est terminée avec succès !
+RestoreMigrationError = La migration de la base de données a échoué :
+ActivationKontavaModuleStatus = Activation module Kontava
+ActivationKontavaModuleText = ** Votre sauvegarde n'incluait pas le module Kontava, on vous l'active... **
+ActivationKontavaModuleSuccess = Activation du module Kontava complétée
+ActivationKontavaModuleError = Erreur pendant l'activation du module Kontava :
+restoreKeyDataStatus = Restauration des données de votre compte
+restoreKeyDataText = ** Restauration des doonnées essentielles relatives votre compte Kontava... **
+restoreKeyConstantText = Restauration terminée de la constante :
+restoreKeyConstantError = Problème survenu lors de la restauration dela constante :
+restoreKeyAdminText = Restauration des données utilisateur admin terminée
+restoreKeyAdminError = Problème survenu lors de la restauration des données utilisateur admin dans la base de donnée. Veuillez contacter Kontava
+restoreKeyTableText = Restauration de la table Kontava terminée
+restoreKeyTableError = Problème survenu lors de la restauration de la table Kontava dans la base de donnée. Veuillez contacter Kontava
+restoreKeyWidgetText = Restauration terminée du widget :
+restoreKeyWidgetError = Problème survenu lors de la restauration du widgets :
+restoreKeyDataSuccess = Restauration des données de votre compte terminée
+restoreKeyDataJSONError = Problème survenu lors de la lecture du fichier JSON contenant les données de compte utilisateur. Veuillez contacter Kontava
+restoreKeyDataNoJSONError = Problème survenu lors de la lecture du fichier JSON contenant les données de compte utilisateur: Aucun fichier JSON trouvé. Veuillez contacter Kontava
+restoreInitialDumpStatus  = Restauration de votre base de données initiale
+restoreInitialDumpText  = ** Je tente de restaurer votre base de données initiale... ** 
+restoreInitialDumpText2  = Soyez patient, ça peut prendre plusieurs minutes, ne rafraichissez pas la page au risque de tout casser ! 
+restoreInitialDumpSucessText = J'ai normalement réussi à remettre votre base de base de données initiale
+restoreInitialDumpFailText = La restauration de votre base de données initiale a échouée. Votre instance Kontava est probablement corrompue, essayez de nous contacter via le bouton d'envoi de log.
+restoreSendLog = Envoyer le log par email à Kontava
+restoreNonAdmin = Cette fonctionnalité n'est pas autorisée si vous n'êtes pas administrateur ! Désolé !

@@ -1,0 +1,8 @@
+{
+  "version": "m119_office_expenses_drafts_v1",
+  "files": {
+    "003_schema_state.sql": "9cd49132b38fbfa2bbbc7c5676fdd03b3fe36f6f01cc7b630599d07424c0bbec",
+    "001_drafts.sql": "ac1d8a7f088742ce73f3d3d8a0d3d89709f7020cc9e693319ce8e1f28f348e9b",
+    "002_draft_audit.sql": "6f8a435c8f55de48394a6ff34709fa3b864e4552c19747850d1dd742a8e4e947"
+  }
+}

@@ -25,3 +25,14 @@ foreach (array_unique($mainCandidates) as $mainCandidate) {
 if (!$res) {
 	die('Include of Dolibarr main.inc.php fails');
 }
+
+// Every Kanban entry point must authorize internal readers before loading cards,
+// customers or files. Task-board membership alone grants no business access.
+// External users keep the existing per-card/company checks in each endpoint.
+if (empty($user->id) || (empty($user->admin) && (int) $user->socid <= 0
+	&& !$user->hasRight('cpkanban', 'read')
+	&& !$user->hasRight('cpkanban', 'write')
+	&& !$user->hasRight('chinaplanetcustomercenter', 'read')
+	&& !$user->hasRight('chinaplanetcustomercenter', 'write'))) {
+	accessforbidden();
+}

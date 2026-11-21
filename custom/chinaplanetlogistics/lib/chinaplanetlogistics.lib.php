@@ -111,6 +111,62 @@ function chinaplanetlogistics_status_label($status, $fallback = '-')
     return isset($statuses[$status]) ? $statuses[$status] : $fallback;
 }
 
+/** Return the business-order rank for a stored shipment status. */
+function chinaplanetlogistics_status_rank($status)
+{
+    $statuses = array_keys(chinaplanetlogistics_status_map());
+    $rank = array_search((int) $status, $statuses, true);
+    return $rank === false ? -1 : (int) $rank;
+}
+
+/** Convert a Dolibarr date value to a timestamp without inventing a date. */
+function chinaplanetlogistics_fact_timestamp($value)
+{
+    if ($value === null || $value === '' || (is_numeric($value) && (int) $value <= 0)) return 0;
+    if (is_numeric($value)) return (int) $value;
+    $timestamp = strtotime((string) $value);
+    return $timestamp === false ? 0 : (int) $timestamp;
+}
+
+/**
+ * Normalize unambiguous shipment facts before persistence.
+ *
+ * This only advances status from actual dates; it never regresses status or
+ * invents a date. Invalid actual-date combinations fail closed.
+ */
+function chinaplanetlogistics_normalize_operational_facts($status, $dateAtd, $dateAta, $containerNumber, $containerCount, $now = null)
+{
+    $status = (int) $status;
+    $rank = chinaplanetlogistics_status_rank($status);
+    $atd = chinaplanetlogistics_fact_timestamp($dateAtd);
+    $ata = chinaplanetlogistics_fact_timestamp($dateAta);
+    $now = $now === null ? time() : (int) $now;
+    $tomorrow = strtotime('tomorrow', $now);
+    $errors = array();
+    if ($rank < 0) $errors[] = 'invalid_status';
+    if ($atd > 0 && $tomorrow !== false && $atd >= $tomorrow) $errors[] = 'actual_departure_future';
+    if ($ata > 0 && $tomorrow !== false && $ata >= $tomorrow) $errors[] = 'actual_arrival_future';
+    if ($atd > 0 && $ata > 0 && $ata < $atd) $errors[] = 'arrival_before_departure';
+
+    $normalizedStatus = $status;
+    if (empty($errors) && $atd > 0 && $rank < chinaplanetlogistics_status_rank(2)) $normalizedStatus = 2;
+    if (empty($errors) && $ata > 0 && chinaplanetlogistics_status_rank($normalizedStatus) < chinaplanetlogistics_status_rank(3)) $normalizedStatus = 3;
+
+    $normalizedCount = (int) $containerCount;
+    if (trim((string) $containerNumber) !== '' && $normalizedCount < 1) $normalizedCount = 1;
+    $changes = array();
+    if ($normalizedStatus !== $status) $changes['status'] = array('from'=>$status, 'to'=>$normalizedStatus);
+    if ($normalizedCount !== (int) $containerCount) $changes['container_count'] = array('from'=>(int)$containerCount, 'to'=>$normalizedCount);
+
+    return array(
+        'ok' => empty($errors),
+        'status' => $normalizedStatus,
+        'container_count' => $normalizedCount,
+        'errors' => $errors,
+        'changes' => $changes,
+    );
+}
+
 /**
  * Get color for ETA countdown
  * @param int $days Days until ETA

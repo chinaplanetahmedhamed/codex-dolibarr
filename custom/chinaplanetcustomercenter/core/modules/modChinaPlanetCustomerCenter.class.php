@@ -12,7 +12,7 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->family = 'projects';
         $this->module_position = 98;
         $this->description = 'ChinaPlanet Customer Center';
-        $this->version = '2.3.2';
+        $this->version = '2.5.0';
         $this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
         $this->special = 0;
         $this->picto = 'project';
@@ -48,6 +48,16 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
         $this->rights[4][1] = 'Manage columns and onboarding';
         $this->rights[4][3] = 0;
         $this->rights[4][4] = 'admin';
+
+        $this->rights[5][0] = 500205;
+        $this->rights[5][1] = 'Read managed customer funds';
+        $this->rights[5][3] = 0;
+        $this->rights[5][4] = 'financial_read';
+
+        $this->rights[6][0] = 500206;
+        $this->rights[6][1] = 'Confirm and allocate managed customer funds';
+        $this->rights[6][3] = 0;
+        $this->rights[6][4] = 'financial_write';
 
         $this->menu = array();
         $r = 0;
@@ -92,6 +102,20 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             'position' => 95,
             'enabled' => '$conf->chinaplanetcustomercenter->enabled && empty($user->socid)',
             'perms' => '$user->hasRight("chinaplanetcustomercenter","write") || !empty($user->admin)',
+            'user' => 0,
+        );
+
+        $this->menu[$r++] = array(
+            'fk_menu' => 'fk_mainmenu=chinaplanetcustomercenter',
+            'type' => 'left',
+            'titre' => 'Managed Customer Funds',
+            'mainmenu' => 'chinaplanetcustomercenter',
+            'leftmenu' => 'managed_customer_funds',
+            'url' => '/custom/chinaplanetcustomercenter/admin/managed_funds.php',
+            'langs' => 'chinaplanetcustomercenter@chinaplanetcustomercenter',
+            'position' => 96,
+            'enabled' => '$conf->chinaplanetcustomercenter->enabled && empty($user->socid)',
+            'perms' => '$user->hasRight("chinaplanetcustomercenter","financial_read") || $user->hasRight("chinaplanetcustomercenter","financial_write") || !empty($user->admin)',
             'user' => 0,
         );
 
@@ -238,10 +262,14 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
 
     public function init($options = '')
     {
-        $result = $this->_load_tables('/chinaplanetcustomercenter/sql/');
-        if ($result <= 0) {
-            return $result;
+        require_once __DIR__.'/../../class/ManagedFundsNativeGuard.class.php';
+        if (!ManagedFundsNativeGuard::acquireLifecycle($this->db)) {
+            $this->error = 'Unable to acquire the managed-funds lifecycle lock.';
+            return -1;
         }
+        try {
+            $result = $this->_load_tables('/chinaplanetcustomercenter/sql/');
+            if ($result <= 0) return $result;
 
         $cpExists = $this->db->query("SHOW TABLES LIKE '".MAIN_DB_PREFIX."cpkanban_column'");
         if (!$cpExists || $this->db->num_rows($cpExists) === 0) {
@@ -259,11 +287,23 @@ class modChinaPlanetCustomerCenter extends DolibarrModules
             }
         }
 
-        return $this->_init(array(), $options);
+            if (!ManagedFundsNativeGuard::install($this->db, true)) {
+                $this->error = 'Unable to install managed-funds native-credit guard.';
+                return -1;
+            }
+            return $this->_init(array(), $options);
+        } finally {
+            ManagedFundsNativeGuard::releaseLifecycle($this->db);
+        }
     }
 
     public function remove($options = '')
     {
+        require_once __DIR__.'/../../class/ManagedFundsNativeGuard.class.php';
+        if (!ManagedFundsNativeGuard::remove($this->db)) {
+            $this->error = 'Reverse or formally close active managed-funds allocations, and verify the guard database state, before disabling this module.';
+            return -1;
+        }
         return $this->_remove(array(), $options);
     }
 }

@@ -2,6 +2,7 @@
 
 require_once __DIR__.'/ShippingNoteTranslationService.class.php';
 require_once __DIR__.'/PortNameResolver.class.php';
+require_once __DIR__.'/ShippingRateValidity.class.php';
 
 class ShippingPriceImporter
 {
@@ -146,7 +147,7 @@ class ShippingPriceImporter
         );
     }
 
-    public function publishBatch($batchId, $forceCurrent = false)
+    public function publishBatch($batchId, $forceCurrent = false, $validFrom = '', $validTo = '')
     {
         $batchId = (int) $batchId;
         $this->db->begin();
@@ -170,6 +171,9 @@ class ShippingPriceImporter
             if (!$batch) return $this->rollbackError();
         }
 
+        try { $validity = ShippingRateValidity::forBatch($batch, $validFrom, $validTo); }
+        catch (InvalidArgumentException $e) { $this->db->rollback(); throw $e; }
+
         if (self::automaticTranslationEnabled()) {
             $translationSql = "SELECT COUNT(*) pending FROM ".MAIN_DB_PREFIX."chinaplanetsp_rate WHERE entity=".$this->entity." AND fk_batch=".$batchId;
             $translationSql .= " AND source_notes IS NOT NULL AND source_notes<>'' AND translation_status<>'approved'";
@@ -181,7 +185,8 @@ class ShippingPriceImporter
                 throw new RuntimeException('Automatic translation is still pending or failed for one or more carrier/source notes. Open the batch review to retry; manual editing is optional.');
             }
         }
-        $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET status=1,is_current=0 WHERE fk_batch=".$batchId." AND entity=".$this->entity;
+        $validitySql = $validity === null ? '' : ",valid_from='".$this->db->escape($validity[0])."',valid_to='".$this->db->escape($validity[1])."'";
+        $sql = "UPDATE ".MAIN_DB_PREFIX."chinaplanetsp_rate SET status=1,is_current=0".$validitySql." WHERE fk_batch=".$batchId." AND entity=".$this->entity;
         if (!$this->db->query($sql)) return $this->rollbackError();
 
         $sql = "SELECT MAX(b.effective_date) latest_date FROM ".MAIN_DB_PREFIX."chinaplanetsp_batch b";

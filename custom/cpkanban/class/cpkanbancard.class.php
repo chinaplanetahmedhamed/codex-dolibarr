@@ -208,29 +208,58 @@ class CpKanbanCard extends CommonObject
      */
     public function moveToColumn($user, $newColId)
     {
-        $oldCol = (int) $this->fk_column;
+        global $conf;
+        $entity = isset($conf->entity) ? (int) $conf->entity : 1;
         $newColId = (int) $newColId;
-        if ($oldCol === $newColId) return 1;
+        if ($newColId <= 0 || (int) $this->id <= 0 || (int) $this->entity !== $entity) {
+            $this->error = 'Invalid card or destination';
+            return -1;
+        }
 
-        // fetch auto_progress of the destination column
-        $autoProg = null;
-        $sql = "SELECT auto_progress FROM ".MAIN_DB_PREFIX."cpkanban_column WHERE rowid = ".$newColId;
-        $resql = $this->db->query($sql);
-        if ($resql) { $o = $this->db->fetch_object($resql); if ($o && $o->auto_progress !== null) $autoProg = (int) $o->auto_progress; }
-
-        $set = "fk_column = ".$newColId;
-        if ($autoProg !== null) $set.= ", progress = ".$autoProg;
-
-        $sql = "UPDATE ".MAIN_DB_PREFIX."cpkanban_card SET ".$set." WHERE rowid = ".(int) $this->id;
         $this->db->begin();
+        // Read the persisted card and destination under the same entity boundary.
+        $sql = "SELECT c.fk_column, c.progress, d.auto_progress FROM ".MAIN_DB_PREFIX."cpkanban_card c";
+        $sql.= " INNER JOIN ".MAIN_DB_PREFIX."cpkanban_column d ON d.rowid = ".$newColId." AND d.entity = c.entity AND d.active = 1";
+        $sql.= " WHERE c.rowid = ".(int) $this->id." AND c.entity = ".$entity;
         $resql = $this->db->query($sql);
-        if (!$resql) { $this->error = $this->db->lasterror(); $this->db->rollback(); return -1; }
+        if (!$resql || !($row = $this->db->fetch_object($resql))) {
+            $this->error = 'Invalid card or destination';
+            $this->db->rollback();
+            return -1;
+        }
+        $oldCol = (int) $row->fk_column;
+        $progress = $row->auto_progress === null ? (int) $row->progress : (int) $row->auto_progress;
+        if ($oldCol === $newColId) {
+            $this->db->commit();
+            $this->fk_column = $oldCol;
+            $this->progress = (int) $row->progress;
+            return 1;
+        }
 
-        $this->addLog($user, 'move', $oldCol, $newColId, 'Moved column');
+        $sql = "UPDATE ".MAIN_DB_PREFIX."cpkanban_card SET fk_column = ".$newColId;
+        if ($row->auto_progress !== null) $sql.= ", progress = ".$progress;
+        $sql.= " WHERE rowid = ".(int) $this->id." AND entity = ".$entity." AND fk_column = ".$oldCol;
+        $sql.= " AND EXISTS (SELECT 1 FROM ".MAIN_DB_PREFIX."cpkanban_column WHERE rowid = ".$newColId." AND entity = ".$entity." AND active = 1)";
+        $resql = $this->db->query($sql);
+        if (!$resql || $this->db->affected_rows($resql) !== 1) {
+            $this->error = 'Card or destination changed; reload the board';
+            $this->db->rollback();
+            return -1;
+        }
+        $current = $this->db->query("SELECT progress FROM ".MAIN_DB_PREFIX."cpkanban_card WHERE rowid = ".(int) $this->id." AND entity = ".$entity);
+        if (!$current || !($saved = $this->db->fetch_object($current))) {
+            $this->error = 'Unable to verify card progress';
+            $this->db->rollback();
+            return -1;
+        }
+        $progress = (int) $saved->progress;
+        if ($this->addLog($user, 'move', $oldCol, $newColId, 'Moved column') <= 0) {
+            $this->db->rollback();
+            return -1;
+        }
         $this->db->commit();
-
         $this->fk_column = $newColId;
-        if ($autoProg !== null) $this->progress = $autoProg;
+        $this->progress = $progress;
         return 1;
     }
 

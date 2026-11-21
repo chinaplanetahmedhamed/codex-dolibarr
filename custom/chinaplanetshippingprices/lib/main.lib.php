@@ -1,5 +1,13 @@
 <?php
 
+/** Match the connection to the Unicode rate-note columns for staff requests. */
+function chinaplanetsp_use_note_charset($db)
+{
+    if ($db->type === 'mysqli' && !$db->db->set_charset('utf8mb4')) {
+        throw new RuntimeException('Unable to use UTF-8 for shipping price notes.');
+    }
+}
+
 function chinaplanetsp_require_read($user)
 {
     if (empty($user->id) || (!$user->hasRight('chinaplanetshippingprices', 'read') && empty($user->admin))) accessforbidden();

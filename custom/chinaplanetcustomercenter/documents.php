@@ -32,7 +32,7 @@ $candelete = (!$is_external && ($user->admin || $user->hasRight('chinaplanetcust
 $is_post = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'POST';
 $form = new Form($db);
 $customer_options = array();
-$commercial_documents = (!$is_external && $socid > 0) ? cpcc_export_documents($db, $socid, 0, 0, true) : array();
+$commercial_documents = $socid > 0 ? cpcc_export_documents($db, $socid, 0, 0, $is_external) : array();
 if (!$is_external) {
     $res_customers=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");
     if($res_customers) while($customer=$db->fetch_object($res_customers)) $customer_options[(int)$customer->rowid]=$customer->nom;
@@ -44,6 +44,7 @@ $sql_ship_options = "SELECT t.rowid, t.ref, t.container_no, t.bl_no, t.fk_soc, s
     . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
     . " WHERE t.entity=".(int) $conf->entity
     . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
+    . ($is_external ? " AND t.customer_visible=1" : "")
     . " ORDER BY t.rowid DESC";
 $res_ship_options = $db->query($sql_ship_options);
 if ($res_ship_options) {
@@ -86,6 +87,9 @@ if ($action === 'rename' || $action === 'deletefile') {
         $archived = cpcc_portal_archive_shipment_file($db, $shipment, $user, $file);
         if (empty($archived['ok'])) setEventMessages($archived['error'] ?? 'Document operation failed.', null, 'errors');
         else setEventMessages($langs->trans('CPLShipmentFileArchived'), null, 'mesgs');
+    } elseif(cpcc_shared_documents_enabled()) {
+        try{$svc=new ShipmentDocumentService($db,$user);$doc=$svc->byStorage($shipid_post,$file);$svc->rename($doc['rowid'],$doc['revision'],$newname);setEventMessages('Document renamed.',null,'mesgs');}
+        catch(Throwable $e){setEventMessages('Document operation was rejected.',null,'errors');}
     } else {
         $safe_new = cpcc_portal_validate_shipment_filename($newname);
         $base_dir = realpath(dirname($old_full));
@@ -116,7 +120,7 @@ print '<span class="cpcc-eyebrow">CUSTOMER DOCUMENTS</span>';
 print '<h1>المستندات / Documents</h1>';
 print '<p>'.($is_external ? 'مستندات وملفات الشحن المنشورة للعميل في مكان واحد. / Published shipment documents and gallery files in one place.' : 'المستندات التجارية وملفات الشحن المنشورة للعميل في مكان واحد. / Published commercial and shipment documents in one place.').'</p>';
 print '</div></header>';
-if (!$is_external && $socid > 0) {
+if ($socid > 0) {
     print '<section class="cpcc-commercial-documents"><div class="cpcc-section-head"><div><h2>المستندات التجارية / Commercial Documents</h2><p>Commercial invoices, packing lists, and other approved customer documents.</p></div><div class="cpcc-document-count"><span>Published</span><strong>'.count($commercial_documents).'</strong></div></div>';
     if (empty($commercial_documents)) {
         print '<div class="cpcc-empty">لا توجد مستندات تجارية منشورة لهذا العميل. / No published commercial documents.</div>';
@@ -144,6 +148,7 @@ if ($is_external && $socid <= 0) {
          . " LEFT JOIN ".MAIN_DB_PREFIX."societe s ON s.rowid = t.fk_soc"
          . " WHERE t.entity=".(int) $conf->entity
          . ($socid > 0 ? " AND t.fk_soc = ".((int) $socid) : "")
+         . ($is_external ? " AND t.customer_visible=1" : "")
          . (!empty($search) ? " AND (t.ref LIKE '%".$db->escape($search)."%' OR t.container_no LIKE '%".$db->escape($search)."%' OR t.bl_no LIKE '%".$db->escape($search)."%')" : "")
          . " ORDER BY t.date_eta DESC, t.rowid DESC";
     $resql = $db->query($sql);
@@ -177,6 +182,10 @@ if ($is_external && $socid <= 0) {
     }
     if ($resql && $db->num_rows($resql) > 0) {
         while ($obj = $db->fetch_object($resql)) {
+            if(!$is_external&&cpcc_shared_documents_enabled()){
+                print '<tr><td>'.(int)$obj->rowid.'</td><td colspan="8"><a href="'.dol_buildpath('/chinaplanetlogistics/card.php',1).'?id='.(int)$obj->rowid.'">'.dol_escape_htmltag($obj->ref).'</a>'.cpcc_portal_staff_shipment_files_html($db,$obj,$canwrite,$_SERVER['PHP_SELF'],$candelete).'</td></tr>';
+                continue;
+            }
             $docs = array();
             if (!$is_external) {
                 foreach (cpcc_portal_shipment_doc_roots($obj->rowid, $obj->ref) as $dir) {

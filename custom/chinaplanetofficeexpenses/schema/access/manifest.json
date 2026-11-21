@@ -1,0 +1,10 @@
+{
+  "version": "m119_office_expenses_access_v1",
+  "requires": {
+    "m119_office_expenses_drafts_v1": "a88a40ae71abc63fa836036488b51d3edef72645e349f396a1ed3a4d4aeef88b"
+  },
+  "files": {
+    "001_membership.sql": "fd529fa7265cc23ce047650299c290786df15e58fba59870e808679b0c317705",
+    "002_access_audit.sql": "94b086287546dd166e8b3eff72c80ea5f4d5bcbf27e92157baf91c67d4a77493"
+  }
+}

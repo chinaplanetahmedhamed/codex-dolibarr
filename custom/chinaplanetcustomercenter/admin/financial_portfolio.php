@@ -250,6 +250,12 @@ cpcc_admin_shell_open('financial', 'المركز المالي', 'Overview totals
             <a href="<?php echo $financeUrl; ?>">Admin Entry / تسجيل مالي</a>
             <span aria-hidden="true">·</span>
             <a href="<?php echo $balanceUrl; ?>">Statement / كشف حساب</a>
+            <?php if (!empty($conf->global->CPO_ACCOUNT_STATEMENTS_ENABLED) && !empty($conf->global->CPO_ACCOUNT_FINANCE_LINK_ENABLED)
+                && (empty(cpcc_portal_user_scope($user)['is_external']) && ($user->admin || $user->hasRight('chinaplanetoperations', 'account_read')))) {
+                $langs->load('chinaplanetcustomercenter@chinaplanetcustomercenter'); ?>
+            <span aria-hidden="true">·</span>
+            <a href="<?php echo dol_escape_htmltag(cpcc_portal_scoped_url('/chinaplanetcustomercenter/balance.php', false, (int)$row['id'], ['view'=>'board_cash'])); ?>"><?php echo dol_escape_htmltag($langs->trans('CPCCBoardCashTitle')); ?></a>
+            <?php } ?>
           </span></td>
         </tr>
       <?php }} ?>

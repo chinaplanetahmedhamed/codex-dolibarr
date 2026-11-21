@@ -7,6 +7,7 @@ require_once __DIR__.'/../lib/main.lib.php';
 require_once __DIR__.'/../class/ShippingPriceImporter.class.php';
 require_once DOL_DOCUMENT_ROOT.'/custom/chinaplanetcustomercenter/lib/admin_shell.lib.php';
 chinaplanetsp_require_internal($user, 'import');
+chinaplanetsp_use_note_charset($db);
 $langs->loadLangs(array('chinaplanetshippingprices@chinaplanetshippingprices', 'admin'));
 $importer = new ShippingPriceImporter($db, $user);
 $translationEnabled = ShippingPriceImporter::automaticTranslationEnabled();
@@ -50,7 +51,7 @@ if ($isPost && $action === 'upload') {
 if ($isPost && ($action === 'publish' || $action === 'activate_current')) {
     $batchId = GETPOSTINT('id');
     try {
-        $state = $importer->publishBatch($batchId, $action === 'activate_current');
+        $state = $importer->publishBatch($batchId, $action === 'activate_current', GETPOST('valid_from', 'alphanohtml'), GETPOST('valid_to', 'alphanohtml'));
         if (!empty($state['is_current'])) {
             $message = 'Published and current: '.(int) $state['current_rates'].' active price(s), '.(int) $state['searchable_rates'].' available in customer search. / تم النشر والتفعيل.';
             setEventMessages($message, null, 'mesgs');
@@ -95,8 +96,8 @@ if ($res) while ($b = $db->fetch_object($res)) {
     elseif ((int)$b->current_rates > 0) $status = '<span class="badge badge-status4">Published &amp; current / منشور وحالي</span>';
     else $status = '<span class="badge badge-status6">Published history / سجل منشور</span>';
     print '<tr><td>'.dol_escape_htmltag($b->ref).'</td><td>'.dol_escape_htmltag($b->effective_date.' — '.$b->source_sheet).'</td><td>'.dol_escape_htmltag($b->source_name).'</td><td class="right">'.(int)$b->accepted_rows.'</td><td class="right">'.(int)$b->ignored_rows.'</td><td class="right">'.(int)$b->warning_count.'</td><td>'.$status.'</td><td class="right">';
-    print '<div class="chinaplanetsp-row-actions"><a class="button smallpaddingimp" href="batch.php?id='.(int)$b->rowid.'">Review / مراجعة</a> ';
-    if ((int)$b->status !== 2) print '<form method="post" action="import.php" onsubmit="return confirm(\'Publish this batch and update current prices?\')"><input type="hidden" name="token" value="'.newToken().'"><input type="hidden" name="action" value="publish"><input type="hidden" name="id" value="'.(int)$b->rowid.'"><button class="button button-save smallpaddingimp" type="submit">Publish / نشر</button></form>';
+    $reviewLabel = (int)$b->status !== 2 ? 'Review &amp; publish / مراجعة ونشر' : 'Review / مراجعة';
+    print '<div class="chinaplanetsp-row-actions"><a class="button smallpaddingimp" href="batch.php?id='.(int)$b->rowid.'">'.$reviewLabel.'</a>';
     print '</div>';
     print '</td></tr>';
 }

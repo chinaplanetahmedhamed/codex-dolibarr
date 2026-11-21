@@ -18,6 +18,17 @@ function cpcc_admin_finance_project_ok($db,$socid,$projectid)
     $r=$db->query("SELECT rowid FROM ".MAIN_DB_PREFIX."projet WHERE rowid=".(int)$projectid." AND fk_soc=".(int)$socid);
     return $r && $db->num_rows($r)>0;
 }
+function cpcc_admin_finance_target($db,$entity,$socid,$projectid,$value)
+{
+    if ($value === '') return array('type'=>'','id'=>0);
+    if (!preg_match('/^(operation|shipment|project|customer_invoice):([1-9][0-9]*)$/',$value,$match)) return null;
+    $map=array('operation'=>array('cpo_operation','fk_project'),'shipment'=>array('chinaplanetlogistics','fk_project'),'project'=>array('projet','rowid'),'customer_invoice'=>array('facture','fk_projet'));
+    $type=$match[1];$id=(int)$match[2];$def=$map[$type];
+    $sql="SELECT rowid,".$def[1]." fk_project FROM ".MAIN_DB_PREFIX.$def[0]." WHERE entity=".(int)$entity." AND rowid=".$id." AND fk_soc=".(int)$socid." LIMIT 1";
+    $res=$db->query($sql);$row=$res?$db->fetch_object($res):null;
+    if(!$row||($projectid>0&&(int)$row->fk_project!==$projectid)) return null;
+    return array('type'=>$type,'id'=>$id);
+}
 function cpcc_admin_insert_entry($db,$entity,$userid,$data)
 {
     $values=array(
@@ -66,6 +77,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         $amount=price2num(GETPOST('amount','alphanohtml')); $currency=cpcc_financial_currency(GETPOST('currency','alpha'),''); $type=GETPOST('entry_type','alpha');
         $creditTypes=array('opening_balance'); $direction=in_array($type,$creditTypes,true)?'C':'D';
         $sourceType=''; $sourceId=0;
+        $target=cpcc_admin_finance_target($db,(int)$conf->entity,$socid,$projectid,GETPOST('finance_target','alphanohtml'));
+        if($target===null){setEventMessages('Financial target does not belong to this customer/project.',null,'errors');$amount=0;}
+        elseif(!empty($target['id'])){$sourceType=$target['type'];$sourceId=$target['id'];}
         if(in_array($type,array('customer_receipt','invoice_allocation'),true)){
             setEventMessages('Customer receipts and invoice allocations are read automatically from Dolibarr. Do not enter them manually.',null,'errors');
             $amount=0;
@@ -103,6 +117,7 @@ print '<div class="info">دفعات العملاء والدفعات المقدم
 print '<p class="cpcc-statement-row"><a class="cpcc-statement-button" href="'.dol_buildpath('/chinaplanetcustomercenter/admin/financial_portfolio.php',1).'"><span class="fas fa-chart-pie"></span> العودة إلى المركز المالي / Back to Financial Center</a></p>';
 $customerOptions=array();$res=$db->query("SELECT rowid,nom FROM ".MAIN_DB_PREFIX."societe WHERE entity=".(int)$conf->entity." AND status=1 AND client IN (1,3) ORDER BY nom");if($res)while($o=$db->fetch_object($res))$customerOptions[(int)$o->rowid]=$o->nom;
 $projectOptions=array();if($selectedSocid>0){$res=$db->query("SELECT rowid,ref,title FROM ".MAIN_DB_PREFIX."projet WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid." ORDER BY ref DESC");if($res)while($o=$db->fetch_object($res))$projectOptions[(int)$o->rowid]=$o->ref.' — '.$o->title;}
+$financeTargetOptions=array();if($selectedSocid>0){foreach(array('operation'=>array('cpo_operation','ref','fk_project'),'shipment'=>array('chinaplanetlogistics','ref','fk_project'),'project'=>array('projet','ref','rowid'),'customer_invoice'=>array('facture','ref','fk_projet')) as $type=>$def){$sql="SELECT rowid,".$def[1]." label FROM ".MAIN_DB_PREFIX.$def[0]." WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid.($selectedProjectid>0?" AND ".$def[2]."=".$selectedProjectid:'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$financeTargetOptions[$type.':'.(int)$o->rowid]=ucfirst(str_replace('_',' ',$type)).' · '.$o->label;}}
 $chargeOptions=array();if($selectedSocid>0&&cpcc_financial_schema_ready($db)){$sql="SELECT rowid,label,reference,currency_code,amount FROM ".MAIN_DB_PREFIX."cpcc_project_charge WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid." AND status=1".($selectedProjectid>0?" AND fk_project=".$selectedProjectid:'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$chargeOptions[(int)$o->rowid]=$o->label.' — '.cpcc_portal_money($o->amount).' '.$o->currency_code.' — '.$o->reference;}
 $invoiceOptions=array();if($selectedSocid>0){$sql="SELECT rowid,ref,multicurrency_code,multicurrency_total_ttc,total_ttc FROM ".MAIN_DB_PREFIX."facture WHERE entity=".(int)$conf->entity." AND fk_soc=".$selectedSocid.($selectedProjectid>0?" AND (fk_projet IS NULL OR fk_projet=".$selectedProjectid.")":'')." ORDER BY rowid DESC";$res=$db->query($sql);if($res)while($o=$db->fetch_object($res))$invoiceOptions[(int)$o->rowid]=$o->ref.' — '.cpcc_portal_money(!empty($o->multicurrency_code)?$o->multicurrency_total_ttc:$o->total_ttc).' '.cpcc_financial_currency($o->multicurrency_code,!empty($conf->currency)?$conf->currency:'USD');}
 $today=date('Y-m-d');
@@ -121,6 +136,7 @@ $today=date('Y-m-d');
 <tr><td>النوع / Type</td><td><select id="cpcc-entry-type" name="entry_type" aria-label="Financial entry type"><?php foreach(array('opening_balance','supplier_payment','shipping','commission','cargox','dhl','inspection','service','other','adjustment') as $type) print '<option value="'.$type.'">'.dol_escape_htmltag(cpcc_financial_type_label($type)).'</option>'; ?></select></td></tr>
 <tr><td>الاتجاه / Direction</td><td><output id="cpcc-direction-output" class="cpcc-direction">دائن / Credit (+)</output> <span class="opacitymedium">يُحدد تلقائياً حسب نوع الحركة / Automatically determined by entry type</span></td></tr>
 <tr><td>الوصف / Description</td><td><input required class="minwidth300" name="description" aria-label="Receipt or expense description"></td></tr><tr><td>المبلغ / العملة / Amount / Currency</td><td><input required name="amount" inputmode="decimal" aria-label="Receipt or expense amount"> <input required size="4" maxlength="3" name="currency" aria-label="Receipt or expense currency" placeholder="USD"></td></tr>
+<tr><td>هدف المصروف / Expense target</td><td><?php echo Form::selectarray('finance_target',$financeTargetOptions,0,'مصروف عام غير قابل لتسوية تخصيص / General unbound expense',0,0,'aria-label="Exact operation, shipment, project or invoice target"',0,0,0,'','minwidth300',1); ?><br><span class="opacitymedium">اختر الهدف الدقيق إذا ستستخدم هذا المصروف لتسوية أموال مُخصصة.</span></td></tr>
 <tr><td>الالتزام / المخصص / Commitment / Allocated</td><td><?php echo Form::selectarray('chargeid',$chargeOptions,0,'بدون تخصيص / Not allocated',0,0,'aria-label="Project commitment"',0,0,0,'','minwidth300',1); ?> <input name="allocated_amount" inputmode="decimal" aria-label="Amount allocated to commitment" placeholder="المبلغ بعملة الالتزام"></td></tr>
 <tr><td>المرجع / البنك / Reference / Bank</td><td><input name="reference" aria-label="Payment reference"> <input name="bank_label" aria-label="Bank label"></td></tr><tr><td>ظاهر للعميل / Customer visible</td><td><input type="checkbox" name="customer_visible" value="1" aria-label="Visible to customer" checked></td></tr>
 <tr><td></td><td><button class="button button-save" type="submit">حفظ الحركة</button></td></tr></table></form>
