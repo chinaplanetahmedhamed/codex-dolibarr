@@ -41,4 +41,16 @@ Implemented locally on Dolibarr 24.0.1; PHP 8.3.21. No schema migration, new mod
 
 Deleted supplier Boards are never silently recreated/reused: relinking requires restoring the mapped Board. Card unlink retains the project association/Board/orders. Project unlink is denied while cards use that supplier; existing Board history remains accessible through supplier workspace mappings. Supplier-linked cards cannot move to another project until their card supplier links are explicitly removed.
 
-Status: source/local implementation verified; GitHub publication is recorded with the PR. Backup/live deployment and signed-in remote acceptance remain pending separate release authorization. See M142_WORKFLOW_ACCEPTANCE.md for the workflow record.
+Status at implementation handoff: source/local verified. Backup/live were then authorized and deployed as recorded below; signed-in remote browser acceptance remains pending. See M142_WORKFLOW_ACCEPTANCE.md for the workflow record.
+
+## Release approval — 2026-11-23 Asia/Shanghai
+
+Ahmed explicitly requested “ok, push to both” after the concrete local/PR66 result. This authorizes this prepared feature on backup-ERP and live, including preflight, scoped source backup, verification and data-preserving rollback. PR66 merged as d9f704f60df4aad2a4af7df0483a5f4e40f9985e, with both GitHub checks passing. Release allowlist is its15 application paths; no production test fixtures, schema, configuration, rights, proxy or service changes. Native supplier relationships block reversion to older visibility code once users create links; preserve records and fix forward in that case. Release controller recovery checks pass5 locally. Actual remote results are recorded separately after execution.
+
+## Release result — 2026-11-23 Asia/Shanghai
+
+Both targets independently verified from the same15-file artifact/source d9f704f60df4aad2a4af7df0483a5f4e40f9985e (PR66). Artifact SHA-256 dec04e32ff9597a8d0a3d7c1e16e0212c52816386f1fa21dab8a7c45c8875ca5. Controller /root/m142-release.py SHA-256 b68cd271a2978213ae89972f638d9e0e03af771b75f38ef7b6a41a0c76310518. Immutable inventory/source/proxy/config/owner guards passed, as did PHP syntax,72 staff+46 supplier-link SQLite tests inside each target runtime, five native project panels, five native card panels, external denial and complete supplier paging (backup1 supplier/1page; live1,643/33pages). Both require anonymous login, and all three changed HTTPS JS/CSS hashes matched per target. An independent Mac fetch rechecked all six served assets. No runtime restart, configuration, rights, schema or persistent business-record writes. No rollback was required.
+
+Scoped originals and absence metadata are preserved per target, with archive hashes and exact resource identities in [sanitized receipts](../evidence/m142-release-2026-11-23.json). Code rollback refuses later source drift and refuses old visibility code after supplier relationships exist; no database restoration. Original backup/live container IDs, images, volumes, proxy paths and settings remained unchanged. Source/helper/evidence remain published to GitHub under Ahmed's sync rule.
+
+Observed limits: signed-in hosted browser click-through and the browser confirmation path remain unaccepted. Native scoped actor tests passed; no real customer was linked to a supplier or used for a draft-order test on either hosted target. The earlier local synthetic draft/native persistence test remains the evidence for those writes.
