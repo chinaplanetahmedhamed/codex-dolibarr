@@ -1,0 +1,73 @@
+{
+  "mission": "M141",
+  "source_commit": "387bf8e57b6a0429e25d081b4f3647fab29916a4",
+  "controller": "/root/m141-shared-release.py",
+  "controller_sha256": "52d2b00177d3b0e4c6feec29974f01bab5dbb39fa9640087a6ad642daa35a618",
+  "artifact_sha256": "6b70bd1f2ac44b75114e69a145784bb1d33bddd10f53cf22a8d52cb19b0580ef",
+  "inventory_sha256": "d734a81bac73340cedad496a25286def5d8fd9889f72f9e18bf82e30b827847e",
+  "targets": {
+    "live": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/InternalTaskBoardsService.class.php": "1d30829719bbc63dae700718f180b89a26092a240bd6e2f1e76667eb54939931"
+      },
+      "backup": "/root/m141-shared-staff-20261123/live-20261122T172354895706Z/source-before.tar.gz",
+      "backup_sha256": "e113992d86aaf259a03bcee679c0355c9166aeeefbe15a3db61947a2c8096dd3",
+      "functional": {
+        "native_board": 3,
+        "staff_only": true,
+        "employee_options": 7,
+        "internal_options": 8,
+        "external_actor_denied": true,
+        "version": "24.0.1",
+        "business_writes": false,
+        "reported_staff_both_present": true
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_asset_hash": true
+      },
+      "temporary_native_tests": 67,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "mission": "M141",
+      "source_commit": "387bf8e57b6a0429e25d081b4f3647fab29916a4",
+      "artifact_sha256": "6b70bd1f2ac44b75114e69a145784bb1d33bddd10f53cf22a8d52cb19b0580ef",
+      "at_utc": "2026-11-22T17:23:58.671370+00:00"
+    },
+    "backup": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/InternalTaskBoardsService.class.php": "1d30829719bbc63dae700718f180b89a26092a240bd6e2f1e76667eb54939931"
+      },
+      "backup": "/root/m141-shared-staff-20261123/backup-20261122T172349226037Z/source-before.tar.gz",
+      "backup_sha256": "02c08e84814c364ca5c73925ae63c06f57edc01049a6baf724fa46ae193b5288",
+      "functional": {
+        "native_board": 3,
+        "staff_only": true,
+        "employee_options": 1,
+        "internal_options": 1,
+        "external_actor_denied": true,
+        "version": "24.0.1",
+        "business_writes": false,
+        "reported_staff_both_present": "not applicable to isolated backup accounts"
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_asset_hash": true
+      },
+      "temporary_native_tests": 67,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "mission": "M141",
+      "source_commit": "387bf8e57b6a0429e25d081b4f3647fab29916a4",
+      "artifact_sha256": "6b70bd1f2ac44b75114e69a145784bb1d33bddd10f53cf22a8d52cb19b0580ef",
+      "at_utc": "2026-11-22T17:23:50.825024+00:00"
+    }
+  },
+  "independent_post_apply_verification": {
+    "backup": "PASS",
+    "live": "PASS"
+  },
+  "native_signed_in_dialog_UAT": "not recorded"
+}

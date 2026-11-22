@@ -5,11 +5,11 @@ Branch: `codex/general-board-staff`.
 
 Scope: the existing Operations General Board member/card sharing picker and server validation. Use native active, same-entity, internal users marked Employee; reject customer/supplier/external and non-employee accounts. Preserve customer/supplier workspace sharing, existing grants, native rights, CSRF, optimistic versions and last-manager protection. Existing excluded members must remain removable without granting access again.
 
-Routes: `custom/chinaplanetoperations/tasks/boards.php` and `boards_api.php`; service: `InternalTaskBoardsService`; records: native `user`, existing `cpo_board_member` and `cpo_card_grant`. No schema, module activation, financial changes or production deployment authorized by this request.
+Routes: `custom/chinaplanetoperations/tasks/boards.php` and `boards_api.php`; service: `InternalTaskBoardsService`; records: native `user`, existing `cpo_board_member` and `cpo_card_grant`. No schema, module activation or financial changes. Initial implementation was local-only; the subsequent explicit release authorization is recorded below.
 
 Plan: reproduce with synthetic SQL fixtures; filter the existing picker and validate writes in the owning service; explain staff-only selection in the existing AR/EN dialog; verify positive/negative and removal/persistence cases. Record actual results below.
 
-Status: implemented and verified locally; not published or deployed to backup/production.
+Status: deployed and independently verified on Mac, backup-ERP and production, including the shared employee administrator correction below. Signed-in native dialog UAT remains unrecorded.
 
 ## Verified 2026-11-23
 
@@ -33,12 +33,12 @@ The following old suites were run on both the candidate and the immutable captur
 
 ## Operational limit
 
-“Staff” follows the existing native Dolibarr Employee flag, not an inferred name or a new staff registry. If a technical/test/customer identity is incorrectly marked as an active internal employee, its native user classification needs a separate explicit review. This change does not silently reclassify or deactivate accounts. No schema, financial record, native right, customer portal, backup-ERP or production mutation was made.
+“Staff” follows the existing native Dolibarr Employee flag, not an inferred name or a new staff registry. If a technical/test/customer identity is incorrectly marked as an active internal employee, its native user classification needs a separate explicit review. This change does not silently reclassify or deactivate accounts. The implementation does not change schema, financial records, native rights or customer portal behavior. Remote code deployment is recorded below.
 
 
 ## Release authorization — 2026-11-23
 
-Ahmed explicitly requested “push to live and sync to backup as well”. This authorizes the tested five-file Operations overlay on `vision_erp` / `vision-os_dolibarr_custom` and `erp-staging-dolibarr-1` / `erp-staging_erp-staging_custom`, including current identity/predecessor checks, scoped source backup, code-only apply, functional verification and data-preserving rollback. Database/configuration/rights/user classification, services/proxy and unrelated source remain outside the release. Earlier local-only status is historical; remote release results are pending below.
+Ahmed explicitly requested “push to live and sync to backup as well”. This authorizes the tested five-file Operations overlay on `vision_erp` / `vision-os_dolibarr_custom` and `erp-staging-dolibarr-1` / `erp-staging_erp-staging_custom`, including current identity/predecessor checks, scoped source backup, code-only apply, functional verification and data-preserving rollback. Database/configuration/rights/user classification, services/proxy and unrelated source remain outside the release. Earlier local-only status is historical; remote release results follow below.
 
 ## Released to backup and production — 2026-11-23 Asia/Shanghai
 
@@ -57,4 +57,13 @@ Ahmed reported Moaz and Rina missing. A bounded live profile read confirmed Moaz
 
 The follow-up follows existing `InternalTaskAuthorizationService::isInternalActive`: General Board staff options include current-entity employees or native entity0 administrators, with active/internal/Employee checks retained. Ordinary entity0 users, inactive/global external users and users/admins in other nonzero entities remain denied. The member identity join also recognizes native shared administrators so a successfully added person remains visible/removable. Customer/supplier picker eligibility retains its prior exact-entity behavior.
 
-Regression: initial added shared-admin fixture failed, then 72 SQLite cases and 67 native MySQL temporary-table cases passed; full workspace shared-member rendering was checked on SQLite (native temporary table repeated-reference limit is retained). This source correction is pending follow-up deployment; the preceding five-file release evidence remains historical. No real memberships or native profiles were altered for testing.
+Regression: initial added shared-admin fixture failed, then 72 SQLite cases and 67 native MySQL temporary-table cases passed; full workspace shared-member rendering was checked on SQLite (native temporary table repeated-reference limit is retained). This correction was deployed and independently verified on both targets; the preceding five-file release evidence remains historical. No real memberships or native profiles were altered for testing.
+
+
+### Follow-up release outcome
+
+Source `387bf8e57b6a0429e25d081b4f3647fab29916a4` changes only `InternalTaskBoardsService.class.php` over the preceding five-file release. Both pinned targets passed preflight, source backup/readback, PHP lint, 67 native temporary-table cases, native Board 3 eligibility comparison, external denial, HTTPS asset verification and a separate post-apply verification. Live now returns seven eligible employees, including both reported people. Backup returns one, consistent with its deliberately isolated account state; no user activation/authentication or classifications were copied.
+
+Final service SHA-256: `1d30829719bbc63dae700718f180b89a26092a240bd6e2f1e76667eb54939931`, identical in source, Mac runtime, backup and live. Artifact SHA-256: `6b70bd1f2ac44b75114e69a145784bb1d33bddd10f53cf22a8d52cb19b0580ef`. Controller `/root/m141-shared-release.py`, SHA-256 `52d2b00177d3b0e4c6feec29974f01bab5dbb39fa9640087a6ad642daa35a618`. [Sanitized follow-up receipts](../evidence/m141-release-2026-11-23/shared-staff.json) record exact recovery paths and hashes. The controller supports `backup rollback` / `live rollback` for this one-file layer, refuses source drift and does not restore any database. The earlier five-file controller correctly refuses rollback while the newer service layer is present.
+
+No user profile, native permission, actual membership, business/financial record, schema, configuration, proxy or service was changed. No restart. Native signed-in dialog visual acceptance remains unrecorded; the verified result is the deployed native picker response plus synthetic EN/AR UI acceptance. Local 72-case regression rerun passed after deployment. PR #63 contains both layers; no hosted CI checks are configured for these paths.
