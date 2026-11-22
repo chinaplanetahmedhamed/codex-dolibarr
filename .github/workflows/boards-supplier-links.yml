@@ -1,0 +1,36 @@
+name: Boards supplier relationships
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'custom/chinaplanetoperations/**'
+      - 'deploy/tests/test_m141_general_board_staff.php'
+      - 'deploy/tests/test_m142_supplier_links.php'
+      - 'deploy/tests/test_supplier_workspace_picker.php'
+      - '.github/workflows/boards-supplier-links.yml'
+  push:
+    branches: ['codex/project-card-suppliers']
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-service-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install local test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq php-cli php-sqlite3 php-mbstring
+      - name: Check owning module PHP and browser scripts
+        run: |
+          find custom/chinaplanetoperations -name '*.php' -print0 | xargs -0 -n1 php -l > /tmp/operations-php-lint.txt
+          node --check custom/chinaplanetoperations/js/boards.js
+          node --check custom/chinaplanetoperations/js/supplier_links.js
+      - name: Verify synthetic supplier links, permissions and picker
+        run: |
+          php deploy/tests/test_m142_supplier_links.php
+          php deploy/tests/test_supplier_workspace_picker.php

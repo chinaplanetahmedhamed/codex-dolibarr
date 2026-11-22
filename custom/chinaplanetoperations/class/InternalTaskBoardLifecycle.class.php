@@ -23,7 +23,7 @@ class InternalTaskBoardLifecycle
     }
     public function gallery(){
         if(!self::enabled())throw new InternalTaskAccessException('Deleted boards are unavailable.');$auth=new InternalTaskAuthorizationService($this->db,$this->actor,$this->entity);$auth->requireBoard();$policy=new InternalTaskBoardPolicy($this->db,$auth->actorId(),$this->entity);
-        $r=$this->query('SELECT b.rowid,b.title,b.version,b.archived,b.background,d.date_deleted FROM '.MAIN_DB_PREFIX.'cpo_board_deleted d INNER JOIN '.MAIN_DB_PREFIX.'cpo_board b ON b.entity=d.entity AND b.rowid=d.fk_board WHERE b.entity='.$this->entity.' ORDER BY d.date_deleted DESC,b.rowid DESC');$boards=[];
+        $r=$this->query('SELECT b.rowid,b.title,b.version,b.archived,b.background,d.date_deleted FROM '.MAIN_DB_PREFIX.'cpo_board_deleted d INNER JOIN '.MAIN_DB_PREFIX.'cpo_board b ON b.entity=d.entity AND b.rowid=d.fk_board WHERE b.entity='.$this->entity.' AND '.(new InternalTaskWorkspaceService($this->db,$this->actor,$this->entity))->supplierBoardScopeSql('b.entity','b.rowid').' ORDER BY d.date_deleted DESC,b.rowid DESC');$boards=[];
         while($b=$this->db->fetch_object($r)){
             if(!$auth->isAdministrator()&&$policy->role($b->rowid,true)!=='manager')continue;
             if(!$auth->isAdministrator()&&!$auth->hasRight('task_update_own')&&!$auth->hasRight('task_manage_team'))continue;

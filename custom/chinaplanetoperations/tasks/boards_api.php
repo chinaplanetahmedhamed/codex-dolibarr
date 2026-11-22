@@ -15,7 +15,7 @@ try{$svc=new InternalTaskBoardsService($db,$user);if($_SERVER['REQUEST_METHOD']=
     }
     else{
         $id=GETPOSTINT('supplier');
-        $out=['supplier'=>$sw->supplier($id),'orders'=>$sw->orders($id,$page),'can_create'=>$ws->canCreate(),
+        $out=['supplier'=>$sw->supplier($id),'projects'=>(new SupplierProjectWorkspaceService($db,$user,(int)$conf->entity))->supplierProjects($id),'orders'=>$sw->orders($id,$page),'can_create'=>$ws->canCreate(),
             'can_account'=>!empty($conf->global->CPO_ACCOUNT_STATEMENTS_ENABLED)&&SupplierAccountService::allowed($user,new CustomerAccountPolicy($db,$user,(int)$conf->entity))];
         if($out['can_create'])$out['teams']=$svc->teams();
     }

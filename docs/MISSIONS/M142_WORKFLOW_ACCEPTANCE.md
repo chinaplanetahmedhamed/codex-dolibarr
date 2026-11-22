@@ -1,0 +1,18 @@
+# M142 workflow acceptance
+
+2026-11-23 Asia/Shanghai. Owner Ahmed Hamed; Codex implementation. Local Dolibarr24.0.1, PHP8.3.21, isolated MySQL socket (network off, event scheduler OFF); mail disabled and webhook module disabled verified before synthetic native work. Live/backup unchanged.
+
+| Role/environment | Steps | Expected / observed | Persistence and denial |
+| --- | --- | --- | --- |
+| Local synthetic administrator, SQLite and MySQL | Link two suppliers to one customer card; unlink/relink; link project directly | One Board per project/supplier, original customer card retained, three lists and creator-only initial membership | 46 M142 checks each, transactions/version/activity verified; invalid entity/type, stale version, ambiguous mappings and external actors denied |
+| Native lab administrator, actual services | Create disposable native parties/project/card; link two suppliers; create one empty native draft and retry | Correct entity/project/supplier/status0; same order ID reused; native order card retains both links | Real BoardsService and CommandeFournisseur creation, no validate/invoice/pay action |
+| Local task administrator without native purchase-create permission | Read supplier Board; attempt native order creation | Native read permitted by scope, creation denied | No order created; task_admin is not a native purchasing permission |
+| Local synthetic actor with revoked project/supplier read | Direct supplier Board/task and deleted gallery | No fallback to General Board visibility | Disabled flags, partial/ambiguous/foreign mapping and retained membership do not expose supplier work |
+| Signed-in local HTTP | Read card/project suppliers/options/Board; unlink/relink fixture; submit stale/foreign/missing-token request | 14 checks pass; Board reused after relink | Saved readback;409/403 denials; no real customer writes |
+| Browser EN desktop / AR390px phone | Open project Suppliers; search; card links; supplier Board; native draft | Observed readable internal controls and correct context | Native confirm automation stalled on synthetic unlink; physical/keyboard confirmation path unaccepted. API unlink/relink passed. Local test tab may remain at the prompt after failed close/reset |
+
+Use: Customer project Board → Suppliers, or customer card → Suppliers → Link supplier. Search/select a native supplier; its private project Board becomes available in Supplier Workspaces immediately. Add staff using existing explicit Board sharing. Supplier Board lists authorized source cards and native orders; Create draft order asks for confirmation, creates an empty native draft, then opens the normal order card. Add products and review/approve through native purchasing. Mandatory custom order fields block empty creation; complete their native purchasing workflow rather than bypassing them.
+
+Supplier identities and order details remain internal. Customer publication, historic approved-order Boards, finance, memberships and native object identities retain their existing authority. Remote release, nonadministrator remote role acceptance, multi-process concurrency/deadlock testing and additional browser confirmation acceptance are pending.
+
+Cleanup: guarded native deletion removed only the disposable parties/project/task/Boards/draft after acceptance. Synthetic SQL test tables also removed. Numbering counters were not rewound. No financial action, production access, backup-ERP action or customer data publication occurred.

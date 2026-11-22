@@ -46,14 +46,24 @@ class InternalTaskWorkspaceService
         $r=$this->rows('SELECT fk_project FROM '.MAIN_DB_PREFIX.'cpo_project_board WHERE entity='.$this->entity.' AND fk_board='.(int)$board);
         return $r?$this->project($r[0]['fk_project']):null;
     }
+    /** Supplier project Boards never fall back to unrestricted General Board scope. */
+    public function supplierBoardScopeSql($entity,$board) {
+        foreach([$entity,$board] as $part)if(!preg_match('/^(?:[0-9]+|[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*)$/D',(string)$part))throw new InvalidArgumentException('Invalid supplier Board scope.');
+        $p=MAIN_DB_PREFIX;
+        $marker="SELECT 1 FROM {$p}element_element sp_m WHERE sp_m.sourcetype='cpo_board' AND sp_m.fk_source=$board AND sp_m.relationtype='cpo_supplier_project'";
+        if(!self::enabled()||empty($GLOBALS['conf']->global->CPO_SUPPLIER_WORKSPACES_ENABLED)||!$this->internal()||(!$this->admin()&&!$this->actor->hasRight('fournisseur','commande','lire')&&!$this->actor->hasRight('supplier_order','lire')))return "NOT EXISTS ($marker)";
+        $count="(SELECT COUNT(*) FROM {$p}element_element sp_count WHERE sp_count.sourcetype='cpo_board' AND sp_count.fk_source=$board AND sp_count.relationtype='cpo_supplier_project')=2";
+        $project="EXISTS (SELECT 1 FROM {$p}element_element sp_ep JOIN {$p}projet sp_p ON sp_p.rowid=sp_ep.fk_target WHERE sp_p.entity=$entity AND sp_ep.sourcetype='cpo_board' AND sp_ep.fk_source=$board AND sp_ep.targettype='project' AND sp_ep.relationtype='cpo_supplier_project' AND ".$this->projectSql('sp_p').')';
+        $supplier="EXISTS (SELECT 1 FROM {$p}element_element sp_es JOIN {$p}societe sp_s ON sp_s.rowid=sp_es.fk_target WHERE sp_s.entity=$entity AND sp_s.fournisseur=1 AND sp_es.sourcetype='cpo_board' AND sp_es.fk_source=$board AND sp_es.targettype='societe' AND sp_es.relationtype='cpo_supplier_project' AND ".$this->customerSql('sp_s').')';
+        return "(NOT EXISTS ($marker) OR ($count AND $project AND $supplier))";
+    }
     public function taskScopeSql($alias) {
         if(!preg_match('/^[a-zA-Z][a-zA-Z0-9_]*$/D',$alias))throw new InvalidArgumentException('Invalid task alias.');
-        if(!self::enabled())return '1=1';
-        // No broad legacy fallback for a grouped board, including direct card grants.
-        return 'NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'cpo_board_card ws_bc INNER JOIN '.MAIN_DB_PREFIX.'cpo_project_board ws_pb ON ws_pb.entity=ws_bc.entity AND ws_pb.fk_board=ws_bc.fk_board WHERE ws_bc.entity='.$alias.'.entity AND ws_bc.fk_task='.$alias.'.rowid AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'projet ws_p WHERE ws_p.rowid=ws_pb.fk_project AND '.$this->projectSql('ws_p').'))';
+        $legacy=!self::enabled()?'1=1':'NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'cpo_board_card ws_bc INNER JOIN '.MAIN_DB_PREFIX.'cpo_project_board ws_pb ON ws_pb.entity=ws_bc.entity AND ws_pb.fk_board=ws_bc.fk_board WHERE ws_bc.entity='.$alias.'.entity AND ws_bc.fk_task='.$alias.'.rowid AND NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'projet ws_p WHERE ws_p.rowid=ws_pb.fk_project AND '.$this->projectSql('ws_p').'))';
+        $supplier='NOT EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX.'cpo_board_card sp_bc WHERE sp_bc.entity='.$alias.'.entity AND sp_bc.fk_task='.$alias.'.rowid AND NOT ('.$this->supplierBoardScopeSql('sp_bc.entity','sp_bc.fk_board').'))';
+        return '('.$legacy.') AND ('.$supplier.')';
     }
     public function taskAllowed($id) {
-        if(!self::enabled())return true;
         $r=$this->rows('SELECT t.rowid FROM '.MAIN_DB_PREFIX.'cpo_task t WHERE t.entity='.$this->entity.' AND t.rowid='.(int)$id.' AND '.$this->taskScopeSql('t'));return (bool)$r;
     }
     private function boardVisibleSql($alias='b') {
