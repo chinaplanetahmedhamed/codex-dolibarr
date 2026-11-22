@@ -868,3 +868,14 @@ CPOBoardStaffMember=الموظف
 CPOBoardSelectStaff=اختر موظفًا
 CPOBoardStaffOnlyHint=تُشارك لوحات الشركة مع الموظفين الداخليين النشطين فقط. تُدار بيانات الموظفين من مستخدمي Dolibarr.
 CPOBoardRemoveMember=إزالة الوصول
+
+# Supplier workspace picker
+CPOSupplierPickerSearch=ابحث عن المورد
+CPOSupplierPickerHint=اكتب اسم المورد أو تصفّح القائمة
+CPOSupplierPickerLoading=جارٍ تحميل الموردين…
+CPOSupplierPickerEmpty=لا يوجد مورد مطابق متاح للتفعيل. جرّب اسمًا آخر.
+CPOSupplierPickerMore=تحميل المزيد من الموردين
+CPOSupplierPickerSelected=المورد المحدد
+CPOSupplierPickerChoose=اختر موردًا من القائمة.
+CPOSupplierPickerRetry=إعادة تحميل الموردين
+CPOSupplierPickerShown=مورد معروض
