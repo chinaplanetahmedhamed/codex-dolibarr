@@ -32,6 +32,7 @@ final class M141Actor
 }
 $conf = (object)['entity'=>1, 'global'=>(object)['CPO_BOARDS_ENABLED'=>1]];
 $db = new M141Database();
+$db->query('CREATE TABLE test_element_element (rowid INTEGER PRIMARY KEY,fk_source INT,sourcetype TEXT,fk_target INT,targettype TEXT,relationtype TEXT)');
 $db->query('CREATE TABLE test_user (rowid INTEGER PRIMARY KEY, entity INT, statut INT, employee INT, fk_soc INT, admin INT DEFAULT 0, login TEXT, firstname TEXT, lastname TEXT)');
 $db->query("INSERT INTO test_user VALUES
     (1,1,1,1,0,1,'manager','Manager',''),

@@ -122,14 +122,14 @@ final class SupplierWorkspaceService
 
     public function mappingSql(string $entity, string $board): string
     {
-        return 'EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX."cpo_supplier_board sb WHERE sb.entity=$entity AND sb.fk_board=$board)";
+        return '(' . 'EXISTS (SELECT 1 FROM '.MAIN_DB_PREFIX."cpo_supplier_board sb WHERE sb.entity=$entity AND sb.fk_board=$board)".' OR '.SupplierProjectWorkspaceService::boardMarkerSql($entity,$board).')';
     }
 
     public function assertMove(int $source, int $target): void
     {
         if ($source === $target) return;
         $p = MAIN_DB_PREFIX;
-        if ($this->rows("SELECT fk_board FROM {$p}cpo_supplier_board WHERE entity=".$this->entity." AND fk_board IN ($source,$target)")) {
+        if ($this->rows("SELECT b.rowid FROM {$p}cpo_board b WHERE b.entity=".$this->entity." AND b.rowid IN ($source,$target) AND ".$this->mappingSql('b.entity','b.rowid'))) {
             throw new InternalTaskAccessException('Lists stay within their supplier order board.');
         }
     }

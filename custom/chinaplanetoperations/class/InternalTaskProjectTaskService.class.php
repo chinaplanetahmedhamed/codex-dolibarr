@@ -37,6 +37,7 @@ class InternalTaskProjectTaskService
     }
     /** Explicit project changes move the same card/native task; callers own the transaction. */
     public function moveCard($taskId,$sourceBoard,$projectId){
+        $linked=$this->query("SELECT rowid FROM ".MAIN_DB_PREFIX."element_element WHERE sourcetype='cpo_task' AND fk_source=".(int)$taskId." AND targettype='societe' AND relationtype='cpo_supplier'");if($this->db->fetch_object($linked))throw new InternalTaskConflictException('Remove card supplier links before moving it to another project.');
         if(empty($this->db->transaction_opened))throw new RuntimeException('Project movement requires a transaction.');
         require_once __DIR__.'/InternalTaskBoardsService.class.php';
         $boards=new InternalTaskBoardsService($this->db,$this->actor,$this->entity);
