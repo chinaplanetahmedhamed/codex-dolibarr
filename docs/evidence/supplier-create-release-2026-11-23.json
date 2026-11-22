@@ -1,0 +1,70 @@
+{
+  "release": "SUPPLIER_CREATE_20261123",
+  "source_commit": "0c3e8277c35418171e0ab709fff6fa18187467e8",
+  "PR": "https://github.com/chinaplanetahmedhamed/codex-dolibarr/pull/65",
+  "controller": "/root/supplier-create-release.py",
+  "controller_sha256": "49932017440b5c80c00cb8b733abb2894c8d69ec84e5155925203bbe896bb0cc",
+  "inventory_sha256": "31eef19fbf5c7069b638dfdd674f86106666574f1ec01a282135903aed7225df",
+  "targets": {
+    "backup": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/js/boards.js": "c128f0dda9309a291172be22ca5963d6e7c20cfbb6c21fc674ffc9e31de734e6",
+        "chinaplanetoperations/css/boards.css": "19e03da0f27e02ff1573fee078a5e830d3d0d52565e7a0fc4c256c6e69e3ba37"
+      },
+      "backup": "/root/supplier-create-20261123/backup-20261122T181235581311Z/source-before.tar.gz",
+      "backup_sha256": "806939f82b713c124f1eb94949d206433be3942d15790ef9cada4ef4a06a55f3",
+      "functional": {
+        "version": "24.0.1",
+        "eligible_supplier_count": 1,
+        "pages_verified": 1,
+        "all_eligible_ids_match": true,
+        "external_actor_denied": true,
+        "general_staff_scope_retained": true,
+        "business_writes": false
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_JS_CSS_hashes": true
+      },
+      "temporary_native_tests": 14,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "release": "SUPPLIER_CREATE_20261123",
+      "source_commit": "0c3e8277c35418171e0ab709fff6fa18187467e8",
+      "artifact_sha256": "5781ad64baa635d8afb413cf6b4f6e2537da407fdca040ce254fdc12665a2e8e",
+      "at_utc": "2026-11-22T18:12:39.330660+00:00",
+      "independent_verification": true
+    },
+    "live": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/js/boards.js": "c128f0dda9309a291172be22ca5963d6e7c20cfbb6c21fc674ffc9e31de734e6",
+        "chinaplanetoperations/css/boards.css": "19e03da0f27e02ff1573fee078a5e830d3d0d52565e7a0fc4c256c6e69e3ba37"
+      },
+      "backup": "/root/supplier-create-20261123/live-20261122T181240696597Z/source-before.tar.gz",
+      "backup_sha256": "753dd03a881426d09ac73c18eacc459578ce636b79f0efb555dce95608a95c7f",
+      "functional": {
+        "version": "24.0.1",
+        "eligible_supplier_count": 1642,
+        "pages_verified": 33,
+        "all_eligible_ids_match": true,
+        "external_actor_denied": true,
+        "general_staff_scope_retained": true,
+        "business_writes": false
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_JS_CSS_hashes": true
+      },
+      "temporary_native_tests": 14,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "release": "SUPPLIER_CREATE_20261123",
+      "source_commit": "0c3e8277c35418171e0ab709fff6fa18187467e8",
+      "artifact_sha256": "5781ad64baa635d8afb413cf6b4f6e2537da407fdca040ce254fdc12665a2e8e",
+      "at_utc": "2026-11-22T18:12:49.925410+00:00",
+      "independent_verification": true
+    }
+  }
+}
