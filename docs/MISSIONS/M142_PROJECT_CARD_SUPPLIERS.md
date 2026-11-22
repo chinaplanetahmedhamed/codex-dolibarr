@@ -42,3 +42,7 @@ Implemented locally on Dolibarr 24.0.1; PHP 8.3.21. No schema migration, new mod
 Deleted supplier Boards are never silently recreated/reused: relinking requires restoring the mapped Board. Card unlink retains the project association/Board/orders. Project unlink is denied while cards use that supplier; existing Board history remains accessible through supplier workspace mappings. Supplier-linked cards cannot move to another project until their card supplier links are explicitly removed.
 
 Status: source/local implementation verified; GitHub publication is recorded with the PR. Backup/live deployment and signed-in remote acceptance remain pending separate release authorization. See M142_WORKFLOW_ACCEPTANCE.md for the workflow record.
+
+## Release approval — 2026-11-23 Asia/Shanghai
+
+Ahmed explicitly requested “ok, push to both” after the concrete local/PR66 result. This authorizes this prepared feature on backup-ERP and live, including preflight, scoped source backup, verification and data-preserving rollback. PR66 merged as d9f704f60df4aad2a4af7df0483a5f4e40f9985e, with both GitHub checks passing. Release allowlist is its15 application paths; no production test fixtures, schema, configuration, rights, proxy or service changes. Native supplier relationships block reversion to older visibility code once users create links; preserve records and fix forward in that case. Release controller recovery checks pass5 locally. Actual remote results are recorded separately after execution.
