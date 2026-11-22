@@ -41,7 +41,12 @@ $db->query("INSERT INTO test_user VALUES
     (5,1,0,1,0,0,'inactive','Inactive',''),
     (6,2,1,1,0,0,'other-company','Other',''),
     (7,1,1,NULL,0,0,'unknown','Unknown',''),
-    (8,1,1,1,91,0,'supplier','Supplier','')");
+    (8,1,1,1,91,0,'supplier','Supplier',''),
+    (9,0,1,1,0,1,'global-staff','Global','Staff'),
+    (10,0,1,1,0,0,'global-nonadmin','Shared','Nonadmin'),
+    (11,0,1,1,90,1,'global-external','External','Admin'),
+    (12,0,0,1,0,1,'global-inactive','Inactive','Admin'),
+    (13,2,1,1,0,1,'foreign-admin','Other','Admin')");
 $db->query('CREATE TABLE test_cpo_board (rowid INTEGER PRIMARY KEY, entity INT, title TEXT, fk_usergroup INT, archived INT, version INT)');
 $db->query("INSERT INTO test_cpo_board VALUES (10,1,'Company board',1,0,1),(20,2,'Other company board',1,0,1)");
 $db->query('CREATE TABLE test_cpo_board_background (entity INT, fk_board INT, image_hash TEXT)');
@@ -53,6 +58,8 @@ $db->query('INSERT INTO test_cpo_board_card VALUES (1,1,10,100,1000,1,0)');
 $db->query('CREATE TABLE test_cpo_project_board (entity INT, fk_board INT, fk_project INT)');
 $db->query('CREATE TABLE test_projet (rowid INT, entity INT, ref TEXT, title TEXT, fk_soc INT)');
 $db->query('CREATE TABLE test_societe (rowid INT, entity INT, nom TEXT)');
+$db->query('CREATE TABLE test_cpo_board_list (rowid INT, entity INT, fk_board INT, title TEXT, position INT, archived INT)');
+$db->query('CREATE TABLE test_cpo_task (rowid INT, entity INT, title TEXT, ref TEXT, status TEXT, priority TEXT, version INT, date_archived TEXT, date_deadline TEXT, fk_user_assign INT)');
 $svc = new InternalTaskBoardsService($db, new M141Actor(), 1);
 $checks = 0;
 function check141($condition, $label) { global $checks; if (!$condition) throw new RuntimeException('FAIL: '.$label); $checks++; }
@@ -69,14 +76,20 @@ function denied141(callable $operation, $label, $exception=InternalTaskAccessExc
 }
 
 // staff-only mode must execute the real SQL, not a mock that pre-filters rows.
-check141(array_map('intval', array_column($svc->people(true), 'rowid')) === [1,2], 'only active internal employees in this entity are offered');
+$offered=array_map('intval', array_column($svc->people(true), 'rowid'));sort($offered);
+check141($offered === [1,2,9], 'active internal employees include native shared administrators');
 check141(in_array(3, array_map('intval', array_column($svc->people(), 'rowid')), true), 'customer/supplier workspace internal picker retains compatibility');
-foreach ([3,4,5,6,7,8,999] as $id) {
+foreach ([3,4,5,6,7,8,10,11,12,13,999] as $id) {
     denied141(fn()=>share141($id), 'reject ineligible Board invite '.$id);
     denied141(fn()=>share141($id,'editor','share_card'), 'reject ineligible card grant '.$id);
 }
 share141(2,'editor');
 check141($db->fetch_object($db->query('SELECT role FROM test_cpo_board_member WHERE entity=1 AND fk_board=10 AND fk_user=2'))->role==='editor', 'employee membership persisted');
+share141(9,'editor');
+check141((bool)$db->fetch_object($db->query('SELECT * FROM test_cpo_board_member WHERE entity=1 AND fk_board=10 AND fk_user=9')), 'shared administrator employee can join a company Board');
+if (empty($GLOBALS['m141TemporaryTables'])) check141(in_array(9,array_map('intval',array_column($svc->workspace(10)['members'],'fk_user')),true), 'shared administrator member remains visible in the Board response');
+share141(9,'remove');
+check141(!$db->fetch_object($db->query('SELECT * FROM test_cpo_board_member WHERE entity=1 AND fk_board=10 AND fk_user=9')), 'shared administrator membership can be removed');
 share141(2,'viewer','share_card');
 check141($db->fetch_object($db->query('SELECT role FROM test_cpo_card_grant WHERE entity=1 AND fk_task=1000 AND fk_user=2'))->role==='viewer', 'employee card grant persisted');
 $db->query("INSERT INTO test_cpo_card_grant VALUES (1,1000,3,'viewer')");

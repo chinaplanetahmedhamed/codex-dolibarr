@@ -1,0 +1,88 @@
+{
+  "mission": "M141",
+  "source_commit": "4ed67298f3d0a6ec6ed8c930c7a1ef1f4dcf9590",
+  "PR": "https://github.com/chinaplanetahmedhamed/codex-dolibarr/pull/63",
+  "controller_sha256": "512bb78ec332b7924bdc1996b16ee1bc7b93fe559b0778e9fe72ea3015d72ae2",
+  "controller": "/root/m141-release-r4.py",
+  "artifact_sha256": "229979a962af27eeb7934aa36e1c321014a2a1cc6951f66aa770553ce8629f2a",
+  "inventory_sha256": "1df96027c3c98df3b4c3b16fedaa81d50f5a5485e99625b5ca3f0fea3b69abd0",
+  "targets": {
+    "backup": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/InternalTaskBoardsService.class.php": "35e169a435fa38c84d1fb585d1e39384277c308459bd5868448e6c4af03fec42",
+        "chinaplanetoperations/js/boards.js": "fa1fe3029ce45fd8a76aed92197658279af9d9cd2a30eb89a1a87fbe44b11942",
+        "chinaplanetoperations/tasks/boards.php": "2c8191098a6096c177a8813a9098ca33f9c556fb757bd09614d5129051cb95e0",
+        "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "c2e4c4fea00773c8530c5b764955862f15a7bf34500f1db4e93269c89e5846c1",
+        "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "40338a3ed0f9e3c6b7d6c64c0aca826d924d5b23cfb13b2e6d85c21cbba9fa68"
+      },
+      "backup": "/root/m141-general-board-staff-20261123/backup/source-before.tar.gz",
+      "backup_sha256": "b0d8ab5917fa6249d05c5b2b116ad835dccb47bfb4e46824f73331a2cd234d59",
+      "functional": {
+        "native_board": 3,
+        "staff_only": true,
+        "employee_options": 1,
+        "internal_options": 1,
+        "external_actor_denied": true,
+        "version": "24.0.1",
+        "business_writes": false
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_asset_hash": true
+      },
+      "temporary_native_tests": 49,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "mission": "M141",
+      "source_commit": "4ed67298f3d0a6ec6ed8c930c7a1ef1f4dcf9590",
+      "artifact_sha256": "229979a962af27eeb7934aa36e1c321014a2a1cc6951f66aa770553ce8629f2a",
+      "at_utc": "2026-11-22T17:10:21.717622+00:00"
+    },
+    "live": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/InternalTaskBoardsService.class.php": "35e169a435fa38c84d1fb585d1e39384277c308459bd5868448e6c4af03fec42",
+        "chinaplanetoperations/js/boards.js": "fa1fe3029ce45fd8a76aed92197658279af9d9cd2a30eb89a1a87fbe44b11942",
+        "chinaplanetoperations/tasks/boards.php": "2c8191098a6096c177a8813a9098ca33f9c556fb757bd09614d5129051cb95e0",
+        "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "c2e4c4fea00773c8530c5b764955862f15a7bf34500f1db4e93269c89e5846c1",
+        "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "40338a3ed0f9e3c6b7d6c64c0aca826d924d5b23cfb13b2e6d85c21cbba9fa68"
+      },
+      "backup": "/root/m141-general-board-staff-20261123/live-20261122T171424173688Z/source-before.tar.gz",
+      "backup_sha256": "671105ac890d85204d2ff46aa5cd00f7859550c96ac0c171b46ce62933cebfab",
+      "functional": {
+        "native_board": 3,
+        "staff_only": true,
+        "employee_options": 5,
+        "internal_options": 8,
+        "external_actor_denied": true,
+        "version": "24.0.1",
+        "business_writes": false
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_asset_hash": true
+      },
+      "temporary_native_tests": 49,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "mission": "M141",
+      "source_commit": "4ed67298f3d0a6ec6ed8c930c7a1ef1f4dcf9590",
+      "artifact_sha256": "229979a962af27eeb7934aa36e1c321014a2a1cc6951f66aa770553ce8629f2a",
+      "at_utc": "2026-11-22T17:14:27.882927+00:00"
+    }
+  },
+  "full_signed_in_member_dialog_acceptance": "pending; existing production Board page observed; no real grant submitted",
+  "recovery_events": [
+    "Initial production metadata label expectation corrected against the same verified pinned container/volume/proxy.",
+    "Docker mount array ordering normalized after showing all values unchanged; path mutation negative test passed.",
+    "One live code apply automatically rolled back because a fixed diagnostic URL was a Cloudflare HIT serving the predecessor. Recovery completed before retry. The successful release and independent check used the real mtime-versioned cpo_asset URL."
+  ],
+  "safety": {
+    "business_record_mutations": false,
+    "schema_or_module_changes": false,
+    "config_or_right_changes": false,
+    "restarts": false,
+    "test_data": "49 native checks per target in connection-local temporary tables only"
+  }
+}
