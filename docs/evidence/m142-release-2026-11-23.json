@@ -1,0 +1,118 @@
+{
+  "release": "M142_20261123",
+  "source_commit": "d9f704f60df4aad2a4af7df0483a5f4e40f9985e",
+  "PR": "https://github.com/chinaplanetahmedhamed/codex-dolibarr/pull/66",
+  "artifact_sha256": "dec04e32ff9597a8d0a3d7c1e16e0212c52816386f1fa21dab8a7c45c8875ca5",
+  "controller": "/root/m142-release.py",
+  "controller_sha256": "b68cd271a2978213ae89972f638d9e0e03af771b75f38ef7b6a41a0c76310518",
+  "inventory_sha256": "6c2b79a2b1ed92bf48d0be8fe3b03e5d5065bc3b5654fe0213401c91dc55204e",
+  "targets": {
+    "backup": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/InternalTaskBoardLifecycle.class.php": "c642d1b5eac7d5ee55971a978ed97e28c9a120e8f4e0bb71024bf02470c7f707",
+        "chinaplanetoperations/class/InternalTaskBoardsService.class.php": "ae3cf72605d1e5534b0cf8b49d7a53481f1f47acf2be1f888b244130fa1fafe5",
+        "chinaplanetoperations/class/InternalTaskProjectTaskService.class.php": "86b6ad9a02b0d582c4e1bc1fba4c6a6dd2ba131aaef554bc3675d62781c324a6",
+        "chinaplanetoperations/class/InternalTaskWorkspaceService.class.php": "2e48ebbcce298ce59f340de92b97aa5e142222c91f7cb732359628159de4bd96",
+        "chinaplanetoperations/class/SupplierProjectWorkspaceService.class.php": "651bc960dadbfe6502c2efcf43ff94c482cbc499d8f5c8aa5e56cc8c24eca2a8",
+        "chinaplanetoperations/class/SupplierWorkspaceService.class.php": "0ea1dac047c1d66a63caf4f18baaf2e79a15c666843599e75f123c10a92da028",
+        "chinaplanetoperations/css/supplier_links.css": "055c5f6772288b48150c181075a58bcac0c4700623d34f1c8785d15a349775e8",
+        "chinaplanetoperations/js/boards.js": "7a29356a535b8943f0c865acd4af93eebb3b4566a5dfcaecad4d50f61348f73c",
+        "chinaplanetoperations/js/supplier_links.js": "21d5fb89131bec81f970d2799e3ee5eb468a9d2384c31b9e48e6bbd637c07fc6",
+        "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "d6ac648bc9bb70ddea4ed2ac61d8a688475fe0ca36ea55d85199f3b3be8a4bc6",
+        "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "0be3fc1cccc5e4d04bb9a5258f8eb32c2d92c66bf92dbb535882ee9b6fa45d6b",
+        "chinaplanetoperations/tasks/boards.php": "10224cee62a608b5cf68734e30973f6221dcdec6d1d9fc7801511cb706f3dfd2",
+        "chinaplanetoperations/tasks/boards_api.php": "6d99a7c52a4085b278453c7feebf76d1b4972a8585e737b67210c8dd0ac24c82",
+        "chinaplanetoperations/tasks/card.php": "54a310526abeb57a2fe7c750af29379bb30fb78b5100119e6e174e59dc030d6c",
+        "chinaplanetoperations/tasks/supplier_links_api.php": "d28b8e1d9a06afb1c53554722c3dc224ab30c67e5ba605b511b57c40dec0e381"
+      },
+      "backup": "/root/m142-release-20261123/backup-20261122T190805633841Z/source-before.tar.gz",
+      "backup_sha256": "213c37117c734d3a488a6df89dfed7009eb548d3d77ce8c1284d8fdfb903c6da",
+      "synthetic": {
+        "staff_checks": 72,
+        "supplier_link_checks": 46,
+        "database": "in-memory SQLite; no native writes"
+      },
+      "functional": {
+        "version": "24.0.1",
+        "entity": 1,
+        "owned_supplier_relations": 0,
+        "native_actor_verified": true,
+        "general_staff_scope": true,
+        "persistent_writes": false,
+        "project_panels": 5,
+        "card_panels": 5,
+        "external_denied": true,
+        "all_supplier_ids_match": true,
+        "supplier_count": 1,
+        "supplier_pages": 1
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "TLS_asset_hashes_verified": 3
+      },
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "release": "M142_20261123",
+      "source_commit": "d9f704f60df4aad2a4af7df0483a5f4e40f9985e",
+      "artifact_sha256": "dec04e32ff9597a8d0a3d7c1e16e0212c52816386f1fa21dab8a7c45c8875ca5",
+      "at_utc": "2026-11-22T19:08:10.025313+00:00",
+      "independent_verification": true
+    },
+    "live": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/InternalTaskBoardLifecycle.class.php": "c642d1b5eac7d5ee55971a978ed97e28c9a120e8f4e0bb71024bf02470c7f707",
+        "chinaplanetoperations/class/InternalTaskBoardsService.class.php": "ae3cf72605d1e5534b0cf8b49d7a53481f1f47acf2be1f888b244130fa1fafe5",
+        "chinaplanetoperations/class/InternalTaskProjectTaskService.class.php": "86b6ad9a02b0d582c4e1bc1fba4c6a6dd2ba131aaef554bc3675d62781c324a6",
+        "chinaplanetoperations/class/InternalTaskWorkspaceService.class.php": "2e48ebbcce298ce59f340de92b97aa5e142222c91f7cb732359628159de4bd96",
+        "chinaplanetoperations/class/SupplierProjectWorkspaceService.class.php": "651bc960dadbfe6502c2efcf43ff94c482cbc499d8f5c8aa5e56cc8c24eca2a8",
+        "chinaplanetoperations/class/SupplierWorkspaceService.class.php": "0ea1dac047c1d66a63caf4f18baaf2e79a15c666843599e75f123c10a92da028",
+        "chinaplanetoperations/css/supplier_links.css": "055c5f6772288b48150c181075a58bcac0c4700623d34f1c8785d15a349775e8",
+        "chinaplanetoperations/js/boards.js": "7a29356a535b8943f0c865acd4af93eebb3b4566a5dfcaecad4d50f61348f73c",
+        "chinaplanetoperations/js/supplier_links.js": "21d5fb89131bec81f970d2799e3ee5eb468a9d2384c31b9e48e6bbd637c07fc6",
+        "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "d6ac648bc9bb70ddea4ed2ac61d8a688475fe0ca36ea55d85199f3b3be8a4bc6",
+        "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "0be3fc1cccc5e4d04bb9a5258f8eb32c2d92c66bf92dbb535882ee9b6fa45d6b",
+        "chinaplanetoperations/tasks/boards.php": "10224cee62a608b5cf68734e30973f6221dcdec6d1d9fc7801511cb706f3dfd2",
+        "chinaplanetoperations/tasks/boards_api.php": "6d99a7c52a4085b278453c7feebf76d1b4972a8585e737b67210c8dd0ac24c82",
+        "chinaplanetoperations/tasks/card.php": "54a310526abeb57a2fe7c750af29379bb30fb78b5100119e6e174e59dc030d6c",
+        "chinaplanetoperations/tasks/supplier_links_api.php": "d28b8e1d9a06afb1c53554722c3dc224ab30c67e5ba605b511b57c40dec0e381"
+      },
+      "backup": "/root/m142-release-20261123/live-20261122T190914956234Z/source-before.tar.gz",
+      "backup_sha256": "e33111af3fa13a530960eca47c6ce8c187b87f246b2ee51b4b7a65ac0066185c",
+      "synthetic": {
+        "staff_checks": 72,
+        "supplier_link_checks": 46,
+        "database": "in-memory SQLite; no native writes"
+      },
+      "functional": {
+        "version": "24.0.1",
+        "entity": 1,
+        "owned_supplier_relations": 0,
+        "native_actor_verified": true,
+        "general_staff_scope": true,
+        "persistent_writes": false,
+        "project_panels": 5,
+        "card_panels": 5,
+        "external_denied": true,
+        "all_supplier_ids_match": true,
+        "supplier_count": 1643,
+        "supplier_pages": 33
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "TLS_asset_hashes_verified": 3
+      },
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "release": "M142_20261123",
+      "source_commit": "d9f704f60df4aad2a4af7df0483a5f4e40f9985e",
+      "artifact_sha256": "dec04e32ff9597a8d0a3d7c1e16e0212c52816386f1fa21dab8a7c45c8875ca5",
+      "at_utc": "2026-11-22T19:09:19.770119+00:00",
+      "independent_verification": true
+    }
+  },
+  "Mac_HTTPS_asset_checks": 6,
+  "recorded_at_utc": "2026-11-22T19:10:20.753583+00:00",
+  "browser_limit": "Signed-in remote browser click-through and browser confirmation remain unaccepted; native scoped actors, persistence tests and API/local UI acceptance recorded separately."
+}

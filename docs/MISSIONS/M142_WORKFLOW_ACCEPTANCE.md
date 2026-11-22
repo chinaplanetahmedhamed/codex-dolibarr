@@ -1,6 +1,6 @@
 # M142 workflow acceptance
 
-2026-11-23 Asia/Shanghai. Owner Ahmed Hamed; Codex implementation. Local Dolibarr24.0.1, PHP8.3.21, isolated MySQL socket (network off, event scheduler OFF); mail disabled and webhook module disabled verified before synthetic native work. Live/backup unchanged.
+2026-11-23 Asia/Shanghai. Owner Ahmed Hamed; Codex implementation. Local Dolibarr24.0.1, PHP8.3.21, isolated MySQL socket (network off, event scheduler OFF); mail disabled and webhook module disabled verified before synthetic native work. Initial local phase; hosted release is recorded below.
 
 | Role/environment | Steps | Expected / observed | Persistence and denial |
 | --- | --- | --- | --- |
@@ -13,6 +13,8 @@
 
 Use: Customer project Board → Suppliers, or customer card → Suppliers → Link supplier. Search/select a native supplier; its private project Board becomes available in Supplier Workspaces immediately. Add staff using existing explicit Board sharing. Supplier Board lists authorized source cards and native orders; Create draft order asks for confirmation, creates an empty native draft, then opens the normal order card. Add products and review/approve through native purchasing. Mandatory custom order fields block empty creation; complete their native purchasing workflow rather than bypassing them.
 
-Supplier identities and order details remain internal. Customer publication, historic approved-order Boards, finance, memberships and native object identities retain their existing authority. Remote release, nonadministrator remote role acceptance, multi-process concurrency/deadlock testing and additional browser confirmation acceptance are pending.
+Supplier identities and order details remain internal. Customer publication, historic approved-order Boards, finance, memberships and native object identities retain their existing authority. Nonadministrator remote role acceptance, multi-process concurrency/deadlock testing and additional browser confirmation acceptance are pending.
 
-Cleanup: guarded native deletion removed only the disposable parties/project/task/Boards/draft after acceptance. Synthetic SQL test tables also removed. Numbering counters were not rewound. No financial action, production access, backup-ERP action or customer data publication occurred.
+Cleanup: guarded native deletion removed only the disposable parties/project/task/Boards/draft after acceptance. Synthetic SQL test tables also removed. Numbering counters were not rewound. During local implementation, no financial action, production access, backup-ERP action or customer data publication occurred.
+
+Hosted release 2026-11-23: backup then live independently passed source guards/15file hashes,72+46 runtime synthetic checks, five native project panels/five card panels, external denial and full supplier paging. Changed HTTPS assets reverified from VPS and Mac. Native administrator ID/status/rights were checked before in-process acceptance. Hosted business-write UAT and signed-in browser confirmation remain pending. No hosted business/config/schema/right/service mutation. See ../evidence/m142-release-2026-11-23.json.
