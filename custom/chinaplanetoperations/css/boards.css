@@ -626,3 +626,8 @@ body.cpo-board-sidebar #id-right{display:block!important}
 #cb-dialog .cb-supplier-more{align-self:stretch;min-height:44px}
 #cb-dialog .cb-supplier-form footer{position:sticky;bottom:-20px;background:var(--cb-dialog-bg);flex-wrap:wrap;padding-bottom:12px}
 @media(max-width:780px){#cb-dialog .cb-supplier-form footer{bottom:-16px}}
+
+#cb-dialog .cb-supplier-search-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#cb-dialog .cb-supplier-create{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 14px;border-radius:12px;background:#4f46e5;color:#fff!important;text-decoration:none;font-weight:700;font-size:13px;white-space:nowrap}
+#cb-dialog .cb-supplier-create:hover{background:#4338ca}
+#cb-dialog .cb-supplier-create:focus-visible{outline:3px solid #4f46e5;outline-offset:3px}

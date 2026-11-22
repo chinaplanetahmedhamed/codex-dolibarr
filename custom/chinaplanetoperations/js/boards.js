@@ -332,8 +332,12 @@ function wsEnableSupplier(){
  list.id='cb-supplier-options';list.setAttribute('role','listbox');list.setAttribute('aria-label',label('search','Search suppliers'));
  message.setAttribute('role','status');message.setAttribute('aria-live','polite');selection.hidden=true;
  const more=el('button','cb-supplier-more',label('more','Load more suppliers'));more.type='button';more.hidden=true;
- picker.append(searchLabel,input,list,message,more,selection,value);footer.before(picker);
- if(gallery.can_create_supplier)footer.append(link(wsText('مورد جديد','New supplier'),'/societe/card.php?action=create&type=f','cb-ws-link'));
+ const searchHead=el('div','cb-supplier-search-head');searchHead.append(searchLabel);
+ if(gallery.can_create_supplier){
+  const query=new URLSearchParams({action:'create',type:'f',backtopage:'/custom/chinaplanetoperations/tasks/boards.php?view=suppliers'});
+  searchHead.append(link(wsText('مورد جديد','New supplier'),'/societe/card.php?'+query,'cb-supplier-create'));
+ }
+ picker.append(searchHead,input,list,message,more,selection,value);footer.before(picker);
  let page=0,sequence=0,timer,controller,active=-1,rows=[],loading=false,failedPage=1;
  function highlight(index){
   active=index;const options=Array.from(list.children);
