@@ -60,10 +60,10 @@ final class SupplierWorkspaceService
         return $this->searchSuppliers($query, $page, true);
     }
 
-    public function supplierOptions(string $query): array
+    public function supplierOptions(string $query, int $page = 1): array
     {
         if (!$this->canEnable()) throw new InternalTaskAccessException('Supplier workspace activation denied.');
-        return $this->searchSuppliers($query, 1, false);
+        return $this->searchSuppliers($query, $page, false);
     }
 
     public function enableSupplier($value): array

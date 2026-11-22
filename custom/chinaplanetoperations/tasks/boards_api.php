@@ -9,7 +9,10 @@ try{$svc=new InternalTaskBoardsService($db,$user);if($_SERVER['REQUEST_METHOD']=
     $sw=new SupplierWorkspaceService($db,$user,(int)$conf->entity);
     $page=max(1,min(10000,GETPOSTINT('page')));
     if($action==='suppliers')$out=['suppliers'=>$sw->suppliers(GETPOST('q','alphanohtml'),$page),'can_enable'=>$sw->canEnable()];
-    elseif($action==='supplier_options')$out=['suppliers'=>$sw->supplierOptions(GETPOST('q','alphanohtml'))];
+    elseif($action==='supplier_options'){
+        $rows=$sw->supplierOptions(GETPOST('q','alphanohtml'),$page);
+        $out=['suppliers'=>array_slice($rows,0,50),'has_more'=>count($rows)>50,'page'=>$page];
+    }
     else{
         $id=GETPOSTINT('supplier');
         $out=['supplier'=>$sw->supplier($id),'orders'=>$sw->orders($id,$page),'can_create'=>$ws->canCreate(),

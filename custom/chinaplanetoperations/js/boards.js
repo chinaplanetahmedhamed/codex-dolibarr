@@ -314,7 +314,71 @@ function workspaceAppearance(){
 
 function wsRequest(){return Array.from(crypto.getRandomValues(new Uint8Array(24)),x=>x.toString(16).padStart(2,'0')).join('');}
 function wsCreateBoard(p){const request=wsRequest();formModal(wsText('إنشاء بورد المشروع','Create project board'),[{label:'Team',name:'team',options:(gallery.teams||[]).map(t=>({value:t.rowid,label:t.nom}))}],async d=>{const r=await save('create_board',{...d,title:p.ref+' · '+p.title,background:'#182b4e',project:p.rowid,request},false);location.href=localizedUrl('boards.php?id='+r.id);},wsText('بورد واحد لهذا المشروع، مع القوائم والمهام الحالية.','One board for this project, using existing lists and tasks.'));}
+function wsEnableSupplier(){
+ const label=(key,fallback)=>cfg.supplierPickerLabels?.[key]||fallback;
+ formModal(wsText('تفعيل مساحة مورد','Enable Supplier Workspace'),[],async data=>{
+  if(!Number(data.supplier))throw new Error(label('choose','Choose a supplier from the list.'));
+  await api('enable_supplier_workspace',data);
+  location.href=localizedUrl('boards.php?view=suppliers&supplier='+Number(data.supplier));
+ },wsText('اختر موردًا مسجّلًا في Dolibarr لتفعيل مساحته.','Select a registered Dolibarr supplier to enable its workspace.'));
+ const form=dialog.querySelector('form'),footer=form.querySelector('footer'),submit=footer.querySelector('[type=submit]');
+ form.classList.add('cb-supplier-form');form.dir=cfg.lang==='ar'?'rtl':'ltr';
+ submit.textContent=wsText('تفعيل المساحة','Enable workspace');submit.disabled=true;
+ const picker=el('div','cb-supplier-picker'),searchLabel=el('label','',label('search','Search suppliers')),input=el('input'),value=el('input');
+ input.id='cb-supplier-query';input.type='search';input.maxLength=100;input.autocomplete='off';input.placeholder=label('hint','Type a supplier name or browse the list');
+ searchLabel.htmlFor=input.id;input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');input.setAttribute('aria-expanded','true');input.setAttribute('aria-controls','cb-supplier-options');
+ value.type='hidden';value.name='supplier';
+ const list=el('div','cb-supplier-options'),message=el('output','cb-hint'),selection=el('p','cb-supplier-selection');
+ list.id='cb-supplier-options';list.setAttribute('role','listbox');list.setAttribute('aria-label',label('search','Search suppliers'));
+ message.setAttribute('role','status');message.setAttribute('aria-live','polite');selection.hidden=true;
+ const more=el('button','cb-supplier-more',label('more','Load more suppliers'));more.type='button';more.hidden=true;
+ picker.append(searchLabel,input,list,message,more,selection,value);footer.before(picker);
+ if(gallery.can_create_supplier)footer.append(link(wsText('مورد جديد','New supplier'),'/societe/card.php?action=create&type=f','cb-ws-link'));
+ let page=0,sequence=0,timer,controller,active=-1,rows=[],loading=false,failedPage=1;
+ function highlight(index){
+  active=index;const options=Array.from(list.children);
+  options.forEach((option,i)=>option.classList.toggle('cb-supplier-active',i===active));
+  if(options[active]){input.setAttribute('aria-activedescendant',options[active].id);options[active].scrollIntoView({block:'nearest'});}
+  else input.removeAttribute('aria-activedescendant');
+ }
+ function choose(index){
+  if(loading||!rows[index])return;
+  value.value=String(rows[index].rowid);selection.textContent=label('selected','Selected supplier')+': '+rows[index].nom;selection.hidden=false;
+  Array.from(list.children).forEach((option,i)=>option.setAttribute('aria-selected',String(i===index)));
+  form.querySelector('.cb-error').textContent='';submit.disabled=false;highlight(index);input.focus();
+ }
+ async function loadPage(next){
+  clearTimeout(timer);controller?.abort();controller=new AbortController();const request=++sequence;
+  loading=true;failedPage=next;submit.disabled=true;more.disabled=true;list.setAttribute('aria-busy','true');message.textContent=label('loading','Loading suppliers…');form.querySelector('.cb-error').textContent='';
+  if(next===1){rows=[];list.replaceChildren();list.scrollTop=0;value.value='';selection.hidden=true;highlight(-1);more.hidden=true;}
+  try{
+   const result=await api('supplier_options',null,{q:input.value,page:next},controller.signal);
+   if(request!==sequence||!form.isConnected)return;
+   for(const row of result.suppliers){
+    const index=rows.length;rows.push(row);
+    const option=el('button','cb-supplier-option');option.type='button';option.id='cb-supplier-option-'+index;option.tabIndex=-1;option.setAttribute('role','option');option.setAttribute('aria-selected','false');
+    const name=el('span','',row.nom);name.dir='auto';option.append(name);option.addEventListener('click',()=>choose(index));list.append(option);
+   }
+   page=next;more.hidden=!result.has_more;more.textContent=label('more','Load more suppliers');more.onclick=()=>loadPage(page+1);
+   message.textContent=rows.length?String(rows.length)+' '+label('shown','suppliers shown'):label('empty','No matching suppliers available to enable. Try another name.');
+  }catch(error){
+   if(request!==sequence||!form.isConnected)return;
+   if(error.name!=='AbortError'){form.querySelector('.cb-error').textContent=error.message;message.textContent='';more.hidden=false;more.textContent=label('retry','Retry loading suppliers');more.onclick=()=>loadPage(failedPage);}
+  }finally{
+   if(request===sequence&&form.isConnected){loading=false;list.setAttribute('aria-busy','false');more.disabled=false;submit.disabled=!value.value;}
+  }
+ }
+ input.addEventListener('input',()=>{clearTimeout(timer);sequence++;controller?.abort();loading=true;submit.disabled=true;value.value='';selection.hidden=true;list.replaceChildren();rows=[];highlight(-1);more.hidden=true;message.textContent=label('loading','Loading suppliers…');timer=setTimeout(()=>loadPage(1),250);});
+ input.addEventListener('keydown',event=>{
+  if(event.isComposing)return;
+  if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();if(rows.length&&!loading)highlight(event.key==='ArrowDown'?Math.min(active+1,rows.length-1):Math.max(active-1,0));}
+  else if(event.key==='Enter'){event.preventDefault();if(active>=0)choose(active);}
+ });
+ dialog.addEventListener('close',()=>{sequence++;clearTimeout(timer);controller?.abort();},{once:true});
+ input.focus();loadPage(1);
+}
 async function wsEnable(kind='customer'){
+ if(kind==='supplier')return wsEnableSupplier();
  const supplier=kind==='supplier',optionsAction=kind+'_options';
  const title=supplier?wsText('تفعيل مساحة مورد','Enable Supplier Workspace'):wsText('تفعيل مساحة لعميل','Enable customer workspace');
  const entity=supplier?wsText('المورد','Supplier'):wsText('العميل','Customer');

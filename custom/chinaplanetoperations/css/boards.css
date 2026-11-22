@@ -612,3 +612,17 @@ body.cpo-board-canvas .cb-list-popover .cb-popover-item{min-height:44px;padding:
 
 /* Native Dolibarr can render this as a table cell, which ignores sidebar margins. */
 body.cpo-board-sidebar #id-right{display:block!important}
+
+/* Supplier activation: bounded results instead of an OS-sized select menu. */
+#cb-dialog:has(.cb-supplier-form){max-height:calc(100dvh - 24px);overflow-y:auto}
+#cb-dialog .cb-supplier-picker{display:flex;flex-direction:column;gap:8px;min-width:0}
+#cb-dialog .cb-supplier-options{max-height:min(240px,32dvh);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:1px solid var(--cb-dialog-border);border-radius:12px;background:var(--cb-dialog-input);scrollbar-color:var(--cb-dialog-muted) var(--cb-dialog-input)}
+#cb-dialog .cb-supplier-options:empty{display:none}
+#cb-dialog .cb-supplier-option{display:block;width:100%;min-height:44px;padding:10px 12px;text-align:start;white-space:normal;overflow-wrap:anywhere;border:0;border-radius:0;color:var(--cb-dialog-ink);font-weight:400}
+#cb-dialog .cb-supplier-option + .cb-supplier-option{border-top:1px solid var(--cb-dialog-border)}
+#cb-dialog .cb-supplier-option:hover,#cb-dialog .cb-supplier-active{background:var(--cb-dialog-border)}
+#cb-dialog .cb-supplier-option[aria-selected=true]{background:#4f46e5;color:#fff;font-weight:700}
+#cb-dialog .cb-supplier-selection{margin:4px 0;overflow-wrap:anywhere;color:var(--cb-dialog-ink);font-size:13px}
+#cb-dialog .cb-supplier-more{align-self:stretch;min-height:44px}
+#cb-dialog .cb-supplier-form footer{position:sticky;bottom:-20px;background:var(--cb-dialog-bg);flex-wrap:wrap;padding-bottom:12px}
+@media(max-width:780px){#cb-dialog .cb-supplier-form footer{bottom:-16px}}

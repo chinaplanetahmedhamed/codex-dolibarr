@@ -875,3 +875,14 @@ CPOBoardStaffMember=Staff member
 CPOBoardSelectStaff=Select staff member
 CPOBoardStaffOnlyHint=Company boards can be shared with active internal employees only. Staff are managed in Dolibarr Users.
 CPOBoardRemoveMember=Remove access
+
+# Supplier workspace picker
+CPOSupplierPickerSearch=Search suppliers
+CPOSupplierPickerHint=Type a supplier name or browse the list
+CPOSupplierPickerLoading=Loading suppliers…
+CPOSupplierPickerEmpty=No matching suppliers available to enable. Try another name.
+CPOSupplierPickerMore=Load more suppliers
+CPOSupplierPickerSelected=Selected supplier
+CPOSupplierPickerChoose=Choose a supplier from the list.
+CPOSupplierPickerRetry=Retry loading suppliers
+CPOSupplierPickerShown=suppliers shown
