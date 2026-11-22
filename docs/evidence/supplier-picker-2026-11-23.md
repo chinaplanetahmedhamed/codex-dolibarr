@@ -15,3 +15,14 @@ Verified locally:
 State: source/local runtime tested; GitHub publication recorded in the PR. This supplier-picker change has not been deployed to backup-ERP or production. The earlier M141 staff release remains separate. No schema, configuration, user profile, permission, financial/business record or service changes.
 
 Ahmed's GitHub sync rule is recorded in repository AGENTS.md: completed verified code changes must be committed and pushed, and live/backup deployments must match published source. This rule grants no deployment approval on its own.
+
+
+## Authorized remote release — 2026-11-23 Asia/Shanghai
+
+Ahmed requested “push to them as well”, authorizing this exact tested seven-file code overlay on live and backup, with preflight, scoped backups, apply, independent verification and code-only rollback. PR #64 was merged first; both releases are built from GitHub main `91d7337e54a3367dc171342fce71c0059e66aa02`.
+
+Both exact containers, images, custom volumes, ports, proxy/config hashes, twelve scoped source predecessors/protected paths and file owner/modes were checked. Each target passed 14 native MySQL tests using session-temporary synthetic tables, PHP lint, complete native supplier ID comparison over all pages, external-actor denial, retained General Board staff scope, anonymous login requirement and HTTPS JS/CSS byte hashes. Recovery archives were verified before seven atomic file writes; independent verification then repeated checks. Live has 1,642 eligible supplier IDs across33 pages. Backup has one isolated eligible supplier; its user/business data was not copied.
+
+Initial preflight stopped before source mutation because the test harness placed `?>` before a strict PHP declaration. Sanitized diagnostics confirmed strict declaration ordering; controller r2 evaluates the same candidate body without its opening PHP tag, preserving strict mode. The app artifact did not change. All guards were rerun successfully. No production rollback was required.
+
+Authenticated Chrome on live rendered the bounded supplier list and its 50 ->100 continuation. Native browser control briefly reported a changed page; fresh state was read before proceeding. No supplier was created or workspace activated during this check. Search/keyboard and EN/AR phone visual cases are the separately recorded synthetic checks above. [Exact release receipts](supplier-picker-release-2026-11-23.json) and the frozen controller `deploy/tools/supplier_picker_release_20261123.py` record checksums and backups. Recovery command is `/root/supplier-picker-release-r2.py backup rollback` or `live rollback` through Python; subsequent source drift is refused. No database, schema, config, profile, native right, actual membership or service change/restart.

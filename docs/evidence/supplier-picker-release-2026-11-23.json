@@ -1,0 +1,80 @@
+{
+  "release": "SUPPLIER_PICKER_20261123",
+  "source_commit": "91d7337e54a3367dc171342fce71c0059e66aa02",
+  "PR": "https://github.com/chinaplanetahmedhamed/codex-dolibarr/pull/64",
+  "controller": "/root/supplier-picker-release-r2.py",
+  "controller_sha256": "b705c120563da74abc56015c46ae6863e1b7ad187a83ff28a3d4850be4f53832",
+  "inventory_sha256": "08320b306023540a67140ebe9e5dab90e2925d64f97ab3eee523623e7ad429f5",
+  "targets": {
+    "backup": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/SupplierWorkspaceService.class.php": "2baf11d4b803f58dd753c78029934ef7ae3b2fdd98a5661806b66415c9c18bd0",
+        "chinaplanetoperations/css/boards.css": "d24e36caf0dd98e9fdfeea91500c983f18569540543613178457735dda81cd1e",
+        "chinaplanetoperations/js/boards.js": "eb9f936175d213691402695966296d903c2fdea06849de7c9186276671ad23d1",
+        "chinaplanetoperations/tasks/boards.php": "a6836b1d3d342101081f95aa18d70a16085367a5e58b646123921d4992bfa0b3",
+        "chinaplanetoperations/tasks/boards_api.php": "5feb1f6c0d33724b2396b479326c151872aea99f02aa02369108c64d38f51692",
+        "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "8ae7f49d02ddfb831fb9433ab06f8ab5659dce0421580c4092635fbe779ec0fc",
+        "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "2cddb2ca9a3d222befeba61b4644ac6eb74ad06c09da5f23e924879d5860f324"
+      },
+      "backup": "/root/supplier-picker-20261123/backup-20261122T180457936794Z/source-before.tar.gz",
+      "backup_sha256": "07d0bdc6a507b2e3903f0afcdd33af2b898c1ef546c88fe0e627a2e94ab7d328",
+      "functional": {
+        "version": "24.0.1",
+        "eligible_supplier_count": 1,
+        "pages_verified": 1,
+        "all_eligible_ids_match": true,
+        "external_actor_denied": true,
+        "general_staff_scope_retained": true,
+        "business_writes": false
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_JS_CSS_hashes": true
+      },
+      "temporary_native_tests": 14,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "release": "SUPPLIER_PICKER_20261123",
+      "source_commit": "91d7337e54a3367dc171342fce71c0059e66aa02",
+      "artifact_sha256": "3067cd179fa6ee762272a894dea933f5d412468d1d7f26a284466ee74726b49d",
+      "at_utc": "2026-11-22T18:05:02.853497+00:00",
+      "independent_verification": true
+    },
+    "live": {
+      "status": "VERIFIED",
+      "files": {
+        "chinaplanetoperations/class/SupplierWorkspaceService.class.php": "2baf11d4b803f58dd753c78029934ef7ae3b2fdd98a5661806b66415c9c18bd0",
+        "chinaplanetoperations/css/boards.css": "d24e36caf0dd98e9fdfeea91500c983f18569540543613178457735dda81cd1e",
+        "chinaplanetoperations/js/boards.js": "eb9f936175d213691402695966296d903c2fdea06849de7c9186276671ad23d1",
+        "chinaplanetoperations/tasks/boards.php": "a6836b1d3d342101081f95aa18d70a16085367a5e58b646123921d4992bfa0b3",
+        "chinaplanetoperations/tasks/boards_api.php": "5feb1f6c0d33724b2396b479326c151872aea99f02aa02369108c64d38f51692",
+        "chinaplanetoperations/langs/en_US/chinaplanetoperations.lang": "8ae7f49d02ddfb831fb9433ab06f8ab5659dce0421580c4092635fbe779ec0fc",
+        "chinaplanetoperations/langs/ar_SA/chinaplanetoperations.lang": "2cddb2ca9a3d222befeba61b4644ac6eb74ad06c09da5f23e924879d5860f324"
+      },
+      "backup": "/root/supplier-picker-20261123/live-20261122T180529498709Z/source-before.tar.gz",
+      "backup_sha256": "4801700d8ea23244f97ec39f7f2dbf7798794468d8d2880e6b13bc2424e2f5b8",
+      "functional": {
+        "version": "24.0.1",
+        "eligible_supplier_count": 1642,
+        "pages_verified": 33,
+        "all_eligible_ids_match": true,
+        "external_actor_denied": true,
+        "general_staff_scope_retained": true,
+        "business_writes": false
+      },
+      "web": {
+        "anonymous_login_required": true,
+        "public_TLS_JS_CSS_hashes": true
+      },
+      "temporary_native_tests": 14,
+      "database_config_rights_mutations": false,
+      "restart": false,
+      "release": "SUPPLIER_PICKER_20261123",
+      "source_commit": "91d7337e54a3367dc171342fce71c0059e66aa02",
+      "artifact_sha256": "3067cd179fa6ee762272a894dea933f5d412468d1d7f26a284466ee74726b49d",
+      "at_utc": "2026-11-22T18:05:38.938049+00:00",
+      "independent_verification": true
+    }
+  }
+}
