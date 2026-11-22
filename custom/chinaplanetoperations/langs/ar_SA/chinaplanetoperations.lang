@@ -862,3 +862,9 @@ CPOBoardPublicationNoCards=لا توجد كروت حالية للنشر.
 CPOBoardSelectAllCurrent=تحديد كل الكروت الحالية
 CPOBoardDraftCardTitles=استخدام عناوين الكروت كمسودات
 CPOBoardShowCard=إظهار للعميل
+
+# General Board staff membership
+CPOBoardStaffMember=الموظف
+CPOBoardSelectStaff=اختر موظفًا
+CPOBoardStaffOnlyHint=تُشارك لوحات الشركة مع الموظفين الداخليين النشطين فقط. تُدار بيانات الموظفين من مستخدمي Dolibarr.
+CPOBoardRemoveMember=إزالة الوصول

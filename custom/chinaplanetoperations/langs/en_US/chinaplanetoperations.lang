@@ -869,3 +869,9 @@ CPOBoardPublicationNoCards=There are no current cards to publish.
 CPOBoardSelectAllCurrent=Select all current cards
 CPOBoardDraftCardTitles=Use card titles as drafts
 CPOBoardShowCard=Show to customer
+
+# General Board staff membership
+CPOBoardStaffMember=Staff member
+CPOBoardSelectStaff=Select staff member
+CPOBoardStaffOnlyHint=Company boards can be shared with active internal employees only. Staff are managed in Dolibarr Users.
+CPOBoardRemoveMember=Remove access
